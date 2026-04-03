@@ -2,9 +2,9 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import Portal from '../../shared/components/Portal';
-import { CalendarIconSolid, CoinsIcon, CoinsIconSolid, TicketIcon, TicketIconLight, NoPaymentIcon, DeleteGigIcon, MoreInformationIcon } from '../../shared/ui/extras/Icons';
+import { CalendarIconSolid, CoinsIcon, CoinsIconSolid, TicketIcon, TicketIconLight, NoPaymentIcon, DeleteGigIcon, MoreInformationIcon, ClockIcon } from '../../shared/ui/extras/Icons';
 import { createArtistCRMEntry, getArtistCRMEntries } from '@services/client-side/artistCRM';
-import { createVenueHireOpportunitiesBatch } from '@services/client-side/venueHireOpportunities';
+import { createVenueHireOpportunitiesBatch, updateVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { postMultipleGigs, updateGigDocument } from '@services/api/gigs';
 import { hasVenuePerm } from '@services/utils/permissions';
 import { uploadFileWithFallback } from '@services/storage';
@@ -60,7 +60,7 @@ function getSlotInviteOnly(gig, slotCount) {
 
 const defaultGigForDate = () => ({
   startTime: '',
-  duration: undefined,
+  duration: 60,
   bookingStatus: '',
   slotBookingStatuses: ['unbooked'],
   artistName: '',
@@ -77,6 +77,14 @@ const defaultGigForDate = () => ({
   slotInviteOnly: [false],
   extraInformation: '',
   private: false,
+  soundManager: '',
+  techSetup: {
+    venueEquipmentSelected: [],
+    hiredFromVenue: [],
+    bandSetupNotes: '',
+    technicalNotes: '',
+    technicalStatus: '',
+  },
   // Booking mode: 'artist' = book and pay artists, 'rental' = rent out venue
   bookingMode: '',
   rentalStartTime: '',
@@ -87,19 +95,13 @@ const defaultGigForDate = () => ({
   rentalPrivate: null,
   renterName: '',
   rentalGigId: '',
-  // Core details (venue hire); access from / hard curfew use rentalStartTime / rentalEndTime
+  // Core details (venue hire); access from / hard curfew use rentalStartTime / rentalEndTime. Capacity is on venue profile.
   rentalCapacity: '',
-  // More details – technical
-  rentalPaIncluded: 'no', // 'yes' | 'no' | 'for_hire'
-  rentalPaForHirePrice: '£',
-  rentalSoundEngineerIncluded: 'no',
-  rentalSoundEngineerForHirePrice: '£',
-  // More details – ticketing & rules
-  rentalTicketingResponsibility: 'promoter_sells', // 'promoter_sells' | 'venue_sells' | 'split'
-  rentalAgeRestriction: '18_plus', // '18_plus' | 'all_ages'
   // More details – deposit
   rentalDepositRequired: false,
   rentalDepositAmount: '£',
+  // More details – documents: default to "Upload a PDF" for house rules
+  rentalHouseRulesMode: 'document',
 });
 
 /** Get dateIso string from an API gig (for edit mode). */
@@ -115,27 +117,63 @@ function getDateIsoFromGig(gig) {
 /** Convert API rental gig (from full page / Firestore) to form gig shape for AddGigsModal. */
 function apiRentalGigToFormGig(apiGig) {
   const def = defaultGigForDate();
-  const fee = apiGig?.budget ?? apiGig?.rentalFee ?? '';
-  const feeStr = typeof fee === 'number' ? (fee === 0 ? '£' : `£${fee}`) : (fee || '£');
+  const feeCandidates = [apiGig?.budget, apiGig?.rentalFee, apiGig?.hireFee];
+  const fee = feeCandidates.find((v) => v != null && String(v).trim() !== '') ?? '';
+  const feeRaw = String(fee ?? '').trim();
+  const feeDigits = feeRaw.replace(/[^\d]/g, '');
+  const feeStr = typeof fee === 'number'
+    ? (fee === 0 ? '£0' : `£${fee}`)
+    : (feeRaw.toLowerCase() === 'free' || feeDigits === '0' ? '£0' : (feeRaw || '£'));
   const status = apiGig?.rentalStatus ?? (apiGig?.status === 'confirmed' ? 'confirmed_renter' : 'available');
+  const hasDocs = Array.isArray(apiGig?.documents) && apiGig.documents.length > 0;
+  const firstDocUrl = hasDocs && apiGig.documents[0]?.url ? apiGig.documents[0].url : '';
+  const notesInternal = (apiGig?.notesInternal ?? apiGig?.internalNotes ?? '').toString().trim();
   return {
     ...def,
     bookingMode: 'rental',
     gigName: (apiGig?.gigName ?? '').trim() || def.gigName,
-    rentalStartTime: (apiGig?.rentalAccessFrom ?? apiGig?.startTime ?? '').toString().trim() || '',
-    rentalEndTime: (apiGig?.rentalHardCurfew ?? apiGig?.curfew ?? '').toString().trim() || '',
+    // Accept both legacy and current field names when prefilling edit modal.
+    rentalStartTime: (apiGig?.rentalAccessFrom ?? apiGig?.accessFrom ?? apiGig?.startTime ?? '').toString().trim() || '',
+    rentalEndTime: (apiGig?.rentalHardCurfew ?? apiGig?.curfew ?? apiGig?.endTime ?? '').toString().trim() || '',
     rentalFee: feeStr,
     rentalStatus: status,
     rentalPrivate: apiGig?.private ?? (status === 'confirmed_renter'),
-    renterName: (apiGig?.renterName ?? '').toString().trim() || '',
-    rentalGigId: apiGig?.gigId ?? apiGig?.rentalGigId ?? '',
+    renterName: (apiGig?.renterName ?? apiGig?.hirerName ?? '').toString().trim() || '',
+    rentalGigId: apiGig?.gigId ?? apiGig?.id ?? apiGig?.rentalGigId ?? '',
     rentalCapacity: (apiGig?.rentalCapacity ?? apiGig?.capacity ?? '').toString().trim() || '',
-    rentalPaIncluded: apiGig?.rentalPaIncluded ?? 'no',
-    rentalPaForHirePrice: apiGig?.rentalPaForHirePrice ?? '£',
-    rentalSoundEngineerIncluded: apiGig?.rentalSoundEngineerIncluded ?? 'no',
-    rentalSoundEngineerForHirePrice: apiGig?.rentalSoundEngineerForHirePrice ?? '£',
-    rentalDepositRequired: !!apiGig?.rentalDepositRequired,
+    rentalDepositRequired: !!(apiGig?.rentalDepositRequired ?? apiGig?.depositRequired),
     rentalDepositAmount: apiGig?.rentalDepositAmount ?? apiGig?.depositAmount ?? '£',
+    rentalHouseRulesMode: hasDocs ? 'document' : 'text',
+    rentalHouseRulesDocument: firstDocUrl || undefined,
+    rentalHouseRules: notesInternal || '',
+    soundManager: (apiGig?.soundManager ?? '').toString().trim() || '',
+    techSetup: {
+      venueEquipmentSelected: Array.isArray(apiGig?.techSetup?.venueEquipmentSelected) ? apiGig.techSetup.venueEquipmentSelected : [],
+      hiredFromVenue: Array.isArray(apiGig?.techSetup?.hiredFromVenue) ? apiGig.techSetup.hiredFromVenue : [],
+      bandSetupNotes: (apiGig?.techSetup?.bandSetupNotes ?? '').toString().trim() || '',
+      technicalNotes: (apiGig?.techSetup?.technicalNotes ?? '').toString().trim() || '',
+      technicalStatus: (apiGig?.techSetup?.technicalStatus ?? '').toString().trim() || '',
+    },
+  };
+}
+
+/** Build techSetup payload for API (only non-empty fields). */
+function buildTechSetupPayload(techSetup) {
+  if (!techSetup || typeof techSetup !== 'object') return undefined;
+  const v = techSetup.venueEquipmentSelected;
+  const h = techSetup.hiredFromVenue;
+  const venueEquipmentSelected = Array.isArray(v) && v.length > 0 ? v : undefined;
+  const hiredFromVenue = Array.isArray(h) && h.length > 0 ? h : undefined;
+  const bandSetupNotes = (techSetup.bandSetupNotes ?? '').toString().trim() || undefined;
+  const technicalNotes = (techSetup.technicalNotes ?? '').toString().trim() || undefined;
+  const technicalStatus = (techSetup.technicalStatus ?? '').toString().trim() || undefined;
+  if (!venueEquipmentSelected && !hiredFromVenue && !bandSetupNotes && !technicalNotes && !technicalStatus) return undefined;
+  return {
+    ...(venueEquipmentSelected && { venueEquipmentSelected }),
+    ...(hiredFromVenue && { hiredFromVenue }),
+    ...(bandSetupNotes && { bandSetupNotes }),
+    ...(technicalNotes && { technicalNotes }),
+    ...(technicalStatus && { technicalStatus }),
   };
 }
 
@@ -171,10 +209,47 @@ function addMinutesToTime(timeStr, minutesToAdd) {
   return base.toTimeString().slice(0, 5);
 }
 
+/** Earliest valid HH:MM for slot `index` (after previous slot ends); empty if not computable. */
+function minStartTimeAfterPreviousSlot(slots, index) {
+  if (index <= 0 || !slots?.length) return '';
+  const prev = slots[index - 1];
+  const prevStart = String(prev?.startTime ?? '').trim();
+  const prevDur = Number(prev?.duration) || 0;
+  if (!prevStart || prevDur <= 0) return '';
+  return addMinutesToTime(prevStart, prevDur);
+}
+
+/** True when this slot starts before the previous slot has finished (both slots fully timed). */
+function isArtistSlotStartBeforePreviousEnds(slots, index) {
+  if (index <= 0 || !slots || index >= slots.length) return false;
+  const minOk = minStartTimeAfterPreviousSlot(slots, index);
+  const curStart = String(slots[index]?.startTime ?? '').trim();
+  const curDur = Number(slots[index]?.duration) || 0;
+  if (!minOk || !curStart || curDur <= 0) return false;
+  return curStart < minOk;
+}
+
+/** First slot index (≥1) with invalid ordering, or null. */
+function getFirstArtistSlotChronologyViolation(gig) {
+  if (gig?.bookingMode !== 'artist') return null;
+  const slots = [
+    { startTime: gig.startTime ?? '', duration: gig.duration },
+    ...(gig.extraSlots || []).map((s) => ({ startTime: s?.startTime ?? '', duration: s?.duration })),
+  ];
+  for (let i = 1; i < slots.length; i++) {
+    if (isArtistSlotStartBeforePreviousEnds(slots, i)) return i;
+  }
+  return null;
+}
+
 const getHours = (duration) => Math.floor((Number(duration) || 0) / 60);
 const getMinutes = (duration) => (Number(duration) || 0) % 60;
 
 const VALID_PAYMENT_TYPES = ['tickets', 'flat_fee', 'no_payment'];
+const hasPositiveBudgetValue = (v) => {
+  const n = parseInt(String(v ?? '').replace(/[^\d]/g, ''), 10);
+  return Number.isFinite(n) && n > 0;
+};
 
 function isGigValid(gig) {
   if (gig?.bookingMode === 'rental') {
@@ -193,8 +268,6 @@ function isGigValid(gig) {
     const status = gig.rentalStatus;
     if (status !== 'available' && status !== 'confirmed_renter') return false;
     if (status === 'available' && typeof gig.rentalPrivate !== 'boolean') return false;
-    const capacity = parseInt(String(gig.rentalCapacity ?? '').replace(/[^\d]/g, ''), 10);
-    if (!Number.isFinite(capacity) || capacity <= 0) return false;
     if (gig.rentalDepositRequired) {
       const depositDigits = String(gig.rentalDepositAmount ?? '').replace(/[^\d]/g, '');
       if (!depositDigits) return false;
@@ -210,12 +283,16 @@ function isGigValid(gig) {
   const slotStatuses = getSlotBookingStatuses(gig, slotCount);
   const artistNames = getArtistNamesForSlots(gig, slotCount);
   const paymentTypes = getSlotPaymentTypes(gig, slotCount);
-  const paymentValid = paymentTypes.every((pt) => VALID_PAYMENT_TYPES.includes(pt));
+  const slotBudgets = getSlotBudgetsFor(gig, slotCount);
+  const paymentValid = paymentTypes.every((pt, i) => (
+    VALID_PAYMENT_TYPES.includes(pt) || (!pt && hasPositiveBudgetValue(slotBudgets[i]))
+  ));
   const bookingValid = slotStatuses.every((status, i) => {
     if (status !== 'unbooked' && status !== 'confirmed') return false;
     if (status === 'confirmed' && !(artistNames[i] ?? '').trim()) return false;
     return true;
   });
+  if (getFirstArtistSlotChronologyViolation(gig) !== null) return false;
   return hasStartTime && hasDuration && paymentValid && bookingValid;
 }
 
@@ -240,8 +317,6 @@ function getFirstMissingField(gig) {
     if (status !== 'available' && status !== 'confirmed_renter') return 'rentalStatus';
     if (status === 'available' && typeof g.rentalPrivate !== 'boolean') return 'rentalPrivate';
     if (status === 'confirmed_renter' && !(g.renterName ?? '').toString().trim()) return 'renterName';
-    const capacity = parseInt(String(g.rentalCapacity ?? '').replace(/[^\d]/g, ''), 10);
-    if (!Number.isFinite(capacity) || capacity <= 0) return 'rentalCapacity';
     if (g.rentalDepositRequired) {
       const depositDigits = String(g.rentalDepositAmount ?? '').replace(/[^\d]/g, '');
       if (!depositDigits) return 'rentalDepositAmount';
@@ -254,21 +329,41 @@ function getFirstMissingField(gig) {
   const slotStatuses = getSlotBookingStatuses(g, slotCount);
   const artistNames = getArtistNamesForSlots(g, slotCount);
   const paymentTypes = getSlotPaymentTypes(g, slotCount);
+  const slotBudgets = getSlotBudgetsFor(g, slotCount);
   if (!startTime) return 'startTime';
   if (duration == null || duration === '' || Number(duration) <= 0) return 'duration';
-  const paymentIdx = paymentTypes.findIndex((pt) => !VALID_PAYMENT_TYPES.includes(pt));
+  const paymentIdx = paymentTypes.findIndex((pt, i) => !VALID_PAYMENT_TYPES.includes(pt) && !(pt === '' && hasPositiveBudgetValue(slotBudgets[i])));
   if (paymentIdx >= 0) return { payment: paymentIdx };
   const bookingIdx = slotStatuses.findIndex((s) => s !== 'unbooked' && s !== 'confirmed');
   if (bookingIdx >= 0) return { booking: bookingIdx };
   const artistIdx = slotStatuses.findIndex((s, i) => s === 'confirmed' && !(artistNames[i] ?? '').trim());
   if (artistIdx >= 0) return { artistName: artistIdx };
+  const chronoIdx = getFirstArtistSlotChronologyViolation(g);
+  if (chronoIdx !== null) return { slotStartOrder: chronoIdx };
   return null;
 }
 
-export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialDateIso, editGigData }) {
-  const isEditMode = !!(editGigData && (editGigData.kind === 'Venue Rental' || editGigData.bookingMode === 'rental'));
+export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialDateIso, editGigData, addGigsMode }) {
+  const isEditMode = !!(
+    editGigData &&
+    (editGigData.kind === 'Venue Rental' ||
+      editGigData.bookingMode === 'rental' ||
+      editGigData.bookingMode === 'venue_hire' ||
+      editGigData.itemType === 'venue_hire')
+  );
   const editDateIso = isEditMode ? getDateIsoFromGig(editGigData) : null;
   const initialIso = editDateIso || initialDateIso;
+  /** When editing an already confirmed venue hire (manually confirmed), show only from "Venue access & timings" down. */
+  const effectiveRentalStatus =
+    editGigData?.rentalStatus ?? (editGigData?.status === 'confirmed' ? 'confirmed_renter' : 'available');
+  const isVenueHireEdit =
+    isEditMode &&
+    (editGigData?.itemType === 'venue_hire' ||
+      editGigData?.bookingMode === 'venue_hire' ||
+      editGigData?.bookingMode === 'rental');
+  const hasRenterName = !!((editGigData?.renterName ?? editGigData?.hirerName ?? '').toString().trim());
+  const isEditManuallyConfirmed =
+    isVenueHireEdit && (effectiveRentalStatus === 'confirmed_renter' || hasRenterName);
 
   const [step, setStep] = useState(() => (initialIso ? 'details' : 'dates'));
   const [month, setMonth] = useState(() => {
@@ -292,7 +387,7 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
   const [focusInvalidField, setFocusInvalidField] = useState(null);
   const [invalidFieldHighlight, setInvalidFieldHighlight] = useState(null);
   const [invalidFieldHighlightTab, setInvalidFieldHighlightTab] = useState(null);
-  const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [showMoreDetails, setShowMoreDetails] = useState(() => isEditMode);
   const [myArtists, setMyArtists] = useState([]);
   const [openArtistDropdownForSlot, setOpenArtistDropdownForSlot] = useState(null);
   const [expandedSlotsByDate, setExpandedSlotsByDate] = useState({});
@@ -350,6 +445,39 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
     }
   };
 
+  // Default rental house rules to venue's house rules document when venue has one and gig hasn't set one
+  useEffect(() => {
+    if (!activeTab || !selectedVenue?.houseRulesDocument) return;
+    const gig = gigsByDate[activeTab] || defaultGigForDate();
+    if (
+      gig.bookingMode === 'rental' &&
+      gig.rentalHouseRulesMode !== 'text' &&
+      !gig.rentalHouseRulesDocument
+    ) {
+      updateGig(activeTab, {
+        rentalHouseRulesMode: 'document',
+        rentalHouseRulesDocument: selectedVenue.houseRulesDocument,
+      });
+    }
+  }, [activeTab, selectedVenue?.houseRulesDocument, gigsByDate[activeTab]]);
+
+  // Default terms & conditions and PRS from venue when gig doesn't have them
+  useEffect(() => {
+    if (!activeTab || selectedVenue == null) return;
+    const gig = gigsByDate[activeTab] || defaultGigForDate();
+    if (gig.bookingMode !== 'rental') return;
+    const updates = {};
+    if (!gig.rentalTermsAndConditions && selectedVenue.termsAndConditions) {
+      updates.rentalTermsAndConditions = selectedVenue.termsAndConditions;
+    }
+    if (!gig.rentalPrs && selectedVenue.prs) {
+      updates.rentalPrs = selectedVenue.prs;
+    }
+    if (Object.keys(updates).length) {
+      updateGig(activeTab, updates);
+    }
+  }, [activeTab, selectedVenue?.termsAndConditions, selectedVenue?.prs, gigsByDate[activeTab]]);
+
   useEffect(() => {
     if (!activeTab || !focusInvalidField) return;
     const timer = setTimeout(() => {
@@ -362,6 +490,9 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
         ref = artistNameInputRefs.current[focusInvalidField.artistName];
       else if (focusInvalidField && typeof focusInvalidField === 'object' && focusInvalidField.payment !== undefined)
         ref = slotPaymentRefs.current[focusInvalidField.payment]?.querySelector('button');
+      else if (focusInvalidField && typeof focusInvalidField === 'object' && focusInvalidField.slotStartOrder !== undefined) {
+        ref = document.getElementById(`add-gigs-slot-start-time-${activeTab}-${focusInvalidField.slotStartOrder}`);
+      }
       ref?.focus?.();
       setFocusInvalidField(null);
     }, 100);
@@ -387,10 +518,17 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
         setInvalidFieldHighlightTab(null);
       }
     }
-    const rentalFields = ['rentalCapacity', 'rentalDepositAmount'];
+    const rentalFields = ['rentalDepositAmount'];
     if (invalidFieldHighlight && rentalFields.includes(invalidFieldHighlight) && activeTab) {
       const gig = gigsByDate[activeTab] || defaultGigForDate();
       if (gig.bookingMode === 'rental' && getFirstMissingField(gig) === null) {
+        setInvalidFieldHighlight(null);
+        setInvalidFieldHighlightTab(null);
+      }
+    }
+    if (invalidFieldHighlight && typeof invalidFieldHighlight === 'object' && invalidFieldHighlight.slotStartOrder !== undefined && activeTab) {
+      const gig = gigsByDate[activeTab] || defaultGigForDate();
+      if (getFirstArtistSlotChronologyViolation(gig) === null) {
         setInvalidFieldHighlight(null);
         setInvalidFieldHighlightTab(null);
       }
@@ -527,13 +665,6 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
   };
 
   const handleSlotStartTimeChange = (iso, index, value) => {
-    let minAllowed = '';
-    if (index > 0) {
-      const slots = allSlotsFor(iso);
-      const prevSlot = slots[index - 1];
-      minAllowed = addMinutesToTime(prevSlot?.startTime ?? '', Number(prevSlot?.duration) || 0);
-      if (minAllowed && value < minAllowed) toast.error(`Start time cannot be before ${minAllowed}`);
-    }
     setGigsByDate((prev) => {
       const gig = prev[iso] || defaultGigForDate();
       const slots = [
@@ -543,8 +674,7 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
       if (index === 0) {
         slots[0] = { ...slots[0], startTime: value };
       } else {
-        const newVal = minAllowed && value < minAllowed ? minAllowed : value;
-        slots[index] = { ...(slots[index] || {}), startTime: newVal };
+        slots[index] = { ...(slots[index] || {}), startTime: value };
       }
       const recalc = recalcSlotsFrom(slots, index);
       const base = recalc[0];
@@ -626,6 +756,8 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
       slotInviteOnly: newSlotInviteOnly.length ? newSlotInviteOnly : [false],
       slotBookingStatuses: newSlotBookingStatuses.length ? newSlotBookingStatuses : ['unbooked'],
     });
+    const newSlotCount = 1 + extra.length;
+    setArtistSlotCountByDate((prev) => ({ ...prev, [iso]: newSlotCount }));
   };
 
   const setArtistSlotCount = (iso, nextCountRaw) => {
@@ -788,22 +920,32 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
   };
 
   const handleSubmitClick = () => {
+    if (initialDateIso && venues.length > 0 && !venueId) {
+      toast.error('Please select a venue.');
+      return;
+    }
     if (!venueId || !hasVenuePerm(venues, venueId, 'gigs.create')) {
       toast.error("You don't have permission to create gigs for this venue.");
       return;
     }
     if (!canSubmit) {
       const firstInvalidIso = sortedDates.find(
-        (iso) => !isGigValid(gigsByDate[iso] || defaultGigForDate())
+        (iso) => !isGigValidWithMode(gigsByDate[iso] || defaultGigForDate())
       );
       if (firstInvalidIso) {
         const gig = gigsByDate[firstInvalidIso] || defaultGigForDate();
-        const missing = getFirstMissingField(gig);
+        const missing = getFirstMissingFieldWithMode(gig);
         setActiveTab(firstInvalidIso);
         setFocusInvalidField(missing);
         setInvalidFieldHighlight(missing);
         setInvalidFieldHighlightTab(firstInvalidIso);
-        if (firstInvalidIso === activeTab) {
+        const isSlotOrderInvalid = missing && typeof missing === 'object' && missing.slotStartOrder !== undefined;
+        if (isSlotOrderInvalid) {
+          const n = missing.slotStartOrder;
+          toast.error(
+            `Artist slot ${n + 1} must start at or after slot ${n} ends. Adjust the start times so sets don't overlap.`
+          );
+        } else if (firstInvalidIso === activeTab) {
           const isPaymentMissing = missing && typeof missing === 'object' && missing.payment !== undefined;
           toast.info(isPaymentMissing
             ? 'Please select a payment option (Tickets, Flat Fee, or No Payment) for each slot.'
@@ -833,31 +975,70 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
         const feeValue = getBudgetValue(gig.rentalFee ?? '£');
         const feeText = formatPounds(feeValue);
         const rentalStatus = gig.rentalStatus === 'confirmed_renter' ? 'confirmed' : 'open';
-        const rentalCapacity = parseInt(String(gig.rentalCapacity ?? '').replace(/[^\d]/g, ''), 10);
         const rentalDepositRequired = !!gig.rentalDepositRequired;
         const rentalDepositAmount = rentalDepositRequired ? formatPounds(getBudgetValue(gig.rentalDepositAmount ?? '£')) : undefined;
-        const updates = {
-          gigName: (String(gig.gigName ?? '').trim()) || undefined,
-          rentalAccessFrom: rentalStart || undefined,
-          rentalHardCurfew: rentalEnd || undefined,
-          ...(Number.isFinite(rentalCapacity) && rentalCapacity > 0 && { rentalCapacity }),
-          rentalPaIncluded: gig.rentalPaIncluded ?? 'no',
-          ...(gig.rentalPaIncluded === 'for_hire' && { rentalPaForHirePrice: formatPounds(getBudgetValue(gig.rentalPaForHirePrice ?? '£')) }),
-          rentalSoundEngineerIncluded: gig.rentalSoundEngineerIncluded ?? 'no',
-          ...(gig.rentalSoundEngineerIncluded === 'for_hire' && { rentalSoundEngineerForHirePrice: formatPounds(getBudgetValue(gig.rentalSoundEngineerForHirePrice ?? '£')) }),
-          rentalDepositRequired,
-          ...(rentalDepositAmount && { rentalDepositAmount }),
-          renterName: (String(gig.renterName ?? '').trim()) || undefined,
-          private: gig.rentalStatus === 'confirmed_renter' ? true : !!gig.rentalPrivate,
-          status: rentalStatus,
-          budget: feeText,
-          budgetValue: feeValue,
-        };
-        await updateGigDocument({
-          gigId: editGigData.gigId,
-          action: 'gigs.update',
-          updates,
-        });
+        const selectedVenue = venues?.find((v) => v.venueId === venueId);
+        // Use only the value from the modal (form) as source of truth for capacity
+        const capacityFromForm = parseInt(String(gig.rentalCapacity ?? '').replace(/[^\d]/g, ''), 10);
+        const capacityToSave = Number.isFinite(capacityFromForm) && capacityFromForm > 0 ? capacityFromForm : null;
+
+        const isVenueHire = editGigData?.itemType === 'venue_hire';
+
+        if (isVenueHire) {
+          const hireStatus = gig.rentalStatus === 'confirmed_renter' ? 'confirmed' : 'available';
+          const houseRulesMode = gig.rentalHouseRulesMode === 'document' ? 'document' : 'text';
+          let documentsUpdate = [];
+          let notesInternalUpdate = '';
+          if (houseRulesMode === 'document') {
+            const docSource = gig.rentalHouseRulesDocument;
+            if (typeof docSource === 'string' && docSource) {
+              documentsUpdate = [{ url: docSource }];
+            } else if (docSource && typeof docSource === 'object' && docSource.name) {
+              const url = await uploadFileWithFallback(docSource, `venues/${venueId}/documents`);
+              if (url) documentsUpdate = [{ url }];
+            }
+          } else {
+            notesInternalUpdate = String(gig.rentalHouseRules ?? '').trim() || '';
+          }
+          const hireUpdates = {
+            startTime: rentalStart || undefined,
+            endTime: rentalEnd || undefined,
+            accessFrom: rentalStart || undefined,
+            curfew: rentalEnd || undefined,
+            hireFee: feeText || undefined,
+            status: hireStatus,
+            private: gig.rentalStatus === 'confirmed_renter' ? true : !!gig.rentalPrivate,
+            hirerName: (String(gig.renterName ?? '').trim()) || undefined,
+            depositRequired: rentalDepositRequired,
+            depositAmount: rentalDepositAmount || undefined,
+            date: dateIso ? new Date(dateIso + 'T12:00:00') : undefined,
+            capacity: capacityToSave,
+            documents: documentsUpdate,
+            notesInternal: notesInternalUpdate,
+            ...(String(gig.soundManager ?? '').trim() && { soundManager: String(gig.soundManager).trim() }),
+            ...(buildTechSetupPayload(gig.techSetup) && { techSetup: buildTechSetupPayload(gig.techSetup) }),
+          };
+          await updateVenueHireOpportunity(editGigData.gigId, hireUpdates);
+        } else {
+          const updates = {
+            gigName: (String(gig.gigName ?? '').trim()) || undefined,
+            rentalAccessFrom: rentalStart || undefined,
+            rentalHardCurfew: rentalEnd || undefined,
+            rentalCapacity: capacityToSave,
+            rentalDepositRequired,
+            ...(rentalDepositAmount && { rentalDepositAmount }),
+            renterName: (String(gig.renterName ?? '').trim()) || undefined,
+            private: gig.rentalStatus === 'confirmed_renter' ? true : !!gig.rentalPrivate,
+            status: rentalStatus,
+            budget: feeText,
+            budgetValue: feeValue,
+          };
+          await updateGigDocument({
+            gigId: editGigData.gigId,
+            action: 'gigs.update',
+            updates,
+          });
+        }
         toast.success('Event updated.');
         refreshGigs?.();
         onClose();
@@ -898,33 +1079,35 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
           const feeRaw = gig.rentalFee ?? '£';
           const feeValue = getBudgetValue(feeRaw);
           const feeText = formatPounds(feeValue);
-          const rentalStatus = gig.rentalStatus === 'confirmed_renter' ? 'confirmed' : 'available';
+          const effectiveRental =
+            addGigsMode === 'bookNew' ? 'available' : addGigsMode === 'addExisting' ? 'confirmed_renter' : (gig.rentalStatus ?? 'available');
+          const rentalStatus = effectiveRental === 'confirmed_renter' ? 'confirmed' : 'available';
           const privateRental =
-            gig.rentalStatus === 'confirmed_renter' ? true : !!gig.rentalPrivate;
+            effectiveRental === 'confirmed_renter' ? true : !!gig.rentalPrivate;
 
           const rentalHouseRulesMode =
             gig.rentalHouseRulesMode === 'document' ? 'document' : 'text';
           const rentalHouseRulesText = String(gig.rentalHouseRules ?? '').trim() || undefined;
           let rentalHouseRulesDocumentUrl = '';
           if (rentalHouseRulesMode === 'document') {
-            rentalHouseRulesDocumentUrl = await uploadFileWithFallback(
-              gig.rentalHouseRulesDocument,
-              `venues/${venueId}/documents`
-            );
+            const docSource = gig.rentalHouseRulesDocument;
+            rentalHouseRulesDocumentUrl =
+              typeof docSource === 'string' && docSource
+                ? docSource
+                : await uploadFileWithFallback(
+                    docSource,
+                    `venues/${venueId}/documents`
+                  );
           }
 
           const rentalDepositRequired = !!gig.rentalDepositRequired;
           const rentalDepositAmount = rentalDepositRequired ? formatPounds(getBudgetValue(gig.rentalDepositAmount ?? '£')) : undefined;
-          const rentalPaIncluded = gig.rentalPaIncluded ?? 'no';
-          const rentalSoundEngineerIncluded = gig.rentalSoundEngineerIncluded ?? 'no';
-
-          const techSetup = {
-            paIncluded: rentalPaIncluded,
-            soundEngineerIncluded: rentalSoundEngineerIncluded,
-          };
-          if (gig.rentalPaIncluded === 'for_hire') techSetup.paForHirePrice = formatPounds(getBudgetValue(gig.rentalPaForHirePrice ?? '£'));
-          if (gig.rentalSoundEngineerIncluded === 'for_hire') techSetup.soundEngineerForHirePrice = formatPounds(getBudgetValue(gig.rentalSoundEngineerForHirePrice ?? '£'));
-
+          // Capacity: form value, or venue default when creating (so venue profile capacity is saved and shows in Gig details)
+          const capacityFromForm = parseInt(String(gig.rentalCapacity ?? '').replace(/[^\d]/g, ''), 10);
+          const capacityFromVenue = parseInt(String(selectedVenue?.capacity ?? '').replace(/[^\d]/g, ''), 10);
+          const capacityNum = Number.isFinite(capacityFromForm) && capacityFromForm > 0
+            ? capacityFromForm
+            : (Number.isFinite(capacityFromVenue) && capacityFromVenue > 0 ? capacityFromVenue : undefined);
           hireOpportunities.push({
             venueId,
             createdByUserId: user?.uid ?? '',
@@ -935,16 +1118,18 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
             accessFrom: rentalStart || null,
             curfew: rentalEnd || null,
             hireFee: feeText,
+            ...(capacityNum != null && { capacity: capacityNum }),
             depositRequired: rentalDepositRequired,
             depositAmount: rentalDepositAmount ?? null,
-            technicalSetup: techSetup,
             documents: rentalHouseRulesMode === 'document' && rentalHouseRulesDocumentUrl ? [{ url: rentalHouseRulesDocumentUrl }] : [],
             notesInternal: rentalHouseRulesMode === 'text' ? (rentalHouseRulesText || '') : '',
             status: rentalStatus,
-            hirerType: gig.renterName && gig.rentalStatus === 'confirmed_renter' ? 'manual' : 'none',
-            hirerName: gig.renterName && gig.rentalStatus === 'confirmed_renter' ? String(gig.renterName).trim() : null,
+            hirerType: gig.renterName && effectiveRental === 'confirmed_renter' ? 'manual' : 'none',
+            hirerName: gig.renterName && effectiveRental === 'confirmed_renter' ? String(gig.renterName).trim() : null,
             performers: [],
             private: privateRental,
+            ...(String(gig.soundManager ?? '').trim() && { soundManager: String(gig.soundManager).trim() }),
+            ...(buildTechSetupPayload(gig.techSetup) && { techSetup: buildTechSetupPayload(gig.techSetup) }),
           });
         } else {
           const slots = [
@@ -956,6 +1141,12 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
           const slotBookingStatuses = getSlotBookingStatuses(gig, slotCount);
           const slotBudgetsArr = getSlotBudgetsFor(gig, slotCount);
           const slotPaymentTypesArr = getSlotPaymentTypes(gig, slotCount);
+          // Same as venue hire: form rentalCapacity, else venue profile (shows in gig details)
+          const capacityFromFormArtist = parseInt(String(gig.rentalCapacity ?? '').replace(/[^\d]/g, ''), 10);
+          const capacityFromVenueArtist = parseInt(String(selectedVenue?.capacity ?? '').replace(/[^\d]/g, ''), 10);
+          const capacityNumArtist = Number.isFinite(capacityFromFormArtist) && capacityFromFormArtist > 0
+            ? capacityFromFormArtist
+            : (Number.isFinite(capacityFromVenueArtist) && capacityFromVenueArtist > 0 ? capacityFromVenueArtist : undefined);
 
           // Collect valid slot indices and pre-generate gigIds so we can set gigSlots for grouping on the calendar
           const validSlots = [];
@@ -980,15 +1171,18 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
             const slotGigId = groupIds[groupIdx];
             const gigSlotsForThis = groupIds.length > 1 ? groupIds.filter((id) => id !== slotGigId) : undefined;
             const artistName = (artistNames[slotIndex] ?? '').trim();
-            const slotConfirmed = slotBookingStatuses[slotIndex] === 'confirmed';
-            const applicants = slotConfirmed && artistName
+            const effectiveSlotConfirmed =
+              addGigsMode === 'bookNew' ? false : addGigsMode === 'addExisting' ? true : (slotBookingStatuses[slotIndex] === 'confirmed');
+            const applicants = effectiveSlotConfirmed && artistName
               ? [{ status: 'confirmed', name: artistName }]
               : [];
             const startDateTime = getStartDateTime(dateIso, startTime);
             const gigName = slotIndex === 0 ? baseGigName : `${baseGigName} (Set ${slotIndex + 1})`;
-            const slotPayType = VALID_PAYMENT_TYPES.includes(slotPaymentTypesArr[slotIndex])
-              ? slotPaymentTypesArr[slotIndex]
-              : 'no_payment';
+            const rawSlotPayType = slotPaymentTypesArr[slotIndex];
+            const inferredFlatFee = !VALID_PAYMENT_TYPES.includes(rawSlotPayType) && hasPositiveBudgetValue(slotBudgetsArr[slotIndex]);
+            const slotPayType = VALID_PAYMENT_TYPES.includes(rawSlotPayType)
+              ? rawSlotPayType
+              : (inferredFlatFee ? 'flat_fee' : 'no_payment');
             const slotKind = gig.kind || 'Live Music';
             const slotBudgetRaw = slotPayType === 'flat_fee' ? (slotBudgetsArr[slotIndex] ?? '£') : '£';
             const slotBudgetValue = slotPayType === 'flat_fee' ? getBudgetValue(slotBudgetRaw) : 0;
@@ -1020,6 +1214,9 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
               budget: slotBudgetText,
               budgetValue: slotBudgetValue,
               applicants,
+              ...(String(gig.soundManager ?? '').trim() && { soundManager: String(gig.soundManager).trim() }),
+              ...(buildTechSetupPayload(gig.techSetup) && { techSetup: buildTechSetupPayload(gig.techSetup) }),
+              ...(capacityNumArtist != null && { capacity: capacityNumArtist }),
             });
             groupIdx++;
             slotIndex++;
@@ -1081,6 +1278,21 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
     return mode === 'artist' || mode === 'rental' ? mode : null;
   })();
 
+  /** When addGigsMode is set, override displayed/used status so we don't show the status toggles. */
+  const displayRentalStatus =
+    addGigsMode === 'bookNew'
+      ? 'available'
+      : addGigsMode === 'addExisting'
+        ? 'confirmed_renter'
+        : (currentGig?.rentalStatus ?? 'available');
+
+  const getEffectiveSlotStatus = (index) => {
+    const slotCount = (allSlotsFor(activeTab) || []).length;
+    if (addGigsMode === 'bookNew') return 'unbooked';
+    if (addGigsMode === 'addExisting') return 'confirmed';
+    return getSlotBookingStatuses(currentGig, slotCount)[index];
+  };
+
   const houseRulesMode =
     currentGig?.rentalHouseRulesMode === 'document' ? 'document' : 'text';
 
@@ -1106,15 +1318,70 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
     };
   }, [step, currentBookingMode, activeTab, gigsByDate, showMoreDetails, artistSlotCountByDate, expandedSlotsByDate]);
 
+  const isGigValidWithMode = (gig) => {
+    const g = gig || defaultGigForDate();
+    if (!addGigsMode) return isGigValid(g);
+    if (g.bookingMode === 'rental') {
+      const effectiveRental = addGigsMode === 'bookNew' ? 'available' : 'confirmed_renter';
+      const virtualRental = {
+        ...g,
+        rentalStatus: effectiveRental,
+        ...(addGigsMode === 'bookNew' && { rentalPrivate: g.rentalPrivate ?? false }),
+      };
+      return isGigValid(virtualRental);
+    }
+    if (g.bookingMode === 'artist') {
+      const slotCount = 1 + (g.extraSlots?.length || 0);
+      const effectiveStatus = addGigsMode === 'bookNew' ? 'unbooked' : 'confirmed';
+      const artistNames = getArtistNamesForSlots(g, slotCount);
+      const paymentTypes = getSlotPaymentTypes(g, slotCount);
+      const slotBudgets = getSlotBudgetsFor(g, slotCount);
+      const paymentValid = paymentTypes.every((pt, i) => (
+        VALID_PAYMENT_TYPES.includes(pt) || (!pt && hasPositiveBudgetValue(slotBudgets[i]))
+      ));
+      const startTime = (g.startTime ?? '').toString().trim();
+      const hasDuration = g.duration != null && g.duration !== '' && Number(g.duration) > 0;
+      if (!startTime || !hasDuration || !paymentValid) return false;
+      if (getFirstArtistSlotChronologyViolation(g) !== null) return false;
+      if (effectiveStatus === 'unbooked') return true;
+      return artistNames.length >= 1 && artistNames.every((name) => (name ?? '').toString().trim().length > 0);
+    }
+    return isGigValid(g);
+  };
+
+  const getFirstMissingFieldWithMode = (gig) => {
+    const g = gig || defaultGigForDate();
+    if (!addGigsMode) return getFirstMissingField(g);
+    if (g.bookingMode === 'rental') {
+      const virtual = {
+        ...g,
+        rentalStatus: addGigsMode === 'bookNew' ? 'available' : 'confirmed_renter',
+        ...(addGigsMode === 'bookNew' && { rentalPrivate: g.rentalPrivate ?? false }),
+      };
+      return getFirstMissingField(virtual);
+    }
+    if (g.bookingMode === 'artist') {
+      const slotCount = 1 + (g.extraSlots?.length || 0);
+      const virtual = {
+        ...g,
+        slotBookingStatuses: addGigsMode === 'bookNew'
+          ? Array.from({ length: slotCount }, () => 'unbooked')
+          : Array.from({ length: slotCount }, () => 'confirmed'),
+      };
+      return getFirstMissingField(virtual);
+    }
+    return getFirstMissingField(g);
+  };
+
   const canSubmit =
     sortedDates.length > 0 &&
-    sortedDates.every((iso) => isGigValid(gigsByDate[iso] || defaultGigForDate()));
+    sortedDates.every((iso) => isGigValidWithMode(gigsByDate[iso] || defaultGigForDate()));
 
   const isMultipleGigs = sortedDates.length > 1;
 
   const submitButtonLabel = useMemo(() => {
     if (!activeTab) return isMultipleGigs ? 'Add/Book Gigs' : 'Add/Book a Gig';
-    if (!isMultipleGigs && currentBookingMode === 'rental') return isEditMode ? 'Update Gig' : 'List Gig';
+    if (!isMultipleGigs && currentBookingMode === 'rental') return isEditMode ? 'Update Gig' : (addGigsMode === 'addExisting' ? 'Add Gig' : 'List Gig');
     if (isMultipleGigs && !canSubmit) return 'Next Gig';
     const gig = gigsByDate[activeTab] || defaultGigForDate();
     const slotCount = 1 + (gig.extraSlots?.length || 0);
@@ -1122,19 +1389,19 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
     const anyConfirmed = statuses.some((s) => s === 'confirmed');
     const allUnbooked = statuses.length > 0 && statuses.every((s) => s === 'unbooked');
     if (anyConfirmed) return isMultipleGigs ? 'Add Gigs' : 'Add Gig';
-    if (allUnbooked) return isMultipleGigs ? 'Book Gigs' : 'Book a Gig';
-    return isMultipleGigs ? 'Add/Book Gigs' : 'Add/Book a Gig';
-  }, [activeTab, gigsByDate, isMultipleGigs, currentBookingMode, canSubmit, isEditMode]);
+    if (allUnbooked) return currentBookingMode === 'rental' ? (isMultipleGigs ? 'List Gigs' : 'List Gig') : (isMultipleGigs ? 'Book Gigs' : 'Book a Gig');
+    return currentBookingMode === 'rental' ? (isMultipleGigs ? 'List Gigs' : 'List Gig') : (isMultipleGigs ? 'Add/Book Gigs' : 'Add/Book a Gig');
+  }, [activeTab, gigsByDate, isMultipleGigs, currentBookingMode, canSubmit, isEditMode, addGigsMode]);
 
   const submitButtonBusyLabel = useMemo(() => {
     if (!activeTab) return 'Adding…';
-    if (!isMultipleGigs && currentBookingMode === 'rental') return isEditMode ? 'Updating…' : 'Listing…';
+    if (currentBookingMode === 'rental') return isEditMode ? 'Updating…' : (addGigsMode === 'addExisting' ? 'Adding…' : 'Listing…');
     const gig = gigsByDate[activeTab] || defaultGigForDate();
     const slotCount = 1 + (gig.extraSlots?.length || 0);
     const statuses = getSlotBookingStatuses(gig, slotCount);
     const anyConfirmed = statuses.some((s) => s === 'confirmed');
     return anyConfirmed ? 'Adding…' : 'Booking…';
-  }, [activeTab, gigsByDate, isMultipleGigs, currentBookingMode, isEditMode]);
+  }, [activeTab, gigsByDate, isMultipleGigs, currentBookingMode, isEditMode, addGigsMode]);
 
   return (
     <Portal>
@@ -1148,7 +1415,7 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
               Close
             </button>
           </div>
-          <div className="add-gigs-modal-body" ref={modalBodyRef}>
+          <div className={`add-gigs-modal-body ${isEditManuallyConfirmed ? 'add-gigs-modal-body--edit-confirmed' : ''}`.trim()} ref={modalBodyRef}>
           {step === 'dates' && (
             <>
               {venues.length > 1 && (
@@ -1200,23 +1467,43 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
           )}
 
           {step === 'details' && (
-            <>
+            <div className="add-gigs-details-step">
+              {!isEditManuallyConfirmed && (
               <div className="add-gigs-sticky-date-bar">
                 <div className="add-gigs-sticky-date-bar-inner">
                   {sortedDates.length === 1 ? (
-                    <div className="add-gigs-field add-gigs-date-field">
-                      <label>Date</label>
-                      <div className="add-gigs-date-row">
-                        <span className="add-gigs-date-value">{formatDisplayDate(activeTab)}</span>
-                        <button
-                          type="button"
-                          className="btn icon tertiary add-gigs-date-picker-btn"
-                          onClick={() => setStep('dates')}
-                          aria-label="Pick a different date"
-                        >
-                          <CalendarIconSolid />
-                        </button>
+                    <div className="add-gigs-date-venue-row">
+                      <div className="add-gigs-field add-gigs-date-field">
+                        <label>Date</label>
+                        <div className="add-gigs-date-row">
+                          <span className="add-gigs-date-value">{formatDisplayDate(activeTab)}</span>
+                          <button
+                            type="button"
+                            className="btn icon tertiary add-gigs-date-picker-btn"
+                            onClick={() => setStep('dates')}
+                            aria-label="Pick a different date"
+                          >
+                            <CalendarIconSolid />
+                          </button>
+                        </div>
                       </div>
+                      {initialDateIso && venues.length > 0 && (
+                        <div className="add-gigs-field add-gigs-venue-field">
+                          <label htmlFor="add-gigs-venue-select-details">Venue</label>
+                          <select
+                            id="add-gigs-venue-select-details"
+                            className="select add-gigs-filter-select add-gigs-venue-select"
+                            value={venueId}
+                            onChange={(e) => setVenueId(e.target.value)}
+                            required
+                            aria-required="true"
+                          >
+                            {venues.map((v) => (
+                              <option key={v.venueId} value={v.venueId}>{v.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="add-gigs-tabs">
@@ -1257,76 +1544,81 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                   </div>
                 )}
               </div>
+              )}
 
               {activeTab && currentGig && (
                 <div className="add-gigs-panel">
-                  <div className="add-gigs-booking-mode">
-                    <button
-                      type="button"
-                      className={`btn ${currentBookingMode === 'rental' ? 'primary' : 'tertiary'}`}
-                      onClick={() => updateGig(activeTab, { bookingMode: 'rental' })}
-                    >
-                      Hire out venue
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn ${currentBookingMode === 'artist' ? 'primary' : 'tertiary'}`}
-                      onClick={() => updateGig(activeTab, { bookingMode: 'artist' })}
-                    >
-                      Book and pay artist(s)
-                    </button>
-                  </div>
+                  {!isEditManuallyConfirmed && (
+                    <div className="add-gigs-booking-mode">
+                      <button
+                        type="button"
+                        className={`btn add-gigs-booking-mode-btn ${currentBookingMode === 'rental' ? 'primary' : 'tertiary'}`}
+                        onClick={() => updateGig(activeTab, { bookingMode: 'rental' })}
+                      >
+                        <span className="add-gigs-booking-mode-btn-title">Hire out venue</span>
+                        <span className="add-gigs-booking-mode-btn-desc">I want to rent the space to a promoter, organiser, artist</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn add-gigs-booking-mode-btn ${currentBookingMode === 'artist' ? 'primary' : 'tertiary'}`}
+                        onClick={() => updateGig(activeTab, { bookingMode: 'artist' })}
+                      >
+                        <span className="add-gigs-booking-mode-btn-title">Book artists</span>
+                        <span className="add-gigs-booking-mode-btn-desc">I want to organise and book (and pay) the artist lineup</span>
+                      </button>
+                    </div>
+                  )}
 
                   {currentBookingMode === 'artist' && (
                     <>
                   <div className="add-gigs-field add-gigs-artist-count">
-                    <label className="label">How many different artists do you want on the night?</label>
-                    <div className="add-gigs-artist-count-row">
-                      <input
-                        type="number"
-                        min={1}
-                        max={10}
-                        className="input add-gigs-artist-count-input"
-                        value={currentArtistSlotCount}
-                        onChange={(e) => {
-                          if (!activeTab) return;
-                          setArtistSlotCount(activeTab, e.target.value);
-                        }}
-                      />
-                      <p className="add-gigs-artist-count-hint">Don&rsquo;t worry, this can be edited later.</p>
+                    <label className="label add-gigs-section-heading">Number of artist slots</label>
+                    <div className="add-gigs-artist-count-pills" role="tablist" aria-label="Number of artist slots">
+                      {[1, 2, 3].map((count) => (
+                        <button
+                          key={count}
+                          type="button"
+                          className={`btn tertiary add-gigs-artist-count-pill ${currentArtistSlotCount === count ? 'add-gigs-artist-count-pill--active' : ''}`}
+                          onClick={() => activeTab && setArtistSlotCount(activeTab, count)}
+                        >
+                          {count}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className={`btn tertiary add-gigs-artist-count-pill ${currentArtistSlotCount >= 4 ? 'add-gigs-artist-count-pill--active' : ''}`}
+                        onClick={() => activeTab && setArtistSlotCount(activeTab, 4)}
+                      >
+                        4+
+                      </button>
                     </div>
                   </div>
                   {hasArtistSlots && (
-                  <div className="add-gigs-gig-slots">
-                    {(allSlotsFor(activeTab) || []).map((slot, index) => {
-                      const slotCount = (allSlotsFor(activeTab) || []).length;
+                  <div className="add-gigs-gig-slots-wrap">
+                    <div className="add-gigs-gig-slots">
+                    {(() => {
+                      const slotsRow = allSlotsFor(activeTab) || [];
+                      const slotCount = slotsRow.length;
+                      return slotsRow.map((slot, index) => {
                       const slotPaymentType = (getSlotPaymentTypes(currentGig, slotCount)[index] ?? 'no_payment');
-                      const slotBookingStatus = getSlotBookingStatuses(currentGig, slotCount)[index] ?? 'unbooked';
+                      const effectiveSlotStatus = getEffectiveSlotStatus(index);
                       const slotArtistName = (getArtistNamesForSlots(currentGig, slotCount)[index] ?? '').trim();
                       const hasCoreTiming = !!(slot.startTime ?? '').toString().trim() && Number(slot.duration) > 0;
                       const paymentValid = VALID_PAYMENT_TYPES.includes(slotPaymentType);
                       const bookingValid =
-                        (slotBookingStatus === 'unbooked') ||
-                        (slotBookingStatus === 'confirmed' && !!slotArtistName);
+                        (effectiveSlotStatus === 'unbooked') ||
+                        (effectiveSlotStatus === 'confirmed' && !!slotArtistName);
                       const slotComplete = hasCoreTiming && paymentValid && bookingValid;
-                      const expanded = isSlotExpanded(activeTab, index);
+                      const expanded = true;
+                      const startTimeInputId = `add-gigs-slot-start-time-${activeTab}-${index}`;
+                      const slotStartOverlapsPrevious = isArtistSlotStartBeforePreviousEnds(slotsRow, index);
                       return (
                       <div key={index} className="add-gigs-gig-slot">
                         <div className="add-gigs-slot-header">
                           <div className="add-gigs-slot-header-main">
-                            <h4 className="add-gigs-slot-title">{index === 0 ? 'Slot 1' : `Slot ${index + 1}`}</h4>
-                            <span className={`add-gigs-slot-status ${slotComplete ? 'add-gigs-slot-status--complete' : 'add-gigs-slot-status--incomplete'}`}>
-                              {slotComplete ? 'Details complete' : 'Details needed'}
-                            </span>
+                            <h4 className="add-gigs-slot-title">{`Artist Slot ${index + 1}`}</h4>
                           </div>
                           <div className="add-gigs-slot-header-actions">
-                            <button
-                              type="button"
-                              className="btn tertiary small add-gigs-slot-toggle-btn"
-                              onClick={() => toggleSlotExpanded(activeTab, index)}
-                            >
-                              {expanded ? 'Hide details' : 'Add / edit details'}
-                            </button>
                             {index !== 0 && (
                               <button
                                 type="button"
@@ -1334,98 +1626,91 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                                 onClick={() => removeGigSlot(activeTab, index - 1)}
                               >
                                 <DeleteGigIcon />
-                                <span>Remove Slot</span>
                               </button>
                             )}
                           </div>
                         </div>
-                        {expanded && (
                         <div className="add-gigs-slot-time-row">
                           <div className="add-gigs-field">
-                            <label className="label">Start time</label>
-                            <input
-                              ref={index === 0 ? startTimeInputRef : undefined}
-                              type="time"
-                              className="input"
-                              value={slot.startTime ?? ''}
-                              min={index > 0 && (allSlotsFor(activeTab) || [])[index - 1]
-                                ? addMinutesToTime(
-                                    (allSlotsFor(activeTab) || [])[index - 1]?.startTime ?? '',
-                                    Number((allSlotsFor(activeTab) || [])[index - 1]?.duration) || 0
+                            <label className="label">Start Time</label>
+                            <div
+                              className={`add-gigs-slot-time-input-wrap${slotStartOverlapsPrevious ? ' add-gigs-slot-time-input-wrap--invalid' : ''}`}
+                            >
+                              <button
+                                type="button"
+                                className="add-gigs-slot-time-picker-btn"
+                                onClick={() => {
+                                  const input = document.getElementById(startTimeInputId);
+                                  if (!input) return;
+                                  if (typeof input.showPicker === 'function') {
+                                    input.showPicker();
+                                  } else {
+                                    input.focus();
+                                    input.click();
+                                  }
+                                }}
+                                aria-label="Open time picker"
+                              >
+                                <ClockIcon className="add-gigs-slot-time-input-icon" />
+                              </button>
+                              <input
+                                id={startTimeInputId}
+                                ref={index === 0 ? startTimeInputRef : undefined}
+                                type="time"
+                                className="input add-gigs-slot-time-input"
+                                value={slot.startTime ?? ''}
+                                onChange={(e) => handleSlotStartTimeChange(activeTab, index, e.target.value)}
+                                aria-invalid={
+                                  Boolean(
+                                    (index === 0 && !(currentGig.startTime ?? '').toString().trim()) ||
+                                    slotStartOverlapsPrevious
                                   )
-                                : undefined}
-                              onChange={(e) => handleSlotStartTimeChange(activeTab, index, e.target.value)}
-                              aria-invalid={index === 0 && !(currentGig.startTime ?? '').toString().trim()}
-                            />
+                                }
+                              />
+                            </div>
                           </div>
                           <div className="add-gigs-field">
                             <label className="label">Duration</label>
-                            <div className="add-gigs-duration-inputs">
                             <select
                               ref={index === 0 ? durationSelectRef : undefined}
-                              className="select"
-                              value={getHours(slot.duration)}
+                              className="select add-gigs-slot-duration-select"
+                              value={Number(slot.duration) || 60}
                               onChange={(e) =>
-                                handleSlotDurationChange(
-                                  activeTab,
-                                  index,
-                                  (Number(e.target.value) || 0) * 60 + getMinutes(slot.duration)
-                                )
+                                handleSlotDurationChange(activeTab, index, Number(e.target.value) || 60)
                               }
                               aria-invalid={index === 0 && !(currentGig.duration != null && Number(currentGig.duration) > 0)}
                             >
-                              {[...Array(6).keys()].map((h) => (
-                                <option key={h} value={h}>{h}</option>
+                              {[30, 45, 60, 75, 90, 120, 150, 180, 240].map((mins) => (
+                                <option key={mins} value={mins}>{`${mins} mins`}</option>
                               ))}
                             </select>
-                            <span className="unit">hr</span>
-                            <select
-                              className="select"
-                              value={getMinutes(slot.duration)}
-                              onChange={(e) =>
-                                handleSlotDurationChange(
-                                  activeTab,
-                                  index,
-                                  getHours(slot.duration) * 60 + (Number(e.target.value) || 0)
-                                )
-                              }
-                            >
-                              {[0, 15, 30, 45].map((m) => (
-                                <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
-                              ))}
-                            </select>
-                            <span className="unit">mins</span>
-                          </div>
                           </div>
                           <div
                             className={`add-gigs-field add-gigs-slot-payment-method ${invalidFieldHighlightTab === activeTab && typeof invalidFieldHighlight === 'object' && invalidFieldHighlight?.payment === index ? 'add-gigs-slot-payment-method--invalid' : ''}`}
                             ref={(el) => { slotPaymentRefs.current[index] = el; }}
                           >
-                            <label className="label">Payment</label>
-                            <div className="add-gigs-payment-selections add-gigs-payment-selections--inline">
+                            <label className="label">Payment Type</label>
+                            <div className="add-gigs-payment-selections add-gigs-payment-selections--segmented">
                               <button
                                 type="button"
-                                className={`add-gigs-payment-card add-gigs-payment-card--small ${slotPaymentType === 'tickets' ? 'add-gigs-payment-card--selected' : ''}`}
-                                onClick={() => setSlotPaymentType(activeTab, index, 'tickets')}
-                              >
-                                {slotPaymentType === 'tickets' ? <TicketIcon /> : <TicketIconLight />}
-                                <span className="add-gigs-payment-card-text">Tickets</span>
-                              </button>
-                              <button
-                                type="button"
-                                className={`add-gigs-payment-card add-gigs-payment-card--small ${slotPaymentType === 'flat_fee' ? 'add-gigs-payment-card--selected' : ''}`}
+                                className={`add-gigs-payment-card add-gigs-payment-card--segment ${slotPaymentType === 'flat_fee' ? 'add-gigs-payment-card--selected' : ''}`}
                                 onClick={() => setSlotPaymentType(activeTab, index, 'flat_fee')}
                               >
-                                {slotPaymentType === 'flat_fee' ? <CoinsIconSolid /> : <CoinsIcon />}
                                 <span className="add-gigs-payment-card-text">Flat Fee</span>
                               </button>
                               <button
                                 type="button"
-                                className={`add-gigs-payment-card add-gigs-payment-card--small ${slotPaymentType === 'no_payment' ? 'add-gigs-payment-card--selected' : ''}`}
+                                className={`add-gigs-payment-card add-gigs-payment-card--segment ${slotPaymentType === 'no_payment' ? 'add-gigs-payment-card--selected' : ''}`}
                                 onClick={() => setSlotPaymentType(activeTab, index, 'no_payment')}
                               >
-                                <NoPaymentIcon />
-                                <span className="add-gigs-payment-card-text">No Payment</span>
+                                <span className="add-gigs-payment-card-text">No Fee</span>
+                              </button>
+                              <button
+                                type="button"
+                                className={`add-gigs-payment-card add-gigs-payment-card--segment ${slotPaymentType === 'tickets' ? 'add-gigs-payment-card--selected' : ''}`}
+                                onClick={() => setSlotPaymentType(activeTab, index, 'tickets')}
+                              >
+                                <span className="add-gigs-payment-card-text">Tickets</span>
                               </button>
                             </div>
                             {slotPaymentType === 'tickets' && (
@@ -1433,9 +1718,9 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                             )}
                           </div>
                           {slotPaymentType === 'flat_fee' && (
-                            <div className="add-gigs-field">
-                              <label className="label">Budget</label>
-                              <div className="add-gigs-slot-payment-row">
+                            <div className="add-gigs-field add-gigs-flat-fee-field">
+                              <label className="label">Flat Fee Amount</label>
+                              <div className="add-gigs-slot-payment-row add-gigs-slot-payment-row--full">
                                 <input
                                   type="text"
                                   className="input"
@@ -1447,6 +1732,30 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                               </div>
                             </div>
                           )}
+                          {getEffectiveSlotStatus(index) === 'unbooked' && (
+                            <div className="add-gigs-field add-gigs-invite-only add-gigs-invite-only--slot">
+                              <div className="add-gigs-invite-only-row">
+                                <span className="add-gigs-invite-only-label">
+                                  Hide gig slot from venue profile
+                                </span>
+                                <label className="gigs-toggle-switch">
+                                  <input
+                                    type="checkbox"
+                                    id={`add-gigs-invite-only-${activeTab}-${index}`}
+                                    checked={getSlotInviteOnly(currentGig, slotCount)[index] ?? false}
+                                    onChange={(e) => setSlotInviteOnly(activeTab, index, e.target.checked)}
+                                  />
+                                  <span className="gigs-toggle-slider" />
+                                </label>
+                              </div>
+                              <p className="add-gigs-invite-only-text">
+                                {getSlotInviteOnly(currentGig, slotCount)[index]
+                                  ? 'This gig will not show on your venue profile, and only those with the private gig link will be able to apply'
+                                  : 'With the toggle left off, the gig will be discoverable to artists to apply'}
+                              </p>
+                            </div>
+                          )}
+                          {!addGigsMode && (
                           <div className="add-gigs-field add-gigs-slot-booking" ref={(el) => { slotBookingRefs.current[index] = el; }}>
                             <label className="label">Booking</label>
                             <div
@@ -1468,32 +1777,10 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                               </button>
                             </div>
                           </div>
-                          {getSlotBookingStatuses(currentGig, slotCount)[index] === 'unbooked' && (
-                            <div className="add-gigs-field add-gigs-invite-only add-gigs-invite-only--slot">
-                              <div className="add-gigs-invite-only-row">
-                                <label htmlFor={`add-gigs-invite-only-${activeTab}-${index}`} className="add-gigs-invite-only-label">
-                                  Invite only
-                                </label>
-                                <label className="gigs-toggle-switch">
-                                  <input
-                                    type="checkbox"
-                                    id={`add-gigs-invite-only-${activeTab}-${index}`}
-                                    checked={getSlotInviteOnly(currentGig, slotCount)[index] ?? false}
-                                    onChange={(e) => setSlotInviteOnly(activeTab, index, e.target.checked)}
-                                  />
-                                  <span className="gigs-toggle-slider" />
-                                </label>
-                              </div>
-                              <p className="add-gigs-invite-only-text">
-                                {getSlotInviteOnly(currentGig, slotCount)[index]
-                                  ? "This gig won't appear on your venue profile or the gig map. Only artists with an invite link can apply."
-                                  : 'When on, this gig won\'t appear on your venue profile or the gig map.'}
-                              </p>
-                            </div>
                           )}
-                          {getSlotBookingStatuses(currentGig, (allSlotsFor(activeTab) || []).length)[index] === 'confirmed' && (
+                          {getEffectiveSlotStatus(index) === 'confirmed' && (
                             <div
-                              className="add-gigs-field add-gigs-artist-name-wrap"
+                              className={`add-gigs-field add-gigs-artist-name-wrap${addGigsMode === 'addExisting' ? ' add-gigs-artist-name-wrap--existing-event' : ''}`}
                               ref={openArtistDropdownForSlot === index ? artistDropdownRef : undefined}
                             >
                               <label className="label">Artist name</label>
@@ -1527,7 +1814,7 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                                         value={getArtistNamesForSlots(currentGig, slotCount)[index] ?? ''}
                                         onChange={(e) => setSlotArtistName(activeTab, index, e.target.value)}
                                         onFocus={() => setOpenArtistDropdownForSlot(index)}
-                                        aria-invalid={getSlotBookingStatuses(currentGig, (allSlotsFor(activeTab) || []).length)[index] === 'confirmed' && !name}
+                                        aria-invalid={getEffectiveSlotStatus(index) === 'confirmed' && !name}
                                         aria-expanded={openArtistDropdownForSlot === index}
                                         aria-haspopup="listbox"
                                       />
@@ -1588,10 +1875,20 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                             </div>
                           )}
                         </div>
-                        )}
                       </div>
                     );
-                  })}
+                  });
+                    })()}
+                  </div>
+                  <div className="add-gigs-add-slot-box">
+                    <button
+                      type="button"
+                      className="btn tertiary add-gigs-add-slot-btn"
+                      onClick={() => activeTab && setArtistSlotCount(activeTab, Number(currentArtistSlotCount || 1) + 1)}
+                    >
+                      + Add Another Artist Slot
+                    </button>
+                  </div>
                   </div>
                   )}
                   </>
@@ -1599,179 +1896,207 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
 
                   {currentBookingMode === 'rental' && (
                     <div className="add-gigs-rental-panel">
-                      <div className="add-gigs-field">
-                        <label className="label add-gigs-section-heading">Booking status</label>
-                        <div className="add-gigs-booking-options">
-                          <button
-                            type="button"
-                            className={`btn ${currentGig?.rentalStatus === 'available' ? 'primary' : 'tertiary'}`}
-                            onClick={() => updateGig(activeTab, { rentalStatus: 'available' })}
-                          >
-                            Looking for promoter / artist
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn ${currentGig?.rentalStatus === 'confirmed_renter' ? 'primary' : 'tertiary'}`}
-                            onClick={() => updateGig(activeTab, { rentalStatus: 'confirmed_renter' })}
-                          >
-                            Promoter / artist already confirmed
-                          </button>
-                        </div>
-                        {currentGig?.rentalStatus === 'available' && (
-                          <div className="add-gigs-rental-visibility">
-                            <label className="label add-gigs-section-heading">Who can apply</label>
-                            <div className="add-gigs-rental-visibility-buttons">
-                              <button
-                                type="button"
-                                className={`btn ${currentGig?.rentalPrivate === false ? 'primary' : 'tertiary'}`}
-                                onClick={() => updateGig(activeTab, { rentalPrivate: false })}
-                              >
-                                <span className="add-gigs-visibility-title">Public</span>
-                                <span className="add-gigs-visibility-subtitle">Visible to all artists / promoters on Gigin</span>
-                              </button>
-                              <span className="add-gigs-invite-only-wrap">
-                                  <button
-                                  type="button"
-                                  className={`btn ${currentGig?.rentalPrivate === true ? 'primary' : 'tertiary'}`}
-                                  onClick={() => {
-                                    const existingId = currentGig?.rentalGigId;
-                                    const rentalGigId = existingId && String(existingId).trim() ? existingId : uuidv4();
-                                    updateGig(activeTab, { rentalPrivate: true, rentalGigId });
-                                  }}
-                                >
-                                  <span className="add-gigs-visibility-title">Private Link</span>
-                                  <span className="add-gigs-visibility-subtitle">Only people with the link can apply</span>
-                                </button>
-                              </span>
-                            </div>
-                            {currentGig?.rentalPrivate && (
-                              <div className="add-gigs-rental-link">
-                                {(() => {
-                                  const base =
-                                    typeof window !== 'undefined'
-                                      ? `${window.location.origin || ''}/gig/`
-                                      : '/gig/';
-                                  const id = currentGig?.rentalGigId || '';
-                                  const link = id ? `${base}${id}` : base;
-                                  const handleCopy = async () => {
-                                    try {
-                                      if (navigator?.clipboard?.writeText) {
-                                        await navigator.clipboard.writeText(link);
-                                        toast.success('Link copied to clipboard.');
-                                        setHasCopiedRentalLink(true);
-                                      }
-                                    } catch (err) {
-                                      console.error('Clipboard copy failed', err);
-                                      toast.error('Unable to copy link. Please copy it manually.');
-                                    }
-                                  };
-                                  return (
-                                    <div className="add-gigs-rental-link-row">
-                                      <input
-                                        type="text"
-                                        className="input"
-                                        readOnly
-                                        value={link}
-                                        onFocus={(e) => e.target.select()}
-                                      />
-                                      <button
-                                        type="button"
-                                        className="btn tertiary add-gigs-rental-link-copy"
-                                        onClick={handleCopy}
-                                      >
-                                        {hasCopiedRentalLink ? (
-                                          <>
-                                            <TickIcon />
-                                            <span>Copied</span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <CopyIcon />
-                                            <span>Copy</span>
-                                          </>
-                                        )}
-                                      </button>
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {currentGig?.rentalStatus === 'confirmed_renter' && (
-                          <div className="add-gigs-field add-gigs-renter-name">
+                      <div className="add-gigs-field add-gigs-booker-times-row add-gigs-rental-top-row">
+                        {!isEditManuallyConfirmed && displayRentalStatus === 'confirmed_renter' && (
+                          <div className="add-gigs-booker-times-col add-gigs-booker-col">
+                            <label className="label add-gigs-section-heading">Name of Booker</label>
                             <input
                               type="text"
                               className="input"
-                              placeholder="Name of renter"
                               value={currentGig?.renterName ?? ''}
                               onChange={(e) => updateGig(activeTab, { renterName: e.target.value })}
                             />
                           </div>
                         )}
-                      </div>
-                      <div className="add-gigs-field add-gigs-rental-times-field">
-                        <label className="label add-gigs-section-heading">Access & timings</label>
-                        <div className="add-gigs-rental-times-wrap">
-                          <div className="add-gigs-rental-times">
-                            <div className="add-gigs-field">
-                              <label className="label">Access from</label>
-                              <p className="add-gigs-helper">Load-in / set-up time</p>
+                        <div className="add-gigs-booker-times-col add-gigs-times-col add-gigs-rental-times-field">
+                          <div className="add-gigs-rental-times-wrap">
+                            <div className="add-gigs-rental-time-block">
+                              <label className="label add-gigs-section-heading">Access from</label>
                               <input
                                 type="time"
-                                className="input"
+                                className="input add-gigs-rental-time-input"
                                 value={currentGig?.rentalStartTime ?? ''}
                                 onChange={(e) => updateGig(activeTab, { rentalStartTime: e.target.value })}
                               />
                             </div>
-                            <div className="add-gigs-field">
-                              <label className="label">Hard curfew</label>
-                              <p className="add-gigs-helper">Music must stop by</p>
+                            <div className="add-gigs-rental-times-connector" aria-hidden="true" />
+                            <div className="add-gigs-rental-time-block">
+                              <label className="label add-gigs-section-heading">Music stop by</label>
                               <input
                                 type="time"
-                                className="input"
+                                className="input add-gigs-rental-time-input"
                                 value={currentGig?.rentalEndTime ?? ''}
                                 onChange={(e) => updateGig(activeTab, { rentalEndTime: e.target.value })}
                               />
                             </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="add-gigs-field">
-                        <label className="label add-gigs-section-heading">{currentBookingMode === 'rental' ? 'Hire fee' : 'Price'}</label>
-                        <div className="add-gigs-rental-price-row">
-                          <div className="add-gigs-slot-payment-row add-gigs-rental-price-input">
-                            <input
-                              type="text"
-                              className="input"
-                              placeholder="£"
-                              value={currentGig?.rentalFee ?? '£'}
-                              onChange={(e) => updateGig(activeTab, { rentalFee: formatPoundsInput(e.target.value) })}
-                              autoComplete="off"
-                            />
+                        {isEditManuallyConfirmed && currentBookingMode === 'rental' && (
+                          <div className="add-gigs-booker-times-col add-gigs-hire-fee-col">
+                            <label className="label add-gigs-section-heading">Hire fee</label>
+                            <div className="add-gigs-rental-price-row">
+                              <div className="add-gigs-slot-payment-row add-gigs-rental-price-input">
+                                <input
+                                  type="text"
+                                  className="input"
+                                  placeholder="£"
+                                  value={currentGig?.rentalFee ?? '£'}
+                                  onChange={(e) => updateGig(activeTab, { rentalFee: formatPoundsInput(e.target.value) })}
+                                  autoComplete="off"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                className="btn tertiary add-gigs-free-price-btn"
+                                onClick={() => updateGig(activeTab, { rentalFee: formatPoundsInput('0') })}
+                              >
+                                Free
+                              </button>
+                            </div>
                           </div>
-                          <button
-                            type="button"
-                            className="btn tertiary add-gigs-free-price-btn"
-                            onClick={() => updateGig(activeTab, { rentalFee: formatPoundsInput('0') })}
-                          >
-                            Free
-                          </button>
-                        </div>
-                      </div>
-                      <div className={`add-gigs-rental-core-details ${invalidFieldHighlightTab === activeTab && invalidFieldHighlight === 'rentalCapacity' ? 'add-gigs-rental-core-details--invalid' : ''}`}>
-                        <div className={`add-gigs-field ${invalidFieldHighlightTab === activeTab && invalidFieldHighlight === 'rentalCapacity' ? 'add-gigs-field--invalid' : ''}`}>
-                          <label className="label">Capacity</label>
-                          <p className="add-gigs-helper">Max audience capacity</p>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            className="input"
-                            placeholder="e.g. 150"
-                            value={currentGig?.rentalCapacity ?? ''}
-                            onChange={(e) => updateGig(activeTab, { rentalCapacity: e.target.value.replace(/[^\d]/g, '') })}
-                          />
-                        </div>
+                        )}
+                        {!isEditManuallyConfirmed && addGigsMode === 'addExisting' && currentBookingMode === 'rental' && (
+                          <div className="add-gigs-field add-gigs-rental-fee-deposit-row add-gigs-rental-second-row">
+                            <div className="add-gigs-booker-times-col add-gigs-hire-fee-col">
+                              <label className="label add-gigs-section-heading">Hire fee</label>
+                              <div className="add-gigs-rental-price-row">
+                                <div className="add-gigs-slot-payment-row add-gigs-rental-price-input">
+                                  <input
+                                    type="text"
+                                    className="input"
+                                    placeholder="£"
+                                    value={currentGig?.rentalFee ?? '£'}
+                                    onChange={(e) => updateGig(activeTab, { rentalFee: formatPoundsInput(e.target.value) })}
+                                    autoComplete="off"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn tertiary add-gigs-free-price-btn"
+                                  onClick={() => updateGig(activeTab, { rentalFee: formatPoundsInput('0') })}
+                                >
+                                  Free
+                                </button>
+                              </div>
+                            </div>
+                            <div className="add-gigs-booker-times-col add-gigs-deposit-col">
+                              <label className="label add-gigs-section-heading">Deposit required</label>
+                              <div className="add-gigs-deposit-controls">
+                                <div className="add-gigs-deposit-options">
+                                  <button
+                                    type="button"
+                                    className={`btn tertiary add-gigs-deposit-option-btn ${(currentGig?.rentalDepositRequired ?? false) === true ? 'add-gigs-deposit-option-btn--selected' : ''}`}
+                                    onClick={() => updateGig(activeTab, { rentalDepositRequired: true })}
+                                  >
+                                    Yes
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`btn tertiary add-gigs-deposit-option-btn ${(currentGig?.rentalDepositRequired ?? false) === false ? 'add-gigs-deposit-option-btn--selected' : ''}`}
+                                    onClick={() => updateGig(activeTab, { rentalDepositRequired: false })}
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                                {currentGig?.rentalDepositRequired && (
+                                  <div className={`add-gigs-deposit-amount-wrap ${invalidFieldHighlightTab === activeTab && invalidFieldHighlight === 'rentalDepositAmount' ? 'add-gigs-field--invalid' : ''}`}>
+                                    <input
+                                      type="text"
+                                      className="input add-gigs-deposit-amount-input"
+                                      placeholder="£"
+                                      value={currentGig?.rentalDepositAmount ?? '£'}
+                                      onChange={(e) => updateGig(activeTab, { rentalDepositAmount: formatPoundsInput(e.target.value) })}
+                                      autoComplete="off"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {!isEditManuallyConfirmed && addGigsMode !== 'addExisting' && currentBookingMode === 'rental' && (
+                          <div className="add-gigs-rental-fee-deposit-row">
+                            <div className="add-gigs-booker-times-col add-gigs-hire-fee-col">
+                              <label className="label add-gigs-section-heading">Hire fee</label>
+                              <div className="add-gigs-rental-price-row">
+                                <div className="add-gigs-slot-payment-row add-gigs-rental-price-input">
+                                  <input
+                                    type="text"
+                                    className="input"
+                                    placeholder="£"
+                                    value={currentGig?.rentalFee ?? '£'}
+                                    onChange={(e) => updateGig(activeTab, { rentalFee: formatPoundsInput(e.target.value) })}
+                                    autoComplete="off"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn tertiary add-gigs-free-price-btn"
+                                  onClick={() => updateGig(activeTab, { rentalFee: formatPoundsInput('0') })}
+                                >
+                                  Free
+                                </button>
+                              </div>
+                            </div>
+                            <div className="add-gigs-booker-times-col add-gigs-deposit-col">
+                              <label className="label add-gigs-section-heading">Deposit required</label>
+                              <div className="add-gigs-deposit-controls">
+                                <div className="add-gigs-deposit-options">
+                                  <button
+                                    type="button"
+                                    className={`btn tertiary add-gigs-deposit-option-btn ${(currentGig?.rentalDepositRequired ?? false) === true ? 'add-gigs-deposit-option-btn--selected' : ''}`}
+                                    onClick={() => updateGig(activeTab, { rentalDepositRequired: true })}
+                                  >
+                                    Yes
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`btn tertiary add-gigs-deposit-option-btn ${(currentGig?.rentalDepositRequired ?? false) === false ? 'add-gigs-deposit-option-btn--selected' : ''}`}
+                                    onClick={() => updateGig(activeTab, { rentalDepositRequired: false })}
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                                {currentGig?.rentalDepositRequired && (
+                                  <div className={`add-gigs-deposit-amount-wrap ${invalidFieldHighlightTab === activeTab && invalidFieldHighlight === 'rentalDepositAmount' ? 'add-gigs-field--invalid' : ''}`}>
+                                    <input
+                                      type="text"
+                                      className="input add-gigs-deposit-amount-input"
+                                      placeholder="£"
+                                      value={currentGig?.rentalDepositAmount ?? '£'}
+                                      onChange={(e) => updateGig(activeTab, { rentalDepositAmount: formatPoundsInput(e.target.value) })}
+                                      autoComplete="off"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {!isEditManuallyConfirmed && addGigsMode !== 'addExisting' && currentBookingMode === 'artist' && (
+                          <div className="add-gigs-booker-times-col add-gigs-hire-fee-col">
+                            <label className="label add-gigs-section-heading">Price</label>
+                            <div className="add-gigs-rental-price-row">
+                              <div className="add-gigs-slot-payment-row add-gigs-rental-price-input">
+                                <input
+                                  type="text"
+                                  className="input"
+                                  placeholder="£"
+                                  value={currentGig?.rentalFee ?? '£'}
+                                  onChange={(e) => updateGig(activeTab, { rentalFee: formatPoundsInput(e.target.value) })}
+                                  autoComplete="off"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                className="btn tertiary add-gigs-free-price-btn"
+                                onClick={() => updateGig(activeTab, { rentalFee: formatPoundsInput('0') })}
+                              >
+                                Free
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1790,34 +2115,44 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                       <div className="add-gigs-more-details-divider add-gigs-more-details-divider--below" />
                       {showMoreDetails && activeTab && (
                         <div className="add-gigs-extra-timings">
-                          <div className="add-gigs-field add-gigs-field--full">
-                            <label className="label add-gigs-more-details-field-label">Event name</label>
-                            <input
-                              type="text"
-                              className="input"
-                              placeholder="e.g. Friday Night Live"
-                              value={(currentGig?.gigName ?? '').trim() || (selectedVenue ? (currentBookingMode === 'rental' ? `${selectedVenue.name} For Hire` : `Gig at ${selectedVenue.name}`) : 'Gig')}
-                              onChange={(e) => updateGig(activeTab, { gigName: e.target.value })}
-                            />
-                          </div>
-                          <div className="add-gigs-field">
-                            <label className="label add-gigs-more-details-field-label">Event type</label>
-                            <select
-                              className="select add-gigs-filter-select"
-                              value={currentGig?.kind ?? 'Live Music'}
-                              onChange={(e) => updateGig(activeTab, { kind: e.target.value })}
-                            >
-                              {GIG_KIND_OPTIONS.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
+                          {addGigsMode !== 'addExisting' && (
+                            <div className="add-gigs-field add-gigs-field--full">
+                              <label className="label add-gigs-more-details-field-label">Event name</label>
+                              <input
+                                type="text"
+                                className="input add-gigs-input-no-border"
+                                placeholder="e.g. Friday Night Live"
+                                value={(currentGig?.gigName ?? '').trim() || (selectedVenue ? (currentBookingMode === 'rental' ? `${selectedVenue.name} For Hire` : `Gig at ${selectedVenue.name}`) : 'Gig')}
+                                onChange={(e) => updateGig(activeTab, { gigName: e.target.value })}
+                              />
+                            </div>
+                          )}
+                          <div className="add-gigs-event-type-ticketing-row">
+                            <div className="add-gigs-event-type-ticketing-col">
+                              <div className="add-gigs-rental-more-group">
+                                <div className="add-gigs-field">
+                                  <label className="label add-gigs-more-details-field-label" htmlFor={`add-gigs-event-type-${activeTab}`}>Event type</label>
+                                  <select
+                                    id={`add-gigs-event-type-${activeTab}`}
+                                    className="select add-gigs-filter-select add-gigs-select-no-border"
+                                    value={currentGig?.kind ?? 'Live Music'}
+                                    onChange={(e) => updateGig(activeTab, { kind: e.target.value })}
+                                  >
+                                    {GIG_KIND_OPTIONS.map((opt) => (
+                                      <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                           {currentBookingMode === 'artist' && (
                             <>
                               <div className="add-gigs-field">
-                                <label className="label add-gigs-more-details-field-label">Type of musician</label>
+                                <label className="label add-gigs-more-details-field-label" htmlFor={`add-gigs-musician-type-${activeTab}`}>Type of musician</label>
                                 <select
-                                  className="select"
+                                  id={`add-gigs-musician-type-${activeTab}`}
+                                  className="select add-gigs-filter-select add-gigs-select-no-border"
                                   value={currentGig?.gigType ?? 'Musician/Band'}
                                   onChange={(e) => updateGig(activeTab, { gigType: e.target.value })}
                                 >
@@ -1826,354 +2161,74 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                                   ))}
                                 </select>
                               </div>
-                              <div className="add-gigs-field">
-                                <label className="label add-gigs-more-details-field-label">Load in time</label>
-                                <input
-                                  type="time"
-                                  className="input"
-                                  value={currentGig?.loadInTime ?? ''}
-                                  onChange={(e) => updateGig(activeTab, { loadInTime: e.target.value })}
-                                />
-                              </div>
-                              <div className="add-gigs-field">
-                                <label className="label add-gigs-more-details-field-label">Sound check time</label>
-                                <input
-                                  type="time"
-                                  className="input"
-                                  value={currentGig?.soundCheckTime ?? ''}
-                                  onChange={(e) => updateGig(activeTab, { soundCheckTime: e.target.value })}
-                                />
+                              <div className="add-gigs-load-soundcheck-row add-gigs-field--full">
+                                <div className="add-gigs-field">
+                                  <label className="label add-gigs-more-details-field-label" htmlFor={`add-gigs-load-in-${activeTab}`}>Load in time</label>
+                                  <input
+                                    id={`add-gigs-load-in-${activeTab}`}
+                                    type="time"
+                                    className="input"
+                                    value={currentGig?.loadInTime ?? ''}
+                                    onChange={(e) => updateGig(activeTab, { loadInTime: e.target.value })}
+                                  />
+                                </div>
+                                <div className="add-gigs-field">
+                                  <label className="label add-gigs-more-details-field-label" htmlFor={`add-gigs-sound-check-${activeTab}`}>Sound check time</label>
+                                  <input
+                                    id={`add-gigs-sound-check-${activeTab}`}
+                                    type="time"
+                                    className="input"
+                                    value={currentGig?.soundCheckTime ?? ''}
+                                    onChange={(e) => updateGig(activeTab, { soundCheckTime: e.target.value })}
+                                  />
+                                </div>
                               </div>
                             </>
                           )}
-                          <div className="add-gigs-field add-gigs-field--full">
-                            <label className="label add-gigs-more-details-field-label">Description</label>
-                            <textarea
-                              className="input"
+                          {addGigsMode !== 'addExisting' && (
+                            <div className="add-gigs-field add-gigs-field--full">
+                              <label className="label add-gigs-more-details-field-label">Description</label>
+                              <textarea
+                              className="input add-gigs-input-no-border"
                               placeholder="Describe the kind of event you’re looking for, the vibe, and any key requirements or arrangements…"
                               value={currentGig?.extraInformation ?? ''}
                               onChange={(e) => updateGig(activeTab, { extraInformation: e.target.value })}
                               maxLength={250}
                               rows={3}
-                            />
-                          </div>
+                              />
+                            </div>
+                          )}
 
-                          {currentBookingMode === 'rental' && (
-                            <>
-                              <div className="add-gigs-rental-more-group">
-                                <h4 className="add-gigs-rental-subsection-title">Technical setup</h4>
-                                <div className="add-gigs-field">
-                                  <label className="label add-gigs-more-details-field-label">PA included</label>
-                                  <div className="add-gigs-rental-toggle-row">
-                                    {['yes', 'no', 'for_hire'].map((val) => (
-                                      <label key={val} className="radio-option">
-                                        <input
-                                          type="radio"
-                                          name={`rental-pa-${activeTab}`}
-                                          checked={(currentGig?.rentalPaIncluded ?? 'no') === val}
-                                          onChange={() => updateGig(activeTab, { rentalPaIncluded: val })}
-                                        />
-                                        <span>{val === 'yes' ? 'Yes' : val === 'no' ? 'No' : 'For Hire'}</span>
-                                      </label>
-                                    ))}
-                                  </div>
-                                  {(currentGig?.rentalPaIncluded ?? 'no') === 'for_hire' && (
-                                    <div className="add-gigs-field add-gigs-rental-for-hire-price">
-                                      <input
-                                        type="text"
-                                        className="input"
-                                        placeholder="£"
-                                        value={currentGig?.rentalPaForHirePrice ?? '£'}
-                                        onChange={(e) => updateGig(activeTab, { rentalPaForHirePrice: formatPoundsInput(e.target.value) })}
-                                        autoComplete="off"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="add-gigs-field">
-                                  <label className="label add-gigs-more-details-field-label">Sound engineer included</label>
-                                  <div className="add-gigs-rental-toggle-row">
-                                    {['yes', 'no', 'for_hire'].map((val) => (
-                                      <label key={val} className="radio-option">
-                                        <input
-                                          type="radio"
-                                          name={`rental-sound-engineer-${activeTab}`}
-                                          checked={(currentGig?.rentalSoundEngineerIncluded ?? 'no') === val}
-                                          onChange={() => updateGig(activeTab, { rentalSoundEngineerIncluded: val })}
-                                        />
-                                        <span>{val === 'yes' ? 'Yes' : val === 'no' ? 'No' : 'For Hire'}</span>
-                                      </label>
-                                    ))}
-                                  </div>
-                                  {(currentGig?.rentalSoundEngineerIncluded ?? 'no') === 'for_hire' && (
-                                    <div className="add-gigs-field add-gigs-rental-for-hire-price">
-                                      <input
-                                        type="text"
-                                        className="input"
-                                        placeholder="£"
-                                        value={currentGig?.rentalSoundEngineerForHirePrice ?? '£'}
-                                        onChange={(e) => updateGig(activeTab, { rentalSoundEngineerForHirePrice: formatPoundsInput(e.target.value) })}
-                                        autoComplete="off"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                                <p className="add-gigs-helper add-gigs-rental-backline-hint">Backline: pulled from venue profile</p>
-                              </div>
-                              <div className="add-gigs-rental-more-group">
-                                <h4 className="add-gigs-rental-subsection-title">Ticketing & rules</h4>
-                                <div className="add-gigs-field">
-                                  <label className="label add-gigs-more-details-field-label">Ticketing responsibility</label>
-                                  <select
-                                    className="select add-gigs-filter-select"
-                                    value={currentGig?.rentalTicketingResponsibility ?? 'promoter_sells'}
-                                    onChange={(e) => updateGig(activeTab, { rentalTicketingResponsibility: e.target.value })}
-                                  >
-                                    <option value="promoter_sells">Promoter sells tickets</option>
-                                    <option value="venue_sells">Venue sells tickets</option>
-                                    <option value="split">Split / agreed separately</option>
-                                  </select>
-                                </div>
-                                <div className="add-gigs-field add-gigs-field--space-above">
-                                  <label className="label add-gigs-more-details-field-label">Age restriction</label>
-                                  <select
-                                    className="select add-gigs-filter-select"
-                                    value={currentGig?.rentalAgeRestriction ?? '18_plus'}
-                                    onChange={(e) => updateGig(activeTab, { rentalAgeRestriction: e.target.value })}
-                                  >
-                                    <option value="18_plus">18+</option>
-                                    <option value="all_ages">All ages</option>
-                                  </select>
-                                </div>
-                              </div>
-                              <div className="add-gigs-rental-more-group">
-                                <h4 className="add-gigs-rental-subsection-title">Deposit required</h4>
-                                <div className="add-gigs-field">
-                                  <div className="add-gigs-rental-toggle-row">
-                                    <label className="radio-option">
-                                      <input
-                                        type="radio"
-                                        name={`rental-deposit-${activeTab}`}
-                                        checked={(currentGig?.rentalDepositRequired ?? false) === true}
-                                        onChange={() => updateGig(activeTab, { rentalDepositRequired: true })}
-                                      />
-                                      <span>Yes</span>
-                                    </label>
-                                    <label className="radio-option">
-                                      <input
-                                        type="radio"
-                                        name={`rental-deposit-${activeTab}`}
-                                        checked={(currentGig?.rentalDepositRequired ?? false) === false}
-                                        onChange={() => updateGig(activeTab, { rentalDepositRequired: false })}
-                                      />
-                                      <span>No</span>
-                                    </label>
-                                  </div>
-                                </div>
-                                {currentGig?.rentalDepositRequired && (
-                                  <div className={`add-gigs-field ${invalidFieldHighlightTab === activeTab && invalidFieldHighlight === 'rentalDepositAmount' ? 'add-gigs-field--invalid' : ''}`}>
-                                    <label className="label add-gigs-more-details-field-label">Deposit amount</label>
+                          {(currentBookingMode === 'rental' || currentBookingMode === 'artist') && (
+                            <div className="add-gigs-rental-details-wrap">
+                              <div className="add-gigs-rental-more-group add-gigs-age-capacity-row">
+                                <div className="add-gigs-age-capacity-col">
+                                  <div className="add-gigs-field">
+                                    <label className="label add-gigs-more-details-field-label" htmlFor={`add-gigs-capacity-${activeTab}`}>Capacity</label>
                                     <input
+                                      id={`add-gigs-capacity-${activeTab}`}
                                       type="text"
-                                      className="input"
-                                      placeholder="£"
-                                      value={currentGig?.rentalDepositAmount ?? '£'}
-                                      onChange={(e) => updateGig(activeTab, { rentalDepositAmount: formatPoundsInput(e.target.value) })}
-                                      autoComplete="off"
+                                      className="input add-gigs-input-no-border"
+                                      placeholder="e.g. 200"
+                                      value={
+                                        (currentGig?.rentalCapacity != null && String(currentGig.rentalCapacity).trim() !== '')
+                                          ? currentGig.rentalCapacity
+                                          : (selectedVenue?.capacity ?? '')
+                                      }
+                                      onChange={(e) => updateGig(activeTab, { rentalCapacity: e.target.value })}
                                     />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="add-gigs-rental-more-group add-gigs-rental-more-group--documents">
-                                <h4 className="add-gigs-rental-subsection-title">Documents</h4>
-                                <div className="add-gigs-documents-grid">
-                                <div className="add-gigs-field">
-                                  <label className="label add-gigs-more-details-field-label">Terms & conditions</label>
-                                  {(selectedVenue?.termsAndConditions || currentGig?.rentalTermsAndConditions) && (
-                                    <div className="add-gigs-doc-current">
-                                      <button
-                                        type="button"
-                                        className="btn tertiary small"
-                                        onClick={() =>
-                                          openDocumentInNewTab(
-                                            currentGig?.rentalTermsAndConditions,
-                                            selectedVenue?.termsAndConditions
-                                          )
-                                        }
-                                      >
-                                        {getDocFileName(
-                                          currentGig?.rentalTermsAndConditions,
-                                          selectedVenue?.termsAndConditions
-                                        ) || 'View Ts&Cs'}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="link-button"
-                                        onClick={() =>
-                                          document.getElementById(`rental-terms-${activeTab}`)?.click()
-                                        }
-                                      >
-                                        Replace
-                                      </button>
-                                    </div>
-                                  )}
-                                  <div className="file-upload-container">
-                                    <input
-                                      type="file"
-                                      id={`rental-terms-${activeTab}`}
-                                      className="file-input"
-                                      accept=".pdf,.doc,.docx"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0] || null;
-                                        updateGig(activeTab, { rentalTermsAndConditions: file });
-                                      }}
-                                    />
-                                    {!selectedVenue?.termsAndConditions && !currentGig?.rentalTermsAndConditions && (
-                                      <label htmlFor={`rental-terms-${activeTab}`} className="file-upload-label">
-                                        Upload document
-                                      </label>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="add-gigs-field">
-                                  <label className="label add-gigs-more-details-field-label">House rules</label>
-                                  <div className="house-rules-mode-toggle">
-                                    <label className="radio-option">
-                                      <input
-                                        type="radio"
-                                        name={`rental-house-rules-mode-${activeTab}`}
-                                        value="text"
-                                        checked={houseRulesMode === 'text'}
-                                        onChange={() => updateGig(activeTab, { rentalHouseRulesMode: 'text' })}
-                                      />
-                                      <span>Write directly in Gigin</span>
-                                    </label>
-                                    <label className="radio-option">
-                                      <input
-                                        type="radio"
-                                        name={`rental-house-rules-mode-${activeTab}`}
-                                        value="document"
-                                        checked={houseRulesMode === 'document'}
-                                        onChange={() => updateGig(activeTab, { rentalHouseRulesMode: 'document' })}
-                                      />
-                                      <span>Upload a PDF</span>
-                                    </label>
-                                  </div>
-
-                                  {houseRulesMode === 'document' ? (
-                                    <>
-                                      {currentGig?.rentalHouseRulesDocument && (
-                                        <div className="add-gigs-doc-current">
-                                          <button
-                                            type="button"
-                                            className="btn tertiary small"
-                                            onClick={() =>
-                                              openDocumentInNewTab(currentGig?.rentalHouseRulesDocument)
-                                            }
-                                          >
-                                            {getDocFileName(currentGig?.rentalHouseRulesDocument) || 'View document'}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="link-button"
-                                            onClick={() =>
-                                              document
-                                                .getElementById(`rental-house-rules-doc-${activeTab}`)
-                                                ?.click()
-                                            }
-                                          >
-                                            Replace
-                                          </button>
-                                        </div>
-                                      )}
-                                      <div className="file-upload-container">
-                                        <input
-                                          type="file"
-                                          id={`rental-house-rules-doc-${activeTab}`}
-                                          className="file-input"
-                                          accept=".pdf,.doc,.docx"
-                                          onChange={(e) => {
-                                            const file = e.target.files?.[0] || null;
-                                            updateGig(activeTab, { rentalHouseRulesDocument: file });
-                                          }}
-                                        />
-                                        {!currentGig?.rentalHouseRulesDocument && (
-                                          <label
-                                            htmlFor={`rental-house-rules-doc-${activeTab}`}
-                                            className="file-upload-label"
-                                          >
-                                            Upload document
-                                          </label>
-                                        )}
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <textarea
-                                      className="input"
-                                      placeholder="Any specific house rules for this rental..."
-                                      value={currentGig?.rentalHouseRules ?? (selectedVenue?.techRider?.houseRules?.houseRules || '')}
-                                      onChange={(e) => updateGig(activeTab, { rentalHouseRules: e.target.value })}
-                                      rows={3}
-                                    />
-                                  )}
-                                </div>
-
-                                <div className="add-gigs-field">
-                                  <label className="label add-gigs-more-details-field-label">PRS form</label>
-                                  {(selectedVenue?.prs || currentGig?.rentalPrs) && (
-                                    <div className="add-gigs-doc-current">
-                                      <button
-                                        type="button"
-                                        className="btn tertiary small"
-                                        onClick={() =>
-                                          openDocumentInNewTab(currentGig?.rentalPrs, selectedVenue?.prs)
-                                        }
-                                      >
-                                        {getDocFileName(currentGig?.rentalPrs, selectedVenue?.prs) ||
-                                          'View PRS form'}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="link-button"
-                                        onClick={() =>
-                                          document.getElementById(`rental-prs-${activeTab}`)?.click()
-                                        }
-                                      >
-                                        Replace
-                                      </button>
-                                    </div>
-                                  )}
-                                  <div className="file-upload-container">
-                                    <input
-                                      type="file"
-                                      id={`rental-prs-${activeTab}`}
-                                      className="file-input"
-                                      accept=".pdf,.doc,.docx"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0] || null;
-                                        updateGig(activeTab, { rentalPrs: file });
-                                      }}
-                                    />
-                                    {!selectedVenue?.prs && !currentGig?.rentalPrs && (
-                                      <label htmlFor={`rental-prs-${activeTab}`} className="file-upload-label">
-                                        Upload document
-                                      </label>
-                                    )}
                                   </div>
                                 </div>
                               </div>
                             </div>
-                            </>
                           )}
                         </div>
                       )}
-                  </div>
+                    </div>
                   )}
                 </div>
               )}
-
-            </>
+            </div>
           )}
           </div>
 
@@ -2205,7 +2260,8 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
               </button>
             )}
           </div>
-        </div>
+        
+      </div>
       </div>
     </Portal>
   );

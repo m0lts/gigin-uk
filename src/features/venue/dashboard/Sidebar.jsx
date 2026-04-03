@@ -18,7 +18,7 @@ import { TextLogoMed } from '../../shared/ui/logos/Logos';
 import { useAuth } from '@hooks/useAuth';
 import { useVenueDashboard } from '@context/VenueDashboardContext';
 import '@assets/fonts/fonts.css';
-import { CalendarIconLight, CalendarIconSolid, CoinsIconSolid, DashboardIconLight, DashboardIconSolid, DotIcon, FeedbackIcon, GigIcon, HouseIconSolid, LeftChevronIcon, MailboxEmptyIconSolid, MailboxFullIconSolid, MusicianIconLight, MusicianIconSolid, RightChevronIcon, UpChevronIcon, VenueIconLight, VenueIconSolid } from '../../shared/ui/extras/Icons';
+import { AddressBookIcon, CalendarIconLight, CalendarIconSolid, CoinsIconSolid, DashboardIconLight, DashboardIconSolid, DotIcon, FeedbackIcon, GigIcon, HouseIconSolid, LeftChevronIcon, MailboxEmptyIconSolid, MailboxFullIconSolid, RightChevronIcon, UpChevronIcon } from '../../shared/ui/extras/Icons';
 import { FeedbackBox } from './FeedbackBox';
 import { toast } from 'sonner';
 
@@ -71,14 +71,14 @@ export const Sidebar = ({ user, newMessages, setShowWelcomeModal, setRevisitingM
     {
       path: '/venues/dashboard/my-venues',
       label: 'My Venues',
-      icon: <VenueIconLight />,
-      iconActive: <VenueIconSolid />,
+      icon: <HouseIconLight />,
+      iconActive: <HouseIconSolid />,
     },
     {
       path: '/venues/dashboard/artists',
-      label: 'My Artists',
-      icon: <MusicianIconLight />,
-      iconActive: <MusicianIconSolid />,
+      label: 'My Contacts',
+      icon: <AddressBookIcon />,
+      iconActive: <AddressBookIcon />,
     },
     {
       path: '/venues/dashboard/finances',
@@ -131,10 +131,10 @@ export const Sidebar = ({ user, newMessages, setShowWelcomeModal, setRevisitingM
         type="button"
         className="sidebar__collapse-btn sidebar__collapse-btn--nav"
         onClick={() => setSidebarCollapsed((c) => !c)}
-        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Close sidebar'}
       >
         {sidebarCollapsed ? <RightChevronIcon /> : <LeftChevronIcon />}
-        {!sidebarCollapsed && 'Collapse sidebar'}
+        {!sidebarCollapsed && 'Close sidebar'}
       </button>
       <div className="sidebar__spacer" aria-hidden="true" />
       <ul
@@ -150,7 +150,6 @@ export const Sidebar = ({ user, newMessages, setShowWelcomeModal, setRevisitingM
       >
         <li className='account-dropdown-item exempt' title={sidebarCollapsed ? 'Account' : undefined}>
           <div className='account-info'>
-            {!sidebarCollapsed && <h6>Venue Dashboard</h6>}
             <div className='user-container'>
               <UserIcon />
               {!sidebarCollapsed && (

@@ -8,40 +8,55 @@ import {
     MicrophoneIcon,
     PianoIcon,
     DrumsIcon,
-    ClubIcon
+    SlidersIcon,
+    UserIcon
 } from '@features/shared/ui/extras/Icons';
 
 const getEquipmentIcon = (equipmentName) => {
     const name = equipmentName.toLowerCase();
+    if (name.includes('sound engineer')) {
+        return <UserIcon />;
+    }
+    if (name.includes('stage monitor')) {
+        return <SpeakersIcon />;
+    }
     if (name.includes('pa') || name.includes('speaker')) {
         return <SpeakersIcon />;
-    } else if (name.includes('mixing') || name.includes('console') || name.includes('desk')) {
-        return <ClubIcon />;
-    } else if (name.includes('mic') || name.includes('microphone')) {
+    }
+    if (name.includes('mixing') || name.includes('console') || name.includes('desk')) {
+        return <SlidersIcon />;
+    }
+    if (name.includes('mic') || name.includes('microphone')) {
         return <MicrophoneIcon />;
-    } else if (name.includes('di') || name.includes('box')) {
+    }
+    if (name.includes('di') || name.includes('box')) {
         return <PlugIcon />;
-    } else if (name.includes('drum')) {
+    }
+    if (name.includes('drum')) {
         return <DrumsIcon />;
-    } else if (name.includes('bass') && name.includes('amp')) {
+    }
+    if (name.includes('bass') && name.includes('amp')) {
         return <AmpIcon />;
-    } else if (name.includes('guitar') && name.includes('amp')) {
+    }
+    if (name.includes('guitar') && name.includes('amp')) {
         return <AmpIcon />;
-    } else if (name.includes('keyboard') || name.includes('piano')) {
+    }
+    if (name.includes('keyboard') || name.includes('piano')) {
         return <PianoIcon />;
     }
     return <MicrophoneIcon />; // Default icon
 };
 
-export const TechRiderEquipmentCard = ({ equipmentName, available, count, notes }) => {
-    const isCountBased = count !== undefined;
+export const TechRiderEquipmentCard = ({ equipmentName, available, count, notes, hireFee }) => {
+    const isCountBased = count !== undefined && count !== null && count !== '';
     const isAvailable = isCountBased
-        ? (count !== '' && count !== null && count !== '0' && parseInt(count) > 0)
-        : (available === 'yes');
+        ? (parseInt(count, 10) > 0)
+        : (available === 'yes' || available === true);
     
-    const displayValue = isCountBased && count !== '' && count !== null && count !== '0' && parseInt(count) > 0
+    const displayValue = isCountBased && parseInt(count, 10) > 0
         ? `×${count}`
         : null;
+    const hireLabel = hireFee != null && hireFee !== '' ? `£${hireFee}` : null;
 
     return (
         <div className="tech-rider-equipment-card">
@@ -55,7 +70,9 @@ export const TechRiderEquipmentCard = ({ equipmentName, available, count, notes 
                 <div className="tech-rider-equipment-status">
                     {isAvailable ? (
                         <>
-                            {isCountBased && displayValue ? (
+                            {hireLabel ? (
+                                <span className="tech-rider-count">{hireLabel}</span>
+                            ) : isCountBased && displayValue ? (
                                 <span className="tech-rider-count">{displayValue}</span>
                             ) : (
                                 <FontAwesomeIcon 

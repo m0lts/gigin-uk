@@ -168,6 +168,7 @@ export default function App() {
         {/* OTHER ROUTES */}
         <Route path='/messages' element={<MessagesLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><MessagePage /></MessagesLayout>} />
         <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  />} />
+        <Route path='/hire/:hireId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  />} />
         <Route path='/account' element={<MainLayout user={user}><Account /></MainLayout>} />
         <Route path='/testimonials' element={<Testimonials />} />
         <Route path='/join-venue' element={<JoinVenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />

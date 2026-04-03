@@ -265,7 +265,7 @@ router.post("/updateGigDocument", requireAuth, asyncHandler(async (req, res) => 
 // POST /api/gigs/applyToGig
 router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
   const caller = req.auth.uid;
-  const { gigId, musicianProfile, inviteId } = req.body || {};
+  const { gigId, musicianProfile, inviteId, techSetup } = req.body || {};
   const musicianId = musicianProfile?.musicianId;
   if (!gigId || !musicianId) {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigId and musicianProfile.musicianId required" });
@@ -299,6 +299,7 @@ router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
     fee: gig.budget || "£0",
     status: "pending",
     type: artistSnap.exists ? "artist" : (musicianProfile?.bandProfile ? "band" : "musician"),
+    ...(techSetup && typeof techSetup === "object" && Object.keys(techSetup).length > 0 ? { techSetup } : {}),
   };
   const updatedApplicants = [...(Array.isArray(gig.applicants) ? gig.applicants : []), newApplication];
   await gigRef.update({ applicants: updatedApplicants });

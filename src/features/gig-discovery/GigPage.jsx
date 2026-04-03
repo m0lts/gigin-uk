@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
 import { Header as CommonHeader } from '@features/shared/components/Header';
+import '@styles/shared/modals.styles.css';
 import '@styles/artists/gig-page.styles.css';
 import { 
     BackgroundMusicIcon,
@@ -23,6 +24,7 @@ import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { updateMusicianGigApplications, updateArtistGigApplications } from '@services/client-side/artists';
 import { getOrCreateConversation, notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
+import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
 import { sendGigApplicationMessage, sendNegotiationMessage, sendGigInvitationMessage } from '@services/client-side/messages';
 import { sendGigApplicationEmail, sendNegotiationEmail } from '@services/client-side/emails';
 import { validateMusicianUser } from '@services/utils/validation';
@@ -32,11 +34,13 @@ import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
 import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication, withdrawArtistApplication, getArtistProfileMembers } from '../../services/client-side/artists';
 import { getBandMembers } from '../../services/client-side/bands';
 import { getGigById, getGigsByIds, getGigInviteById } from '../../services/client-side/gigs';
+import { getVenueHireOpportunityById } from '../../services/client-side/venueHireOpportunities';
 import { getMostRecentMessage } from '../../services/client-side/messages';
 import { toast } from 'sonner';
 import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
-import { AmpIcon, BassIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, LeftArrowIcon, RightArrowIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PermissionsIcon, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, VenueIconSolid, WarningIcon } from '../shared/ui/extras/Icons';
+import { AmpIcon, BassIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, LeftArrowIcon, RightArrowIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PermissionsIcon, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, TickIcon, VenueIconSolid, WarningIcon } from '../shared/ui/extras/Icons';
 import { TechRiderEquipmentCard } from '../shared/ui/tech-rider/TechRiderEquipmentCard';
+import { getTechRiderForDisplay } from '../venue/builder/techRiderConfig';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
 import { ProfileCreator } from '../artist/profile-creator/ProfileCreator';
 import { NoProfileModal } from '../artist/components/NoProfileModal';
@@ -50,9 +54,20 @@ import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOf
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { NoTextLogo } from '../shared/ui/logos/Logos';
 import { updateCRMEntryWithArtistId } from '../../services/api/users';
+import { computeCompatibility } from '../../services/utils/techRiderCompatibility';
+
+const TECH_SPEC_SOUND_KEYS = new Set(['pa', 'mixingConsole', 'soundEngineer', 'microphones', 'micStands', 'diBoxes', 'stageMonitors']);
+const TECH_SPEC_BACKLINE_KEYS = new Set(['drumKit', 'bassAmp', 'guitarAmp', 'keyboard', 'keyboardStand', 'stageLighting', 'djDecks']);
+
+function getGigCapacityDisplay(slot, venue) {
+  const raw = slot?.capacity ?? slot?.rentalCapacity ?? venue?.capacity;
+  if (raw == null || raw === '') return null;
+  const s = String(raw).trim();
+  return s || null;
+}
 
 export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
-    const { gigId } = useParams();
+    const { gigId, hireId } = useParams();
     const navigate = useNavigate();
     const {isSmUp, isMdUp, isLgUp} = useBreakpoint();
     const [searchParams] = useSearchParams();
@@ -81,8 +96,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const [invitedToGig, setInvitedToGig] = useState(false);
     const [userAcceptedInvite, setUserAcceptedInvite] = useState(false);
     const [showCreateProfileModal, setShowCreateProfileModal] = useState(null);
+    const [showEquipmentCheckModal, setShowEquipmentCheckModal] = useState(false);
+    const [equipmentCheckNote, setEquipmentCheckNote] = useState('');
+    const [equipmentCheckHireChoices, setEquipmentCheckHireChoices] = useState({});
     const [gigSaved, setGigSaved] = useState(false);
     const [otherSlots, setOtherSlots] = useState(null);
+    /** For venue hire: set of artist profile ids that have applied (from conversations). */
+    const [hireApplicationProfileIds, setHireApplicationProfileIds] = useState(() => new Set());
     const [currentSlotIndex, setCurrentSlotIndex] = useState(0);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [transitionDirection, setTransitionDirection] = useState(null); // 'left' or 'right'
@@ -423,6 +443,117 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         return () => { cancelled = true; };
     }, [gigId, user, inviteToken, inviteId]);
 
+    // Load venue hire opportunity (artist-facing) when route is /hire/:hireId
+    useEffect(() => {
+        if (!hireId || gigId) return;
+        let cancelled = false;
+        setLoading(true);
+        const run = async () => {
+            try {
+                const hire = await getVenueHireOpportunityById(hireId);
+                if (!hire || cancelled) return;
+                if (hire.status === 'cancelled') {
+                    toast.error('This hire opportunity is no longer available.');
+                    setLoading(false);
+                    return;
+                }
+                const venue = await getVenueProfileById(hire.venueId);
+                if (!venue || cancelled) return;
+
+                const toDate = (v) => {
+                    if (!v) return null;
+                    if (typeof v?.toDate === 'function') return v.toDate();
+                    if (v?.seconds != null) return new Date(v.seconds * 1000);
+                    return new Date(v);
+                };
+                const dayDate = toDate(hire.date ?? hire.startDateTime);
+                const [hh = 0, mm = 0] = (hire.startTime || '0:0').toString().split(':').map(Number);
+                const startDateTime = dayDate ? (() => { const d = new Date(dayDate); d.setHours(hh, mm, 0, 0); return d; })() : null;
+
+                const depositAmount = hire.depositAmount != null && String(hire.depositAmount).trim() !== ''
+                    ? (String(hire.depositAmount).startsWith('£') ? hire.depositAmount : `£${hire.depositAmount}`)
+                    : null;
+                const normalized = {
+                    gigId: hire.id,
+                    venueId: hire.venueId,
+                    gigName: 'Venue hire',
+                    startDateTime,
+                    date: hire.date ?? hire.startDateTime,
+                    startTime: hire.startTime ?? '',
+                    endTime: hire.endTime ?? '',
+                    duration: null,
+                    budget: hire.hireFee && String(hire.hireFee).trim() ? hire.hireFee : 'Free',
+                    depositAmount,
+                    applicants: [],
+                    venue: { venueName: venue.name, address: venue.address ?? '' },
+                    private: !!hire.private,
+                    status: 'open',
+                    itemType: 'venue_hire',
+                    kind: 'Venue Rental',
+                    accountName: venue.name ?? 'Venue',
+                };
+
+                const rawArtistProfiles = Array.isArray(user?.artistProfiles) ? user.artistProfiles : [];
+                const profiles = rawArtistProfiles
+                    .map(profile => ({
+                        ...profile,
+                        musicianId: profile.id || profile.profileId,
+                        profileId: profile.id || profile.profileId,
+                    }))
+                    .sort((a, b) => {
+                        const aTime = a.createdAt?.seconds || a.createdAt || 0;
+                        const bTime = b.createdAt?.seconds || b.createdAt || 0;
+                        return aTime - bTime;
+                    });
+                const pid = (p) => p.id || p.profileId || p.musicianId;
+                let initialSelected = null;
+                if (user?.uid) {
+                    try {
+                        const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                        if (stored && profiles.some(p => pid(p) === stored)) {
+                            initialSelected = profiles.find(p => pid(p) === stored);
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+                if (!initialSelected && user?.primaryArtistProfileId && profiles.some(p => pid(p) === user.primaryArtistProfileId)) {
+                    initialSelected = profiles.find(p => pid(p) === user.primaryArtistProfileId);
+                }
+                if (!initialSelected) initialSelected = profiles[0] || null;
+
+                if (!cancelled) {
+                    setGigData(normalized);
+                    setVenueProfile(venue);
+                    setValidProfiles(profiles);
+                    setSelectedProfile(initialSelected);
+                    setOtherSlots(null);
+                    // Fetch which artist profiles have already applied (conversations for this hire)
+                    if (user?.uid && hireId) {
+                        getConversationsByParticipantAndGigId(hireId, user.uid)
+                            .then((convs) => {
+                                const ids = new Set();
+                                (convs || []).forEach((conv) => {
+                                    const musician = conv?.accountNames?.find((a) => a?.role === 'band' || a?.role === 'musician');
+                                    if (musician?.participantId) ids.add(musician.participantId);
+                                });
+                                setHireApplicationProfileIds(ids);
+                            })
+                            .catch(() => setHireApplicationProfileIds(new Set()));
+                    } else {
+                        setHireApplicationProfileIds(new Set());
+                    }
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    console.error(err);
+                    toast.error('Failed to load hire opportunity.');
+                }
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+        run();
+        return () => { cancelled = true; };
+    }, [hireId, gigId, user]);
 
     useEffect(() => {
         if (!selectedProfile || !gigData) {
@@ -432,11 +563,16 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
           setArtistProfilePerms(null);
           return;
         }
+        const profileId = selectedProfile.id || selectedProfile.profileId || selectedProfile.musicianId;
         const { invited, applied, accepted } = computeStatusForProfile(gigData, selectedProfile);
         setInvitedToGig(invited);
-        setUserAppliedToGig(applied);
+        if (gigData?.itemType === 'venue_hire') {
+          setUserAppliedToGig(hireApplicationProfileIds.has(profileId));
+        } else {
+          setUserAppliedToGig(applied);
+        }
         setUserAcceptedInvite(accepted);
-    }, [selectedProfile, gigData]);
+    }, [selectedProfile, gigData, hireApplicationProfileIds]);
 
     // Load artist profile permissions for the current selected profile (if it's an artistProfile)
     useEffect(() => {
@@ -504,23 +640,29 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         updateCRM();
     }, [inviteCrmEntryId, inviteVenueUserId, user?.artistProfiles, inviteId]);
 
-    // Listen for active profile changes from localStorage
+    // Listen for active profile changes from header (localStorage + activeProfileChanged event).
+    // Use validProfiles when available, else user.artistProfiles so we can sync even before gig data has loaded.
     useEffect(() => {
-        if (!user?.uid || !validProfiles?.length) return;
+        if (!user?.uid) return;
+
+        const profileId = (p) => p.id || p.profileId || p.musicianId;
+        const profileList = validProfiles?.length ? validProfiles : (Array.isArray(user?.artistProfiles) ? user.artistProfiles.map(p => ({
+            ...p,
+            musicianId: p.id || p.profileId,
+            profileId: p.id || p.profileId,
+        })) : []);
 
         const handleActiveProfileChange = () => {
             try {
                 const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
-                if (stored) {
-                    const profileId = (p) => p.id || p.profileId || p.musicianId;
-                    const newActiveProfile = validProfiles.find(p => profileId(p) === stored);
-                    if (newActiveProfile) {
-                        const currentProfileId = selectedProfile ? (selectedProfile.id || selectedProfile.profileId || selectedProfile.musicianId) : null;
-                        const newProfileId = profileId(newActiveProfile);
-                        if (newProfileId !== currentProfileId) {
-                            setSelectedProfile(newActiveProfile);
-                        }
-                    }
+                if (!stored || !profileList.length) return;
+                const newActiveProfile = profileList.find(p => profileId(p) === stored);
+                if (newActiveProfile) {
+                    setSelectedProfile(prev => {
+                        const currentId = prev ? (prev.id || prev.profileId || prev.musicianId) : null;
+                        const newId = profileId(newActiveProfile);
+                        return newId !== currentId ? newActiveProfile : prev;
+                    });
                 }
             } catch (e) {
                 // Ignore errors
@@ -539,7 +681,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             window.removeEventListener('activeProfileChanged', handleActiveProfileChange);
             window.removeEventListener('storage', storageHandler);
         };
-    }, [user?.uid, validProfiles, selectedProfile]);
+    }, [user?.uid, user?.artistProfiles, validProfiles]);
 
 
     const stripFirestoreRefs = (obj) => {
@@ -707,7 +849,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         return !!artistProfilePerms['gigs.book'];
     })();
 
-    const handleGigApplication = async () => {
+    const handleGigApplication = async (applicationNote = '', applicationHireChoices = {}) => {
         if (!canBookCurrentArtistProfile) {
             return toast.error('You do not have permission to apply to gigs for this artist profile.');
         }
@@ -734,58 +876,123 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
           setApplyingToGig(true);
           try {
             const slotGigId = currentSlot.gigId;
-            const nonPayableGig = currentSlot.kind === 'Open Mic' || currentSlot.kind === 'Ticketed Gig' || currentSlot.budget === '£' || currentSlot.budget === '£0';
-            // Normalize profile for API compatibility
             const normalizedProfile = {
               ...musicianProfile,
               musicianId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
               profileId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
             };
-            const { updatedApplicants } = await applyToGig({ gigId: slotGigId, musicianProfile: normalizedProfile, inviteId });
-            // Update the slot in allSlots
-            setGigData(prev => {
-                if (prev.gigId === slotGigId) {
-                    return { ...prev, applicants: updatedApplicants };
-                }
-                return prev;
-            });
-            setOtherSlots(prev => {
-                if (!prev) return prev;
-                return prev.map(slot => 
-                    slot.gigId === slotGigId 
-                        ? { ...slot, applicants: updatedApplicants }
-                        : slot
-                );
-            });
-            
-            // Use artist profile update if this is an artist profile
-            const isArtistProfile = user?.artistProfiles?.some(p => (p.id || p.profileId) === normalizedProfile.id);
-            if (isArtistProfile) {
-              await updateArtistGigApplications(normalizedProfile, slotGigId);
-            } else {
-              // Fallback to musician profile update for backward compatibility
-              await updateMusicianGigApplications(normalizedProfile, slotGigId);
-            }
-            
-            const { conversationId } = await getOrCreateConversation(
-                { musicianProfile: normalizedProfile, gigData: { ...currentSlot, gigId: slotGigId }, venueProfile, type: 'application' }
-            );
-            await sendGigApplicationMessage(conversationId, {
+
+            if (currentSlot.itemType === 'venue_hire') {
+              // Hire: create conversation + message only (no applyToGig, no artist gig applications)
+              const gigDataForConv = { ...currentSlot, gigId: slotGigId };
+              const { conversationId } = await getOrCreateConversation(
+                { musicianProfile: normalizedProfile, gigData: gigDataForConv, venueProfile, type: 'application' }
+              );
+              const venueName = currentSlot?.venue?.venueName ?? venueProfile?.name ?? 'the venue';
+              await sendGigApplicationMessage(conversationId, {
                 senderId: user.uid,
-                text: `${normalizedProfile.name} has applied to your gig on ${formatDate(currentSlot.startDateTime)} at ${currentSlot.venue.venueName}${nonPayableGig ? '' : ` for ${currentSlot.budget}`}`,
+                text: `${normalizedProfile.name} has applied to your venue hire on ${formatDate(currentSlot.startDateTime)} at ${venueName}`,
                 profileId: normalizedProfile.musicianId,
                 profileType: 'artist',
-            });
-            await sendGigApplicationEmail({
-                to: venueProfile.email,
-                musicianName: normalizedProfile.name,
-                venueName: currentSlot.venue.venueName,
-                date: formatDate(currentSlot.startDateTime),
-                budget: currentSlot.budget,
-                profileType: 'artist',
-                nonPayableGig,
-            });
-            toast.success('Applied to gig!')
+              });
+              setUserAppliedToGig(true);
+              setHireApplicationProfileIds((prev) => new Set(prev).add(normalizedProfile.musicianId));
+              toast.success('Application sent!');
+            } else {
+              const nonPayableGig = currentSlot.kind === 'Open Mic' || currentSlot.kind === 'Ticketed Gig' || currentSlot.budget === '£' || currentSlot.budget === '£0';
+              let techSetup = null;
+              if (selectedProfile?.techRider && venueProfile?.techRider && (applicationNote !== '' || Object.keys(applicationHireChoices || {}).length > 0)) {
+                const compat = computeCompatibility(selectedProfile.techRider, venueProfile.techRider);
+                const usingVenue = [...(compat.providedByVenue || []).map((i) => i?.label || i)].filter(Boolean);
+                const bringingOwn = [...(compat.coveredByArtist || []).map((i) => i?.label || i)].filter(Boolean);
+                const hireable = compat.hireableEquipment || [];
+                const hiringFromVenue = [];
+                hireable.forEach((item) => {
+                  const key = item?.key || item?.label;
+                  const choice = applicationHireChoices[key];
+                  if (choice === 'venue') {
+                    usingVenue.push(item?.label || item);
+                    hiringFromVenue.push(typeof item === 'string' ? item : { label: item?.label || item, hireFee: item?.hireFee });
+                  } else if (choice === 'own') {
+                    bringingOwn.push(item?.label || item);
+                  }
+                });
+                const hasNeedsDiscussion = (compat.needsDiscussion?.length ?? 0) > 0;
+                const compatibilityStatus = hasNeedsDiscussion ? 'missing_required' : (hiringFromVenue.length > 0 ? 'compatible_with_hired' : 'fully_compatible');
+                const needsDiscussion = (compat.needsDiscussion || []).map((i) => {
+                  const label = i?.label ?? i ?? '';
+                  const note = i?.note && String(i.note).trim() ? ` — ${i.note}` : '';
+                  return typeof label === 'string' ? `${label}${note}` : String(label);
+                }).filter(Boolean);
+                techSetup = {
+                  usingVenueEquipment: usingVenue,
+                  bringingOwnEquipment: bringingOwn,
+                  hiringFromVenue: hiringFromVenue.map((i) => (typeof i === 'string' ? { label: i } : { label: i?.label || i, ...(i?.hireFee != null ? { hireFee: i.hireFee } : {}) })),
+                  needsDiscussion,
+                  setupNotes: typeof applicationNote === 'string' ? applicationNote.trim() : '',
+                  compatibilityStatus,
+                };
+              } else if (selectedProfile?.techRider && venueProfile?.techRider) {
+                const compat = computeCompatibility(selectedProfile.techRider, venueProfile.techRider);
+                const usingVenue = (compat.providedByVenue || []).map((i) => i?.label || i).filter(Boolean);
+                const bringingOwn = (compat.coveredByArtist || []).map((i) => i?.label || i).filter(Boolean);
+                const hiringFromVenue = (compat.hireableEquipment || []).map((i) => i?.label || i).filter(Boolean);
+                const hasNeedsDiscussion = (compat.needsDiscussion?.length ?? 0) > 0;
+                const needsDiscussion = (compat.needsDiscussion || []).map((i) => {
+                  const label = i?.label ?? i ?? '';
+                  const note = i?.note && String(i.note).trim() ? ` — ${i.note}` : '';
+                  return typeof label === 'string' ? `${label}${note}` : String(label);
+                }).filter(Boolean);
+                techSetup = {
+                  usingVenueEquipment: usingVenue,
+                  bringingOwnEquipment: bringingOwn,
+                  hiringFromVenue,
+                  needsDiscussion,
+                  setupNotes: '',
+                  compatibilityStatus: hasNeedsDiscussion ? 'missing_required' : (hiringFromVenue.length > 0 ? 'compatible_with_hired' : 'fully_compatible'),
+                };
+              }
+              const { updatedApplicants } = await applyToGig({ gigId: slotGigId, musicianProfile: normalizedProfile, inviteId, techSetup });
+              setGigData(prev => {
+                  if (prev.gigId === slotGigId) {
+                      return { ...prev, applicants: updatedApplicants };
+                  }
+                  return prev;
+              });
+              setOtherSlots(prev => {
+                  if (!prev) return prev;
+                  return prev.map(slot => 
+                      slot.gigId === slotGigId 
+                          ? { ...slot, applicants: updatedApplicants }
+                          : slot
+                  );
+              });
+              const isArtistProfile = user?.artistProfiles?.some(p => (p.id || p.profileId) === normalizedProfile.id);
+              if (isArtistProfile) {
+                await updateArtistGigApplications(normalizedProfile, slotGigId);
+              } else {
+                await updateMusicianGigApplications(normalizedProfile, slotGigId);
+              }
+              const { conversationId } = await getOrCreateConversation(
+                  { musicianProfile: normalizedProfile, gigData: { ...currentSlot, gigId: slotGigId }, venueProfile, type: 'application' }
+              );
+              await sendGigApplicationMessage(conversationId, {
+                  senderId: user.uid,
+                  text: `${normalizedProfile.name} has applied to your gig on ${formatDate(currentSlot.startDateTime)} at ${currentSlot?.venue?.venueName ?? venueProfile?.name ?? 'the venue'}${nonPayableGig ? '' : ` for ${currentSlot.budget}`}`,
+                  profileId: normalizedProfile.musicianId,
+                  profileType: 'artist',
+              });
+              await sendGigApplicationEmail({
+                  to: venueProfile.email,
+                  musicianName: normalizedProfile.name,
+                  venueName: currentSlot?.venue?.venueName ?? venueProfile?.name ?? 'the venue',
+                  date: formatDate(currentSlot.startDateTime),
+                  budget: currentSlot.budget,
+                  profileType: 'artist',
+                  nonPayableGig,
+              });
+              toast.success('Applied to gig!');
+            }
         } catch (error) {
             console.error(error)
             toast.error('Failed to apply to gig. Please try again.')
@@ -793,6 +1000,25 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             setApplyingToGig(false);
         }
     }
+
+    const handleApplyClick = () => {
+        if (!canBookCurrentArtistProfile) return;
+        if (selectedProfile?.techRider && venueProfile?.techRider) {
+            setShowEquipmentCheckModal(true);
+            setEquipmentCheckNote('');
+        } else {
+            handleGigApplication();
+        }
+    };
+
+    const handleEquipmentCheckContinue = () => {
+        const note = equipmentCheckNote;
+        const choices = equipmentCheckHireChoices;
+        setShowEquipmentCheckModal(false);
+        setEquipmentCheckNote('');
+        setEquipmentCheckHireChoices({});
+        handleGigApplication(note, choices);
+    };
 
     const handleWithdrawApplication = async () => {
         if (!canBookCurrentArtistProfile) {
@@ -1379,201 +1605,249 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         }
     };
 
-    const [showAllEquipment, setShowAllEquipment] = useState(false);
+    const [techSpecTab, setTechSpecTab] = useState('all');
 
-    const renderTechRider = (showSeeMoreButton = false) => {
+    const showCompatibilityTab = Boolean(
+        user &&
+        selectedProfile &&
+        selectedProfile.techRider?.isComplete &&
+        selectedProfile.techRider?.lineup?.length > 0 &&
+        venueProfile?.techRider
+    );
+
+    const renderAllEquipmentContent = () => {
         if (!venueProfile?.techRider) {
-            return <p>The venue has not listed any tech rider information.</p>;
+            return <p className="gig-page-tech-spec-empty">The venue has not listed any tech spec information.</p>;
         }
+        const { equipmentForDisplay, stageSetup, houseRules } = getTechRiderForDisplay(venueProfile.techRider);
+        const soundItems = equipmentForDisplay.filter((item) => TECH_SPEC_SOUND_KEYS.has(item.key));
+        const backlineItems = equipmentForDisplay.filter((item) => TECH_SPEC_BACKLINE_KEYS.has(item.key));
 
-        const { soundSystem, backline, houseRules } = venueProfile.techRider;
-        const equipmentItems = [];
+        const renderItem = (item) => (
+            <TechRiderEquipmentCard
+                key={item.key}
+                equipmentName={item.label}
+                available={item.available}
+                count={item.count}
+                notes={item.notes}
+                hireFee={item.hireFee}
+            />
+        );
 
-        // PA
-        if (soundSystem?.pa) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="pa"
-                    equipmentName="PA"
-                    available={soundSystem.pa.available}
-                    notes={soundSystem.pa.notes}
-                />
-            );
-        }
-
-        // Mixing Console
-        if (soundSystem?.mixingConsole) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="mixingConsole"
-                    equipmentName="Mixing Console"
-                    available={soundSystem.mixingConsole.available}
-                    notes={soundSystem.mixingConsole.notes}
-                />
-            );
-        }
-
-        // Vocal Mics
-        if (soundSystem?.vocalMics) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="vocalMics"
-                    equipmentName="Vocal Mics"
-                    count={soundSystem.vocalMics.count}
-                    notes={soundSystem.vocalMics.notes}
-                />
-            );
-        }
-
-        // DI Boxes
-        if (soundSystem?.diBoxes) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="diBoxes"
-                    equipmentName="DI Boxes"
-                    count={soundSystem.diBoxes.count}
-                    notes={soundSystem.diBoxes.notes}
-                />
-            );
-        }
-
-        // Drum Kit
-        if (backline?.drumKit) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="drumKit"
-                    equipmentName="Drum Kit"
-                    available={backline.drumKit.available}
-                    notes={backline.drumKit.notes}
-                />
-            );
-        }
-
-        // Bass Amp
-        if (backline?.bassAmp) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="bassAmp"
-                    equipmentName="Bass Amp"
-                    available={backline.bassAmp.available}
-                    notes={backline.bassAmp.notes}
-                />
-            );
-        }
-
-        // Guitar Amp
-        if (backline?.guitarAmp) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="guitarAmp"
-                    equipmentName="Guitar Amp"
-                    available={backline.guitarAmp.available}
-                    notes={backline.guitarAmp.notes}
-                />
-            );
-        }
-
-        // Keyboard
-        if (backline?.keyboard) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="keyboard"
-                    equipmentName="Keyboard"
-                    available={backline.keyboard.available}
-                    notes={backline.keyboard.notes}
-                />
-            );
-        }
-
-        const displayedEquipment = showAllEquipment ? equipmentItems : equipmentItems.slice(0, 3);
-        const hasMoreEquipment = equipmentItems.length > 3;
-        const hasNotes = soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.houseRules || houseRules?.volumeLevel || houseRules?.noiseCurfew || houseRules?.volumeNotes;
-        const shouldShowSeeMore = (hasMoreEquipment || hasNotes) && !showAllEquipment;
+        const hasStageAndPower =
+            (stageSetup?.stageSize && String(stageSetup.stageSize).trim()) ||
+            (stageSetup?.powerOutlets != null && stageSetup.powerOutlets !== '');
+        const hasSoundLimits =
+            houseRules?.volumeLevel ||
+            (houseRules?.noiseCurfew && String(houseRules.noiseCurfew).trim()) ||
+            (houseRules?.volumeNotes && String(houseRules.volumeNotes).trim());
+        const hasTechnicalNotes = stageSetup?.generalTechNotes && String(stageSetup.generalTechNotes).trim();
 
         return (
             <>
-                <div className="tech-rider-grid" style={{ marginTop: '1rem', alignItems: 'flex-start' }}>
-                    {displayedEquipment}
-                </div>
-                {shouldShowSeeMore && (
-                    <button 
-                        className="btn text" 
-                        onClick={() => setShowAllEquipment(true)}
-                        style={{ marginTop: '1rem' }}
-                    >
-                        See more
-                    </button>
+                {soundItems.length > 0 && (
+                    <div className="tech-spec-group" style={{ marginTop: '1rem' }}>
+                        <h5 className="tech-spec-group-title">Sound</h5>
+                        <div className="tech-rider-grid" style={{ alignItems: 'flex-start' }}>
+                            {soundItems.map(renderItem)}
+                        </div>
+                    </div>
                 )}
-                
-                {/* Other Note Fields - only show when "See more" is clicked */}
-                {showAllEquipment && hasNotes && (
-                    <div className="tech-rider-notes-section">
-                        {soundSystem?.cables && (
-                            <div>
-                                <h6>Cables</h6>
-                                <p>{soundSystem.cables}</p>
+                {backlineItems.length > 0 && (
+                    <div className="tech-spec-group" style={{ marginTop: soundItems.length > 0 ? '1.25rem' : '1rem' }}>
+                        <h5 className="tech-spec-group-title">Backline</h5>
+                        <div className="tech-rider-grid" style={{ alignItems: 'flex-start' }}>
+                            {backlineItems.map(renderItem)}
+                        </div>
+                    </div>
+                )}
+                {(hasStageAndPower || hasSoundLimits) && (
+                    <div className="tech-spec-venue-blocks-row" style={{ marginTop: '1.25rem' }}>
+                        {hasSoundLimits && (
+                            <div className="tech-spec-venue-block">
+                                <h5 className="tech-spec-group-title">Sound limits</h5>
+                                <div className="tech-spec-venue-fields">
+                                    {houseRules?.volumeLevel && (
+                                        <div className="tech-spec-venue-field">
+                                            <span className="tech-spec-venue-field-label">Volume level</span>
+                                            <span className="tech-spec-venue-field-value">{String(houseRules.volumeLevel).charAt(0).toUpperCase() + String(houseRules.volumeLevel).slice(1)}</span>
+                                        </div>
+                                    )}
+                                    {houseRules?.noiseCurfew && String(houseRules.noiseCurfew).trim() && (
+                                        <div className="tech-spec-venue-field">
+                                            <span className="tech-spec-venue-field-label">Noise curfew</span>
+                                            <span className="tech-spec-venue-field-value">{houseRules.noiseCurfew}</span>
+                                        </div>
+                                    )}
+                                    {houseRules?.volumeNotes && String(houseRules.volumeNotes).trim() && (
+                                        <div className="tech-spec-venue-field">
+                                            <span className="tech-spec-venue-field-label">Volume notes</span>
+                                            <span className="tech-spec-venue-field-value">{houseRules.volumeNotes.trim()}</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
-                        {houseRules?.powerAccess && (
-                            <div>
-                                <h6>Power Access</h6>
-                                <p>{houseRules.powerAccess}</p>
-                            </div>
-                        )}
-                        {backline?.stageSize && (
-                            <div>
-                                <h6>Stage Size</h6>
-                                <p>{backline.stageSize}</p>
-                            </div>
-                        )}
-                        {soundSystem?.monitoring && (
-                            <div>
-                                <h6>Monitoring Notes</h6>
-                                <p>{soundSystem.monitoring}</p>
-                            </div>
-                        )}
-                        {backline?.other && (
-                            <div>
-                                <h6>Other backline Notes</h6>
-                                <p>{backline.other}</p>
-                            </div>
-                        )}
-                        {houseRules?.volumeLevel && (
-                            <div>
-                                <h6>Volume level</h6>
-                                <p>{houseRules.volumeLevel.charAt(0).toUpperCase() + houseRules.volumeLevel.slice(1)}</p>
-                            </div>
-                        )}
-                        {houseRules?.volumeNotes && (
-                            <div>
-                                <h6>volume notes</h6>
-                                <p>{houseRules.volumeNotes}</p>
-                            </div>
-                        )}
-                        {houseRules?.noiseCurfew && (
-                            <div>
-                                <h6>noise curfew</h6>
-                                <p>{houseRules.noiseCurfew}</p>
-                            </div>
-                        )}
-                        {houseRules?.houseRules && (
-                            <div>
-                                <h6>house rules</h6>
-                                <p>{houseRules.houseRules}</p>
+                        {hasStageAndPower && (
+                            <div className="tech-spec-venue-block">
+                                <h5 className="tech-spec-group-title">Stage & Power</h5>
+                                <div className="tech-spec-venue-fields">
+                                    {stageSetup?.stageSize && String(stageSetup.stageSize).trim() && (
+                                        <div className="tech-spec-venue-field">
+                                            <span className="tech-spec-venue-field-label">Stage size</span>
+                                            <span className="tech-spec-venue-field-value">{stageSetup.stageSize.trim()}</span>
+                                        </div>
+                                    )}
+                                    {stageSetup?.powerOutlets != null && stageSetup.powerOutlets !== '' && (
+                                        <div className="tech-spec-venue-field">
+                                            <span className="tech-spec-venue-field-label">Power outlets on/near stage</span>
+                                            <span className="tech-spec-venue-field-value">{stageSetup.powerOutlets}</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
                 )}
-                {showAllEquipment && (hasMoreEquipment || hasNotes) && (
-                    <button 
-                        className="btn text" 
-                        onClick={() => setShowAllEquipment(false)}
-                        style={{ marginTop: '1rem' }}
-                    >
-                        See less
-                    </button>
+                {hasTechnicalNotes && (
+                    <div className="tech-spec-venue-block" style={{ marginTop: '1.25rem' }}>
+                        <h5 className="tech-spec-group-title">Technical notes</h5>
+                        <p className="tech-spec-venue-notes">{stageSetup.generalTechNotes.trim()}</p>
+                    </div>
                 )}
             </>
+        );
+    };
+
+    const renderCompatibilityContent = () => {
+        if (!venueProfile?.techRider) {
+            return <p className="gig-page-tech-spec-empty">The venue has not listed any tech spec.</p>;
+        }
+        if (!user || !selectedProfile) {
+            return (
+                <p className="gig-page-tech-spec-empty">
+                    Sign in with an artist profile to check equipment compatibility.
+                </p>
+            );
+        }
+        const hasTechRider = selectedProfile.techRider?.isComplete && selectedProfile.techRider?.lineup?.length > 0;
+        if (!hasTechRider) {
+            return (
+                <div className="gig-page-tech-spec-empty-state">
+                    <p>Create your tech rider to check compatibility with this gig.</p>
+                    <button type="button" className="btn secondary" onClick={() => navigate('/artist-profile')}>
+                        Set up tech rider
+                    </button>
+                </div>
+            );
+        }
+        const compat = computeCompatibility(selectedProfile.techRider, venueProfile.techRider);
+        const profileName = selectedProfile?.name || 'Your act';
+
+        const hasAnyCompat = compat.providedByVenue.length > 0 || compat.hireableEquipment.length > 0 || compat.coveredByArtist.length > 0 || compat.needsDiscussion.length > 0;
+
+        return (
+            <div className="tech-spec-compatibility">
+                <h5 className="tech-spec-compatibility-title">Based on your active profile: {profileName}</h5>
+                {compat.providedByVenue.length > 0 && (
+                    <div className="tech-spec-compat-section tech-spec-compat-section--covered">
+                        <h6>Provided by venue</h6>
+                        <ul>
+                            {compat.providedByVenue.map((item, i) => (
+                                <li key={i}>
+                                    <span className="tech-spec-compat-icon tech-spec-compat-icon--check" aria-hidden><TickIcon /></span>
+                                    {item.label}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+                {compat.hireableEquipment.length > 0 && (
+                    <div className="tech-spec-compat-section tech-spec-compat-section--hireable">
+                        <h6>Hireable</h6>
+                        <ul>
+                            {compat.hireableEquipment.map((item, i) => (
+                                <li key={i}>
+                                    <span className="tech-spec-compat-icon tech-spec-compat-icon--hire" aria-hidden>£</span>
+                                    {item.label} — £{item.hireFee}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+                {compat.coveredByArtist.length > 0 && (
+                    <div className="tech-spec-compat-section tech-spec-compat-section--covered">
+                        <h6>Covered by your act</h6>
+                        <ul>
+                            {compat.coveredByArtist.map((item, i) => (
+                                <li key={i}>
+                                    <span className="tech-spec-compat-icon tech-spec-compat-icon--check" aria-hidden><TickIcon /></span>
+                                    {item.label}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+                {compat.needsDiscussion.length > 0 && (
+                    <div className="tech-spec-compat-section tech-spec-compat-section--needs">
+                        <h6>Needs discussion</h6>
+                        <ul>
+                            {compat.needsDiscussion.map((item, i) => (
+                                <li key={i}>
+                                    {item.label}
+                                    {item.note ? ` — ${item.note}` : ''}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+                {!hasAnyCompat && (
+                    <p className="gig-page-tech-spec-empty">No equipment requirements to compare.</p>
+                )}
+            </div>
+        );
+    };
+
+    const renderTechSpecSection = () => {
+        if (!venueProfile?.techRider) {
+            return (
+                <div className="equipment gig-page-tech-spec-tile">
+                    <h4>{(venueProfile?.name || gigData?.venue?.venueName) ?? 'Venue'}'s Tech Spec</h4>
+                    <p className="gig-page-tech-spec-empty">The venue has not listed any tech spec information.</p>
+                </div>
+            );
+        }
+        const venueName = (venueProfile?.name || gigData?.venue?.venueName) ?? 'Venue';
+        return (
+            <div className="equipment gig-page-tech-spec gig-page-tech-spec-tile">
+                <h4>{venueName}&apos;s Tech Spec</h4>
+                {!user && (
+                    <p className="gig-page-tech-spec-signin-prompt" style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--gn-grey-600)' }}>
+                        Sign in with an artist profile to check equipment compatibility.
+                    </p>
+                )}
+                {showCompatibilityTab && (
+                    <div className="tech-spec-tabs">
+                        <button
+                            type="button"
+                            className={`tech-spec-tab ${techSpecTab === 'all' ? 'tech-spec-tab--active' : ''}`}
+                            onClick={() => setTechSpecTab('all')}
+                        >
+                            All Equipment
+                        </button>
+                        <button
+                            type="button"
+                            className={`tech-spec-tab ${techSpecTab === 'compatibility' ? 'tech-spec-tab--active' : ''}`}
+                            onClick={() => setTechSpecTab('compatibility')}
+                        >
+                            Compatibility for {selectedProfile?.name || selectedProfile?.stageName || 'Your act'}
+                        </button>
+                    </div>
+                )}
+                <div className="tech-spec-tab-content">
+                    {(!showCompatibilityTab || techSpecTab === 'all') ? renderAllEquipmentContent() : renderCompatibilityContent()}
+                </div>
+            </div>
         );
     };
 
@@ -1581,8 +1855,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     // Compute status for current slot
     const currentSlotStatus = useMemo(() => {
         if (!currentSlot || !selectedProfile) return { invited: false, applied: false, accepted: false };
-        return computeStatusForProfile(currentSlot, selectedProfile);
-    }, [currentSlot, selectedProfile, inviteToken]);
+        const status = computeStatusForProfile(currentSlot, selectedProfile);
+        if (currentSlot?.itemType === 'venue_hire') {
+            const profileId = selectedProfile.id || selectedProfile.profileId || selectedProfile.musicianId;
+            return { ...status, applied: status.applied || hireApplicationProfileIds.has(profileId) };
+        }
+        return status;
+    }, [currentSlot, selectedProfile, inviteToken, hireApplicationProfileIds]);
 
     const isFutureOpen = getLocalGigDateTime(currentSlot) > now && (currentSlot?.status || '').toLowerCase() !== 'closed';
     const isPrivate = !!currentSlot?.private;
@@ -1666,7 +1945,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                             <div className='images-and-location'>
                                 <div className='main-image'>
                                     <figure className='img' onClick={() => handleImageClick(0)}>
-                                        <img src={venueProfile?.photos[0]} alt={`${gigData.venue.venueName} photo`} />
+                                        <img src={venueProfile?.photos[0]} alt={`${gigData?.venue?.venueName ?? venueProfile?.name ?? 'Venue'} photo`} />
                                         <div className='more-overlay'>
                                             <h2>+{venueProfile?.photos.length - 1}</h2>
                                         </div>
@@ -1680,16 +1959,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 <div className='gig-info'>
                                     <div className='important-info'>
                                         <div className='date-and-time'>
-                                            <h2>{gigData.venue.venueName}</h2>
-                                            <button className="btn secondary" onClick={
-                                                selectedProfile && selectedProfile?.id ? 
-                                                (e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile?.id}`, e)
-                                                : (e) => openInNewTab(`/venues/${gigData.venueId}`, e)}>
-                                                <VenueIconSolid /> See {venueProfile?.name && venueProfile.name + "'s"} Venue Page
-                                            </button>
+                                            <h2>{gigData?.venue?.venueName ?? venueProfile?.name ?? 'Venue'}</h2>
                                         </div>
                                         <div className='address'>
-                                            <h4>{gigData.venue.address}</h4>
+                                            <h4>{gigData?.venue?.address ?? venueProfile?.address ?? ''}</h4>
                                         </div>
                                     </div>
                                     <div className="gig-host">
@@ -1747,75 +2020,77 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             </div>
                                         </div>
                                     </div> */}
-                                    {gigData.technicalInformation !== '' && (
+                                    {gigData?.technicalInformation && String(gigData.technicalInformation).trim() !== '' && (
                                         <div className='equipment'>
                                             <h4 className="subtitle">Gig Description</h4>
-                                            <p className='detail-text'>
-                                                  {gigData.technicalInformation !== '' && (
-                                                    gigData.technicalInformation
-                                                  )}
-                                            </p>    
+                                            <p className='detail-text'>{gigData.technicalInformation}</p>
                                         </div>
                                     )}
                                     <div className='timeline'>
-                                        <h4 className='subtitle'>Gig Timeline</h4>
+                                        <h4 className='subtitle'>Timings</h4>
                                         {currentSlot?.startTime && (
                                             <div className='timeline-cont'>
-                                                <div className='timeline-event'>
-                                                    <div className='timeline-content'>
-                                                        <p>Load In</p>
-                                                        <div className='timeline-time'>{currentSlot?.loadInTime && currentSlot?.loadInTime !== '' ? formatTime(currentSlot?.loadInTime) : 'TBC'}</div>
-                                                    </div>
-                                                    <div className='timeline-line'></div>
-                                                </div>
-                                                <div className='timeline-event'>
-                                                    <div className='timeline-content'>
-                                                        <p>Sound Check</p>
-                                                        <div className='timeline-time'>{currentSlot?.soundCheckTime && currentSlot?.soundCheckTime !== '' ? formatTime(currentSlot?.soundCheckTime) : 'TBC'}</div>
-                                                    </div>
-                                                    <div className='timeline-line'></div>
-                                                </div>
-                                                <div className='timeline-event'>
-                                                    <div className='timeline-content'>
-                                                        <p>Set Starts</p>
-                                                        <div className='timeline-time orange'>{formatTime(currentSlot.startTime)}</div>
-                                                    </div>
-                                                    <div className='timeline-line'></div>
-                                                </div>
-                                                <div className='timeline-event'>
-                                                    <div className='timeline-content'>
-                                                        <p>Set Ends</p>
-                                                        <div className='timeline-time orange'>{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
-                                                    </div>
-                                                    <div className='timeline-line'></div>
-                                                </div>
+                                                {currentSlot?.itemType === 'venue_hire' ? (
+                                                    <>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Access from</p>
+                                                                <div className='timeline-time orange'>{formatTime(currentSlot.startTime)}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Music stop by</p>
+                                                                <div className='timeline-time orange'>{currentSlot?.endTime && String(currentSlot.endTime).trim() ? formatTime(currentSlot.endTime) : 'TBC'}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Load In</p>
+                                                                <div className='timeline-time'>{currentSlot?.loadInTime && currentSlot?.loadInTime !== '' ? formatTime(currentSlot?.loadInTime) : 'TBC'}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Sound Check</p>
+                                                                <div className='timeline-time'>{currentSlot?.soundCheckTime && currentSlot?.soundCheckTime !== '' ? formatTime(currentSlot?.soundCheckTime) : 'TBC'}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Set Starts</p>
+                                                                <div className='timeline-time orange'>{formatTime(currentSlot.startTime)}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Set Ends</p>
+                                                                <div className='timeline-time orange'>{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         )}
                                     </div>
-                                    <div className='equipment'>
-                                        {(() => {
-                                            const equipmentCount = venueProfile?.techRider ? 
-                                                (venueProfile.techRider.soundSystem?.pa ? 1 : 0) +
-                                                (venueProfile.techRider.soundSystem?.mixingConsole ? 1 : 0) +
-                                                (venueProfile.techRider.soundSystem?.vocalMics ? 1 : 0) +
-                                                (venueProfile.techRider.soundSystem?.diBoxes ? 1 : 0) +
-                                                (venueProfile.techRider.backline?.drumKit ? 1 : 0) +
-                                                (venueProfile.techRider.backline?.bassAmp ? 1 : 0) +
-                                                (venueProfile.techRider.backline?.guitarAmp ? 1 : 0) +
-                                                (venueProfile.techRider.backline?.keyboard ? 1 : 0) : 0;
-                                            return (
-                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                                                    <h4>{venueProfile?.name || gigData.venue.venueName}'s Tech Spec</h4>
-                                                    
-                                                </div>
-                                            );
-                                        })()}
-                                        {renderTechRider()}
-                                    </div>
-                                    {venueProfile?.description && (
+                                    {renderTechSpecSection()}
+                                    {(venueProfile?.name ?? gigData?.venue?.venueName) && (
                                         <div className='description'>
-                                            <h4>About {venueProfile?.name}</h4>
-                                            <p>{venueProfile?.description}</p>
+                                            <h4>About {venueProfile?.name ?? gigData?.venue?.venueName ?? 'Venue'}</h4>
+                                            <button className="btn secondary" onClick={
+                                                selectedProfile?.id ? (e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile?.id}`, e) : (e) => openInNewTab(`/venues/${gigData.venueId}`, e)}>
+                                                <VenueIconSolid /> See {(venueProfile?.name ?? gigData?.venue?.venueName) && (venueProfile?.name ?? gigData?.venue?.venueName) + "'s"} Profile
+                                            </button>
+                                            {venueProfile?.description && <p>{venueProfile?.description}</p>}
                                         </div>
                                     )}
                                     <div className='extra-info'>
@@ -1931,20 +2206,59 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         </h2>
                                                     ) : (
                                                         <>
-                                                            <h1>{currentSlot?.budget === '£' || currentSlot?.budget === '£0' ? 'No Fee' : currentSlot?.budget}</h1>
-                                                            {currentSlot?.budget !== '£' && currentSlot?.budget !== '£0' && (
-                                                                <p>gig fee</p>
+                                                            {(currentSlot?.itemType === 'venue_hire') ? (
+                                                                <div className="action-box-budget-venue-hire">
+                                                                    <div className="action-box-budget-venue-hire-row">
+                                                                        <h1>{currentSlot?.budget === '£' || currentSlot?.budget === '£0' || currentSlot?.budget === 'Free' ? 'Free to hire' : currentSlot?.budget}</h1>
+                                                                        {(currentSlot?.budget !== '£' && currentSlot?.budget !== '£0' && currentSlot?.budget !== 'Free') && <p className="action-box-venue-hire-label">Hire Price</p>}
+                                                                    </div>
+                                                                    {currentSlot?.depositAmount && (
+                                                                        <div className="action-box-budget-venue-hire-row">
+                                                                            <h1>{currentSlot.depositAmount}</h1>
+                                                                            <p className="action-box-venue-hire-label">deposit</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <h1>{currentSlot?.budget === '£' || currentSlot?.budget === '£0' || currentSlot?.budget === 'Free' ? 'No Fee' : currentSlot?.budget}</h1>
+                                                                    {currentSlot?.budget !== '£' && currentSlot?.budget !== '£0' && currentSlot?.budget !== 'Free' && <p>gig fee</p>}
+                                                                </>
                                                             )}
                                                         </>
                                                     )}
                                                 </div>
-                                                <div className='action-box-duration'>
-                                                    <h4>{formatDuration(currentSlot?.duration)}</h4>
+                                                {currentSlot?.itemType !== 'venue_hire' && (() => {
+                                                    const capacityDisplay = getGigCapacityDisplay(currentSlot, venueProfile);
+                                                    return (
+                                                <div className="action-box-side-meta">
+                                                    <div className='action-box-duration'>
+                                                        <h4>{formatDuration(currentSlot?.duration)}</h4>
+                                                    </div>
+                                                    {capacityDisplay ? (
+                                                        <div className="action-box-capacity">
+                                                            <h4>{capacityDisplay}</h4>
+                                                            <p>capacity</p>
+                                                        </div>
+                                                    ) : null}
                                                 </div>
+                                                    );
+                                                })()}
                                             </div>
                                             <div className='action-box-date-and-time'>
                                                 <div className='action-box-date'>
-                                                    <h3>{formatDate(currentSlot?.startDateTime, 'withTime')}</h3>
+                                                    {currentSlot?.itemType === 'venue_hire' ? (
+                                                        <>
+                                                            <h3>{formatDate(currentSlot?.startDateTime)}</h3>
+                                                            {currentSlot?.startTime && (currentSlot?.endTime && String(currentSlot.endTime).trim() ? (
+                                                                <h4>{formatTime(currentSlot.startTime)} – {formatTime(currentSlot.endTime)}</h4>
+                                                            ) : (
+                                                                <h4>{formatTime(currentSlot.startTime)}</h4>
+                                                            ))}
+                                                        </>
+                                                    ) : (
+                                                        <h3>{formatDate(currentSlot?.startDateTime, 'withTime')}</h3>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -1983,7 +2297,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         ) : (
                                                             <>
                                                                 {showApplied && hasAccessToPrivateGig ? (
-                                                                    <button className='btn artist-profile disabled' disabled>Applied To Gig</button>
+                                                                    <button className='btn artist-profile disabled' disabled>{currentSlot?.itemType === 'venue_hire' ? 'Applied' : 'Applied To Gig'}</button>
                                                                 ) : accepted && hasAccessToPrivateGig ? (
                                                                     <button className='btn artist-profile disabled' disabled>Invitation Accepted</button>
                                                                 ) : showAcceptInvite && hasAccessToPrivateGig && user && user.artistProfiles?.length > 0 && selectedProfile.isComplete ? (
@@ -2013,14 +2327,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                 ) : showApply && hasAccessToPrivateGig ? (
                                                                         <button
                                                                             className={`btn artist-profile ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
-                                                                            onClick={canBookCurrentArtistProfile ? handleGigApplication : undefined}
+                                                                            onClick={canBookCurrentArtistProfile ? handleApplyClick : undefined}
                                                                             disabled={!canBookCurrentArtistProfile}
                                                                         >
-                                                                            Apply To Gig
+                                                                            {currentSlot?.itemType === 'venue_hire' ? 'Apply to Hire' : 'Apply To Gig'}
                                                                         </button>
                                                                 ) : null}
 
-                                                                {showApplied && hasAccessToPrivateGig && (
+                                                                {showApplied && hasAccessToPrivateGig && currentSlot?.itemType !== 'venue_hire' && (
                                                                     <button
                                                                         className={`btn secondary ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
                                                                         onClick={canBookCurrentArtistProfile ? handleWithdrawApplication : undefined}
@@ -2105,7 +2419,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                             )}
                                                         </div>
                                                         <button className='btn secondary' onClick={(e) => openInNewTab(`/venues/${gigData.venueId}`, e)}>
-                                                            Other Gigs at {gigData.venue.venueName}
+                                                            Other Gigs at {gigData?.venue?.venueName ?? venueProfile?.name ?? 'Venue'}
                                                         </button>
                                                         </>
                                                     )}
@@ -2121,7 +2435,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                             <div className='head'>
                                 <ImageCarousel
                                     photos={venueProfile?.photos}
-                                    altBase={gigData.venue.venueName}
+                                    altBase={gigData?.venue?.venueName ?? venueProfile?.name ?? 'Venue'}
                                 />
                             </div>
                             <div className='main'>
@@ -2133,21 +2447,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         <span className="line"></span>
                                     </div>
                                     <div className="gig-venue">
-                                        <h4>{gigData.venue.venueName}</h4>
-                                        <p>{gigData.venue.address}</p>
-                                        <button
-                                            className='btn secondary'
-                                            onClick={
-                                                selectedProfile && selectedProfile?.id ? 
-                                                (e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile?.id}`, e)
-                                                : (e) => openInNewTab(`/venues/${gigData.venueId}`, e)}
-                                        >
-                                                <VenueIconSolid />
-                                                View {gigData.venue.venueName}'s Profile
-                                        </button>
+                                        <h4>{gigData?.venue?.venueName ?? venueProfile?.name ?? 'Venue'}</h4>
+                                        <p>{gigData?.venue?.address ?? venueProfile?.address ?? ''}</p>
                                     </div>
-                                </div>
-                                <div className="section">
                                     <div className="gig-host">
                                         <h5>Gig Posted By: {gigData.accountName}</h5>
                                         <p>A trusted Gigin member</p>
@@ -2206,64 +2508,84 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         </div>
                                     </div>
                                 </div>
+                                {(gigData?.technicalInformation && String(gigData.technicalInformation).trim() !== '') && (
                                 <div className="section">
                                     <div className='equipment'>
                                         <h4 className="subtitle">Gig Description</h4>
-                                        <p className='detail-text'>
-                                            {gigData.technicalInformation !== '' && (
-                                                gigData.technicalInformation
-                                            )}
-                                        </p>    
+                                        <p className='detail-text'>{gigData.technicalInformation}</p>
                                     </div>
                                 </div>
+                                )}
                                 <div className="section">
                                     <div className='timeline'>
-                                        <h4 className='subtitle'>Gig Timeline</h4>
+                                        <h4 className='subtitle'>Timings</h4>
                                         {currentSlot?.startTime && (
                                             <div className='timeline-cont'>
-                                                <div className='timeline-event'>
-                                                    <div className='timeline-content'>
-                                                        <p>Load In</p>
-                                                        <div className='timeline-time'>{currentSlot?.loadInTime && currentSlot?.loadInTime !== '' ? formatTime(currentSlot?.loadInTime) : 'TBC'}</div>
-                                                    </div>
-                                                    <div className='timeline-line'></div>
-                                                </div>
-                                                <div className='timeline-event'>
-                                                    <div className='timeline-content'>
-                                                        <p>Sound Check</p>
-                                                        <div className='timeline-time'>{currentSlot?.soundCheckTime && currentSlot?.soundCheckTime !== '' ? formatTime(currentSlot?.soundCheckTime) : 'TBC'}</div>
-                                                    </div>
-                                                    <div className='timeline-line'></div>
-                                                </div>
-                                                <div className='timeline-event'>
-                                                    <div className='timeline-content'>
-                                                        <p>Set Starts</p>
-                                                        <div className='timeline-time orange'>{formatTime(currentSlot.startTime)}</div>
-                                                    </div>
-                                                    <div className='timeline-line'></div>
-                                                </div>
-                                                <div className='timeline-event'>
-                                                    <div className='timeline-content'>
-                                                        <p>Set Ends</p>
-                                                        <div className='timeline-time orange'>{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
-                                                    </div>
-                                                    <div className='timeline-line'></div>
-                                                </div>
+                                                {currentSlot?.itemType === 'venue_hire' ? (
+                                                    <>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Access from</p>
+                                                                <div className='timeline-time orange'>{formatTime(currentSlot.startTime)}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Music stop by</p>
+                                                                <div className='timeline-time orange'>{currentSlot?.endTime && String(currentSlot.endTime).trim() ? formatTime(currentSlot.endTime) : 'TBC'}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Load In</p>
+                                                                <div className='timeline-time'>{currentSlot?.loadInTime && currentSlot?.loadInTime !== '' ? formatTime(currentSlot?.loadInTime) : 'TBC'}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Sound Check</p>
+                                                                <div className='timeline-time'>{currentSlot?.soundCheckTime && currentSlot?.soundCheckTime !== '' ? formatTime(currentSlot?.soundCheckTime) : 'TBC'}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Set Starts</p>
+                                                                <div className='timeline-time orange'>{formatTime(currentSlot.startTime)}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                        <div className='timeline-event'>
+                                                            <div className='timeline-content'>
+                                                                <p>Set Ends</p>
+                                                                <div className='timeline-time orange'>{endTime !== '00:00' ? formatTime(endTime) : '00:00'}</div>
+                                                            </div>
+                                                            <div className='timeline-line'></div>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         )}
                                     </div>
                                 </div>
                                 <div className="section">
-                                    <div className='equipment'>
-                                        <h4>{venueProfile?.name || gigData.venue.venueName}'s Tech Spec</h4>
-                                        {renderTechRider()}
-                                    </div>
+                                    {renderTechSpecSection()}
                                 </div>
                                 <div className="section">
-                                    {venueProfile?.description && (
+                                    {(venueProfile?.name ?? gigData?.venue?.venueName) && (
                                         <div className='description'>
-                                            <h4>About {venueProfile?.name}</h4>
-                                            <p>{venueProfile?.description}</p>
+                                            <h4>About {venueProfile?.name ?? gigData?.venue?.venueName ?? 'Venue'}</h4>
+                                            <button className="btn secondary" onClick={
+                                                selectedProfile?.id ? (e) => openInNewTab(`/venues/${gigData.venueId}?musicianId=${selectedProfile?.id}`, e) : (e) => openInNewTab(`/venues/${gigData.venueId}`, e)}>
+                                                <VenueIconSolid /> See {(venueProfile?.name ?? gigData?.venue?.venueName) && (venueProfile?.name ?? gigData?.venue?.venueName) + "'s"} Profile
+                                            </button>
+                                            {venueProfile?.description && <p>{venueProfile?.description}</p>}
                                         </div>
                                     )}
                                     <div className='extra-info'>
@@ -2379,20 +2701,59 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         </h2>
                                                     ) : (
                                                         <>
-                                                            <h1>{currentSlot?.budget === '£' || currentSlot?.budget === '£0' ? 'No Fee' : currentSlot?.budget}</h1>
-                                                            {currentSlot?.budget !== '£' && currentSlot?.budget !== '£0' && (
-                                                                <p>gig fee</p>
+                                                            {(currentSlot?.itemType === 'venue_hire') ? (
+                                                                <div className="action-box-budget-venue-hire">
+                                                                    <div className="action-box-budget-venue-hire-row">
+                                                                        <h1>{currentSlot?.budget === '£' || currentSlot?.budget === '£0' || currentSlot?.budget === 'Free' ? 'Free to hire' : currentSlot?.budget}</h1>
+                                                                        {(currentSlot?.budget !== '£' && currentSlot?.budget !== '£0' && currentSlot?.budget !== 'Free') && <p className="action-box-venue-hire-label">Hire Price</p>}
+                                                                    </div>
+                                                                    {currentSlot?.depositAmount && (
+                                                                        <div className="action-box-budget-venue-hire-row">
+                                                                            <h1>{currentSlot.depositAmount}</h1>
+                                                                            <p className="action-box-venue-hire-label">deposit</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <h1>{currentSlot?.budget === '£' || currentSlot?.budget === '£0' || currentSlot?.budget === 'Free' ? 'No Fee' : currentSlot?.budget}</h1>
+                                                                    {currentSlot?.budget !== '£' && currentSlot?.budget !== '£0' && currentSlot?.budget !== 'Free' && <p>gig fee</p>}
+                                                                </>
                                                             )}
                                                         </>
                                                     )}
                                                 </div>
-                                                <div className='action-box-duration'>
-                                                    <h4>{formatDuration(currentSlot?.duration)}</h4>
+                                                {currentSlot?.itemType !== 'venue_hire' && (() => {
+                                                    const capacityDisplay = getGigCapacityDisplay(currentSlot, venueProfile);
+                                                    return (
+                                                <div className="action-box-side-meta">
+                                                    <div className='action-box-duration'>
+                                                        <h4>{formatDuration(currentSlot?.duration)}</h4>
+                                                    </div>
+                                                    {capacityDisplay ? (
+                                                        <div className="action-box-capacity">
+                                                            <h4>{capacityDisplay}</h4>
+                                                            <p>capacity</p>
+                                                        </div>
+                                                    ) : null}
                                                 </div>
+                                                    );
+                                                })()}
                                             </div>
                                             <div className='action-box-date-and-time'>
                                                 <div className='action-box-date'>
-                                                    <h3>{formatDate(currentSlot?.startDateTime, 'withTime')}</h3>
+                                                    {currentSlot?.itemType === 'venue_hire' ? (
+                                                        <>
+                                                            <h3>{formatDate(currentSlot?.startDateTime)}</h3>
+                                                            {currentSlot?.startTime && (currentSlot?.endTime && String(currentSlot.endTime).trim() ? (
+                                                                <h4>{formatTime(currentSlot.startTime)} – {formatTime(currentSlot.endTime)}</h4>
+                                                            ) : (
+                                                                <h4>{formatTime(currentSlot.startTime)}</h4>
+                                                            ))}
+                                                        </>
+                                                    ) : (
+                                                        <h3>{formatDate(currentSlot?.startDateTime, 'withTime')}</h3>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -2452,7 +2813,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         ) : (
                                                             <>
                                                                 {showApplied && hasAccessToPrivateGig ? (
-                                                                    <button className='btn artist-profile disabled' disabled>Applied To Gig</button>
+                                                                    <button className='btn artist-profile disabled' disabled>{currentSlot?.itemType === 'venue_hire' ? 'Applied' : 'Applied To Gig'}</button>
                                                                 ) : accepted && hasAccessToPrivateGig ? (
                                                                     <button className='btn artist-profile disabled' disabled>Invitation Accepted</button>
                                                                 ) : showAcceptInvite && hasAccessToPrivateGig && user && user.artistProfiles?.length > 0 && selectedProfile.isComplete ? (
@@ -2480,12 +2841,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                             Complete Artist Profile to Apply
                                                                         </button>
                                                                 ) : showApply && hasAccessToPrivateGig ? (
-                                                                        <button className='btn artist-profile' onClick={canBookCurrentArtistProfile ? handleGigApplication : undefined} disabled={!canBookCurrentArtistProfile}>
-                                                                            Apply To Gig
+                                                                        <button className='btn artist-profile' onClick={canBookCurrentArtistProfile ? handleApplyClick : undefined} disabled={!canBookCurrentArtistProfile}>
+                                                                            {currentSlot?.itemType === 'venue_hire' ? 'Apply to Hire' : 'Apply To Gig'}
                                                                         </button>
                                                                 ) : null}
 
-                                                                {showApplied && hasAccessToPrivateGig && (
+                                                                {showApplied && hasAccessToPrivateGig && currentSlot?.itemType !== 'venue_hire' && (
                                                                     <button
                                                                         className={`btn secondary ${!canBookCurrentArtistProfile ? 'disabled' : ''}`}
                                                                         onClick={canBookCurrentArtistProfile ? handleWithdrawApplication : undefined}
@@ -2578,6 +2939,137 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     </div>
                 )}
             </section>
+
+            {showEquipmentCheckModal && selectedProfile?.techRider && venueProfile?.techRider && (
+                <Portal>
+                    <div className="modal equipment-check-modal" onClick={() => setShowEquipmentCheckModal(false)}>
+                        <div className="modal-content equipment-check-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h2>Equipment check</h2>
+                                <p>We&apos;ve compared your tech rider with this gig&apos;s listed equipment.</p>
+                            </div>
+                            <div className="equipment-check-modal-body">
+                            {(() => {
+                                const compat = computeCompatibility(selectedProfile.techRider, venueProfile.techRider);
+                                const hasAnyCompat = compat.providedByVenue.length > 0 || compat.hireableEquipment.length > 0 || compat.coveredByArtist.length > 0 || compat.needsDiscussion.length > 0;
+                                return (
+                                    <div className="equipment-check-sections">
+                                        {compat.providedByVenue.length > 0 && (
+                                            <section className="equipment-check-section covered-venue">
+                                                <h4>Provided by venue</h4>
+                                                <ul>
+                                                    {compat.providedByVenue.map((item, i) => (
+                                                        <li key={i}>
+                                                            <span className="tech-spec-compat-icon tech-spec-compat-icon--check" aria-hidden><TickIcon /></span>
+                                                            {item.label}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </section>
+                                        )}
+                                        {compat.hireableEquipment.length > 0 && (
+                                            <section className="equipment-check-section equipment-check-section--hireable">
+                                                <h4>Hireable</h4>
+                                                <ul className="equipment-check-hireable-list">
+                                                    {compat.hireableEquipment.map((item, i) => (
+                                                        <li key={item.key || i} className="equipment-check-hireable-item">
+                                                            <div className="equipment-check-hireable-item-header">
+                                                                <span className="tech-spec-compat-icon tech-spec-compat-icon--hire" aria-hidden>£</span>
+                                                                <span>{item.label} — £{item.hireFee}</span>
+                                                            </div>
+                                                            <div className="equipment-check-hireable-item-choice">
+                                                                <span className="equipment-check-hireable-item-choice-label">How will you handle this?</span>
+                                                                <div className="equipment-check-hireable-options" role="group" aria-label={`Choice for ${item.label}`}>
+                                                                    <label className="equipment-check-hireable-option">
+                                                                        <input
+                                                                            type="radio"
+                                                                            name={`hireable-${item.key || i}`}
+                                                                            value="venue"
+                                                                            checked={(equipmentCheckHireChoices[item.key || `_${i}`] || 'venue') === 'venue'}
+                                                                            onChange={() => setEquipmentCheckHireChoices((prev) => ({ ...prev, [item.key || `_${i}`]: 'venue' }))}
+                                                                        />
+                                                                        <span>Use venue&apos;s ({`£${item.hireFee}`})</span>
+                                                                    </label>
+                                                                    <label className="equipment-check-hireable-option">
+                                                                        <input
+                                                                            type="radio"
+                                                                            name={`hireable-${item.key || i}`}
+                                                                            value="own"
+                                                                            checked={(equipmentCheckHireChoices[item.key || `_${i}`] || 'venue') === 'own'}
+                                                                            onChange={() => setEquipmentCheckHireChoices((prev) => ({ ...prev, [item.key || `_${i}`]: 'own' }))}
+                                                                        />
+                                                                        <span>We&apos;ll provide our own</span>
+                                                                    </label>
+                                                                    {(item.key === 'soundEngineer' || item.label?.toLowerCase().includes('sound engineer')) && (
+                                                                        <label className="equipment-check-hireable-option">
+                                                                            <input
+                                                                                type="radio"
+                                                                                name={`hireable-${item.key || i}`}
+                                                                                value="not_required"
+                                                                                checked={(equipmentCheckHireChoices[item.key || `_${i}`] || 'venue') === 'not_required'}
+                                                                                onChange={() => setEquipmentCheckHireChoices((prev) => ({ ...prev, [item.key || `_${i}`]: 'not_required' }))}
+                                                                            />
+                                                                            <span>Not required</span>
+                                                                        </label>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </section>
+                                        )}
+                                        {compat.coveredByArtist.length > 0 && (
+                                            <section className="equipment-check-section covered-artist">
+                                                <h4>Covered by your act</h4>
+                                                <ul>
+                                                    {compat.coveredByArtist.map((item, i) => (
+                                                        <li key={i}>
+                                                            <span className="tech-spec-compat-icon tech-spec-compat-icon--check" aria-hidden><TickIcon /></span>
+                                                            {item.label}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </section>
+                                        )}
+                                        {compat.needsDiscussion.length > 0 && (
+                                            <section className="equipment-check-section needs-discussion">
+                                                <h4>Needs discussion</h4>
+                                                <ul>
+                                                    {compat.needsDiscussion.map((item, i) => (
+                                                        <li key={i}>{item.label}{item.note ? ` — ${item.note}` : ''}</li>
+                                                    ))}
+                                                </ul>
+                                            </section>
+                                        )}
+                                        {!hasAnyCompat && (
+                                            <p className="equipment-check-empty">No equipment requirements to compare. You can still apply.</p>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                            <div className="equipment-check-optional-note">
+                                <label htmlFor="equipment-check-note">You can still apply, but highlighted items may need discussing with the venue.</label>
+                                <textarea
+                                    id="equipment-check-note"
+                                    className="input"
+                                    placeholder="Write a message (optional)"
+                                    value={equipmentCheckNote}
+                                    onChange={(e) => setEquipmentCheckNote(e.target.value)}
+                                    rows={2}
+                                />
+                            </div>
+                            </div>
+                            <div className="equipment-check-footer">
+                                <div className="two-buttons equipment-check-actions">
+                                    <button type="button" className="btn tertiary" onClick={() => setShowEquipmentCheckModal(false)}>Go back</button>
+                                    <button type="button" className="btn artist-profile" onClick={handleEquipmentCheckContinue}>Apply</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </Portal>
+            )}
 
             {negotiateModal && (
                 <Portal>

@@ -2,7 +2,7 @@
  * Normalised gig view model for venue-side full gig page.
  * Single source of truth for display; behaviour is NOT driven by event type (kind).
  * @param {Object} rawGig - Raw gig from API/context
- * @param {Object} [options] - Optional: { allSlots?: Array } for multi-slot time range
+ * @param {Object} [options] - Optional: { allSlots?: Array, venueCapacity?: string|number } for multi-slot time range and capacity fallback
  * @returns {Object} NormalisedGig
  */
 export function normaliseGig(rawGig, options = {}) {
@@ -25,7 +25,14 @@ export function normaliseGig(rawGig, options = {}) {
   const fee = buildFeeLabel(rawGig);
   const depositAmount = rawGig.depositAmount ?? rawGig.deposit ?? null;
   const depositStatus = rawGig.depositStatus ?? (rawGig.depositPaid === true ? 'paid' : rawGig.depositPaid === false ? 'unpaid' : null);
-  const capacity = rawGig.capacity ?? null;
+  const capacityFromGig = rawGig.rentalCapacity ?? rawGig.capacity ?? null;
+  const venueCapFallback =
+    options.venueCapacity != null && String(options.venueCapacity).trim() !== ''
+      ? options.venueCapacity
+      : null;
+  const capacity =
+    capacityFromGig != null && capacityFromGig !== '' ? capacityFromGig : venueCapFallback;
+  const capacityDisplay = capacity != null && capacity !== '' ? String(capacity) : null;
   const accessFrom = rawGig.rentalAccessFrom ?? rawGig.accessFrom ?? null;
   const curfew = rawGig.rentalHardCurfew ?? rawGig.curfew ?? null;
   const bookedBy = buildBookedBySummary(rawGig);
@@ -43,7 +50,7 @@ export function normaliseGig(rawGig, options = {}) {
     fee,
     depositAmount: depositAmount != null ? depositAmount : null,
     depositStatus: depositStatus || null,
-    capacity,
+    capacity: capacityDisplay,
     accessFrom: accessFrom || null,
     curfew: curfew || null,
     bookedBy,
@@ -160,17 +167,17 @@ function buildFeeLabel(gig) {
 }
 
 function buildBookedBySummary(gig) {
-  const renterName = gig.renterName && String(gig.renterName).trim();
-  if (renterName) {
+  const name = (gig.renterName && String(gig.renterName).trim()) || (gig.hirerName && String(gig.hirerName).trim()) || null;
+  if (name) {
+    const fromAcceptedApplication = gig.hirerType === 'gigin_user';
     return {
-      type: 'manual',
-      name: renterName,
+      type: fromAcceptedApplication ? 'gigin' : 'manual',
+      name,
       contactId: null,
-      userId: null,
-      subtitle: 'Manually entered',
+      userId: gig.hirerUserId || null,
+      subtitle: fromAcceptedApplication ? 'On Gigin' : 'Manually entered',
     };
   }
-  // If we had a Gigin booking we could set type: 'gigin', contactId, etc.
   return { type: 'manual', name: null, contactId: null, userId: null, subtitle: null };
 }
 

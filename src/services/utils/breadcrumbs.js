@@ -34,7 +34,7 @@ export const getBreadcrumbs = (
         label = 'Gigs';
         break;
       case 'gig-applications':
-        label = 'Gig Applications';
+        label = 'Gig Details';
         break;
       case 'my-venues':
         label = 'My Venues';

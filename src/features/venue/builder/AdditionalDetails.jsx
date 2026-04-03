@@ -69,12 +69,26 @@ export const AdditionalDetails = ({ formData, handleInputChange, stepError, setS
                         </h6>
                     </div>
                 </div>
+                <div className='input-group margin'>
+                    <label htmlFor='capacity' className='input-label'>Capacity</label>
+                    <p className='input-helper' style={{ marginTop: 0, marginBottom: '0.35rem' }}>Max audience capacity</p>
+                    <input
+                        type='text'
+                        inputMode='numeric'
+                        id='capacity'
+                        className='input'
+                        placeholder='e.g. 150'
+                        value={formData.capacity ?? ''}
+                        onChange={(e) => handleInputChange('capacity', e.target.value.replace(/[^\d]/g, ''))}
+                        onClick={() => { setStepError(null); setFieldError(null); }}
+                    />
+                </div>
                 
                 {/* File Upload Fields */}
                 <div className='input-group large-text margin' style={{ width: '100%' }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', width: '60%', minWidth: '250px', justifyContent: 'space-between'}}>
                         <div>
-                            <label htmlFor='termsAndConditions' className='input-label'>Venue Terms and Conditions (optional)</label>
+                            <label htmlFor='termsAndConditions' className='input-label'>Venue Terms and Conditions</label>
                             <div className='file-upload-container'>
                                 <input
                                     type='file'
@@ -99,7 +113,7 @@ export const AdditionalDetails = ({ formData, handleInputChange, stepError, setS
                         </div>
                         
                         <div>
-                            <label htmlFor='prs' className='input-label'>Venue's PRS for artists to fill (optional)</label>
+                            <label htmlFor='prs' className='input-label'>Venue's PRS for artists to fill</label>
                             <div className='file-upload-container'>
                                 <input
                                     type='file'
@@ -124,7 +138,32 @@ export const AdditionalDetails = ({ formData, handleInputChange, stepError, setS
                         </div>
                         
                         <div>
-                            <label htmlFor='otherDocuments' className='input-label'>Other Documents (optional)</label>
+                            <label htmlFor='houseRulesDocument' className='input-label'>House Rules</label>
+                            <div className='file-upload-container'>
+                                <input
+                                    type='file'
+                                    id='houseRulesDocument'
+                                    className='file-input'
+                                    accept='.pdf,.doc,.docx'
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0] || null;
+                                        handleInputChange('houseRulesDocument', file);
+                                        setStepError(null);
+                                    }}
+                                />
+                                <label htmlFor='houseRulesDocument' className='file-upload-label'>
+                                    <InvoiceIcon />
+                                    {formData.houseRulesDocument && typeof formData.houseRulesDocument === 'object'
+                                        ? formData.houseRulesDocument.name
+                                        : formData.houseRulesDocument
+                                            ? 'File uploaded'
+                                            : 'Choose file'}
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor='otherDocuments' className='input-label'>Other Documents</label>
                             <div className='file-upload-container'>
                                 <input
                                     type='file'

@@ -23,6 +23,9 @@ export function getLocalGigDateTime(gig) {
   // Epoch millis
   if (typeof v === "number") return new Date(v);
 
+  // JS Date (e.g. normalized venue hire)
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+
   return null;
 }
 

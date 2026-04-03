@@ -1,0 +1,331 @@
+/* Invite & Share modal – Notion-style */
+/* Override global .modal-content (padding 2.5rem / padding-top 3rem in modals.styles.css) so header-to-label is ~16px */
+.invite-and-share-modal .invite-and-share-modal__content,
+.invite-and-share-modal.modal .invite-and-share-modal__content.modal-content {
+  max-width: 480px;
+  width: 100%;
+  margin: auto;
+  border-radius: 12px;
+  padding: 0 !important;
+  padding-top: 0 !important;
+  gap: 0.5rem;
+  overflow: hidden;
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.invite-and-share-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem 0.5rem;
+  flex-shrink: 0;
+}
+
+.invite-and-share-modal__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--gn-off-black, #111);
+}
+
+.invite-and-share-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--gn-grey-600, #666);
+  border-radius: 6px;
+}
+
+.invite-and-share-modal__close:hover {
+  background: var(--gn-grey-100, #f5f5f5);
+  color: var(--gn-off-black, #111);
+}
+
+.invite-and-share-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.invite-and-share-modal__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 1.25rem 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Section order: Invite by link → Invite on Gigin → Invite by email. Spacing: header → content 8px, section → next header 24px */
+.invite-and-share-modal__section {
+  margin-bottom: 24px;
+}
+.invite-and-share-modal__section:last-child {
+  margin-bottom: 0;
+}
+.invite-and-share-modal__section-title {
+  margin: 0 0 8px 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--gn-grey-600, #737373);
+  text-align: left;
+}
+.invite-and-share-modal__section-content {
+  margin: 0;
+}
+
+.invite-and-share-modal__email-section {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+/* Section header: same size/weight as Gig link. ~8px below label to input. */
+.invite-and-share-modal__email-label {
+  display: block;
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+  color: var(--gn-grey-700, #555) !important;
+  margin: 0 0 0.5rem 0;
+}
+
+.invite-and-share-modal__email-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0;
+  min-height: 2.5rem;
+}
+
+.invite-and-share-modal__email-input {
+  flex: 1;
+  min-width: 0;
+  height: 2.5rem;
+  box-sizing: border-box;
+}
+
+.invite-and-share-modal__input--error {
+  border-color: var(--gn-error, #c00);
+}
+
+.invite-and-share-modal__invite-btn {
+  flex-shrink: 0;
+  height: 2.5rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.invite-and-share-modal__error {
+  width: 100%;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--gn-error, #c00);
+}
+
+.invite-and-share-modal__tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--gn-grey-200, #eee);
+  padding-bottom: 0;
+}
+
+.invite-and-share-modal__tab {
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--gn-grey-600, #666);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  border-radius: 4px 4px 0 0;
+}
+
+.invite-and-share-modal__tab:hover {
+  color: var(--gn-off-black, #111);
+}
+
+.invite-and-share-modal__tab--active {
+  color: var(--gn-off-black, #111);
+  border-bottom-color: var(--gn-off-black, #111);
+}
+
+.invite-and-share-modal__picker {
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.invite-and-share-modal__search {
+  width: 100%;
+}
+
+.invite-and-share-modal__list {
+  flex: 1;
+  min-height: 140px;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.25rem 0;
+}
+
+.invite-and-share-modal__empty {
+  margin: 0;
+  padding: 1rem;
+  font-size: 0.9rem;
+  color: var(--gn-grey-600, #666);
+  text-align: center;
+}
+
+.invite-and-share-modal__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(250, 250, 250, 0.7);
+  border: 1px solid transparent;
+}
+
+.invite-and-share-modal__row:hover {
+  background: var(--gn-grey-100, #f5f5f5);
+}
+
+.invite-and-share-modal__row-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.invite-and-share-modal__row-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.invite-and-share-modal__row-sub {
+  font-size: 0.8125rem;
+  color: var(--gn-grey-600, #666);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.invite-and-share-modal__row-btn {
+  flex-shrink: 0;
+  min-width: 5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.invite-and-share-modal__row-btn:disabled {
+  cursor: default;
+}
+
+.invite-and-share-modal__share-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 2.5rem;
+}
+
+/* Gig link input: match other modal inputs (border, radius, padding, focus) */
+.invite-and-share-modal__share-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: ui-monospace, monospace;
+  background: var(--gn-white, #fff);
+  cursor: default;
+  border: 1px solid var(--gn-grey-300, #d4d4d4);
+  border-radius: 6px;
+  overflow-x: auto;
+  white-space: nowrap;
+  transition: border-color 0.2s ease, outline 0.2s ease;
+}
+
+.invite-and-share-modal__share-input:focus {
+  outline: none;
+  border-color: var(--gn-off-black, #111);
+  box-shadow: 0 0 0 1px var(--gn-off-black, #111);
+}
+
+.invite-and-share-modal__copy-btn {
+  flex-shrink: 0;
+  min-width: 7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.invite-and-share-modal__share-explainer {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  color: var(--gn-grey-600, #737373);
+  line-height: 1.4;
+}
+
+/* Mobile: bottom sheet */
+@media (max-width: 640px) {
+  .invite-and-share-modal .invite-and-share-modal__content {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: none;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12);
+    max-height: 85vh;
+  }
+
+  .invite-and-share-modal__header {
+    padding: 0.75rem 1.25rem 0.5rem;
+  }
+
+  .invite-and-share-modal__scroll {
+    padding: 0 1.25rem 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .invite-and-share-modal__email-row {
+    flex-direction: column;
+  }
+
+  .invite-and-share-modal__email-input {
+    min-width: 100%;
+  }
+
+  .invite-and-share-modal__invite-btn {
+    width: 100%;
+  }
+
+  .invite-and-share-modal__list {
+    max-height: 200px;
+  }
+}

@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { AllGigsIcon, CoinsIcon, DashboardIconLight, FeedbackIcon, GigIcon, GuitarsIcon, LogOutIcon, MailboxEmptyIcon, MailboxFullIcon, MapIcon, MusicianIconLight, PeopleGroupIcon, ProfileIcon, SettingsIcon, TelescopeIcon, TicketIcon, VenueBuilderIcon, VenueIconLight, VenueIconSolid } from "../ui/extras/Icons";
+import { AllGigsIcon, CoinsIcon, FeedbackIcon, GigIcon, GuitarsIcon, HouseIconLight, LogOutIcon, MailboxEmptyIcon, MailboxFullIcon, MapIcon, MusicianIconLight, PeopleGroupIcon, ProfileIcon, SettingsIcon, TelescopeIcon, TicketIcon, VenueBuilderIcon, VenueIconLight, VenueIconSolid } from "../ui/extras/Icons";
 import { useBreakpoint } from "../../../hooks/useBreakpoint";
 import Portal from "./Portal";
 import { useState } from "react";
@@ -100,7 +100,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             <>
                                 <Link className='link item no-margin' to={'/venues/dashboard/my-venues'}>
                                     My Venues
-                                    <VenueIconLight />
+                                    <HouseIconLight />
                                 </Link>
                                 <Link className='link item no-margin' to={'/venues/dashboard/artists'}>
                                     Artists

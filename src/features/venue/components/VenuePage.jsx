@@ -18,6 +18,7 @@ import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { getGigsByVenueId } from '../../../services/client-side/gigs';
+import { getVenueHireOpportunitiesByVenueIds } from '@services/client-side/venueHireOpportunities';
 import { getReviewsByVenueId } from '../../../services/client-side/reviews';
 import { useMapbox } from '@hooks/useMapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -25,6 +26,7 @@ import { getMusicianProfilesByIds, getArtistProfileMembers } from '../../../serv
 import { toast } from 'sonner';
 import { AmpIcon, BassIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, SpeakerIcon, VerifiedIcon, TechRiderIcon, SaveIcon, SavedIcon, ShareIcon, EditIcon, MoreInformationIcon, InvoiceIcon, PlayIcon, FilmIcon, CloseIcon } from '../../shared/ui/extras/Icons';
 import { TechRiderEquipmentCard } from '../../shared/ui/tech-rider/TechRiderEquipmentCard';
+import { getTechRiderForDisplay } from '../builder/techRiderConfig';
 import { VenueGigsList } from './VenueGigsList';
 import { MapSection } from './MapSection';
 import { ensureProtocol } from '../../../services/utils/misc';
@@ -71,6 +73,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
     const [loadingReviews, setLoadingReviews] = useState(false);
     const [venueSaved, setVenueSaved] = useState(false);
     const [savingVenue, setSavingVenue] = useState(false);
+    const [venueHireOpportunities, setVenueHireOpportunities] = useState([]);
 
     useEffect(() => {
         if (!venueId) return;
@@ -79,7 +82,11 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
           try {
             const profile = await getVenueProfileById(venueId);
             setVenueData(profile);
-            const gigs = await getGigsByVenueId(venueId);
+            const venueIdForFetch = profile?.venueId ?? profile?.id ?? venueId;
+            const [gigs, hires] = await Promise.all([
+              getGigsByVenueId(venueIdForFetch),
+              getVenueHireOpportunitiesByVenueIds([venueIdForFetch]),
+            ]);
             const now = new Date();
             const normalized = gigs.map(g => {
               const dt = toJsDate(g.startDateTime);
@@ -119,6 +126,24 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
               Array.isArray(gig.applicants) && gig.applicants.some(a => a.status === 'confirmed')
             );
             setConfirmedGigs(confirmed);
+
+            const toHireDate = (h) => {
+              const v = h?.date ?? h?.startDateTime;
+              if (!v) return null;
+              if (typeof v?.toDate === 'function') return v.toDate();
+              if (Number.isFinite(v?.seconds)) return new Date(v.seconds * 1000);
+              if (typeof v === 'string') { const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
+              return null;
+            };
+            const nonCancelled = (hires || []).filter((h) => String(h?.status).toLowerCase() !== 'cancelled');
+            // Exclude confirmed hires from profile – they are already booked, same as confirmed artist gigs
+            const availableHires = nonCancelled.filter((h) => String(h?.status).toLowerCase() !== 'confirmed');
+            const sortedHires = [...availableHires].sort((a, b) => {
+              const da = toHireDate(a) || new Date(0);
+              const db = toHireDate(b) || new Date(0);
+              return da.getTime() - db.getTime();
+            });
+            setVenueHireOpportunities(sortedHires);
           } catch (error) {
             console.error('Error loading venue profile or gigs:', error);
           } finally {
@@ -128,12 +153,21 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         fetchVenueAndGigs();
       }, [venueId, user]);
 
+    // Only show gigs that still have vacancies (exclude already-booked / existing-event gigs and confirmed venue hires)
+    const venueGigsWithVacancies = useMemo(() => {
+      return venueGigs.filter((gig) => {
+        const confirmed = (gig?.applicants ?? []).filter((a) => a?.status === 'confirmed');
+        const isHired = !!(gig?.renterName && String(gig.renterName).trim());
+        return confirmed.length === 0 && !isHired;
+      });
+    }, [venueGigs]);
+
     // Group gigs by their gigSlots relationship (same logic as venue dashboard and gig discovery)
     const groupedGigs = useMemo(() => {
       const processed = new Set();
       const groups = [];
       
-      venueGigs.forEach(gig => {
+      venueGigsWithVacancies.forEach(gig => {
         if (processed.has(gig.gigId)) return;
         
         // Check if this gig has gigSlots (is part of a multi-slot group)
@@ -152,7 +186,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             const slotId = queue.shift();
             if (processed.has(slotId)) continue;
             
-            const slotGig = venueGigs.find(g => g.gigId === slotId);
+            const slotGig = venueGigsWithVacancies.find(g => g.gigId === slotId);
             if (slotGig) {
               groupGigs.push(slotGig);
               groupIds.add(slotId);
@@ -196,7 +230,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
       });
       
       return groups;
-    }, [venueGigs]);
+    }, [venueGigsWithVacancies]);
 
     // Extract only primary gigs for display
     const primaryGigsForDisplay = useMemo(() => {
@@ -212,6 +246,8 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
         return confirmed.length === 0 && !isHired;
       });
     }, [primaryGigsForDisplay]);
+
+    const hasHireOpportunities = (venueHireOpportunities?.length ?? 0) > 0;
     useEffect(() => {
         if (!venueViewing) return;
         const hasArtistProfiles = Array.isArray(user?.artistProfiles) && user.artistProfiles.length > 0;
@@ -279,118 +315,36 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             return <p>The venue has not listed any tech rider information.</p>;
         }
 
-        const { soundSystem, backline, houseRules } = venueData.techRider;
-        const equipmentItems = [];
-
-        // PA
-        if (soundSystem?.pa) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="pa"
-                    equipmentName="PA"
-                    available={soundSystem.pa.available}
-                    notes={soundSystem.pa.notes}
-                />
-            );
-        }
-
-        // Mixing Console
-        if (soundSystem?.mixingConsole) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="mixingConsole"
-                    equipmentName="Mixing Console"
-                    available={soundSystem.mixingConsole.available}
-                    notes={soundSystem.mixingConsole.notes}
-                />
-            );
-        }
-
-        // Vocal Mics
-        if (soundSystem?.vocalMics) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="vocalMics"
-                    equipmentName="Vocal Mics"
-                    count={soundSystem.vocalMics.count}
-                    notes={soundSystem.vocalMics.notes}
-                />
-            );
-        }
-
-        // DI Boxes
-        if (soundSystem?.diBoxes) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="diBoxes"
-                    equipmentName="DI Boxes"
-                    count={soundSystem.diBoxes.count}
-                    notes={soundSystem.diBoxes.notes}
-                />
-            );
-        }
-
-        // Drum Kit
-        if (backline?.drumKit) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="drumKit"
-                    equipmentName="Drum Kit"
-                    available={backline.drumKit.available}
-                    notes={backline.drumKit.notes}
-                />
-            );
-        }
-
-        // Bass Amp
-        if (backline?.bassAmp) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="bassAmp"
-                    equipmentName="Bass Amp"
-                    available={backline.bassAmp.available}
-                    notes={backline.bassAmp.notes}
-                />
-            );
-        }
-
-        // Guitar Amp
-        if (backline?.guitarAmp) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="guitarAmp"
-                    equipmentName="Guitar Amp"
-                    available={backline.guitarAmp.available}
-                    notes={backline.guitarAmp.notes}
-                />
-            );
-        }
-
-        // Keyboard
-        if (backline?.keyboard) {
-            equipmentItems.push(
-                <TechRiderEquipmentCard
-                    key="keyboard"
-                    equipmentName="Keyboard"
-                    available={backline.keyboard.available}
-                    notes={backline.keyboard.notes}
-                />
-            );
-        }
+        const { equipmentForDisplay, stageSetup, houseRules } = getTechRiderForDisplay(venueData.techRider);
+        const hasNotes =
+            houseRules?.volumeLevel ||
+            houseRules?.noiseCurfew ||
+            houseRules?.volumeNotes ||
+            stageSetup?.stageSize ||
+            stageSetup?.generalTechNotes ||
+            (stageSetup?.powerOutlets != null && stageSetup?.powerOutlets !== '');
 
         return (
             <>
                 <div className="tech-rider-grid">
-                    {equipmentItems}
+                    {equipmentForDisplay.map((item) => (
+                        <TechRiderEquipmentCard
+                            key={item.key}
+                            equipmentName={item.label}
+                            available={item.available}
+                            count={item.count}
+                            notes={item.notes}
+                            hireFee={item.hireFee}
+                        />
+                    ))}
                 </div>
-                
-                {/* Other Note Fields */}
-                {(soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.houseRules || houseRules?.volumeLevel || houseRules?.noiseCurfew || houseRules?.volumeNotes) && (
+
+                {hasNotes && (
                     <div className="tech-rider-notes-section">
                         {houseRules?.volumeLevel && (
                             <div>
                                 <h6>Volume Level</h6>
-                                <p>{houseRules.volumeLevel.charAt(0).toUpperCase() + houseRules.volumeLevel.slice(1)}</p>
+                                <p>{String(houseRules.volumeLevel).charAt(0).toUpperCase() + String(houseRules.volumeLevel).slice(1)}</p>
                             </div>
                         )}
                         {houseRules?.noiseCurfew && (
@@ -405,40 +359,22 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                 <p>{houseRules.volumeNotes}</p>
                             </div>
                         )}
-                        {soundSystem?.monitoring && (
-                            <div>
-                                <h6>Monitoring</h6>
-                                <p>{soundSystem.monitoring}</p>
-                            </div>
-                        )}
-                        {soundSystem?.cables && (
-                            <div>
-                                <h6>Cables</h6>
-                                <p>{soundSystem.cables}</p>
-                            </div>
-                        )}
-                        {backline?.other && (
-                            <div>
-                                <h6>Other Backline</h6>
-                                <p>{backline.other}</p>
-                            </div>
-                        )}
-                        {backline?.stageSize && (
+                        {stageSetup?.stageSize && (
                             <div>
                                 <h6>Stage Size</h6>
-                                <p>{backline.stageSize}</p>
+                                <p>{stageSetup.stageSize}</p>
                             </div>
                         )}
-                        {houseRules?.powerAccess && (
+                        {stageSetup?.powerOutlets != null && stageSetup?.powerOutlets !== '' && (
                             <div>
-                                <h6>Power Access</h6>
-                                <p>{houseRules.powerAccess}</p>
+                                <h6>Power Outlets on/Near Stage</h6>
+                                <p>{stageSetup.powerOutlets}</p>
                             </div>
                         )}
-                        {houseRules?.houseRules && (
+                        {stageSetup?.generalTechNotes && (
                             <div>
-                                <h6>House Rules</h6>
-                                <p>{houseRules.houseRules}</p>
+                                <h6>General Tech Notes</h6>
+                                <p>{stageSetup.generalTechNotes}</p>
                             </div>
                         )}
                     </div>
@@ -564,7 +500,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 }));
                 setMusicianProfiles(normalized);
 
-                // Auto-select the active profile (first one or the one from URL param)
+                // Auto-select: URL param > localStorage active profile > primary > first
                 const paramId = musicianId;
                 if (paramId) {
                     const match = normalized.find(
@@ -572,7 +508,21 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                     );
                     setSelectedProfile(match || normalized[0] || null);
                 } else {
-                    setSelectedProfile(normalized[0] || null);
+                    let initial = null;
+                    if (user?.uid) {
+                        try {
+                            const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                            if (stored) {
+                                const match = normalized.find((p) => p.id === stored || p.musicianId === stored);
+                                if (match) initial = match;
+                            }
+                        } catch (e) { /* ignore */ }
+                    }
+                    if (!initial && user?.primaryArtistProfileId) {
+                        const match = normalized.find((p) => p.id === user.primaryArtistProfileId || p.musicianId === user.primaryArtistProfileId);
+                        if (match) initial = match;
+                    }
+                    setSelectedProfile(initial || normalized[0] || null);
                 }
                 setLoadingRequest(false);
                 return;
@@ -636,6 +586,48 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
             cancelled = true;
         };
     }, [selectedProfile, user?.uid, user?.artistProfiles]);
+
+    // Sync selected profile with header when user switches active profile (same as GigPage apply box).
+    useEffect(() => {
+        if (!user?.uid) return;
+        const profileList = musicianProfiles?.length
+            ? musicianProfiles
+            : (Array.isArray(user?.artistProfiles)
+                ? user.artistProfiles.map((p) => ({
+                    id: p.id,
+                    musicianId: p.id,
+                    name: p.name,
+                    picture: p.heroMedia?.url || '',
+                    genres: p.genres || [],
+                    musicianType: p.artistType || 'Musician/Band',
+                    musicType: p.genres || [],
+                    bandProfile: false,
+                    userId: p.userId,
+                }))
+                : []);
+        const handleActiveProfileChange = () => {
+            try {
+                const stored = localStorage.getItem(`activeArtistProfileId_${user.uid}`);
+                if (!stored || !profileList.length) return;
+                const next = profileList.find((p) => p.id === stored || p.musicianId === stored);
+                if (next) {
+                    setSelectedProfile((prev) => {
+                        const prevId = prev?.id ?? prev?.musicianId;
+                        return prevId !== (next.id ?? next.musicianId) ? next : prev;
+                    });
+                }
+            } catch (e) { /* ignore */ }
+        };
+        window.addEventListener('activeProfileChanged', handleActiveProfileChange);
+        const storageHandler = (e) => {
+            if (e.key === `activeArtistProfileId_${user.uid}`) handleActiveProfileChange();
+        };
+        window.addEventListener('storage', storageHandler);
+        return () => {
+            window.removeEventListener('activeProfileChanged', handleActiveProfileChange);
+            window.removeEventListener('storage', storageHandler);
+        };
+    }, [user?.uid, user?.artistProfiles, musicianProfiles]);
 
     // Check if venue is saved
     useEffect(() => {
@@ -1280,9 +1272,14 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                             </div>
                                         </div>
                                     )}
-                                    {!activeContentTab && venueGigs && venueGigs.length > 0 && hasGigVacancies && (
+                                    {!activeContentTab && hasGigVacancies && (
                                         <div className="venue-gigs-section">
                                             <VenueGigsList title={'Gig Vacancies'} gigs={primaryGigsForDisplay} groupedGigs={groupedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                                        </div>
+                                    )}
+                                    {!activeContentTab && hasHireOpportunities && (
+                                        <div className="venue-gigs-section">
+                                            <VenueGigsList title={'Hire Opportunities'} hireOpportunities={venueHireOpportunities || []} groupedGigs={[]} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
                                         </div>
                                     )}
                                 </div>
@@ -1330,9 +1327,14 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                         </div>
                                     )}
                                 </div>
-                                {primaryGigsForDisplay?.length > 0 && hasGigVacancies && (
+                                {hasGigVacancies && (
                                     <div className="section venue-page-gigs">
                                         <VenueGigsList title={'Gig Vacancies'} gigs={primaryGigsForDisplay} groupedGigs={groupedGigs} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                                    </div>
+                                )}
+                                {hasHireOpportunities && (
+                                    <div className="section venue-page-gigs">
+                                        <VenueGigsList title={'Hire Opportunities'} hireOpportunities={venueHireOpportunities || []} groupedGigs={[]} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
                                     </div>
                                 )}
                                 {venueData?.description && (

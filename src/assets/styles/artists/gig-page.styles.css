@@ -29,6 +29,17 @@
     font-size: 1.25rem;
 }
 
+/* Section titles (Timings, Tech Spec, Gig Description, etc.) – a bit bigger */
+.gig-page-body .timeline > h4,
+.gig-page-body .equipment > h4,
+.gig-page-body .description > h4,
+.gig-page-body .extra-info > h4,
+.gig-page-body .socials > h4,
+.gig-page-body .gig-page-tech-spec-tile > h4,
+.gig-page-body .gig-page-tech-spec > h4 {
+    font-size: 1.5rem;
+}
+
 /* VENUE TITLE */
 
 .gig-page-body .head {
@@ -119,11 +130,6 @@
 
 .gig-page-body .img .more-overlay h2 {
     color: var(--gn-white);
-}
-
-.gig-page-body .img:hover .more-overlay {
-    opacity: 1;
-    pointer-events: auto;
 }
 
 .gig-page-body .fullscreen-overlay {
@@ -235,11 +241,54 @@
     margin-bottom: 1rem;
 }
 
+.gig-page-body .action-box-side-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.35rem;
+    text-align: right;
+}
+
+.gig-page-body .action-box-capacity h4 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.gig-page-body .action-box-capacity p {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--gn-grey-600);
+}
+
 .gig-page-body .action-box-budget {
     display: flex;
     align-items: center;
     gap:5px;
 }
+
+.gig-page-body .action-box-budget-venue-hire {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
+}
+
+.gig-page-body .action-box-budget-venue-hire-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.gig-page-body .action-box-budget-venue-hire .action-box-venue-hire-label {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--gn-off-black, #1a1a1a);
+}
+
 
 .gig-page-body .action-box-budget h2 {
     font-size: 1.75rem;
@@ -287,6 +336,93 @@
 .gig-page-body .action-box-buttons .two-buttons {
     margin: 5px 0;
     gap:5px;
+}
+
+/* Gig viability indicator (Apply tile) */
+.gig-viability-indicator {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.gig-viability-indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 0.35rem;
+}
+
+.gig-viability-indicator-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.gig-viability-indicator-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.2rem;
+}
+
+.gig-viability-indicator-support {
+    margin: 0 0 0.35rem 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--gn-grey-700);
+}
+
+.gig-viability-indicator-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.85rem;
+    color: var(--gn-grey-700);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.gig-viability-indicator-link:hover {
+    color: var(--gn-off-black);
+}
+
+.gig-viability-indicator--easy {
+    background: rgba(13, 125, 77, 0.08);
+}
+
+.gig-viability-indicator--easy .gig-viability-indicator-dot {
+    background: var(--gn-green-600, #0d7d4d);
+}
+
+.gig-viability-indicator--easy .gig-viability-indicator-label {
+    color: var(--gn-green-700, #0a5c38);
+}
+
+.gig-viability-indicator--cost {
+    background: rgba(181, 83, 9, 0.08);
+}
+
+.gig-viability-indicator--cost .gig-viability-indicator-dot {
+    background: var(--gn-amber-600, #d97706);
+}
+
+.gig-viability-indicator--cost .gig-viability-indicator-label {
+    color: var(--gn-amber-800, #92400e);
+}
+
+.gig-viability-indicator--discussion {
+    background: rgba(194, 65, 12, 0.08);
+}
+
+.gig-viability-indicator--discussion .gig-viability-indicator-dot {
+    background: var(--gn-amber-700, #b45309);
+}
+
+.gig-viability-indicator--discussion .gig-viability-indicator-label {
+    color: var(--gn-amber-800, #9a3412);
 }
 
 .gig-page-body .action-box-buttons .private-applications {
@@ -545,6 +681,24 @@
 
 /* EQUIPMENT */
 
+/* Tech Spec tile (card container for gig page) */
+.gig-page-tech-spec-tile {
+    background-color: var(--gn-white);
+    border: 1px solid var(--gn-grey-300);
+    border-radius: 10px;
+    padding: 1.25rem 1.75rem;
+    box-shadow: 0 0 5px var(--gn-shadow, rgba(0, 0, 0, 0.06));
+}
+
+/* Ensure tile content has space from left/right edge (override .gig-info .equipment padding) */
+.gig-page-body .gig-info .equipment.gig-page-tech-spec-tile,
+.gig-page-body .main .section .equipment.gig-page-tech-spec-tile {
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+}
+
 .gig-page-body .equipment h4 {
     margin-bottom: 0.5rem;
 }
@@ -592,7 +746,7 @@
 
 .tech-rider-equipment-name {
     flex: 1;
-    font-size: 1rem !important;
+    font-size: 1.1rem !important;
     font-weight: 500 !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -615,11 +769,154 @@
 }
 
 .tech-rider-grid {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
     width: 100%;
+    align-items: start;
+}
+
+/* Tech Spec tabs (All Equipment / Compatibility) – pill style matching venue gigs list */
+.gig-page-tech-spec .tech-spec-tabs {
+    margin-top: 1rem;
+    width: fit-content;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background-color: var(--gn-grey-300);
+    padding: 3px;
+    border-radius: 0.5rem;
+}
+
+.gig-page-tech-spec .tech-spec-tab {
+    padding: 0.4rem 0.75rem;
+    background-color: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 400;
+    font-size: 1rem;
+    color: var(--gn-grey-700);
+    box-shadow: none;
+    transition: all 200ms ease-in-out;
+}
+
+.gig-page-tech-spec .tech-spec-tab:hover {
+    background-color: var(--gn-grey-350);
+}
+
+.gig-page-tech-spec .tech-spec-tab.tech-spec-tab--active {
+    background-color: var(--gn-white);
+    color: var(--gn-black);
+    font-weight: 600;
+    box-shadow: 0 0 5px var(--gn-grey-400);
+}
+
+.gig-page-tech-spec .tech-spec-tab-content {
+    margin-top: 1rem;
+}
+
+.gig-page-tech-spec .tech-spec-group-title {
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    color: var(--gn-off-black);
+}
+
+.gig-page-tech-spec-empty,
+.gig-page-tech-spec-signin-prompt {
+    margin-top: 0.5rem;
+    color: var(--gn-grey-600);
+}
+
+.gig-page-tech-spec-empty-state {
+    margin-top: 1rem;
+}
+
+.gig-page-tech-spec-empty-state p {
+    margin-bottom: 0.75rem;
+}
+
+.tech-spec-compatibility {
+    margin-top: 0.5rem;
+}
+
+.tech-spec-compatibility-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0 0 1rem 0;
+}
+
+.tech-spec-compat-section {
+    margin-bottom: 1rem;
+}
+
+.tech-spec-compat-section h6 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0 0 0.35rem 0;
+    color: var(--gn-off-black);
+    text-transform: none;
+}
+
+.tech-spec-compat-section ul {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.tech-spec-compat-section li {
+    margin-bottom: 0.35rem;
+    line-height: 1.4;
+    position: relative;
+}
+
+.tech-spec-compat-section--covered li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.tech-spec-compat-icon {
+    flex-shrink: 0;
+}
+
+.tech-spec-compat-icon--check {
+    color: var(--gn-green-600, #0d7d4d);
+}
+
+.tech-spec-compat-icon--check .icon {
+    font-size: 1em;
+}
+
+.tech-spec-compat-section--hireable li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.tech-spec-compat-icon--hire {
+    color: var(--gn-off-black);
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* Simple exclamation mark (no circle) */
+.tech-spec-compat-section--needs li {
+    padding-left: 1.75em;
+}
+
+.tech-spec-compat-section--needs li::before {
+    content: '!';
+    position: absolute;
+    left: 0;
+    color: var(--gn-amber-700, #b45309);
+    font-weight: 600;
+    font-size: 1em;
+}
+
+.tech-spec-compat-section--needs ul {
+    color: var(--gn-grey-700);
 }
 
 .tech-rider-volume-curfew {
@@ -665,6 +962,56 @@
     margin-bottom: 1rem;
     color: var(--gn-off-black);
     line-height: 1.5;
+}
+
+/* Venue setup blocks (Stage & Power, Sound limits, Technical notes) – gig page Tech Spec */
+/* Sound Limits (left) and Stage & Power (right) side by side */
+.tech-spec-venue-blocks-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.tech-spec-venue-block {
+    padding: 0;
+}
+
+.tech-spec-venue-block .tech-spec-group-title {
+    margin-bottom: 0.5rem;
+}
+
+.tech-spec-venue-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tech-spec-venue-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.tech-spec-venue-field-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--gn-grey-600);
+    text-transform: none;
+}
+
+.tech-spec-venue-field-value {
+    font-size: 1rem;
+    color: var(--gn-off-black);
+    line-height: 1.45;
+}
+
+.tech-spec-venue-notes {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--gn-off-black);
+    line-height: 1.5;
+    white-space: pre-wrap;
 }
 
 
@@ -961,6 +1308,10 @@
 
     /* EQUIPMENT */
 
+    .gig-page-body.mobile .tech-spec-venue-blocks-row {
+        grid-template-columns: 1fr;
+    }
+
     .gig-page-body.mobile .equipment {
         padding: 0 1rem;
     }
@@ -1004,6 +1355,10 @@
         font-size: 1rem;
     }
 
+    .gig-page-body.mobile .action-box-capacity h4 {
+        font-size: 1rem;
+    }
+
     .gig-page-body.mobile .action-box-date h3 {
         font-size: 1rem;
     }
@@ -1017,4 +1372,499 @@
         text-align: center;
         font-size: 1rem;
     }
+}
+
+/* Equipment check modal (tech compatibility before apply) */
+.equipment-check-modal .modal-content.equipment-check-content {
+    max-width: 480px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.equipment-check-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.equipment-check-footer {
+    flex-shrink: 0;
+    border-top: 1px solid var(--gn-grey-300);
+    background: var(--gn-grey-50, #f8f9fa);
+    margin: 0 -2.5rem -2.5rem -2.5rem;
+    padding: 1rem 2.5rem 2.5rem 2.5rem;
+}
+
+@media (--bp-md) {
+    .equipment-check-footer {
+        margin: 0 -1rem -1rem -1rem;
+        padding: 1rem 1rem 1rem 1rem;
+    }
+}
+
+.equipment-check-modal .modal-header h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.35rem;
+}
+
+.equipment-check-modal .modal-header p {
+    margin: 0;
+    color: var(--gn-grey-600);
+    font-size: 0.95rem;
+}
+
+.equipment-check-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.equipment-check-section {
+    margin: 0;
+}
+
+.equipment-check-section h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+}
+
+.equipment-check-section ul {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.equipment-check-section ul li {
+    margin-bottom: 0.35rem;
+    line-height: 1.4;
+    position: relative;
+}
+
+.equipment-check-section.covered-venue ul li,
+.equipment-check-section.covered-artist ul li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.equipment-check-section .tech-spec-compat-icon--check {
+    color: var(--gn-green-600, #0d7d4d);
+    flex-shrink: 0;
+}
+
+.equipment-check-section .tech-spec-compat-icon--check .icon {
+    font-size: 1em;
+}
+
+.equipment-check-section.needs-discussion ul li {
+    padding-left: 1.75em;
+}
+
+/* Simple exclamation mark (no circle) – matches Tech Spec tab */
+.equipment-check-section.needs-discussion ul li::before {
+    content: '!';
+    position: absolute;
+    left: 0;
+    color: var(--gn-amber-700, #b45309);
+    font-weight: 600;
+    font-size: 1em;
+}
+
+.equipment-check-section.needs-discussion ul li::after {
+    content: none;
+}
+
+.equipment-check-section.covered-venue h4 { color: var(--gn-green-600, #0d7d4d); }
+.equipment-check-section.equipment-check-section--hireable h4 { color: var(--gn-off-black); }
+.equipment-check-section.covered-artist h4 { color: var(--gn-off-black); }
+.equipment-check-section.needs-discussion h4 { color: var(--gn-amber-700, #b45309); }
+
+.equipment-check-hireable-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.equipment-check-hireable-item {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--gn-grey-300);
+}
+
+.equipment-check-hireable-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.equipment-check-hireable-item-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.equipment-check-hireable-item-header .tech-spec-compat-icon--hire {
+    color: var(--gn-off-black);
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.equipment-check-hireable-item-choice {
+    margin-left: 1.5rem;
+}
+
+.equipment-check-hireable-item-choice-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--gn-grey-700);
+    margin-bottom: 0.35rem;
+}
+
+.equipment-check-hireable-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.equipment-check-hireable-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.equipment-check-hireable-option input {
+    flex-shrink: 0;
+}
+
+.equipment-check-disclaimer {
+    margin: 0.5rem 0 0 0;
+    font-size: 0.875rem;
+    color: var(--gn-grey-600);
+}
+
+.equipment-check-empty {
+    margin: 0;
+    color: var(--gn-grey-600);
+    font-size: 0.95rem;
+}
+
+.equipment-check-optional-note {
+    margin-top: 1rem;
+}
+
+.equipment-check-optional-note label {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 0.35rem;
+    color: var(--gn-grey-700);
+}
+
+.equipment-check-optional-note .input {
+    width: 100%;
+    resize: none;
+}
+
+.equipment-check-footer .equipment-check-actions {
+    margin-top: 0;
+    width: 100%;
+    justify-content: stretch;
+    gap: 1rem;
+}
+
+.equipment-check-footer .equipment-check-actions .btn.tertiary {
+    flex: 0 0 auto;
+}
+
+.equipment-check-footer .equipment-check-actions .btn.artist-profile {
+    flex: 1 1 auto;
+    min-width: 10rem;
+}
+
+/* Tech rider modal – stronger tile outlines for visibility */
+.tech-rider-equipment-summary {
+    border-color: var(--gn-grey-500);
+}
+
+/* All Equipment tab: two equipment items per row */
+.tech-rider-equipment-summary-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 1.5rem;
+}
+.tech-rider-equipment-summary-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0;
+}
+.tech-rider-stage-area {
+    border: 2px solid var(--gn-grey-500);
+}
+/* Stage full width in modal so edges line up with equipment summary and other tiles */
+.tech-rider-stage-map-container.view-mode .tech-rider-stage-area {
+    max-width: 100%;
+    width: 100%;
+}
+
+/* Tech rider modal: equal padding and centered stage layout */
+.tech-rider-modal .modal-content {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+.tech-rider-modal .tech-rider-stage-map-container.view-mode {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+.tech-rider-modal .tech-rider-stage-map-container.view-mode .tech-rider-stage-area {
+    max-width: 100%;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+.tech-rider-viewer-performer-card,
+.tech-rider-viewer-performer-box {
+    border-color: var(--gn-grey-500);
+}
+.tech-rider-viewer-extra-notes {
+    border-color: var(--gn-grey-500);
+}
+
+/* Stage performer: all instrument icons */
+.tech-rider-stage-performer-icons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.2rem;
+    line-height: 0;
+}
+.tech-rider-stage-performer-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.tech-rider-stage-performer-icon .icon {
+    font-size: 0.9rem;
+}
+
+/* Requirements per performer: instrument icons before name */
+.tech-rider-viewer-performer-header-icons {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+.tech-rider-viewer-performer-header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.tech-rider-viewer-performer-header-icon .icon {
+    font-size: 0.95rem;
+    color: var(--gn-off-black);
+}
+
+/* Applicant Tech Setup modal (venue gig applications: two-tab tech setup) */
+.applicant-tech-setup-modal .applicant-tech-setup-modal__content {
+  padding: 1rem 1.25rem;
+}
+.applicant-tech-setup-modal .applicant-tech-setup-modal__header {
+  margin-bottom: 0.5rem;
+}
+.applicant-tech-setup-modal .applicant-tech-setup-modal__header-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.applicant-tech-setup-modal .applicant-tech-setup-modal__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.applicant-tech-setup-modal .applicant-tech-setup-tabs {
+  margin-top: 0;
+  margin-bottom: 0;
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background-color: var(--gn-grey-300);
+  padding: 3px;
+  border-radius: 0.5rem;
+}
+.applicant-tech-setup-modal .applicant-tech-setup-tab {
+  padding: 0.4rem 0.75rem;
+  background-color: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 400;
+  font-size: 0.95rem;
+  color: var(--gn-grey-700);
+  box-shadow: none;
+  transition: all 200ms ease-in-out;
+}
+.applicant-tech-setup-modal .applicant-tech-setup-tab:hover {
+  background-color: var(--gn-grey-350);
+}
+.applicant-tech-setup-modal .applicant-tech-setup-tab.tech-spec-tab--active {
+  background-color: var(--gn-white);
+  color: var(--gn-off-black);
+  font-weight: 600;
+  box-shadow: 0 0 5px var(--gn-grey-400);
+}
+.applicant-tech-setup-modal .applicant-tech-setup-tab-panel {
+  padding-top: 0;
+  margin-top: 0;
+}
+.applicant-tech-setup-modal .applicant-tech-setup-tab-content {
+  padding-top: 0;
+  margin-top: 0;
+}
+.applicant-tech-setup-compat-summary {
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+.applicant-tech-setup-compat--full {
+  background-color: rgba(34, 139, 34, 0.12);
+  color: var(--gn-green, #228b22);
+}
+.applicant-tech-setup-compat--hired {
+  background-color: rgba(34, 139, 34, 0.08);
+  color: var(--gn-grey-800);
+}
+.applicant-tech-setup-compat--missing {
+  background-color: rgba(255, 108, 75, 0.12);
+  color: var(--gn-orange);
+  font-size: 0.85rem;
+}
+.applicant-tech-setup-missing-tile {
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background-color: rgba(255, 108, 75, 0.12);
+  color: var(--gn-orange);
+}
+.applicant-tech-setup-missing-tile .applicant-tech-setup-section {
+  margin-bottom: 0;
+}
+.applicant-tech-setup-missing-tile .applicant-tech-setup-section-title {
+  color: var(--gn-orange);
+  margin-top: 0;
+}
+.applicant-tech-setup-missing-tile .applicant-tech-setup-pill {
+  background-color: rgba(255, 255, 255, 0.7);
+  color: var(--gn-off-black);
+}
+.applicant-tech-setup-missing-tile .applicant-tech-setup-empty {
+  color: var(--gn-orange);
+  font-style: normal;
+}
+.applicant-tech-setup-compat-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.applicant-tech-setup-section {
+  margin-bottom: 1.25rem;
+}
+.applicant-tech-setup-section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: var(--gn-grey-700);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-transform: none;
+}
+.applicant-tech-setup-section-icon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--gn-grey-600);
+}
+.applicant-tech-setup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.applicant-tech-setup-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  background-color: var(--gn-grey-200);
+  border-radius: 999px;
+  font-size: 0.9rem;
+  color: var(--gn-off-black);
+}
+.applicant-tech-setup-pill-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--gn-grey-700);
+}
+.applicant-tech-setup-pill-icon.icon {
+  font-size: 1rem;
+}
+.applicant-tech-setup-empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--gn-grey-500);
+  font-style: italic;
+}
+.applicant-tech-setup-notes {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--gn-grey-700);
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+.applicant-tech-setup-empty-state {
+  padding: 1.5rem 0;
+  text-align: center;
+  color: var(--gn-grey-600);
+}
+.applicant-tech-setup-empty-state p {
+  margin: 0 0 0.5rem 0;
+}
+.applicant-tech-setup-empty-state-hint {
+  font-size: 0.9rem;
+  color: var(--gn-grey-500) !important;
+}
+
+.applicant-tech-setup-compat-intro {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  color: var(--gn-grey-600);
+}
+
+.applicant-tech-setup-derived-hint {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  color: var(--gn-grey-600);
+}
+.applicant-tech-setup-derived-hint--below-tabs {
+  margin: 0 0 0.75rem 0;
+  padding: 0 0.25rem 0 0;
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { GigApplications } from '@features/venue/dashboard/GigApplications';
+import { ArtistFillThisSlotTile } from '../../components/ArtistFillThisSlotTile';
 
 /**
  * Main panel for artist_booking + open status.
@@ -22,20 +23,24 @@ export function ArtistBookingOpenPanel(props) {
   } = props;
 
   return (
-    <GigApplications
-      rawGig={rawGig}
-      setGigInfo={setGigInfo}
-      skipHeader
-      showInvitesModalFromParent={showInvitesModal}
-      setShowInvitesModalFromParent={setShowInvitesModal}
-      gigs={gigs}
-      venues={venues}
-      refreshGigs={refreshGigs}
-      setGigPostModal={setGigPostModal}
-      setEditGigData={setEditGigData}
-      refreshStripe={refreshStripe}
-      customerDetails={customerDetails}
-      copyToClipboard={copyToClipboard}
-    />
+    <>
+      <ArtistFillThisSlotTile gig={rawGig} venues={venues} refreshGigs={refreshGigs} />
+      <GigApplications
+        rawGig={rawGig}
+        setGigInfo={setGigInfo}
+        skipHeader
+        useCardLayout
+        showInvitesModalFromParent={showInvitesModal}
+        setShowInvitesModalFromParent={setShowInvitesModal}
+        gigs={gigs}
+        venues={venues}
+        refreshGigs={refreshGigs}
+        setGigPostModal={setGigPostModal}
+        setEditGigData={setEditGigData}
+        refreshStripe={refreshStripe}
+        customerDetails={customerDetails}
+        copyToClipboard={copyToClipboard}
+      />
+    </>
   );
 }

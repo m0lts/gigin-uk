@@ -9,14 +9,23 @@ import {
   TrumpetIcon,
   TromboneIcon,
   PlaybackIcon,
+  MusicianIconSolid,
   GuitarsIcon,
   WarningIcon,
-  CloseIcon
+  CloseIcon,
+  MicrophoneLinesIcon,
+  PlugIcon,
+  SpeakersIcon,
+  SlidersIcon,
+  AmpIcon,
+  LinkIcon,
+  PeopleGroupIconSolid
 } from '@features/shared/ui/extras/Icons';
 import '@styles/artists/gig-page.styles.css';
 import { MoreInformationIcon } from '../../shared/ui/extras/Icons';
+import { formatEquipmentSourceLine, getEquipmentSummary, getPerformerSummaryLines } from '@services/utils/techRiderSummary';
 
-// Instrument-specific question configurations (for tech rider display)
+// Instrument-specific question configurations for tech rider display (must match artist schema for summary)
 const INSTRUMENT_QUESTIONS = {
   'Vocals': [
     { key: 'needsMic', type: 'yesno', label: 'Needs mic provided?', notes: true },
@@ -24,7 +33,7 @@ const INSTRUMENT_QUESTIONS = {
     { key: 'extraNotes', type: 'text', label: 'Extra notes' }
   ],
   'Drums': [
-    { key: 'needsDrumKit', type: 'yesno', label: 'Need drum kit provided?', notes: true },
+    { key: 'drumKitSource', type: 'source', label: 'Drum kit', options: [{ value: 'venue', label: 'Use venue kit' }, { value: 'own', label: 'Bring my own kit' }, { value: 'either', label: 'Either works' }] },
     { key: 'needsCymbals', type: 'yesno', label: 'Need cymbals provided?', notes: true },
     { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
     { key: 'needsMic', type: 'yesno', label: 'Needs mic provided?', notes: true, dependsOn: { key: 'singing', value: true } },
@@ -42,8 +51,7 @@ const INSTRUMENT_QUESTIONS = {
     { key: 'extraNotes', type: 'text', label: 'Extra notes' }
   ],
   'Guitar': [
-    { key: 'bringingInstrument', type: 'yesno', label: 'Bringing instrument?', notes: false },
-    { key: 'needsAmp', type: 'yesno', label: 'Need amp provided?', notes: true },
+    { key: 'guitarAmpSource', type: 'source', label: 'Guitar amp', options: [{ value: 'venue', label: 'Use venue amp' }, { value: 'own', label: 'Bring my own amp' }, { value: 'either', label: 'Either works' }] },
     { key: 'needsDI', type: 'yesno', label: 'Need DI?', notes: true },
     { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
     { key: 'needsMic', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
@@ -51,8 +59,7 @@ const INSTRUMENT_QUESTIONS = {
     { key: 'extraNotes', type: 'text', label: 'Extra notes' }
   ],
   'Bass': [
-    { key: 'bringingInstrument', type: 'yesno', label: 'Bringing instrument?', notes: false },
-    { key: 'needsAmp', type: 'yesno', label: 'Need amp provided?', notes: true },
+    { key: 'bassAmpSource', type: 'source', label: 'Bass amp', options: [{ value: 'venue', label: 'Use venue amp' }, { value: 'own', label: 'Bring my own amp' }, { value: 'either', label: 'Either works' }] },
     { key: 'needsDI', type: 'yesno', label: 'Need DI?', notes: true },
     { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
     { key: 'needsMic', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
@@ -100,13 +107,9 @@ const INSTRUMENT_QUESTIONS = {
     { key: 'extraNotes', type: 'text', label: 'Extra notes' }
   ],
   'Other': [
-    { key: 'bringingInstrument', type: 'yesno', label: 'Bringing instrument?', notes: false },
-    { key: 'needsAmp', type: 'yesno', label: 'Need amp provided?', notes: true },
-    { key: 'needsDI', type: 'yesno', label: 'Need DI?', notes: true },
-    { key: 'singing', type: 'yesno', label: 'Singing?', notes: false },
-    { key: 'needsMic', type: 'yesno', label: 'Mic Needed?', notes: true, dependsOn: { key: 'singing', value: true } },
-    { key: 'needsPowerSockets', type: 'number', label: 'Need power socket(s)?', notes: true },
-    { key: 'extraNotes', type: 'text', label: 'Extra notes' }
+    { key: 'needsMic', type: 'yesno', label: 'Needs mic provided?', notes: true },
+    { key: 'needsDI', type: 'yesno', label: 'Needs DI box?', notes: true },
+    { key: 'needsPowerSockets', type: 'number', label: 'Power sockets needed on stage', notes: true }
   ],
   'Playback': [
     { key: 'hasPrerecordedSounds', type: 'yesno', label: 'Have pre-recorded sounds?', notes: false },
@@ -140,12 +143,14 @@ const getInstrumentIcon = (instrument) => {
       return <TromboneIcon />;
     case 'Playback':
       return <PlaybackIcon />;
+    case 'Other':
+      return <MusicianIconSolid />;
     default:
-      return <PlaybackIcon />; // Default for 'Other'
+      return <PlaybackIcon />;
   }
 };
 
-export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose }) => {
+export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose, embed = false }) => {
   const [selectedPerformerIndex, setSelectedPerformerIndex] = useState(null);
   const [performerPopupPosition, setPerformerPopupPosition] = useState({ top: 0, left: 0 });
   const stageAreaRef = useRef(null);
@@ -173,121 +178,16 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
   }, [selectedPerformerIndex]);
 
   if (!techRider || !techRider.isComplete || !techRider.lineup || techRider.lineup.length === 0) {
-    return null;
+    return embed ? null : null;
   }
 
-  // Helper function to get performer details for popup
+  // Helper: get performer summary lines for popup (venue-focused, positive requirements only)
   const getPerformerDetails = (performerIndex) => {
     const performer = techRider.lineup[performerIndex];
     const details = techRider.performerDetails?.[performerIndex] || {};
     const instruments = performer.instruments || [];
-    
-    const questionMap = new Map();
-    const allQuestions = [];
-    instruments.forEach((instrument) => {
-      const questions = INSTRUMENT_QUESTIONS[instrument] || [];
-      allQuestions.push(...questions.map(q => ({ ...q, instrument })));
-    });
-    
-    const dependencyOnlyKeys = new Set();
-    allQuestions.forEach(question => {
-      if (!question.notes && question.type === 'yesno' && question.key !== 'extraNotes') {
-        const isUsedAsDependency = allQuestions.some(q => q.dependsOn && q.dependsOn.key === question.key);
-        if (isUsedAsDependency) {
-          dependencyOnlyKeys.add(question.key);
-        }
-      }
-    });
-    
-    instruments.forEach((instrument) => {
-      const questions = INSTRUMENT_QUESTIONS[instrument] || [];
-      const instrumentDetails = details[instrument] || {};
-      
-      questions.forEach((question) => {
-        if (dependencyOnlyKeys.has(question.key)) {
-          return;
-        }
-        
-        if (question.dependsOn) {
-          let dependencyMet = false;
-          const dependsValue = instrumentDetails[question.dependsOn.key];
-          if (dependsValue === question.dependsOn.value) {
-            dependencyMet = true;
-          } else {
-            const existing = questionMap.get(question.key);
-            if (existing) {
-              for (const inst of existing.instruments) {
-                const instDetails = details[inst] || {};
-                if (instDetails[question.dependsOn.key] === question.dependsOn.value) {
-                  dependencyMet = true;
-                  break;
-                }
-              }
-            }
-          }
-          if (!dependencyMet) {
-            return;
-          }
-        }
-        
-        if (!questionMap.has(question.key)) {
-          questionMap.set(question.key, {
-            ...question,
-            instruments: [instrument],
-            currentValue: instrumentDetails[question.key],
-            instrumentDetails: instrumentDetails,
-            sourceInstrument: instrument
-          });
-        } else {
-          const existing = questionMap.get(question.key);
-          existing.instruments.push(instrument);
-          if (existing.currentValue === undefined || existing.currentValue === null || existing.currentValue === '') {
-            const thisValue = instrumentDetails[question.key];
-            if (thisValue !== undefined && thisValue !== null && thisValue !== '') {
-              existing.currentValue = thisValue;
-              existing.instrumentDetails = instrumentDetails;
-              existing.sourceInstrument = instrument;
-            }
-          }
-        }
-      });
-    });
-
-    const questions = Array.from(questionMap.values()).filter(q => {
-      // Don't show "singing?" question if performer has Vocals in their instruments
-      if (q.key === 'singing' && instruments.includes('Vocals')) {
-        return false;
-      }
-      if (q.type === 'yesno') return q.currentValue !== undefined && q.currentValue !== null;
-      if (q.type === 'number') return q.currentValue !== undefined && q.currentValue !== null && q.currentValue !== 0;
-      if (q.type === 'text') return q.currentValue && q.currentValue.trim() !== '';
-      return false;
-    });
-
-    // Separate into needs (red) and doesn't need (grey)
-    const needsQuestions = [];
-    const doesntNeedQuestions = [];
-    
-    questions.forEach((questionData) => {
-      const question = questionData;
-      const currentValue = questionData.currentValue;
-      const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
-      
-      if (question.type === 'yesno') {
-        // Special handling for bringingKeyboard: if false, it means they need keyboard provided
-        if (question.key === 'bringingKeyboard' && !currentValue) {
-          needsQuestions.push(questionData);
-        } else if (currentValue && !isBringingInstrument) {
-          needsQuestions.push(questionData);
-        } else if (!currentValue || isBringingInstrument) {
-          doesntNeedQuestions.push(questionData);
-        }
-      } else if (question.type === 'number' || question.type === 'text') {
-        needsQuestions.push(questionData);
-      }
-    });
-
-    return { needsQuestions, doesntNeedQuestions, performer, instruments };
+    const summaryLines = getPerformerSummaryLines(details, instruments, INSTRUMENT_QUESTIONS);
+    return { summaryLines, performer, instruments };
   };
 
   const checkTechRiderMismatches = () => {
@@ -461,36 +361,78 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
   const mismatches = venueTechRider ? checkTechRiderMismatches() : [];
   const warningText = formatTechRiderWarningText(mismatches);
 
-  return (
-    <div className='modal tech-rider-modal' onClick={onClose}>
-      <div className='modal-content scrollable' onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', maxHeight: '90vh', overflow: 'auto' }}>
-        <button className='btn tertiary close' onClick={onClose} style={{ padding: '0.5rem' }}>
-          Close
-        </button>
-        <div className='modal-header' style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <TechRiderIcon />
-            <h2>Tech Rider - {artistName}</h2>
+  const innerContent = (
+    <>
+      {!embed && (
+        <>
+          <button className='btn tertiary close' onClick={onClose} style={{ padding: '0.5rem' }}>
+            Close
+          </button>
+          <div className='modal-header' style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <TechRiderIcon />
+              <h2>Tech Rider - {artistName}</h2>
+            </div>
           </div>
-        </div>
-        
-        {warningText && (
-          <div className="tech-rider-warning" style={{ marginTop: 0, marginBottom: '1.5rem', maxWidth: '400px' }}>
-            <WarningIcon />
-            <p>{warningText}</p>
-          </div>
-        )}
-        
-        <div className="additional-info-section" style={{ border: 'none', padding: 0 }}>
-          <div className="section-content" style={{ padding: 0 }}>
+          {warningText && (
+            <div className="tech-rider-warning" style={{ marginTop: 0, marginBottom: '1.5rem', maxWidth: '400px' }}>
+              <WarningIcon />
+              <p>{warningText}</p>
+            </div>
+          )}
+        </>
+      )}
+      <div className="additional-info-section" style={{ border: 'none', padding: 0 }}>
+        <div className="section-content" style={{ padding: 0 }}>
+            {/* Equipment Summary - aggregated across all performers */}
+            {(() => {
+              const { performerCount, items } = getEquipmentSummary(techRider);
+              const getEquipmentIcon = (type) => {
+                const map = {
+                  vocalMics: MicrophoneLinesIcon,
+                  diBoxes: LinkIcon,
+                  powerSockets: PlugIcon,
+                  pa: SpeakersIcon,
+                  mixingDesk: SlidersIcon,
+                  drumKit: DrumsIcon,
+                  guitarAmp: AmpIcon,
+                  bassAmp: BassIcon
+                };
+                const Icon = map[type];
+                return Icon ? <Icon /> : null;
+              };
+              return (
+                <>
+                  <h5 className="tech-rider-equipment-summary-title" style={{ marginBottom: '0.5rem' }}>Equipment Summary</h5>
+                  <div className="tech-rider-equipment-summary" style={{ marginBottom: '1rem' }}>
+                  <p className="tech-rider-equipment-summary-performers">
+                    <span className="tech-rider-equipment-summary-performers-icon" aria-hidden><PeopleGroupIconSolid /></span>
+                    Number of performers: {performerCount}
+                  </p>
+                  {items.length > 0 ? (
+                    <ul className="tech-rider-equipment-summary-list" style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+                      {items.map((item, i) => (
+                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span className="tech-rider-equipment-summary-item-icon" aria-hidden style={{ display: 'inline-flex', width: '1.125rem', flexShrink: 0 }}>{getEquipmentIcon(item.type)}</span>
+                          {item.text}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  </div>
+                </>
+              );
+            })()}
+
             {/* Stage Map - View Only */}
             <div className="tech-rider-stage-map-container view-mode" style={{ position: 'relative' }}>
+              <h5 className="tech-rider-equipment-summary-title" style={{ marginBottom: '0.5rem' }}>Stage Layout</h5>
               <div className="tech-rider-stage-area view-mode" ref={stageAreaRef} style={{ position: 'relative' }}>
                 <h6 className="tech-rider-stage-front">Front of Stage</h6>
                 {techRider.stageArrangement?.performers?.map((performer) => {
                   const performerData = techRider.lineup[performer.lineupIndex];
                   if (!performerData) return null;
-                  const primaryInstrument = performerData.instruments?.[0] || 'Other';
+                  const instruments = performerData.instruments?.length ? performerData.instruments : ['Other'];
                   return (
                     <div
                       key={performer.lineupIndex}
@@ -523,7 +465,11 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                         <div className="info-icon">
                           <MoreInformationIcon />
                         </div>
-                        {getInstrumentIcon(primaryInstrument)}
+                        <div className="tech-rider-stage-performer-icons" aria-hidden>
+                          {instruments.map((inst, idx) => (
+                            <span key={idx} className="tech-rider-stage-performer-icon">{getInstrumentIcon(inst)}</span>
+                          ))}
+                        </div>
                         <span className="tech-rider-stage-performer-name">
                           {performerData.performerName || `Performer ${performer.lineupIndex + 1}`}
                         </span>
@@ -534,134 +480,26 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
               </div>
             </div>
 
-            {/* Performer Requirements List - Vertical */}
+            {/* Performer Requirements List - venue-focused summary */}
+            <h5 className="tech-rider-equipment-summary-title" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>Requirements per performer</h5>
             <div className="tech-rider-viewer-performers-list">
               <div className="tech-rider-viewer-performers-vertical">
                 {techRider.lineup.map((performer, index) => {
                   const details = techRider.performerDetails?.[index] || {};
                   const instruments = performer.instruments || [];
-                  
-                  // Collect all questions from all instruments, deduplicated
-                  const questionMap = new Map();
-                  
-                  // First pass: collect all questions from all instruments to identify dependency-only questions
-                  const allQuestions = [];
-                  instruments.forEach((instrument) => {
-                    const questions = INSTRUMENT_QUESTIONS[instrument] || [];
-                    allQuestions.push(...questions.map(q => ({ ...q, instrument })));
-                  });
-                  
-                  // Identify questions that are only used as dependencies
-                  const dependencyOnlyKeys = new Set();
-                  allQuestions.forEach(question => {
-                    if (!question.notes && question.type === 'yesno' && question.key !== 'extraNotes') {
-                      const isUsedAsDependency = allQuestions.some(q => q.dependsOn && q.dependsOn.key === question.key);
-                      if (isUsedAsDependency) {
-                        dependencyOnlyKeys.add(question.key);
-                      }
-                    }
-                  });
-                  
-                  // Second pass: collect questions, filtering out dependency-only ones
-                  instruments.forEach((instrument) => {
-                    const questions = INSTRUMENT_QUESTIONS[instrument] || [];
-                    const instrumentDetails = details[instrument] || {};
-                    
-                    questions.forEach((question) => {
-                      // Skip dependency-only questions
-                      if (dependencyOnlyKeys.has(question.key)) {
-                        return;
-                      }
-                      
-                      if (question.dependsOn) {
-                        let dependencyMet = false;
-                        const dependsValue = instrumentDetails[question.dependsOn.key];
-                        if (dependsValue === question.dependsOn.value) {
-                          dependencyMet = true;
-                        } else {
-                          const existing = questionMap.get(question.key);
-                          if (existing) {
-                            for (const inst of existing.instruments) {
-                              const instDetails = details[inst] || {};
-                              if (instDetails[question.dependsOn.key] === question.dependsOn.value) {
-                                dependencyMet = true;
-                                break;
-                              }
-                            }
-                          }
-                        }
-                        if (!dependencyMet) {
-                          return;
-                        }
-                      }
-                      
-                      if (!questionMap.has(question.key)) {
-                        questionMap.set(question.key, {
-                          ...question,
-                          instruments: [instrument],
-                          currentValue: instrumentDetails[question.key],
-                          instrumentDetails: instrumentDetails,
-                          sourceInstrument: instrument
-                        });
-                      } else {
-                        const existing = questionMap.get(question.key);
-                        existing.instruments.push(instrument);
-                        if (existing.currentValue === undefined || existing.currentValue === null || existing.currentValue === '') {
-                          const thisValue = instrumentDetails[question.key];
-                          if (thisValue !== undefined && thisValue !== null && thisValue !== '') {
-                            existing.currentValue = thisValue;
-                            existing.instrumentDetails = instrumentDetails;
-                            existing.sourceInstrument = instrument;
-                          }
-                        }
-                      }
-                    });
-                  });
-
-                  const questions = Array.from(questionMap.values()).filter(q => {
-                    // Don't show "singing?" question if performer has Vocals in their instruments
-                    if (q.key === 'singing' && instruments.includes('Vocals')) {
-                      return false;
-                    }
-                    // Only show questions that have answers
-                    if (q.type === 'yesno') return q.currentValue !== undefined && q.currentValue !== null;
-                    if (q.type === 'number') return q.currentValue !== undefined && q.currentValue !== null && q.currentValue !== 0;
-                    if (q.type === 'text') return q.currentValue && q.currentValue.trim() !== '';
-                    return false;
-                  });
-
-                  // Separate questions into "needs" (red) and "doesn't need" (grey)
-                  const needsQuestions = [];
-                  const doesntNeedQuestions = [];
-                  
-                  questions.forEach((questionData) => {
-                    const question = questionData;
-                    const currentValue = questionData.currentValue;
-                    const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
-                    
-                    if (question.type === 'yesno') {
-                      // Special handling for bringingKeyboard: if false, it means they need keyboard provided
-                      if (question.key === 'bringingKeyboard' && !currentValue) {
-                        needsQuestions.push(questionData);
-                      } else if (currentValue && !isBringingInstrument) {
-                        needsQuestions.push(questionData);
-                      } else if (!currentValue || isBringingInstrument) {
-                        doesntNeedQuestions.push(questionData);
-                      }
-                    } else if (question.type === 'number' || question.type === 'text') {
-                      needsQuestions.push(questionData);
-                    }
-                  });
+                  const summaryLines = getPerformerSummaryLines(details, instruments, INSTRUMENT_QUESTIONS);
+                  const hasAny = summaryLines.length > 0;
 
                   return (
-                    <div 
-                      key={index} 
-                      className="tech-rider-viewer-performer-box"
-                      style={{ 
-                        position: 'relative'
-                      }}
-                    >
+                    <div key={index} className="tech-rider-viewer-performer-box" style={{ position: 'relative' }}>
                       <div className="tech-rider-viewer-performer-header">
+                        {instruments.length > 0 && (
+                          <span className="tech-rider-viewer-performer-header-icons" aria-hidden>
+                            {instruments.map((inst, instIdx) => (
+                              <span key={instIdx} className="tech-rider-viewer-performer-header-icon">{getInstrumentIcon(inst)}</span>
+                            ))}
+                          </span>
+                        )}
                         <span className="tech-rider-viewer-performer-name">
                           {performer.performerName || `Performer ${index + 1}`}
                         </span>
@@ -675,94 +513,13 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                           ))}
                         </span>
                       </div>
-                      
-                      {questions.length > 0 ? (
+                      {hasAny ? (
                         <div className="tech-rider-viewer-performer-requirements">
-                          {/* Red "needs" items at top */}
-                          {needsQuestions.length > 0 && (
-                            <div style={{ marginBottom: doesntNeedQuestions.length > 0 ? '0.75rem' : '0' }}>
-                              {needsQuestions.map((questionData) => {
-                                const question = questionData;
-                                const currentValue = questionData.currentValue;
-                                const instrumentDetails = questionData.instrumentDetails;
-                                const notesValue = instrumentDetails[`${question.key}_notes`] || '';
-                                const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
-                                const isBringingKeyboardFalse = question.key === 'bringingKeyboard' && !currentValue;
-
-                                return (
-                                  <div key={question.key} className="tech-rider-viewer-requirement-item">
-                                    {question.type === 'yesno' && (
-                                      <span>
-                                        {(() => {
-                                          // Special handling for bringingKeyboard when false
-                                          if (isBringingKeyboardFalse) {
-                                            return <span style={{ color: 'var(--gn-red)' }}>Needs keyboard provided</span>;
-                                          }
-                                          let label = question.label.replace('?', '').trim();
-                                          const lowerLabel = label.toLowerCase();
-                                          if (lowerLabel.startsWith('need ') && !lowerLabel.startsWith('needs ')) {
-                                            label = 'Needs ' + label.substring(5);
-                                          }
-                                          if (!isBringingInstrument) {
-                                            return <span style={{ color: 'var(--gn-red)' }}>{label}</span>;
-                                          } else {
-                                            return <span>{label}</span>;
-                                          }
-                                        })()}
-                                        {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
-                                      </span>
-                                    )}
-                                    {question.type === 'number' && (
-                                      <span>
-                                        <span style={{ color: 'var(--gn-red)' }}>Needs {currentValue} {currentValue === 1 ? 'power socket' : 'power sockets'}</span>
-                                        {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
-                                      </span>
-                                    )}
-                                    {question.type === 'text' && (
-                                      <span>
-                                        <span style={{ color: 'var(--gn-red)' }}>{currentValue}</span>
-                                        {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                          {summaryLines.map((line, lineIndex) => (
+                            <div key={lineIndex} className="tech-rider-viewer-requirement-item">
+                              {line}
                             </div>
-                          )}
-                          
-                          {/* Grey "doesn't need" items at bottom */}
-                          {doesntNeedQuestions.length > 0 && (
-                            <div style={{ paddingTop: needsQuestions.length > 0 ? '0.75rem' : '0', borderTop: needsQuestions.length > 0 ? '1px solid var(--gn-grey-300)' : 'none' }}>
-                              {doesntNeedQuestions.map((questionData) => {
-                                const question = questionData;
-                                const currentValue = questionData.currentValue;
-                                const instrumentDetails = questionData.instrumentDetails;
-                                const notesValue = instrumentDetails[`${question.key}_notes`] || '';
-
-                                return (
-                                  <div key={question.key} className="tech-rider-viewer-requirement-item" style={{ color: 'var(--gn-grey-700)' }}>
-                                    {question.type === 'yesno' && (
-                                      <span>
-                                        {(() => {
-                                          let label = question.label.replace('?', '').trim();
-                                          const lowerLabel = label.toLowerCase();
-                                          if (lowerLabel.startsWith('needs ')) {
-                                            return "Doesn't need " + label.substring(6);
-                                          } else if (lowerLabel.startsWith('need ')) {
-                                            return "Doesn't need " + label.substring(5);
-                                          } else if (lowerLabel.startsWith('bringing')) {
-                                            return label;
-                                          }
-                                          return "Doesn't need " + label.toLowerCase();
-                                        })()}
-                                        {notesValue && <span className="tech-rider-viewer-notes"> ({notesValue})</span>}
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
+                          ))}
                         </div>
                       ) : (
                         <p className="tech-rider-viewer-no-requirements">No specific requirements listed.</p>
@@ -774,12 +531,14 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
 
               {/* Extra Notes */}
               {techRider.extraNotes && techRider.extraNotes.trim() !== '' && (
-                <div className="tech-rider-viewer-extra-notes">
-                  <h5 style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Additional Notes</h5>
-                  <p style={{ color: 'var(--gn-grey-700)', whiteSpace: 'pre-wrap' }}>
-                    {techRider.extraNotes}
-                  </p>
-                </div>
+                <>
+                  <h5 className="tech-rider-equipment-summary-title" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>Additional Notes</h5>
+                  <div className="tech-rider-viewer-extra-notes">
+                    <p style={{ color: 'var(--gn-grey-700)', whiteSpace: 'pre-wrap', margin: 0 }}>
+                      {techRider.extraNotes}
+                    </p>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -787,8 +546,9 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
 
         {/* Performer Details Popup */}
         {selectedPerformerIndex !== null && (() => {
-          const { needsQuestions, doesntNeedQuestions, performer, instruments } = getPerformerDetails(selectedPerformerIndex);
-          
+          const { summaryLines, performer, instruments } = getPerformerDetails(selectedPerformerIndex);
+          const hasAny = summaryLines.length > 0;
+
           return (
             <div 
               className="tech-rider-performer-popup"
@@ -818,98 +578,13 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
                   )}
                 </div>
               </div>
-              
-              {(needsQuestions.length > 0 || doesntNeedQuestions.length > 0) ? (
+              {hasAny ? (
                 <div>
-                  {/* Red "needs" items at top */}
-                  {needsQuestions.length > 0 && (
-                    <div style={{ marginBottom: doesntNeedQuestions.length > 0 ? '0.75rem' : '0' }}>
-                      {needsQuestions.map((questionData) => {
-                        const question = questionData;
-                        const currentValue = questionData.currentValue;
-                        const instrumentDetails = questionData.instrumentDetails;
-                        const notesValue = instrumentDetails[`${question.key}_notes`] || '';
-                        const isBringingInstrument = question.key === 'bringingInstrument' || question.key === 'bringingKeyboard';
-                        const isBringingKeyboardFalse = question.key === 'bringingKeyboard' && !currentValue;
-
-                        return (
-                          <div key={question.key} style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                            {question.type === 'yesno' && (
-                              <span>
-                                {(() => {
-                                  // Special handling for bringingKeyboard when false
-                                  if (isBringingKeyboardFalse) {
-                                    return <span style={{ color: 'var(--gn-red)' }}>Needs keyboard provided</span>;
-                                  }
-                                  let label = question.label.replace('?', '').trim();
-                                  const lowerLabel = label.toLowerCase();
-                                  if (lowerLabel.startsWith('need ') && !lowerLabel.startsWith('needs ')) {
-                                    label = 'Needs ' + label.substring(5);
-                                  }
-                                  if (!isBringingInstrument) {
-                                    return <span style={{ color: 'var(--gn-red)' }}>{label}</span>;
-                                  } else {
-                                    return <span>{label}</span>;
-                                  }
-                                })()}
-                                {notesValue && <span style={{ color: 'var(--gn-grey-600)', fontStyle: 'italic', fontSize: '0.85rem' }}> ({notesValue})</span>}
-                              </span>
-                            )}
-                            {question.type === 'number' && (
-                              <span>
-                                <span style={{ color: 'var(--gn-red)' }}>Needs {currentValue} {currentValue === 1 ? 'power socket' : 'power sockets'}</span>
-                                {notesValue && <span style={{ color: 'var(--gn-grey-600)', fontStyle: 'italic', fontSize: '0.85rem' }}> ({notesValue})</span>}
-                              </span>
-                            )}
-                            {question.type === 'text' && (
-                              <span>
-                                <span style={{ color: 'var(--gn-red)' }}>{currentValue}</span>
-                                {notesValue && <span style={{ color: 'var(--gn-grey-600)', fontStyle: 'italic', fontSize: '0.85rem' }}> ({notesValue})</span>}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
+                  {summaryLines.map((line, lineIndex) => (
+                    <div key={lineIndex} style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                      {line}
                     </div>
-                  )}
-                  
-                  {/* Grey "doesn't need" items at bottom */}
-                  {doesntNeedQuestions.length > 0 && (
-                    <div style={{ paddingTop: needsQuestions.length > 0 ? '0.75rem' : '0', borderTop: needsQuestions.length > 0 ? '1px solid var(--gn-grey-300)' : 'none' }}>
-                      {doesntNeedQuestions.map((questionData) => {
-                        const question = questionData;
-                        const currentValue = questionData.currentValue;
-                        const instrumentDetails = questionData.instrumentDetails;
-                        const notesValue = instrumentDetails[`${question.key}_notes`] || '';
-
-                        return (
-                          <div key={question.key} style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--gn-grey-700)' }}>
-                            {question.type === 'yesno' && (
-                              <span>
-                                {(() => {
-                                  let label = question.label.replace('?', '').trim();
-                                  const lowerLabel = label.toLowerCase();
-                                  if (lowerLabel.startsWith('needs ')) {
-                                    return "Doesn't need " + label.substring(6);
-                                  } else if (lowerLabel.startsWith('need ')) {
-                                    return "Doesn't need " + label.substring(5);
-                                  } else if (lowerLabel.startsWith('bringing')) {
-                                    // If bringing keyboard is false, show "Needs keyboard provided"
-                                    if (question.key === 'bringingKeyboard' && !currentValue) {
-                                      return "Needs keyboard provided";
-                                    }
-                                    return label;
-                                  }
-                                  return "Doesn't need " + label.toLowerCase();
-                                })()}
-                                {notesValue && <span style={{ color: 'var(--gn-grey-600)', fontStyle: 'italic', fontSize: '0.85rem' }}> ({notesValue})</span>}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  ))}
                 </div>
               ) : (
                 <p style={{ color: 'var(--gn-grey-500)', fontSize: '0.85rem', fontStyle: 'italic', margin: 0 }}>
@@ -919,6 +594,16 @@ export const TechRiderModal = ({ techRider, artistName, venueTechRider, onClose 
             </div>
           );
         })()}
+    </>
+  );
+
+  if (embed) {
+    return <div className="tech-rider-modal-embed" style={{ padding: 0 }}>{innerContent}</div>;
+  }
+  return (
+    <div className='modal tech-rider-modal' onClick={onClose}>
+      <div className='modal-content scrollable' onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', maxHeight: '90vh', overflow: 'auto' }}>
+        {innerContent}
       </div>
     </div>
   );

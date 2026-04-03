@@ -1,15 +1,16 @@
 rules_version = '2';
 
 // Firestore Security Rules
-// Add or merge these with your existing rules in Firebase Console if you already have Firestore rules there.
+// Merge venueHireOpportunities with your full rules; keep the rest of your rules as-is.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Venue hire opportunities: allow authenticated users to read/write documents.
-    // Tighten in production (e.g. restrict by venueId / membership) if needed.
+    // Venue Hire Opportunities: public read so venue profile can show hire slots to everyone.
+    // Writes only via backend API (Admin SDK).
     match /venueHireOpportunities/{docId} {
-      allow read, write: if request.auth != null;
+      allow read: if true;
+      allow create, update, delete: if false;
     }
   }
 }

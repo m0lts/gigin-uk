@@ -299,9 +299,9 @@
 }
 
 .window.venues .head.gigs .gigs-react-add-booking-btn {
-    background-color: var(--gn-orange);
-    color: var(--gn-white);
-    border-color: var(--gn-orange);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .window.venues .head.gigs .gigs-head-create-buttons {
@@ -311,10 +311,56 @@
     margin-left: auto;
 }
 
-.window.venues .head.gigs .gigs-react-add-booking-btn:hover {
-    background-color: var(--gn-orange);
-    color: var(--gn-white);
-    filter: brightness(1.05);
+.window.venues .head.gigs .gigs-react-book-gig-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--gn-orange);
+  color: var(--gn-white);
+  border-color: var(--gn-orange);
+}
+
+.window.venues .head.gigs .gigs-react-book-gig-btn:hover {
+  background-color: var(--gn-orange);
+  color: var(--gn-white);
+  filter: brightness(1.05);
+}
+
+/* Calendar "+" choice popup: Book an Event / Add Existing Event */
+.add-gigs-choice-modal .add-gigs-choice-modal__content {
+  min-width: 280px;
+  max-width: 360px;
+}
+
+.add-gigs-choice-modal .add-gigs-choice-modal__content h3 {
+  margin: 0 0 1.25rem;
+  font-size: 1.1rem;
+}
+
+.add-gigs-choice-modal__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.add-gigs-choice-modal__buttons .gigs-react-book-gig-btn,
+.add-gigs-choice-modal__buttons .gigs-react-add-booking-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.add-gigs-choice-modal__buttons .gigs-react-book-gig-btn {
+  background-color: var(--gn-orange);
+  color: var(--gn-white);
+  border-color: var(--gn-orange);
+}
+
+.add-gigs-choice-modal__buttons .gigs-react-book-gig-btn:hover {
+  background-color: var(--gn-orange);
+  color: var(--gn-white);
+  filter: brightness(1.05);
 }
 
 .gigs-subscribe-intro {
@@ -355,16 +401,22 @@
     color: var(--gn-grey-700, #555);
 }
 
-/* Add/Book a Gig modal */
+/* Add/Book a Gig modal – flex column: header fixed, body scrolls, footer fixed at bottom */
+.add-gigs-modal {
+    overflow: hidden;
+    max-height: 100vh;
+    align-items: center;
+}
+
 .add-gigs-modal .modal-content.add-gigs-modal-content {
     max-width: 640px;
     width: 100%;
-    max-height: 90vh;
-    height: min(80vh, 640px);
-    overflow-y: hidden;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem; /* override modal-content 2rem gap so title and date tabs sit closer */
+    max-height: 90vh;
+    overflow: hidden;
+    gap: 0;
+    padding: 0;
 }
 
 .add-gigs-modal .add-gigs-modal-header {
@@ -373,6 +425,7 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 1rem;
+    padding: 1rem 0.5rem 0.5rem 2.5rem;
 }
 
 .add-gigs-modal .add-gigs-modal-title-wrap {
@@ -382,6 +435,7 @@
 .add-gigs-modal .add-gigs-modal-title,
 .add-gigs-modal h2.add-gigs-modal-title {
     margin: 0;
+    padding-bottom: 0.5rem;
     font-size: 1.5rem;
     font-weight: 600;
     text-transform: none;
@@ -398,13 +452,29 @@
 }
 
 .add-gigs-modal .add-gigs-modal-body {
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     width: 100%;
-    /* Pull the scrollbar closer to the right edge while keeping content padded */
-    margin-right: -1.5rem;
-    padding-right: 1.5rem;
+    padding: 0 0.5rem 0 2.5rem;
+    border-right: none;
+    /* Avoid default OS scrollbar track border (vertical line left of the thumb) */
+    scrollbar-color: var(--gn-grey-400, #c4c4c4) transparent;
+    scrollbar-width: thin;
+}
+
+.add-gigs-modal .add-gigs-modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.add-gigs-modal .add-gigs-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.add-gigs-modal .add-gigs-modal-body::-webkit-scrollbar-thumb {
+    background-color: var(--gn-grey-400, #c4c4c4);
+    border-radius: 4px;
 }
 
 .add-gigs-sticky-date-bar {
@@ -416,7 +486,7 @@
     border-bottom: 1px solid var(--gn-grey-200, #eee);
     margin-bottom: 0.5rem;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
@@ -425,19 +495,48 @@
 .add-gigs-sticky-date-bar-inner {
     flex: 1 1 auto;
     min-width: 0;
+    overflow: hidden;
 }
 
 .add-gigs-sticky-date-bar .add-gigs-date-field {
     margin-bottom: 0;
 }
 
+.add-gigs-date-venue-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem 1.5rem;
+}
+.add-gigs-date-venue-row .add-gigs-venue-field {
+    margin-bottom: 0;
+    min-width: 10rem;
+}
+.add-gigs-date-venue-row .add-gigs-venue-field .select {
+    min-width: 12rem;
+}
+
 .add-gigs-sticky-date-bar .add-gigs-tabs {
     margin-bottom: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-right: 0.25rem;
+}
+
+.add-gigs-sticky-date-bar .add-gigs-tabs .add-gigs-tab {
+    flex-shrink: 0;
 }
 
 .add-gigs-apply-all-wrap {
     flex-shrink: 0;
     align-self: center;
+}
+
+.add-gigs-sticky-date-bar .add-gigs-apply-all-wrap {
+    margin-top: -0.35rem;
 }
 
 .add-gigs-apply-all-btn--inline {
@@ -468,6 +567,7 @@
     text-transform: none;
     letter-spacing: normal;
     margin-bottom: 0.5rem;
+    color: var(--gn-off-black, #111);
 }
 
 .add-gigs-helper {
@@ -578,19 +678,20 @@
 }
 
 .add-gigs-actions--footer {
+    flex-shrink: 0;
+    align-self: stretch;
+    width: auto;
+    box-sizing: border-box;
+    background: white;
+    border-top: 1px solid #eee;
     margin-top: 0;
-    padding-top: 0.9rem;
-    padding-bottom: 0.9rem;
-    /* Stretch footer across full modal width while keeping content aligned */
-    margin-left: -2.5rem;   /* match modal left padding */
-    margin-right: -0.5rem;  /* match modal right padding */
-    padding-left: 2.5rem;
-    padding-right: 0.5rem;
+    padding: 0.9rem 2.5rem;
     justify-content: flex-end;
     align-items: center;
-    background-color: var(--gn-white, #ffffff);
-    flex-shrink: 0;
-    border-top: 1px solid var(--gn-grey-300, #e0e0e0);
+}
+
+.add-gigs-actions--footer .btn.tertiary {
+    margin-right: auto;
 }
 
 .add-gigs-actions--footer--shadow {
@@ -608,12 +709,6 @@
 
 .add-gigs-modal .add-gigs-actions--footer .btn.primary:hover {
     filter: brightness(1.05);
-}
-
-.add-gigs-modal .modal-content.add-gigs-modal-content {
-    /* Override generic modal padding so the scrollbar sits closer to the outer edge */
-    padding-bottom: 0.75rem;
-    padding-right: 0.5rem;
 }
 
 .add-gigs-tabs {
@@ -712,18 +807,50 @@
 }
 
 .add-gigs-gig-slot {
-    border: 1px solid var(--gn-grey-400, #ddd);
-    border-radius: 10px;
-    padding: 1rem;
-    margin-bottom: 1rem;
+    border: 1px solid var(--gn-grey-400, #c4c4c4);
+    background: var(--gn-grey-50, #fafafa);
+    border-radius: 12px;
+    padding: 1.1rem 1rem;
+    margin-bottom: 0.9rem;
     position: relative;
+    box-sizing: border-box;
 }
 
-.add-gigs-artist-count-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
+.add-gigs-configure-slots-title {
+    font-weight: 500;
+    font-size: 1rem;
+    text-transform: none;
+    letter-spacing: normal;
+    margin: 0 0 0.5rem 0;
+    color: var(--gn-off-black, #111);
+}
+
+.add-gigs-artist-count-pills {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.75rem;
+}
+
+.add-gigs-artist-count-pill {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    justify-content: center;
+    border-radius: 10px;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid var(--gn-grey-200, #f1e6df);
+    background: #fff;
+    color: var(--gn-grey-600, #666);
+    font-weight: 500;
+}
+
+.add-gigs-modal .add-gigs-artist-count-pill.add-gigs-artist-count-pill--active,
+.add-gigs-modal .add-gigs-artist-count-pill.add-gigs-artist-count-pill--active:hover,
+.add-gigs-modal .add-gigs-artist-count-pill.add-gigs-artist-count-pill--active:focus-visible {
+    border-color: var(--gn-orange, #ff6c4b) !important;
+    color: var(--gn-orange, #ff6c4b) !important;
+    background: var(--gn-offset-orange, #fff1ee) !important;
 }
 
 .add-gigs-artist-count-input {
@@ -744,18 +871,23 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 0.75rem;
+    margin-bottom: 1.15rem;
     min-height: 1.5rem;
-}
-
-.add-gigs-slot-header:has(.add-gigs-remove-slot-btn:only-child) {
-    justify-content: flex-end;
 }
 
 .add-gigs-slot-header-main {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0;
+}
+
+.add-gigs-slot-title {
+    margin: 0;
+    font-weight: 500;
+    font-size: 1rem;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--gn-off-black, #111);
 }
 
 .add-gigs-slot-header-actions {
@@ -783,20 +915,19 @@
 .add-gigs-remove-slot-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    border-radius: var(--gn-btn-border-radius);
-    padding: 0.35rem 0.75rem;
-    background-color: #e53e3e;
-    color: #fff;
-    border: 1px solid #e53e3e;
+    gap: 0;
+    border-radius: 8px;
+    padding: 0.35rem 0.45rem;
+    background-color: transparent;
+    color: var(--gn-grey-600, #888);
+    border: 1px solid transparent;
     font-weight: 500;
 }
 
 .add-gigs-remove-slot-btn:hover {
-    background-color: #c53030;
-    border-color: #c53030;
-    color: #fff;
-    filter: brightness(1.05);
+    background-color: var(--gn-grey-100, #f2f2f2);
+    border-color: var(--gn-grey-200, #e5e5e5);
+    color: var(--gn-grey-700, #666);
 }
 
 .add-gigs-remove-slot-btn .icon {
@@ -804,21 +935,155 @@
 }
 
 .add-gigs-slot-time-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 1rem;
-    margin-bottom: 0.5rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: 1rem 1rem;
+    margin-bottom: 0.2rem;
+    width: 100%;
 }
 
 .add-gigs-slot-time-row .add-gigs-field {
-    margin-bottom: 0;
+    margin-bottom: 0.8rem;
+    min-width: 0;
 }
 
-/* Uniform height for Start time, Duration, and Artist name inputs in slot row */
+.add-gigs-slot-time-row .add-gigs-field .label {
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: var(--gn-grey-700, #525252);
+    margin-bottom: 0.45rem;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+}
+
+/* Row 1 = Start time + Duration. Everything else stacks full width underneath. */
+.add-gigs-slot-time-row .add-gigs-slot-payment-method,
+.add-gigs-slot-time-row .add-gigs-flat-fee-field,
+.add-gigs-slot-time-row .add-gigs-invite-only--slot,
+.add-gigs-slot-time-row .add-gigs-artist-name-wrap {
+    grid-column: 1 / -1;
+}
+
+/* Uniform height for text inputs in slot row (flat fee, artist name, etc.) */
 .add-gigs-slot-time-row .add-gigs-field input.input {
     height: 44px;
     box-sizing: border-box;
+    border-radius: 10px;
+    border: 1px solid var(--gn-grey-200, #ececec);
+    background: var(--gn-white, #fff);
+    padding: 0 0.9rem;
+    font-size: 1rem;
+    color: var(--gn-off-black, #1a1a1a);
+    width: 100%;
+}
+
+/* Start time: same light grey as payment type segmented track */
+.add-gigs-slot-time-row .add-gigs-field input.input.add-gigs-slot-time-input {
+    border: none;
+    background: var(--gn-grey-300, #e5e7eb);
+}
+
+/* Flat fee amount: match start time / duration grey */
+.add-gigs-slot-time-row .add-gigs-flat-fee-field input.input {
+    border: none;
+    background: var(--gn-grey-300, #e5e7eb);
+}
+
+.add-gigs-slot-duration-select {
+    width: 100%;
+    height: 44px;
+    border-radius: 10px;
+    border: none;
+    background-color: var(--gn-grey-300, #e5e7eb);
+    /* Custom chevron so horizontal position can sit slightly in from the right edge */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath stroke='%23525252' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1.05rem center;
+    background-size: 12px 8px;
+    padding: 0 2rem 0 0.9rem;
+    font-size: 1rem;
+    color: var(--gn-off-black, #1a1a1a);
+    cursor: pointer;
+}
+
+.add-gigs-slot-time-input-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.add-gigs-slot-time-input-wrap.add-gigs-slot-time-input-wrap--invalid {
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 2px var(--gn-error, #c62828);
+}
+
+.add-gigs-slot-time-input-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.95rem;
+    color: #8ea4c6;
+    pointer-events: none;
+}
+
+.add-gigs-slot-time-picker-btn {
+    position: absolute;
+    left: 0.55rem;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    padding: 0.2rem;
+    margin: 0;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.add-gigs-slot-time-input {
+    padding-left: 2.2rem !important;
+    width: 100%;
+}
+
+/* Hide native time-picker icon on the right for slot Start Time input */
+.add-gigs-slot-time-input::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    display: none;
+}
+
+.add-gigs-slot-time-row .add-gigs-field input.input:focus:not(.add-gigs-slot-time-input) {
+    outline: none;
+    border-color: var(--gn-grey-400, #cfcfcf);
+    box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.04);
+}
+
+.add-gigs-slot-time-row .add-gigs-field input.input.add-gigs-slot-time-input:focus,
+.add-gigs-slot-duration-select:focus {
+    outline: none;
+    border: none;
+    box-shadow: none;
+}
+
+.add-gigs-slot-time-row .add-gigs-flat-fee-field input.input:focus {
+    outline: none;
+    border: none;
+    box-shadow: none;
+    background: var(--gn-grey-200, #ececec);
+}
+
+.add-gigs-slot-time-row .add-gigs-field input.input.add-gigs-slot-time-input:focus {
+    background: var(--gn-grey-200, #ececec);
+}
+
+.add-gigs-slot-duration-select:focus {
+    background-color: var(--gn-grey-200, #ececec);
 }
 
 .add-gigs-slot-time-row .add-gigs-duration-inputs {
@@ -836,6 +1101,19 @@
     box-sizing: border-box;
 }
 
+/* Add existing event (book artists): match start time / flat fee light grey */
+.add-gigs-slot-time-row .add-gigs-artist-name-wrap--existing-event .add-gigs-artist-row--inline .input {
+    border: none;
+    background: var(--gn-grey-300, #e5e7eb);
+}
+
+.add-gigs-slot-time-row .add-gigs-artist-name-wrap--existing-event .add-gigs-artist-row--inline .input:focus {
+    outline: none;
+    border: none;
+    box-shadow: none;
+    background: var(--gn-grey-200, #ececec);
+}
+
 .add-gigs-slot-payment-row {
     display: flex;
     flex-wrap: wrap;
@@ -845,6 +1123,14 @@
 
 .add-gigs-slot-payment-row .input {
     width: 6rem;
+}
+
+.add-gigs-slot-payment-row--full {
+    width: 100%;
+}
+
+.add-gigs-slot-payment-row--full .input {
+    width: 100%;
 }
 
 .add-gigs-payment-method {
@@ -900,6 +1186,33 @@
     flex-wrap: wrap;
 }
 
+.add-gigs-payment-selections--segmented {
+    gap: 2px;
+    background-color: var(--gn-grey-300, #e5e7eb);
+    padding: 3px;
+    border-radius: 10px;
+    overflow: hidden;
+    width: 100%;
+    border: none;
+}
+
+.add-gigs-payment-card--segment {
+    flex: 1 1 0;
+    min-width: 0;
+    border: none;
+    border-radius: 7px;
+    padding: 0.55rem 0.5rem;
+    background: transparent;
+    color: var(--gn-grey-700, #525252);
+}
+
+.add-gigs-payment-card--segment.add-gigs-payment-card--selected {
+    background: var(--gn-off-black, #1a1a1a);
+    color: var(--gn-white, #fff);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    border-radius: 7px;
+}
+
 .add-gigs-payment-card--small {
     padding: 0.5rem 0.75rem;
     min-width: 0;
@@ -911,6 +1224,7 @@
 
 .add-gigs-slot-payment-method {
     margin-top: 0.5rem;
+    width: 100%;
 }
 
 .add-gigs-slot-disclaimer {
@@ -935,20 +1249,45 @@
 .add-gigs-booking-mode {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 1rem;
     margin-bottom: 1.5rem;
 }
 
-.add-gigs-booking-mode .btn {
-    padding-top: 0.7rem;
-    padding-bottom: 0.7rem;
+.add-gigs-booking-mode .add-gigs-booking-mode-btn {
+    flex: 1 1 280px;
+    min-width: 240px;
+    padding: 1rem 1.25rem;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+}
+
+.add-gigs-booking-mode-btn-title {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.add-gigs-booking-mode-btn-desc {
+    font-size: 0.85rem;
+    font-weight: 400;
+    line-height: 1.35;
+}
+
+.add-gigs-booking-mode-btn.primary .add-gigs-booking-mode-btn-desc {
+    opacity: 0.95;
+}
+
+.add-gigs-booking-mode-btn.tertiary .add-gigs-booking-mode-btn-desc {
+    color: var(--gn-grey-700, #555);
 }
 
 .add-gigs-add-slot-box {
     margin-top: 1rem;
-    border: 1px solid var(--gn-grey-400, #ddd);
+    border: 2px dashed var(--gn-grey-200, #e6e6e6);
     border-radius: 10px;
-    padding: 0.6rem 1rem;
+    padding: 0.9rem 1rem;
     display: flex;
     justify-content: center;
 }
@@ -956,10 +1295,10 @@
 .btn.tertiary.add-gigs-add-slot-btn {
     margin-top: 0;
     border-radius: 999px;
-    padding-inline: 1.4rem;
-    padding-block: 0.55rem;
-    background-color: var(--gn-off-black, #1a1a1a);
-    color: #ffffff;
+    padding-inline: 1.1rem;
+    padding-block: 0.4rem;
+    background-color: transparent;
+    color: var(--gn-grey-700, #555);
     border: 1px solid transparent;
 }
 
@@ -970,7 +1309,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    margin-top: 2.75rem;
+    margin-top: 1.25rem;
     margin-bottom: 1rem;
     width: 100%;
 }
@@ -980,46 +1319,52 @@
     margin-bottom: 0.35rem;
 }
 
+/* When Edit Event shows only Venue access & timings and below (manually confirmed hire), remove top gap */
+.add-gigs-modal-body--edit-confirmed .add-gigs-rental-times-field {
+    margin-top: 0;
+}
+
 .add-gigs-rental-times-wrap {
     display: flex;
     justify-content: flex-start;
     width: 100%;
     margin-bottom: 0.15rem;
-    gap: 0.75rem;
-    align-items: center;
+    gap: 0;
+    align-items: flex-end;
 }
 
-.add-gigs-rental-times {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 1.5rem;
-    padding: 0;
-}
-
-.add-gigs-rental-times .add-gigs-field {
+.add-gigs-rental-time-block {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    margin-left: 0;
-    margin-right: 0;
-    min-width: 0;
     flex: 0 0 auto;
 }
 
-.add-gigs-rental-times .add-gigs-field .label {
-    margin: 0;
-    font-weight: 500;
-    text-transform: none;
+.add-gigs-rental-time-block .label.add-gigs-section-heading {
+    margin-bottom: 0.5rem;
 }
 
-.add-gigs-rental-times .add-gigs-field .add-gigs-helper {
-    margin: 0 0 0.35rem 0;
-}
-
-.add-gigs-rental-times .add-gigs-field .input {
+.add-gigs-rental-time-input {
     width: 6rem;
     box-sizing: border-box;
+}
+
+/* Connector line from middle-right of Access from input to middle-left of Music stop by input */
+.add-gigs-rental-times-connector {
+    flex: 0 0 auto;
+    width: 1.5rem;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
+
+.add-gigs-rental-times-connector::before {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: #000;
 }
 
 .add-gigs-rental-times-notes {
@@ -1062,12 +1407,113 @@
     box-sizing: border-box;
 }
 
+/* Name of Booker and Venue access & timings on same row: two headers, then two columns of controls */
+.add-gigs-booker-times-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+    align-items: flex-start;
+}
+.add-gigs-booker-times-col {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+/* Keep Venue access & timings on same line as Name of Booker: no top margin on times col when in row */
+.add-gigs-booker-times-row .add-gigs-rental-times-field {
+    margin-top: 0;
+}
+
+.add-gigs-booker-col .input {
+    height: 42px;
+    box-sizing: border-box;
+}
+
+/* Deposit required lines up horizontally with Access from (same row) */
+.add-gigs-rental-top-row .add-gigs-hire-fee-col .label.add-gigs-section-heading,
+.add-gigs-rental-top-row .add-gigs-deposit-col .label.add-gigs-section-heading {
+    margin-bottom: 0.5rem;
+}
+
+/* Booking (not add existing) + Hire out venue: Hire fee and Deposit on a row below Access from / Music stop by */
+/* Add existing + rental: second row (Hire fee + Deposit required) on its own line */
+.add-gigs-rental-fee-deposit-row,
+.add-gigs-rental-second-row {
+    flex-basis: 100%;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+    align-items: flex-start;
+    margin-top: 1rem;
+}
+.add-gigs-rental-fee-deposit-row .add-gigs-hire-fee-col .label.add-gigs-section-heading,
+.add-gigs-rental-fee-deposit-row .add-gigs-deposit-col .label.add-gigs-section-heading {
+    margin-bottom: 0.5rem;
+}
+
+/* Hire fee and Deposit required on same row: two headers, then two columns of controls */
+.add-gigs-hire-fee-deposit-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+    align-items: flex-start;
+}
+.add-gigs-hire-fee-deposit-col {
+    flex: 0 1 auto;
+}
+.add-gigs-deposit-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    min-height: 44px; /* match input height so Yes/No stay in same position when deposit amount is hidden */
+}
+.add-gigs-deposit-controls .add-gigs-deposit-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0;
+}
+.add-gigs-deposit-option-btn {
+    margin-top: 0;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.95rem;
+    border-radius: 999px;
+}
+.add-gigs-deposit-option-btn.add-gigs-deposit-option-btn--selected,
+.add-gigs-deposit-option-btn.add-gigs-deposit-option-btn--selected:hover,
+.add-gigs-deposit-option-btn.add-gigs-deposit-option-btn--selected:focus {
+    background-color: var(--gn-off-black, #1a1a1a) !important;
+    color: var(--gn-white, #fff) !important;
+    border-color: var(--gn-off-black, #1a1a1a) !important;
+}
+.add-gigs-deposit-option-btn.add-gigs-deposit-option-btn--selected:hover {
+    filter: brightness(1.1);
+}
+.add-gigs-deposit-amount-wrap {
+    flex: 0 0 auto;
+}
+.add-gigs-deposit-amount-input {
+    width: 6rem;
+    box-sizing: border-box;
+}
+
 .add-gigs-rental-core-details {
-    margin-top: 1.5rem;
+    margin-top: 0.5rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
 }
+
+.add-gigs-rental-core-details .label {
+    text-transform: none;
+}
+
+.add-gigs-modal .add-gigs-label--normal-case {
+    text-transform: none;
+}
+
 .add-gigs-rental-core-details--invalid .add-gigs-field--invalid .input {
     border-color: var(--gn-error, #c00);
 }
@@ -1076,6 +1522,9 @@
     font-weight: 600;
     margin: 0 0 0.25rem 0;
     text-transform: none;
+}
+.add-gigs-rental-details-wrap {
+    display: contents;
 }
 .add-gigs-rental-more-group {
     margin-top: 1.25rem;
@@ -1145,6 +1594,7 @@
 .add-gigs-rental-visibility .label.add-gigs-section-heading {
     font-weight: 500;
     font-size: 1rem;
+    color: var(--gn-off-black, #111);
 }
 
 .add-gigs-rental-visibility-buttons {
@@ -1274,41 +1724,66 @@
 .add-gigs-invite-only-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
 }
 
 .add-gigs-invite-only-label {
-    font-weight: 600;
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: var(--gn-grey-700, #525252);
+    text-transform: none;
+    letter-spacing: normal;
     margin: 0;
-    cursor: pointer;
+    cursor: default;
+    flex: 1 1 auto;
 }
 
 .add-gigs-invite-only-text {
     margin: 0.35rem 0 0;
     font-size: 0.875rem;
     color: var(--gn-grey-600, #666);
-    max-width: 320px;
+    max-width: 100%;
+}
+
+/* Larger invite-only toggle inside artist slot cards */
+.add-gigs-invite-only--slot .gigs-toggle-switch {
+    width: 50px;
+    height: 28px;
+    flex-shrink: 0;
+    margin-right: 2.5rem;
+}
+
+.add-gigs-invite-only--slot .gigs-toggle-slider {
+    border-radius: 28px;
+}
+
+.add-gigs-invite-only--slot .gigs-toggle-slider:before {
+    width: 20px;
+    height: 20px;
+    left: 4px;
+    bottom: 4px;
+}
+
+.add-gigs-invite-only--slot .gigs-toggle-switch input:checked + .gigs-toggle-slider:before {
+    transform: translateX(22px);
 }
 
 .add-gigs-more-details {
     margin-top: 1rem;
+    background-color: var(--gn-grey-300, #d4d4d4);
+    border-radius: var(--gn-border-radius, 8px);
+    padding: 0.75rem 1rem 1rem;
 }
 
-/* Lightweight accordion header – subtle, not a primary section */
 .add-gigs-more-details-divider {
-    height: 1px;
-    background: var(--gn-grey-200, #e8e8e8);
-    margin: 0.6rem 0 0;
-}
-
-.add-gigs-more-details-divider--below {
-    margin: 0 0 0.4rem 0;
+    display: none;
 }
 
 .add-gigs-more-details-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     width: 100%;
     padding: 0.4rem 0;
     border: none;
@@ -1332,7 +1807,7 @@
 }
 
 .add-gigs-more-details-label {
-    flex: 1;
+    flex: 0 1 auto;
 }
 
 /* No ALL CAPS anywhere in More details */
@@ -1341,10 +1816,26 @@
     text-transform: none;
 }
 
-.add-gigs-more-details-field-label {
+/* Match Event name: wins over .add-gigs-field label (font-weight 400 / 0.9rem) */
+.add-gigs-more-details .add-gigs-field > label.add-gigs-more-details-field-label {
+    display: block;
     font-weight: 500;
     font-size: 0.875rem;
     color: var(--gn-off-black, #1a1a1a);
+    margin-bottom: 0.35rem;
+    text-transform: none;
+}
+
+/* Event name and Capacity in more details: white box, no border */
+.add-gigs-more-details .add-gigs-input-no-border.input {
+    border: none;
+    background-color: var(--gn-white, #fff);
+}
+
+/* Event type, Ticketing responsibility in more details: white box, no border */
+.add-gigs-more-details .add-gigs-select-no-border.select {
+    border: none;
+    background-color: var(--gn-white, #fff);
 }
 
 .add-gigs-extra-timings {
@@ -1352,7 +1843,7 @@
     flex-wrap: wrap;
     align-items: flex-end;
     gap: 1rem;
-    margin-top: 0.5rem;
+    margin-top: 1.25rem;
     padding: 0;
 }
 
@@ -1364,18 +1855,34 @@
     flex: 1 1 100%;
 }
 
+/* Load in + sound check on one row under Type of musician */
+.add-gigs-extra-timings .add-gigs-load-soundcheck-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem 2rem;
+    width: 100%;
+    flex: 1 1 100%;
+}
+
+.add-gigs-extra-timings .add-gigs-load-soundcheck-row .add-gigs-field {
+    flex: 1 1 12rem;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
 .add-gigs-extra-timings .add-gigs-field--full textarea {
     width: 100%;
     min-height: 4.5rem;
     resize: vertical;
 }
 
-/* Flatten subsection blocks – spacing + light separator, no heavy card */
+/* Flatten subsection blocks – spacing only, no divider lines */
 .add-gigs-extra-timings .add-gigs-rental-more-group {
     width: 100%;
     margin-top: 1.25rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--gn-grey-200, #eee);
+    border-top: none;
     background: none;
     border-radius: 0;
 }
@@ -1383,22 +1890,37 @@
 .add-gigs-extra-timings .add-gigs-rental-more-group:first-child {
     margin-top: 0;
     padding-top: 0;
-    border-top: none;
 }
 
 .add-gigs-extra-timings .add-gigs-rental-more-group--documents {
     margin-top: 1.25rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--gn-grey-200, #eee);
+    border-top: none;
 }
 
-/* Subsection headings – sentence case, semibold, slightly larger than field labels */
-.add-gigs-extra-timings .add-gigs-rental-subsection-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    margin: 0 0 0.5rem 0;
-    text-transform: none;
-    color: var(--gn-off-black, #1a1a1a);
+/* Event type and Ticketing responsibility on same line */
+.add-gigs-event-type-ticketing-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+    align-items: flex-start;
+    width: 100%;
+}
+.add-gigs-event-type-ticketing-col {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
+/* Capacity row in more details */
+.add-gigs-age-capacity-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+    align-items: flex-start;
+}
+.add-gigs-age-capacity-col {
+    flex: 0 1 auto;
+    min-width: 0;
 }
 
 /* Helper text – smaller, muted, does not compete with labels */
@@ -1417,16 +1939,22 @@
     margin-top: 0.5rem;
 }
 
-.add-gigs-documents-grid .add-gigs-field {
+.add-gigs-documents-grid .add-gigs-field,
+.add-gigs-document-tile {
     margin-bottom: 0;
     border: 1px solid var(--gn-grey-200, #eee);
     border-radius: var(--gn-border-radius, 6px);
     padding: 0.75rem 0.9rem;
     background-color: var(--gn-grey-050, #fafafa);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 5rem;
 }
 
-.add-gigs-extra-timings .add-gigs-documents-grid .add-gigs-field {
-    background-color: transparent;
+.add-gigs-extra-timings .add-gigs-documents-grid .add-gigs-field,
+.add-gigs-extra-timings .add-gigs-document-tile {
+    background-color: var(--gn-white, #fff);
     border-color: var(--gn-grey-200, #eee);
 }
 
@@ -1491,7 +2019,8 @@
     flex-wrap: wrap;
 }
 
-.add-gigs-documents-grid .add-gigs-field textarea.input {
+.add-gigs-documents-grid .add-gigs-field textarea.input,
+.add-gigs-document-tile textarea.input {
     width: 100%;
     max-width: 100%;
     min-height: 5rem;
@@ -1564,6 +2093,10 @@
 
 .add-gigs-artist-name-wrap {
     position: relative;
+}
+
+.add-gigs-slot-time-row .add-gigs-artist-name-wrap .add-gigs-artist-row--inline {
+    width: 100%;
 }
 
 .add-gigs-artist-name-wrap .add-gigs-artist-row {
@@ -1655,6 +2188,19 @@
 /* Reserve space for scrollbar in calendar view so layout doesn't shift (e.g. March vs February) */
 .window.venues .body.gigs.gigs-calendar-react-body {
     scrollbar-gutter: stable;
+}
+
+.gigs-calendar-react-subscribe-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 0 0;
+  margin-top: 0.5rem;
+}
+
+.gigs-calendar-react-subscribe-row .btn.tertiary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 @media (--bp-md) {

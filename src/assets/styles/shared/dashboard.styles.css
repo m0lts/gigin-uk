@@ -202,9 +202,9 @@
     border:1px solid var(--gn-grey-400);
     box-shadow: 0 0 2px var(--gn-shadow);
     border-radius: 0.5rem;
-    padding:0.5rem;
+    padding:0.35rem 0.5rem;
     width:100%;
-    height:75px;
+    height:58px;
     overflow: hidden;
     transition: height 0.1s ease-in-out;
     position: sticky;
@@ -259,7 +259,7 @@
 }
 
 .dashboard .sidebar .account-dropdown .user-container {
-    margin:5px 0;
+    margin:2px 0;
     display: flex;
     align-items: center;
     gap:5px;
@@ -531,12 +531,16 @@
 .dashboard .sidebar.sidebar--collapsed .sidebar__header {
     flex-direction: row;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start; /* Match expanded state: logo at top of header */
     padding-bottom: 1rem;
 }
 
 .dashboard .sidebar.sidebar--collapsed .sidebar__header .logo {
     justify-content: center;
+}
+
+.dashboard .sidebar.sidebar--collapsed .sidebar__logo-link {
+    margin-top: 0.5rem;
 }
 
 .dashboard .sidebar.sidebar--collapsed .beta-box {

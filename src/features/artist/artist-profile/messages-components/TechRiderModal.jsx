@@ -286,7 +286,7 @@ export const TechRiderModal = ({ isOpen, onClose, venueId, artistProfileId }) =>
         </div>
         
         {/* Other Note Fields */}
-        {(soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.houseRules || houseRules?.volumeLevel || houseRules?.noiseCurfew || houseRules?.volumeNotes) && (
+        {(soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.volumeLevel || houseRules?.noiseCurfew || houseRules?.volumeNotes) && (
           <div className="tech-rider-notes-section">
             {houseRules?.volumeLevel && (
               <div>
@@ -334,12 +334,6 @@ export const TechRiderModal = ({ isOpen, onClose, venueId, artistProfileId }) =>
               <div>
                 <h6>Power Access</h6>
                 <p>{houseRules.powerAccess}</p>
-              </div>
-            )}
-            {houseRules?.houseRules && (
-              <div>
-                <h6>House Rules</h6>
-                <p>{houseRules.houseRules}</p>
               </div>
             )}
           </div>

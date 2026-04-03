@@ -181,6 +181,8 @@ export const ProfileView = ({
   // State for edit components (must be defined before use)
   const [isEditingBackground, setIsEditingBackground] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditMenuOpen, setIsEditMenuOpen] = useState(false);
+  const editMenuRef = useRef(null);
   const [isEditingTracks, setIsEditingTracks] = useState(false);
   const [isEditingVideos, setIsEditingVideos] = useState(false);
   const [editHeroImage, setEditHeroImage] = useState(null);
@@ -290,6 +292,18 @@ export const ProfileView = ({
       setEditingVideos(videosForEdit);
     }
   }, [isEditingVideos, persistedVideos, editingVideos.length]);
+
+  // Close edit menu when clicking outside
+  useEffect(() => {
+    if (!isEditMenuOpen) return;
+    const handleClickOutside = (e) => {
+      if (editMenuRef.current && !editMenuRef.current.contains(e.target)) {
+        setIsEditMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isEditMenuOpen]);
 
   // Track editing handlers
   const createEntityId = (prefix) =>
@@ -1354,33 +1368,51 @@ export const ProfileView = ({
         </div>
       )}
 
-      {/* Edit Buttons and Dark Mode Toggle */}
+      {/* Edit button (reveals Edit Background / Edit Name) and Dark Mode Toggle - grouped on the right */}
       {canEdit && !isCreatingProfile && !isExample && (
         <div className="bottom-buttons-container">
-          <div className="edit-buttons-container">
-            <button
-              className={`btn secondary edit-btn ${isEditingBackground ? 'active' : ''}`}
-              onClick={() => {
-                setIsEditingBackground(!isEditingBackground);
-                setIsEditingName(false);
-              }}
-            >
-              <EditIcon />
-              Edit Background
-            </button>
-            <button
-              className={`btn secondary edit-btn ${isEditingName ? 'active' : ''}`}
-              onClick={() => {
-                setIsEditingName(!isEditingName);
-                setIsEditingBackground(false);
-              }}
-            >
-              <EditIcon />
-              Edit Name
-            </button>
-          </div>
-          <div className="dark-mode-toggle-container">
-            <DarkModeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+          <div className="bottom-buttons-right-group">
+            <div className="edit-buttons-container" ref={editMenuRef}>
+              {isEditMenuOpen && (
+                <>
+                  <button
+                    type="button"
+                    className={`btn secondary edit-btn ${isEditingBackground ? 'active' : ''}`}
+                    onClick={() => {
+                      setIsEditingBackground(!isEditingBackground);
+                      setIsEditingName(false);
+                      setIsEditMenuOpen(false);
+                    }}
+                  >
+                    <EditIcon />
+                    Edit Background
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn secondary edit-btn ${isEditingName ? 'active' : ''}`}
+                    onClick={() => {
+                      setIsEditingName(!isEditingName);
+                      setIsEditingBackground(false);
+                      setIsEditMenuOpen(false);
+                    }}
+                  >
+                    <EditIcon />
+                    Edit Name
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                className={`btn secondary edit-btn ${isEditMenuOpen ? 'active' : ''}`}
+                onClick={() => setIsEditMenuOpen((prev) => !prev)}
+              >
+                <EditIcon />
+                Edit
+              </button>
+            </div>
+            <div className="dark-mode-toggle-container">
+              <DarkModeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+            </div>
           </div>
         </div>
       )}

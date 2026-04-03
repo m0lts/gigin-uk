@@ -416,7 +416,7 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
 
         const displayedEquipment = showAllEquipment ? equipmentItems : equipmentItems.slice(0, 3);
         const hasMoreEquipment = equipmentItems.length > 3;
-        const hasNotes = soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.houseRules || houseRules?.volumeLevel || houseRules?.noiseCurfew || houseRules?.volumeNotes;
+        const hasNotes = soundSystem?.monitoring || soundSystem?.cables || backline?.other || backline?.stageSize || houseRules?.powerAccess || houseRules?.volumeLevel || houseRules?.noiseCurfew || houseRules?.volumeNotes;
         const shouldShowSeeMore = (hasMoreEquipment || hasNotes) && !showAllEquipment;
 
         return (
@@ -483,12 +483,6 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
                             <div>
                                 <h6>noise curfew</h6>
                                 <p>{houseRules.noiseCurfew}</p>
-                            </div>
-                        )}
-                        {houseRules?.houseRules && (
-                            <div>
-                                <h6>house rules</h6>
-                                <p>{houseRules.houseRules}</p>
                             </div>
                         )}
                     </div>

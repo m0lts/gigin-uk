@@ -1,54 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+    EQUIPMENT_DEFAULTS,
+    normalizeTechRider,
+    buildNewTechRiderShape,
+} from './techRiderConfig';
 
 export const InHouseEquipment = ({ formData, handleInputChange, stepError, setStepError }) => {
-
     const navigate = useNavigate();
 
-    // Initialize tech rider data structure
-    const [techRider, setTechRider] = useState(formData.techRider || {
-        soundSystem: {
-            pa: { available: '', notes: '' },
-            mixingConsole: { available: '', notes: '' },
-            vocalMics: { count: '', notes: '' },
-            diBoxes: { count: '', notes: '' },
-            monitoring: '',
-            cables: ''
-        },
-        backline: {
-            drumKit: { available: '', notes: '' },
-            bassAmp: { available: '', notes: '' },
-            guitarAmp: { available: '', notes: '' },
-            keyboard: { available: '', notes: '' },
-            other: '',
-            stageSize: ''
-        },
-        houseRules: {
-            volumeLevel: '',
-            volumeNotes: '',
-            noiseCurfew: '',
-            powerAccess: '',
-            houseRules: ''
-        }
-    });
+    const [techRider, setTechRider] = useState(() =>
+        formData.techRider ? normalizeTechRider(formData.techRider) : buildNewTechRiderShape()
+    );
 
-    useEffect(() => {
-        if (formData.type === '') {
-            navigate('/venues/add-venue');
-        }
-    }, [formData, navigate]);
-
-    // Sync techRider from formData when it's loaded externally (e.g., saved venue)
-    // Use a ref to track if we've already synced to avoid loops
     const techRiderSyncedRef = useRef(false);
     useEffect(() => {
         if (formData.techRider && !techRiderSyncedRef.current) {
-            setTechRider(formData.techRider);
+            setTechRider(normalizeTechRider(formData.techRider));
             techRiderSyncedRef.current = true;
         }
     }, [formData.techRider]);
 
-    // Update formData whenever techRider changes (debounced to avoid excessive updates)
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             handleInputChange('techRider', techRider);
@@ -56,485 +28,265 @@ export const InHouseEquipment = ({ formData, handleInputChange, stepError, setSt
         return () => clearTimeout(timeoutId);
     }, [techRider, handleInputChange]);
 
-    const handleSoundSystemChange = (field, value) => {
-        setTechRider(prev => ({
+    const updateEquipment = (key, updates) => {
+        setTechRider((prev) => ({
             ...prev,
-            soundSystem: {
-                ...prev.soundSystem,
-                [field]: value
-            }
+            equipment: prev.equipment.map((item) =>
+                item.key === key ? { ...item, ...updates } : item
+            ),
         }));
         setStepError(null);
     };
 
-    const handleBacklineChange = (field, value) => {
-        setTechRider(prev => ({
+    const updateStageSetup = (field, value) => {
+        setTechRider((prev) => ({
             ...prev,
-            backline: {
-                ...prev.backline,
-                [field]: value
-            }
+            stageSetup: { ...prev.stageSetup, [field]: value },
         }));
         setStepError(null);
     };
 
-    const handleHouseRulesChange = (field, value) => {
-        setTechRider(prev => ({
+    const updateHouseRules = (field, value) => {
+        setTechRider((prev) => ({
             ...prev,
-            houseRules: {
-                ...prev.houseRules,
-                [field]: value
-            }
+            houseRules: { ...prev.houseRules, [field]: value },
         }));
         setStepError(null);
-    };
-
-    const handleYesNoToggle = (section, field, value) => {
-        if (section === 'soundSystem') {
-            setTechRider(prev => ({
-                ...prev,
-                soundSystem: {
-                    ...prev.soundSystem,
-                    [field]: {
-                        ...prev.soundSystem[field],
-                        available: value
-                    }
-                }
-            }));
-        } else if (section === 'backline') {
-            setTechRider(prev => ({
-                ...prev,
-                backline: {
-                    ...prev.backline,
-                    [field]: {
-                        ...prev.backline[field],
-                        available: value
-                    }
-                }
-            }));
-        }
-        setStepError(null);
-    };
-
-    const handleNotesChange = (section, field, value) => {
-        if (section === 'soundSystem') {
-            setTechRider(prev => ({
-                ...prev,
-                soundSystem: {
-                    ...prev.soundSystem,
-                    [field]: {
-                        ...prev.soundSystem[field],
-                        notes: value
-                    }
-                }
-            }));
-        } else if (section === 'backline') {
-            setTechRider(prev => ({
-                ...prev,
-                backline: {
-                    ...prev.backline,
-                    [field]: {
-                        ...prev.backline[field],
-                        notes: value
-                    }
-                }
-            }));
-        }
-        setStepError(null);
-    };
-
-    const handleCountChange = (section, field, value) => {
-        if (section === 'soundSystem') {
-            setTechRider(prev => ({
-                ...prev,
-                soundSystem: {
-                    ...prev.soundSystem,
-                    [field]: {
-                        ...prev.soundSystem[field],
-                        count: value
-                    }
-                }
-            }));
-        }
-        setStepError(null);
-    };
-
-    const validateRequiredFields = () => {
-        const errors = [];
-        
-        if (!techRider.soundSystem.pa.available || techRider.soundSystem.pa.available === '') {
-            errors.push('PA');
-        }
-        if (!techRider.soundSystem.mixingConsole.available || techRider.soundSystem.mixingConsole.available === '') {
-            errors.push('Mixing Console');
-        }
-        if (techRider.soundSystem.vocalMics.count === '' || techRider.soundSystem.vocalMics.count === null || techRider.soundSystem.vocalMics.count === undefined) {
-            errors.push('No of Vocal mics available');
-        }
-        if (techRider.soundSystem.diBoxes.count === '' || techRider.soundSystem.diBoxes.count === null || techRider.soundSystem.diBoxes.count === undefined) {
-            errors.push('No of DI boxes available');
-        }
-        if (!techRider.backline.drumKit.available || techRider.backline.drumKit.available === '') {
-            errors.push('Drum kit');
-        }
-        if (!techRider.backline.bassAmp.available || techRider.backline.bassAmp.available === '') {
-            errors.push('Bass amp');
-        }
-        if (!techRider.backline.guitarAmp.available || techRider.backline.guitarAmp.available === '') {
-            errors.push('Guitar amp');
-        }
-        if (!techRider.backline.keyboard.available || techRider.backline.keyboard.available === '') {
-            errors.push('Keyboard');
-        }
-        
-        return errors;
-    };
-
-    const getFieldError = (fieldName) => {
-        if (!stepError) return false;
-        const errors = validateRequiredFields();
-        return errors.includes(fieldName);
     };
 
     const handleNext = () => {
-        const errors = validateRequiredFields();
-        
-        if (errors.length > 0) {
-            setStepError(`Please fill in all required fields: ${errors.join(', ')}`);
-            return;
-        }
-        
         setStepError(null);
         navigate('/venues/add-venue/photos');
     };
 
+    const [expandedNotes, setExpandedNotes] = useState({});
+    const toggleNotes = (key) => {
+        setExpandedNotes((prev) => ({ ...prev, [key]: !prev[key] }));
+    };
+
     return (
-        <div className='stage equipment'>
+        <div className="stage equipment">
             <div className="stage-content">
                 <div className="stage-definition">
-                    <h1>Tech Rider</h1>
-                    <p className='stage-copy'>Provide details about your venue's equipment and house rules to help musicians prepare for their performance.</p>
+                    <h1>Tech Spec</h1>
                 </div>
 
-                {/* Sound System and Monitoring Section */}
-                <div className='tech-rider-section'>
-                    <h2>Sound System and Monitoring</h2>
-                    
-                    {/* PA */}
-                    <div className='input-group'>
-                        <label className='input-label'>PA<span className='required-asterisk'>*</span></label>
-                        <div className='selections'>
-                            <button 
-                                className={`card small centered ${techRider.soundSystem.pa.available === 'yes' ? 'selected' : ''}`}
-                                onClick={() => handleYesNoToggle('soundSystem', 'pa', 'yes')}
-                            >
-                                <span className='title'>Yes</span>
-                            </button>
-                            <button 
-                                className={`card small centered ${techRider.soundSystem.pa.available === 'no' ? 'selected' : ''}`}
-                                onClick={() => handleYesNoToggle('soundSystem', 'pa', 'no')}
-                            >
-                                <span className='title'>No</span>
-                            </button>
-                        </div>
-                        <div className='input-group' style={{ marginTop: '1rem' }}>
-                            <textarea
-                                placeholder='Additional Notes (e.g model, number of speakers)'
-                                value={techRider.soundSystem.pa.notes}
-                                onChange={(e) => handleNotesChange('soundSystem', 'pa', e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Mixing Console */}
-                    <div className='input-group'>
-                        <label className='input-label'>Mixing Console<span className='required-asterisk'>*</span></label>
-                        <div className={`selections ${getFieldError('Mixing Console') ? 'error' : ''}`}>
-                    <button 
-                                className={`card small centered ${techRider.soundSystem.mixingConsole.available === 'yes' ? 'selected' : ''} ${getFieldError('Mixing Console') ? 'error' : ''}`}
-                                onClick={() => handleYesNoToggle('soundSystem', 'mixingConsole', 'yes')}
-                    >
-                        <span className='title'>Yes</span>
-                    </button>
-                    <button 
-                                className={`card small centered ${techRider.soundSystem.mixingConsole.available === 'no' ? 'selected' : ''} ${getFieldError('Mixing Console') ? 'error' : ''}`}
-                                onClick={() => handleYesNoToggle('soundSystem', 'mixingConsole', 'no')}
-                    >
-                        <span className='title'>No</span>
-                    </button>
-                        </div>
-                        <div className='input-group' style={{ marginTop: '1rem' }}>
-                            <textarea
-                                placeholder='Additional Notes (e.g number of channels)'
-                                value={techRider.soundSystem.mixingConsole.notes}
-                                onChange={(e) => handleNotesChange('soundSystem', 'mixingConsole', e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Vocal Mics */}
-                    <div className='input-group'>
-                        <label className='input-label'>No of Vocal mics available<span className='required-asterisk'>*</span></label>
-                        <input
-                            type='number'
-                            className={`input ${getFieldError('No of Vocal mics available') ? 'error' : ''}`}
-                            placeholder='Number'
-                            min='0'
-                            value={techRider.soundSystem.vocalMics.count}
-                            onChange={(e) => handleCountChange('soundSystem', 'vocalMics', e.target.value)}
-                        />
-                        <textarea
-                            style={{ marginTop: '0.5rem' }}
-                            placeholder='Additional Notes (eg number of Mic Stands)'
-                            value={techRider.soundSystem.vocalMics.notes}
-                            onChange={(e) => handleNotesChange('soundSystem', 'vocalMics', e.target.value)}
-                        />
-                    </div>
-
-                    {/* DI Boxes */}
-                    <div className='input-group'>
-                        <label className='input-label'>No of DI boxes available<span className='required-asterisk'>*</span></label>
-                        <input
-                            type='number'
-                            className={`input ${getFieldError('No of DI boxes available') ? 'error' : ''}`}
-                            placeholder='Number'
-                            min='0'
-                            value={techRider.soundSystem.diBoxes.count}
-                            onChange={(e) => handleCountChange('soundSystem', 'diBoxes', e.target.value)}
-                        />
-                        <textarea
-                            style={{ marginTop: '0.5rem' }}
-                            placeholder='Additional Notes'
-                            value={techRider.soundSystem.diBoxes.notes}
-                            onChange={(e) => handleNotesChange('soundSystem', 'diBoxes', e.target.value)}
-                        />
-                    </div>
-
-                    {/* Monitoring */}
-                    <div className='input-group'>
-                        <label htmlFor='monitoring' className='input-label'>Monitoring</label>
-                        <textarea
-                            id='monitoring'
-                            placeholder='Additional Notes (e.g Number of monitoring speakers, do you allow in-ear monitoring?)'
-                            value={techRider.soundSystem.monitoring}
-                            onChange={(e) => handleSoundSystemChange('monitoring', e.target.value)}
-                        />
-                    </div>
-
-                    {/* Cables */}
-                    <div className='input-group'>
-                        <label htmlFor='cables' className='input-label'>Cables</label>
-                        <textarea
-                            id='cables'
-                            placeholder='Additional Notes (e.g A rough number and types of cables available)'
-                            value={techRider.soundSystem.cables}
-                            onChange={(e) => handleSoundSystemChange('cables', e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                {/* Backline Section */}
-                <div className='tech-rider-section' style={{ marginTop: '2rem' }}>
-                    <h2>Backline</h2>
-                    
-                    {/* Drum Kit */}
-                    <div className='input-group'>
-                        <label className='input-label'>Drum kit?<span className='required-asterisk'>*</span></label>
-                        <div className={`selections ${getFieldError('Drum kit') ? 'error' : ''}`}>
-                            <button 
-                                className={`card small centered ${techRider.backline.drumKit.available === 'yes' ? 'selected' : ''} ${getFieldError('Drum kit') ? 'error' : ''}`}
-                                onClick={() => handleYesNoToggle('backline', 'drumKit', 'yes')}
-                            >
-                                <span className='title'>Yes</span>
-                            </button>
-                            <button 
-                                className={`card small centered ${techRider.backline.drumKit.available === 'no' ? 'selected' : ''} ${getFieldError('Drum kit') ? 'error' : ''}`}
-                                onClick={() => handleYesNoToggle('backline', 'drumKit', 'no')}
-                            >
-                                <span className='title'>No</span>
-                            </button>
-                        </div>
-                        <div className='input-group' style={{ marginTop: '1rem' }}>
-                            <textarea
-                                placeholder='Additional Notes'
-                                value={techRider.backline.drumKit.notes}
-                                onChange={(e) => handleNotesChange('backline', 'drumKit', e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Bass Amp */}
-                    <div className='input-group'>
-                        <label className='input-label'>Bass amp?<span className='required-asterisk'>*</span></label>
-                        <div className={`selections ${getFieldError('Bass amp') ? 'error' : ''}`}>
-                            <button 
-                                className={`card small centered ${techRider.backline.bassAmp.available === 'yes' ? 'selected' : ''} ${getFieldError('Bass amp') ? 'error' : ''}`}
-                                onClick={() => handleYesNoToggle('backline', 'bassAmp', 'yes')}
-                            >
-                                <span className='title'>Yes</span>
-                            </button>
-                            <button 
-                                className={`card small centered ${techRider.backline.bassAmp.available === 'no' ? 'selected' : ''} ${getFieldError('Bass amp') ? 'error' : ''}`}
-                                onClick={() => handleYesNoToggle('backline', 'bassAmp', 'no')}
-                            >
-                                <span className='title'>No</span>
-                            </button>
-                        </div>
-                        <div className='input-group' style={{ marginTop: '1rem' }}>
-                            <textarea
-                                placeholder='Additional Notes'
-                                value={techRider.backline.bassAmp.notes}
-                                onChange={(e) => handleNotesChange('backline', 'bassAmp', e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Guitar Amp */}
-                    <div className='input-group'>
-                        <label className='input-label'>Guitar amp?<span className='required-asterisk'>*</span></label>
-                            <div className={`selections ${getFieldError('Guitar amp') ? 'error' : ''}`}>
-                            <button 
-                                className={`card small centered ${techRider.backline.guitarAmp.available === 'yes' ? 'selected' : ''} ${getFieldError('Guitar amp') ? 'error' : ''}`}
-                                onClick={() => handleYesNoToggle('backline', 'guitarAmp', 'yes')}
-                            >
-                                <span className='title'>Yes</span>
-                            </button>
-                                    <button 
-                                className={`card small centered ${techRider.backline.guitarAmp.available === 'no' ? 'selected' : ''} ${getFieldError('Guitar amp') ? 'error' : ''}`}
-                                onClick={() => handleYesNoToggle('backline', 'guitarAmp', 'no')}
-                                    >
-                                <span className='title'>No</span>
-                                    </button>
-                            </div>
-                        <div className='input-group' style={{ marginTop: '1rem' }}>
-                            <textarea
-                                placeholder='Additional Notes'
-                                value={techRider.backline.guitarAmp.notes}
-                                onChange={(e) => handleNotesChange('backline', 'guitarAmp', e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Keyboard */}
-                        <div className='input-group'>
-                        <label className='input-label'>Keyboard?<span className='required-asterisk'>*</span></label>
-                        <div className={`selections ${getFieldError('Keyboard') ? 'error' : ''}`}>
-                            <button 
-                                className={`card small centered ${techRider.backline.keyboard.available === 'yes' ? 'selected' : ''} ${getFieldError('Keyboard') ? 'error' : ''}`}
-                                onClick={() => handleYesNoToggle('backline', 'keyboard', 'yes')}
-                            >
-                                <span className='title'>Yes</span>
-                            </button>
-                            <button 
-                                className={`card small centered ${techRider.backline.keyboard.available === 'no' ? 'selected' : ''} ${getFieldError('Keyboard') ? 'error' : ''}`}
-                                onClick={() => handleYesNoToggle('backline', 'keyboard', 'no')}
-                            >
-                                <span className='title'>No</span>
-                            </button>
-                        </div>
-                        <div className='input-group' style={{ marginTop: '1rem' }}>
-                            <textarea
-                                placeholder='Additional Notes'
-                                value={techRider.backline.keyboard.notes}
-                                onChange={(e) => handleNotesChange('backline', 'keyboard', e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Other */}
-                    <div className='input-group'>
-                        <label htmlFor='other' className='input-label'>Any further notes on venue equipment:</label>
-                        <textarea
-                            id='other'
-                            placeholder='Notes'
-                            value={techRider.backline.other}
-                            onChange={(e) => handleBacklineChange('other', e.target.value)}
-                        />
-                        </div>
-
-                    {/* Stage Size */}
-                        <div className='input-group'>
-                        <label htmlFor='stageSize' className='input-label'>Stage size</label>
-                            <textarea
-                            id='stageSize'
-                            placeholder='Additional Notes (e.g How many performers can fit on the stage, dimensions of performing area)'
-                            value={techRider.backline.stageSize}
-                            onChange={(e) => handleBacklineChange('stageSize', e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                {/* House Rules Section */}
-                <div className='tech-rider-section' style={{ marginTop: '2rem' }}>
-                    <h2>House Rules</h2>
-                    
-                    {/* Volume Level */}
-                    <div className='input-group'>
-                        <label className='input-label'>Volume level</label>
-                        <div className='selections'>
-                            {['quiet', 'moderate', 'loud'].map(level => (
-                                <button
-                                    key={level}
-                                    className={`card small centered ${techRider.houseRules.volumeLevel === level ? 'selected' : ''}`}
-                                    onClick={() => handleHouseRulesChange('volumeLevel', level)}
+                {/* A) Equipment & Backline */}
+                <section className="tech-rider-section tech-rider-section--equipment">
+                    <h2>Equipment & Backline</h2>
+                    <p className="tech-rider-helper">Turn on Available for each item you offer, then set pricing and optional notes.</p>
+                    <div className="tech-rider-equipment-grid">
+                        {(techRider.equipment || []).map((item) => {
+                            const def = EQUIPMENT_DEFAULTS.find((d) => d.key === item.key);
+                            const hasQuantity = def?.hasQuantity ?? false;
+                            const showNotes = expandedNotes[item.key];
+                            const hasNotes = Boolean(item.notes && String(item.notes).trim());
+                            return (
+                                <div
+                                    key={item.key}
+                                    className={`tech-rider-equipment-tile ${!item.available ? 'tech-rider-equipment-tile--unavailable' : ''}`}
                                 >
-                                    <span className='title'>{level.charAt(0).toUpperCase() + level.slice(1)}</span>
-                                </button>
-                            ))}
+                                    <div className="tech-rider-equipment-tile-header">
+                                        <span className="tech-rider-equipment-label">{item.label}</span>
+                                        <label className="tech-rider-available-toggle">
+                                            <span className="tech-rider-available-label">{item.available ? 'Available' : 'Not Available'}</span>
+                                            <span className="tech-rider-toggle-switch">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!item.available}
+                                                    onChange={(e) => updateEquipment(item.key, { available: e.target.checked })}
+                                                />
+                                                <span className="tech-rider-toggle-slider" />
+                                            </span>
+                                        </label>
+                                    </div>
+                                    {item.available && (
+                                        <>
+                                            <div className="tech-rider-equipment-controls">
+                                                <div className="tech-rider-segments">
+                                                    <label className="tech-rider-segment">
+                                                        <input
+                                                            type="radio"
+                                                            name={`pricing-${item.key}`}
+                                                            checked={item.pricing !== 'hire'}
+                                                            onChange={() => updateEquipment(item.key, { pricing: 'free', hireFee: null })}
+                                                        />
+                                                        <span>Free</span>
+                                                    </label>
+                                                    <label className="tech-rider-segment">
+                                                        <input
+                                                            type="radio"
+                                                            name={`pricing-${item.key}`}
+                                                            checked={item.pricing === 'hire'}
+                                                            onChange={() => updateEquipment(item.key, { pricing: 'hire' })}
+                                                        />
+                                                        <span>Hire</span>
+                                                    </label>
+                                                </div>
+                                                {item.pricing === 'hire' && (
+                                                    <span className="tech-rider-hire-input-wrap">
+                                                        <span className="tech-rider-currency" aria-hidden="true">£</span>
+                                                        <input
+                                                            type="number"
+                                                            className="input tech-rider-hire-input"
+                                                            min="0"
+                                                            step="1"
+                                                            placeholder="0"
+                                                            value={item.hireFee ?? ''}
+                                                            onChange={(e) =>
+                                                                updateEquipment(item.key, {
+                                                                    hireFee: e.target.value === '' ? null : e.target.value,
+                                                                })
+                                                            }
+                                                        />
+                                                    </span>
+                                                )}
+                                                {hasQuantity && (
+                                                    <span className="tech-rider-quantity-inline">
+                                                        <span className="tech-rider-quantity-label">Qty</span>
+                                                        <input
+                                                            type="number"
+                                                            className="input tech-rider-quantity-input"
+                                                            min="0"
+                                                            placeholder="0"
+                                                            value={item.quantity ?? ''}
+                                                            onChange={(e) =>
+                                                                updateEquipment(item.key, {
+                                                                    quantity: e.target.value === '' ? null : e.target.value,
+                                                                })
+                                                            }
+                                                        />
+                                                    </span>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    className="btn tertiary tech-rider-add-note-btn"
+                                                    onClick={() => {
+                                                        if (showNotes || hasNotes) {
+                                                            updateEquipment(item.key, { notes: '' });
+                                                            setExpandedNotes((prev) => ({ ...prev, [item.key]: false }));
+                                                        } else {
+                                                            toggleNotes(item.key);
+                                                        }
+                                                    }}
+                                                >
+                                                    {(showNotes || hasNotes) ? '- Remove note' : '+ Add note'}
+                                                </button>
+                                            </div>
+                                            {(showNotes || hasNotes) && (
+                                                <div className="tech-rider-equipment-row-notes">
+                                                    <textarea
+                                                        className="input tech-rider-note-input"
+                                                        placeholder="Details (model, limitations, etc.)"
+                                                        value={item.notes ?? ''}
+                                                        onChange={(e) => updateEquipment(item.key, { notes: e.target.value })}
+                                                        rows={2}
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+
+                {/* B) Stage & Setup */}
+                <section className="tech-rider-section tech-rider-section--stage">
+                    <h2>Stage & Setup</h2>
+                    <div className="tech-rider-stage-fields">
+                        <div className="input-group">
+                            <label htmlFor="stageSize" className="input-label">Stage size</label>
+                            <textarea
+                                id="stageSize"
+                                className="input"
+                                placeholder="e.g. 3m x 2m"
+                                value={techRider.stageSetup?.stageSize ?? ''}
+                                onChange={(e) => updateStageSetup('stageSize', e.target.value)}
+                                rows={2}
+                            />
                         </div>
-                        {techRider.houseRules.volumeLevel && (
-                            <div className='input-group' style={{ marginTop: '1rem' }}>
-                                <input
-                                    type='text'
-                                    className='input'
-                                    placeholder='Additional Notes'
-                                    value={techRider.houseRules.volumeNotes}
-                                    onChange={(e) => handleHouseRulesChange('volumeNotes', e.target.value)}
-                                />
+                        <div className="input-group">
+                            <label htmlFor="powerOutlets" className="input-label">Power outlets on/near stage</label>
+                            <input
+                                id="powerOutlets"
+                                type="number"
+                                className="input"
+                                min="0"
+                                placeholder="Number"
+                                value={techRider.stageSetup?.powerOutlets ?? ''}
+                                onChange={(e) =>
+                                    updateStageSetup(
+                                        'powerOutlets',
+                                        e.target.value === '' ? null : e.target.value
+                                    )
+                                }
+                            />
+                        </div>
+                        <div className="input-group tech-rider-input-group--full">
+                            <label htmlFor="generalTechNotes" className="input-label">General tech notes</label>
+                            <textarea
+                                id="generalTechNotes"
+                                className="input"
+                                placeholder="Anything else about venue equipment not covered above."
+                                value={techRider.stageSetup?.generalTechNotes ?? ''}
+                                onChange={(e) => updateStageSetup('generalTechNotes', e.target.value)}
+                                rows={3}
+                            />
+                        </div>
+                    </div>
+                </section>
+
+                {/* C) Performance Conditions */}
+                <section className="tech-rider-section tech-rider-section--house-rules">
+                    <h2>Performance Conditions</h2>
+                    <div className="tech-rider-house-rules-fields">
+                        <div className="input-group">
+                            <label className="input-label">Volume level</label>
+                            <div className="selections">
+                                {['quiet', 'moderate', 'loud'].map((level) => (
+                                    <button
+                                        key={level}
+                                        type="button"
+                                        className={`card small centered ${techRider.houseRules?.volumeLevel === level ? 'selected' : ''}`}
+                                        onClick={() => updateHouseRules('volumeLevel', level)}
+                                    >
+                                        <span className="title">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+                                    </button>
+                                ))}
                             </div>
-                        )}
+                            {techRider.houseRules?.volumeLevel && (
+                                <input
+                                    type="text"
+                                    className="input"
+                                    style={{ marginTop: '0.5rem' }}
+                                    placeholder="Additional notes"
+                                    value={techRider.houseRules?.volumeNotes ?? ''}
+                                    onChange={(e) => updateHouseRules('volumeNotes', e.target.value)}
+                                />
+                            )}
+                        </div>
+                        <div className="input-group">
+                            <label htmlFor="noiseCurfew" className="input-label">Noise curfew</label>
+                            <input
+                                type="time"
+                                id="noiseCurfew"
+                                className="input"
+                                value={techRider.houseRules?.noiseCurfew ?? ''}
+                                onChange={(e) => updateHouseRules('noiseCurfew', e.target.value)}
+                            />
+                        </div>
                     </div>
-
-                    {/* Noise Curfew */}
-                    <div className='input-group'>
-                        <label htmlFor='noiseCurfew' className='input-label'>Noise curfew</label>
-                        <input
-                            type='time'
-                            id='noiseCurfew'
-                            className='input'
-                            value={techRider.houseRules.noiseCurfew}
-                            onChange={(e) => handleHouseRulesChange('noiseCurfew', e.target.value)}
-                        />
-                    </div>
-
-                    {/* Power Access */}
-                    <div className='input-group'>
-                        <label htmlFor='powerAccess' className='input-label'>Power access</label>
-                        <textarea
-                            id='powerAccess'
-                            placeholder='Additional Notes (e.g how many power outlets, extension leads)'
-                            value={techRider.houseRules.powerAccess}
-                            onChange={(e) => handleHouseRulesChange('powerAccess', e.target.value)}
-                        />
-                    </div>
-
-                    {/* House Rules */}
-                    <div className='input-group'>
-                        <label htmlFor='houseRules' className='input-label'>House rules</label>
-                        <textarea
-                            id='houseRules'
-                            placeholder='Any rules and important information performers must know.'
-                            value={techRider.houseRules.houseRules}
-                            onChange={(e) => handleHouseRulesChange('houseRules', e.target.value)}
-                        />
-                    </div>
-                </div>
+                </section>
             </div>
-            <div className='stage-controls'>
-                <button className='btn secondary' onClick={() => navigate(-1)}>
+            <div className="stage-controls">
+                <button type="button" className="btn secondary" onClick={() => navigate(-1)}>
                     Back
                 </button>
-                <button className='btn primary' onClick={handleNext}>Continue</button>
+                <button type="button" className="btn primary" onClick={handleNext}>
+                    Continue
+                </button>
             </div>
         </div>
     );

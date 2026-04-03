@@ -443,8 +443,11 @@ button {
 }
 
 .btn.artist-profile.disabled {
-    opacity: 0.8;
+    background: var(--gn-offset-green, rgba(34, 139, 34, 0.15));
+    color: var(--gn-green, #228b22);
+    border: none;
     animation: none;
+    opacity: 1;
 }
 
 .btn.artist-profile:hover {

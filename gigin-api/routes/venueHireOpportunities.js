@@ -69,6 +69,8 @@ function buildHirePayload(data, now) {
     technicalSetup: Object.keys(setupClean).length ? setupClean : { paIncluded: "no", soundEngineerIncluded: "no" },
     documents: Array.isArray(data.documents) ? data.documents : [],
     notesInternal: data.notesInternal ?? "",
+    capacity: data.capacity != null && Number.isFinite(Number(data.capacity)) ? Number(data.capacity) : null,
+    ageRestriction: data.ageRestriction ?? data.rentalAgeRestriction ?? null,
     hirerType: data.hirerType ?? "none",
     hirerContactId: data.hirerContactId ?? null,
     hirerUserId: data.hirerUserId ?? null,

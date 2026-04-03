@@ -54,12 +54,59 @@
   letter-spacing: -0.02em;
 }
 
+.venue-gig-page__meta {
+  margin: 0;
+}
+
+.venue-gig-page__venue-name {
+  margin: 0 0 0.35rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--gn-off-black, #1a1a1a);
+  line-height: 1.4;
+}
+
+.venue-gig-page__datetime-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
 .venue-gig-page__datetime {
   font-size: 1.125rem;
   font-weight: 500;
   color: var(--gn-off-black, #1a1a1a);
   margin: 0;
   line-height: 1.4;
+}
+
+.venue-gig-page__hire-booking-pill {
+  flex-shrink: 0;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.venue-gig-page__hire-booking-pill--confirmed {
+  background: var(--gn-success-bg, #e8f5e9);
+  color: var(--gn-success, #2e7d32);
+  border: none;
+}
+
+.venue-gig-page__hire-booking-pill--ready {
+  background: var(--gn-warning-bg, #fff8e1);
+  color: var(--gn-warning, #f57c00);
+  border: none;
+}
+
+.venue-gig-page__hire-booking-pill--unbooked {
+  background: var(--gn-offset-orange, rgba(255, 108, 75, 0.12));
+  color: var(--gn-orange, #ff6c4b);
+  border: none;
+  padding: 0.4rem 0.85rem;
+  font-size: 1rem;
 }
 
 .venue-gig-page__header-right {
@@ -257,7 +304,7 @@
 /* Main content card (wraps panel content) */
 .venue-gig-page__main-card {
   background: var(--gn-white, #fff);
-  border: 1px solid var(--gn-grey-300, #d4d4d4);
+  border: 1px solid var(--gn-grey-400, #bdbdbd);
   border-radius: 12px;
   padding: 20px 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -270,20 +317,110 @@
   gap: 20px;
 }
 
+/* Booked by: first tile (card); Performers is second tile below */
+.venue-hire-confirmed-panel__booked-by {
+  /* Uses .venue-hire-confirmed-card for tile styling */
+}
+.venue-hire-confirmed-panel__booked-by-title {
+  font-size: 1.65rem !important;
+}
+
 .venue-hire-confirmed-card {
   background: var(--gn-white, #fff);
-  border: 1px solid var(--gn-grey-300, #d4d4d4);
+  border: 1px solid var(--gn-grey-400, #bdbdbd);
   border-radius: 12px;
   padding: 20px 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .venue-hire-confirmed-card__title {
-  font-size: 1.125rem;
+  font-size: 1.35rem;
   font-weight: 600;
+  line-height: 1.2;
   margin: 0 0 14px 0;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--gn-grey-200, #e5e5e5);
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* Applications tile: no divider under title */
+.venue-hire-confirmed-panel__applications .venue-hire-confirmed-card__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 12px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.venue-hire-confirmed-panel__applications .venue-hire-confirmed-card__title-inner .icon {
+  font-size: 1.5rem;
+  color: var(--gn-off-black, #1a1a1a);
+}
+
+/* Applications card: clickable header (title + chevron together, not pushed to right) */
+.venue-hire-confirmed-panel__applications-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.venue-hire-confirmed-panel__applications-header:hover {
+  background: var(--gn-grey-100, #f5f5f5);
+}
+
+.venue-hire-confirmed-panel__applications-header-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.venue-hire-confirmed-panel__applications-header .venue-hire-confirmed-panel__applications-title {
+  margin: 0;
+  padding-bottom: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.venue-hire-confirmed-panel__see-applications-chevron {
+  flex-shrink: 0;
+  display: block;
+  margin-top: 0.08em;
+}
+
+.venue-hire-confirmed-panel__applications-body {
+  margin-top: 14px;
+}
+
+/* Open for applications: own tile inside Applications (no divider lines) */
+.venue-hire-confirmed-panel__applications-open-tile {
+  background: var(--gn-grey-100, #f5f5f5);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.venue-hire-confirmed-panel__applications-open-tile .venue-hire-confirmed-card__visibility {
+  margin-top: 0;
+}
+
+.venue-hire-confirmed-card__title-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.venue-hire-confirmed-card__title-inner .icon {
+  font-size: 1.35rem;
+  color: var(--gn-off-black, #1a1a1a);
 }
 
 .venue-hire-confirmed-card__name-row {
@@ -308,6 +445,32 @@
   font-size: 0.9375rem;
   color: var(--gn-grey-600, #525252);
   margin: 0 0 14px 0;
+}
+
+.venue-hire-confirmed-card__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 14px;
+}
+
+.venue-hire-confirmed-card__meta-row .venue-hire-confirmed-card__meta {
+  margin: 0;
+}
+
+.venue-hire-confirmed-card__edit-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.9375rem;
+  color: var(--gn-grey-600, #525252);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.venue-hire-confirmed-card__edit-link:hover {
+  color: var(--gn-off-black, #111);
 }
 
 .venue-hire-confirmed-card__actions {
@@ -340,6 +503,10 @@
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+}
+
+.venue-hire-confirmed-card__booking-link {
+  margin-top: 1rem;
 }
 
 .venue-hire-confirmed-card__visibility {
@@ -384,6 +551,166 @@
   line-height: 1.35;
 }
 
+.venue-hire-confirmed-card__visibility-helper-link {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.venue-hire-confirmed-card__visibility-helper-link:hover {
+  color: var(--gn-off-black, #111);
+}
+
+/* Fill this slot tile (unbooked venue hires) */
+.fill-this-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.fill-this-slot__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 0;
+}
+
+.fill-this-slot__header .icon {
+  font-size: 1.35rem;
+  color: var(--gn-grey-800, #262626);
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 0.08em;
+}
+
+.fill-this-slot__title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 0 0 14px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--gn-grey-200, #e5e5e5);
+  line-height: 1.2;
+}
+
+.fill-this-slot__description {
+  font-size: 1rem;
+  color: var(--gn-off-black, #111);
+  margin: 0 0 1rem 0;
+  line-height: 1.4;
+}
+
+.fill-this-slot__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--gn-grey-200, #e5e5e5);
+}
+
+.fill-this-slot__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0 0 10px 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--gn-grey-600, #525252);
+  cursor: pointer;
+  position: relative;
+  margin-bottom: -1px;
+}
+
+.fill-this-slot__tab .icon {
+  font-size: 0.9375rem;
+  color: inherit;
+}
+
+.fill-this-slot__tab:hover {
+  color: var(--gn-off-black, #111);
+}
+
+.fill-this-slot__tab--active {
+  color: var(--gn-off-black, #111);
+  font-weight: 600;
+}
+
+.fill-this-slot__tab--active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--gn-off-black, #111);
+  border-radius: 2px 2px 0 0;
+}
+
+.fill-this-slot__content {
+  margin-bottom: 1rem;
+}
+
+.fill-this-slot__share-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  max-width: 420px;
+}
+
+.fill-this-slot__input {
+  flex: 1;
+  min-width: 0;
+  height: 2.5rem;
+  padding: 0 12px;
+  font-size: 0.9375rem;
+  border: 1px solid var(--gn-grey-300, #d4d4d4);
+  border-radius: 8px;
+  background: var(--gn-white, #fff);
+}
+
+.fill-this-slot__copy-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 2.5rem;
+  padding: 0 14px;
+}
+
+.fill-this-slot__copy-btn .icon {
+  font-size: 0.875rem;
+}
+
+.fill-this-slot__helper {
+  font-size: 0.9375rem;
+  color: var(--gn-grey-700, #404040);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.fill-this-slot__helper--spaced {
+  margin-bottom: 12px;
+}
+
+.fill-this-slot__helper--above-input {
+  margin-bottom: 10px;
+}
+
+.fill-this-slot__add-booker {
+  margin-top: 4px;
+}
+
+.fill-this-slot__contacts-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+
 .venue-hire-confirmed-card__group--operational {
   flex-direction: row;
   flex-wrap: wrap;
@@ -399,7 +726,11 @@
   margin: 0;
 }
 
+.venue-hire-confirmed-card__invite-btn,
 .venue-hire-confirmed-card__add-booker-manually {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: 500;
 }
 
@@ -454,6 +785,275 @@
   color: var(--gn-grey-600, #525252);
 }
 
+/* Performers section: horizontal tiles */
+.venue-hire-performers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.venue-hire-performers__card .venue-hire-confirmed-card__title {
+  margin-bottom: 14px;
+}
+
+.venue-hire-performer-tiles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.venue-hire-performer-tile {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--gn-grey-50, #fafafa);
+  border: 1px solid var(--gn-grey-300, #d4d4d4);
+  border-radius: 12px;
+  min-height: 0;
+}
+
+.venue-hire-performer-tile__left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.venue-hire-performer-tile__name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gn-off-black, #111);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.venue-hire-performer-tile__meta-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.venue-hire-performer-tile__meta-row .venue-hire-performer-tile__meta {
+  margin: 0;
+}
+
+.venue-hire-performer-tile__meta {
+  font-size: 0.875rem;
+  color: var(--gn-grey-600, #525252);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.venue-hire-performer-tile__edit-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  color: var(--gn-grey-600, #525252);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.venue-hire-performer-tile__edit-link:hover {
+  color: var(--gn-off-black, #111);
+}
+
+.venue-hire-performer-tile__actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.venue-hire-performer-tile__btn {
+  white-space: nowrap;
+}
+
+/* Application tiles (venue hire: applicants with photo, name, tech spec, actions) */
+.venue-hire-application-tiles {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.venue-hire-application-tile {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--gn-grey-300, #d4d4d4);
+}
+
+.venue-hire-application-tile:last-child {
+  border-bottom: none;
+}
+
+.venue-hire-application-tile__photo {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--gn-grey-200, #e5e5e5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.venue-hire-application-tile__photo .venue-hire-application-tile__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.venue-hire-application-tile__photo svg {
+  width: 24px;
+  height: 24px;
+  color: var(--gn-grey-500, #737373);
+}
+
+.venue-hire-application-tile__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.venue-hire-application-tile__name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gn-off-black, #111);
+}
+
+.venue-hire-application-tile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.venue-hire-application-tile__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.venue-hire-application-tile__status--declined {
+  color: var(--gn-red, #c53030);
+  font-weight: 500;
+}
+
+.venue-hire-performers__empty {
+  margin-top: 0;
+}
+
+.venue-hire-performers__add-wrap {
+  margin-top: 4px;
+}
+
+/* Slot cards (artist_booking gig applications) */
+.venue-slot-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.venue-slot-card__header .venue-hire-confirmed-card__title {
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.venue-slot-card__status {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.venue-slot-card__status--empty {
+  background: var(--gn-grey-200, #e5e5e5);
+  color: var(--gn-grey-600, #525252);
+}
+
+.venue-slot-card__status--applications {
+  background: var(--gn-blue-100, #dbeafe);
+  color: var(--gn-blue-800, #1e40af);
+}
+
+.venue-slot-card__status--confirmed {
+  background: var(--gn-green-100, #dcfce7);
+  color: var(--gn-green-800, #166534);
+}
+
+.venue-slot-card__applications {
+  padding: 4px 0;
+}
+
+.venue-slot-card__applications-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.venue-slot-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: var(--gn-grey-800, #262626);
+  color: var(--gn-white, #fff);
+  border-radius: 999px;
+}
+
+.venue-slot-card__applications-content {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gn-grey-200, #e5e5e5);
+}
+
+.venue-slot-card__applications-content .applications-table {
+  width: 100%;
+}
+
+.venue-slot-card__confirmed {
+  padding: 4px 0;
+}
+
+.venue-slot-card__confirmed-name {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin: 0 0 10px 0;
+}
+
+.venue-slot-card__actions {
+  margin-top: 4px;
+}
+
+/* Empty state: status shown in body instead of header */
+.venue-hire-confirmed-card__empty .venue-slot-card__status--empty {
+  display: inline-block;
+  margin-bottom: 14px;
+}
+
 /* ----- Sidebar ----- */
 .venue-gig-page-sidebar {
   min-width: 0;
@@ -467,20 +1067,64 @@
   }
 }
 
+.venue-gig-page-sidebar__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .venue-gig-page-sidebar__card {
   background: var(--gn-white, #fff);
-  border: 1px solid var(--gn-grey-300, #eee);
+  border: 1px solid var(--gn-grey-400, #bdbdbd);
   border-radius: 12px;
   padding: 18px 20px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
+.venue-gig-page-sidebar__card-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.venue-gig-page-sidebar__card-header--with-title {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.venue-gig-page-sidebar__card-header--with-title .venue-gig-page-sidebar__title {
+  margin: 0;
+}
+
+.venue-gig-page-sidebar__edit-btn {
+  flex-shrink: 0;
+}
+
 .venue-gig-page-sidebar__title {
-  font-size: 1.125rem;
+  font-size: 1.5rem;
   font-weight: 600;
-  margin: 0 0 18px 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--gn-grey-200, #e5e5e5);
+  line-height: 1.2;
+  margin: 0 0 14px 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* Gig details, Tech setup & Internal notes tile headers */
+.venue-gig-page-sidebar__card .venue-gig-page-sidebar__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.venue-gig-page-sidebar__title-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.venue-gig-page-sidebar__title-inner .icon {
+  font-size: 1.5rem;
+  color: var(--gn-off-black, #1a1a1a);
 }
 
 .venue-gig-page-sidebar__section {
@@ -490,6 +1134,170 @@
 .venue-gig-page-sidebar__section:last-of-type {
   margin-bottom: 0;
 }
+
+.venue-gig-page-sidebar__tech-setup-tile {
+  min-height: 48px;
+}
+
+.venue-gig-page-sidebar__tech-setup-section {
+  margin-bottom: 18px;
+}
+
+.venue-gig-page-sidebar__tech-setup-section:last-child {
+  margin-bottom: 0;
+}
+
+/* No divider lines under headings in Tech setup tile */
+.venue-gig-page-sidebar__tech-setup-tile .venue-gig-page-sidebar__section-title--primary,
+.venue-gig-page-sidebar__tech-setup-tile .venue-gig-page-sidebar__section-title--secondary {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.venue-gig-page-sidebar__tech-setup-input {
+  width: 100%;
+  font-size: 0.9375rem;
+  color: var(--gn-off-black, #1a1a1a);
+  padding: 8px 10px;
+  border: 1px solid var(--gn-grey-300, #d4d4d4);
+  border-radius: 8px;
+  background: var(--gn-white, #fff);
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.venue-gig-page-sidebar__tech-setup-input:focus {
+  outline: none;
+  border-color: var(--gn-grey-500, #737373);
+}
+
+.venue-gig-page-sidebar__tech-setup-input::placeholder {
+  color: var(--gn-grey-500, #737373);
+}
+
+.venue-gig-page-sidebar__tech-setup-input:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.venue-gig-page-sidebar__tech-setup-value {
+  font-size: 0.9375rem;
+  color: var(--gn-off-black, #1a1a1a);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.venue-gig-page-sidebar__tech-setup-muted {
+  font-size: 0.9375rem;
+  color: var(--gn-grey-500, #737373);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.venue-gig-page-sidebar__tech-setup-unassigned {
+  font-size: 0.9375rem;
+  color: var(--gn-grey-500, #737373);
+  margin: 0;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.venue-gig-page-sidebar__tech-setup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.venue-gig-page-sidebar__tech-setup-list-item {
+  font-size: 0.9375rem;
+  color: var(--gn-off-black, #1a1a1a);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.venue-gig-page-sidebar__tech-setup-hire-status {
+  font-size: 0.875rem;
+  color: var(--gn-grey-600, #525252);
+  margin: 8px 0 0 0;
+}
+
+/* Equipment tiles (venue in use / hired from venue) */
+.venue-gig-page-sidebar__tech-setup-equipment-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.venue-gig-page-sidebar__tech-setup-equipment-tile {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  background-color: var(--gn-grey-200, #e5e5e5);
+  border-radius: 999px;
+  font-size: 0.9rem;
+  color: var(--gn-off-black, #1a1a1a);
+}
+
+.venue-gig-page-sidebar__tech-setup-equipment-tile-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--gn-grey-700, #404040);
+}
+
+/* Match applicant-tech-setup-missing-tile orange from Tech setup popup (rgba orange, not yellow) */
+.venue-gig-page-sidebar__tech-setup-equipment-tile--missing {
+  background-color: rgba(255, 108, 75, 0.12);
+  color: var(--gn-orange);
+}
+
+.venue-gig-page-sidebar__tech-setup-equipment-tile--missing .venue-gig-page-sidebar__tech-setup-equipment-tile-icon {
+  color: var(--gn-orange);
+}
+
+/* Hire fees list and actions */
+.venue-gig-page-sidebar__tech-setup-hire-fees-list {
+  list-style: none;
+  margin: 0 0 12px 0;
+  padding: 0;
+}
+
+.venue-gig-page-sidebar__tech-setup-hire-fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9375rem;
+  color: var(--gn-off-black, #1a1a1a);
+  padding: 4px 0;
+  gap: 0.75rem;
+}
+
+.venue-gig-page-sidebar__tech-setup-hire-fee-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.venue-gig-page-sidebar__tech-setup-hire-fee-price {
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.venue-gig-page-sidebar__tech-setup-hire-fees-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 12px;
+}
+
+.venue-gig-page-sidebar__tech-setup-hire-fees-outstanding {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--gn-off-black, #1a1a1a);
+}
+
 
 .venue-gig-page-sidebar__section-title {
   font-size: 0.875rem;
@@ -514,6 +1322,61 @@
   font-weight: 600;
   color: var(--gn-grey-500, #737373);
   margin: 0 0 10px 0;
+}
+
+/* Access from / Music stop by time tiles (like add event modal) */
+.venue-gig-page-sidebar__time-tiles {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  margin-bottom: 14px;
+}
+
+.venue-gig-page-sidebar__time-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 0 0 auto;
+}
+
+.venue-gig-page-sidebar__time-tile-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gn-grey-600, #525252);
+  margin: 0 0 6px 0;
+}
+
+.venue-gig-page-sidebar__time-tile-value {
+  min-width: 6rem;
+  padding: 10px 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--gn-off-black, #1a1a1a);
+  background: var(--gn-white, #fff);
+  border: 1px solid var(--gn-grey-300, #d4d4d4);
+  border-radius: 8px;
+  box-sizing: border-box;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.venue-gig-page-sidebar__time-tiles-connector {
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+
+.venue-gig-page-sidebar__time-tiles-connector::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--gn-grey-400, #a3a3a3);
 }
 
 .venue-gig-page-sidebar__list {
@@ -615,10 +1478,42 @@
 }
 
 /* Internal notes (Financial & logistics panel) */
+.venue-gig-page-sidebar__documents-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.venue-gig-page-sidebar__documents-list li {
+  margin-bottom: 0.35rem;
+}
+
+.venue-gig-page-sidebar__document-link {
+  color: var(--gn-off-black, #111);
+  text-decoration: underline;
+  font-size: 0.9375rem;
+}
+
+.venue-gig-page-sidebar__document-link:hover {
+  color: var(--gn-grey-700, #404040);
+}
+
 .venue-gig-page-sidebar__section--notes {
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px solid var(--gn-grey-200, #e5e5e5);
+}
+
+.venue-gig-page-sidebar__notes-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--gn-grey-600, #525252);
+  margin: 0 0 6px 0;
+}
+
+.venue-gig-page-sidebar__notes-label + .venue-gig-page-sidebar__notes-input {
+  margin-bottom: 12px;
 }
 
 .venue-gig-page-sidebar__notes-input {

@@ -2,14 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTable, faWifi } from '@fortawesome/pro-solid-svg-icons';
+import { faList, faWifi } from '@fortawesome/pro-solid-svg-icons';
 import { 
     ClockIcon,
     DotIcon,
     PreviousIcon,
     TickIcon,
 CloseIcon, RightArrowIcon } from '@features/shared/ui/extras/Icons';
-import { CalendarIconSolid, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon, InviteIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
+import { CalendarIconSolid, CalendarPlusIcon, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon, InviteIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
 import { deleteGigsBatch } from '@services/client-side/gigs';
 import { deleteVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { v4 as uuidv4 } from 'uuid';
@@ -45,7 +45,7 @@ function getLocalHireDateTime(hire) {
   return null;
 }
 
-export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModal, setEditGigData, setShowAddGigsModal, setAddGigsEditData, setAddGigsInitialDateIso, requests, setRequests, user, refreshGigs }) => {
+export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModal, setEditGigData, setShowAddGigsModal, setAddGigsEditData, setAddGigsInitialDateIso, setAddGigsMode, requests, setRequests, user, refreshGigs }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const {isMdUp, isLgUp, isXlUp} = useBreakpoint();
@@ -74,6 +74,7 @@ export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModa
     const [showSubscribeModal, setShowSubscribeModal] = useState(false);
     const [calendarFeedUrl, setCalendarFeedUrl] = useState(null);
     const [subscribeLoading, setSubscribeLoading] = useState(false);
+    const [addGigsChoiceDateIso, setAddGigsChoiceDateIso] = useState(null);
 
     const toggleOptionsMenu = (gigId) => {
         setOpenOptionsGigId(prev => (prev === gigId ? null : gigId));
@@ -866,40 +867,32 @@ export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModa
                   onClick={() => setGigsView('table')}
                   aria-pressed={gigsView === 'table'}
                 >
-                  <FontAwesomeIcon icon={faTable} className='icon' />
-                  <span>Table</span>
+                  <FontAwesomeIcon icon={faList} className='icon' />
+                  <span>List</span>
                 </button>
               </div>
             </div>
-            {gigsView === 'react' && (
-              <button
-                type="button"
-                className="btn tertiary"
-                onClick={handleSubscribeClick}
-              >
-                <FontAwesomeIcon icon={faWifi} className="icon" style={{ marginRight: '0.35rem' }} />
-                Subscribe to calendar
-              </button>
-            )}
             <div className="gigs-head-create-buttons">
               {gigsView === 'react' && (
-                <button
-                  type="button"
-                  className="btn primary gigs-react-add-booking-btn"
-                  onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setShowAddGigsModal(true); }}
-                >
-                  Add Event
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="btn primary gigs-react-book-gig-btn"
+                    onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setAddGigsMode?.('bookNew'); setShowAddGigsModal(true); }}
+                  >
+                    <CalendarPlusIcon />
+                    <span>Book an Event</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn secondary gigs-react-add-booking-btn"
+                    onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setAddGigsMode?.('addExisting'); setShowAddGigsModal(true); }}
+                  >
+                    <CalendarIconSolid />
+                    <span>Add Existing Event</span>
+                  </button>
+                </>
               )}
-              {/* Create Gig button commented out – using Add/Book a Gig instead
-              <button
-                type="button"
-                className="btn primary gigs-create-gig-btn"
-                onClick={() => setGigPostModal(true)}
-              >
-                Create Gig
-              </button>
-              */}
             </div>
           </div>
           {gigsView === 'table' && (
@@ -1000,9 +993,7 @@ export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModa
               setShowInvitesModal={setShowInvitesModal}
               setSelectedGigForInvites={setSelectedGigForInvites}
               onAddGigForDate={(dateIso) => {
-                setAddGigsEditData(null);
-                setAddGigsInitialDateIso(dateIso);
-                setShowAddGigsModal(true);
+                setAddGigsChoiceDateIso(dateIso);
               }}
               onDeleteGigs={async (gigIds) => {
                 if (!gigIds?.length) return;
@@ -1029,6 +1020,16 @@ export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModa
                 }
               }}
             />
+            <div className="gigs-calendar-react-subscribe-row">
+              <button
+                type="button"
+                className="btn tertiary"
+                onClick={handleSubscribeClick}
+              >
+                <FontAwesomeIcon icon={faWifi} className="icon" style={{ marginRight: '0.35rem' }} />
+                Subscribe to calendar
+              </button>
+            </div>
           </div>
         ) : (
         <div className='body gigs'>
@@ -1644,6 +1645,53 @@ export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModa
         </div>
         )}
         {/* Modals below render for both table and calendar view so Add/Book a Gig / Subscribe work on calendar page */}
+        {addGigsChoiceDateIso && (
+          <Portal>
+            <div
+              className="modal add-gigs-choice-modal"
+              onClick={() => setAddGigsChoiceDateIso(null)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="add-gigs-choice-title"
+            >
+              <div className="modal-content add-gigs-choice-modal__content" onClick={(e) => e.stopPropagation()}>
+                <h3 id="add-gigs-choice-title">
+                  Add event for {format(new Date(addGigsChoiceDateIso + 'T12:00:00'), 'EEEE d MMMM')}
+                </h3>
+                <div className="add-gigs-choice-modal__buttons">
+                  <button
+                    type="button"
+                    className="btn primary gigs-react-book-gig-btn"
+                    onClick={() => {
+                      setAddGigsEditData(null);
+                      setAddGigsInitialDateIso(addGigsChoiceDateIso);
+                      setAddGigsMode?.('bookNew');
+                      setShowAddGigsModal(true);
+                      setAddGigsChoiceDateIso(null);
+                    }}
+                  >
+                    <CalendarPlusIcon />
+                    <span>Book an Event</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn secondary gigs-react-add-booking-btn"
+                    onClick={() => {
+                      setAddGigsEditData(null);
+                      setAddGigsInitialDateIso(addGigsChoiceDateIso);
+                      setAddGigsMode?.('addExisting');
+                      setShowAddGigsModal(true);
+                      setAddGigsChoiceDateIso(null);
+                    }}
+                  >
+                    <CalendarIconSolid />
+                    <span>Add Existing Event</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Portal>
+        )}
         {showSubscribeModal && (
           <Portal>
             <div

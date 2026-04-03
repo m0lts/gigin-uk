@@ -55,6 +55,7 @@ export const VenueDashboard = ({ user }) => {
     const [showAddGigsModal, setShowAddGigsModal] = useState(false);
     const [addGigsEditData, setAddGigsEditData] = useState(null);
     const [addGigsInitialDateIso, setAddGigsInitialDateIso] = useState(null);
+    const [addGigsMode, setAddGigsMode] = useState(null); // 'bookNew' | 'addExisting' | null
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [revisitingModal, setRevisitingModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
@@ -164,8 +165,8 @@ export const VenueDashboard = ({ user }) => {
                 <div className="output">
                     <Routes>
                         {/* <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setGigPostModal={setGigPostModal} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} requests={requests} />} /> */}
-                        <Route index path='gigs' element={<Gigs gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsInitialDateIso={setAddGigsInitialDateIso} requests={requests} setRequests={setRequests} user={user} refreshGigs={refreshGigs} />} />
-                        <Route path='gigs/gig-applications' element={<VenueGigPageShell setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} gigs={gigs} venues={venueProfiles} user={user} refreshStripe={refreshStripe} customerDetails={customerDetails} refreshGigs={refreshGigs} />} />
+                        <Route index path='gigs' element={<Gigs gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsInitialDateIso={setAddGigsInitialDateIso} setAddGigsMode={setAddGigsMode} requests={requests} setRequests={setRequests} user={user} refreshGigs={refreshGigs} />} />
+                        <Route path='gigs/gig-applications' element={<VenueGigPageShell setGigPostModal={setGigPostModal} setEditGigData={setEditGigData} setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsMode={setAddGigsMode} gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} user={user} refreshStripe={refreshStripe} customerDetails={customerDetails} refreshGigs={refreshGigs} />} />
                         <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} requests={requests} setRequests={setRequests} setGigPostModal={setGigPostModal} setBuildingForMusician={setBuildingForMusician} setBuildingForMusicianData={setBuildingForMusicianData} setRequestId={setRequestId} setPreferredDate={setPreferredDate} refreshGigs={refreshGigs} />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} setVenues={setVenueProfiles} />} />
                         <Route path='artists' element={<ArtistCRM user={user} venues={venueProfiles} />} />
@@ -211,12 +212,14 @@ export const VenueDashboard = ({ user }) => {
                   setShowAddGigsModal(false);
                   setAddGigsEditData(null);
                   setAddGigsInitialDateIso(null);
+                  setAddGigsMode(null);
                 }}
                 venues={venueProfiles}
                 user={user}
                 refreshGigs={refreshGigs}
                 initialDateIso={addGigsInitialDateIso}
                 editGigData={addGigsEditData}
+                addGigsMode={addGigsMode}
               />
             )}
             {showReviewModal && gigToReview && hasVenuePerm(venueProfiles, gigToReview.venueId, 'reviews.create') && (

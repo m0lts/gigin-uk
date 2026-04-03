@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Calendar from 'react-calendar';
 import { format } from 'date-fns';
@@ -8,12 +8,14 @@ import { getArtistProfileById, getMusicianProfileByMusicianId } from '@services/
 import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
 import { hasVenuePerm } from '@services/utils/permissions';
 import { updateGigDocument } from '@services/api/gigs';
+import { updateVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { postCancellationMessage } from '@services/api/messages';
 import Portal from '../../shared/components/Portal';
-import { CloseIcon, LinkIcon, NewTabIcon, OptionsIcon, SettingsIcon, EditIcon, CancelIcon, DeleteGigIcon } from '../../shared/ui/extras/Icons';
+import { InviteAndShareModal } from '../components/InviteAndShareModal';
+import { FillThisSlotModal } from '../components/FillThisSlotModal';
+import { CloseIcon, LinkIcon, NewTabIcon, EditIcon, CancelIcon, DeleteGigIcon, InviteIcon } from '../../shared/ui/extras/Icons';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
-import { getArtistCRMEntries } from '@services/client-side/artistCRM';
 
 const WEEKDAY_LABELS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -28,25 +30,40 @@ function getDisplayName(applicant, applicantNames) {
   );
 }
 
+function applicantBookedForCalendar(a) {
+  return a && ['confirmed', 'paid', 'accepted'].includes(a.status);
+}
+
+/** Whether this gig/slot counts as “booked” for calendar grouping (artist vs rental rules). */
+function gigHasCalendarBookedSlot(gig) {
+  if (!gig) return false;
+  const rental = gig.itemType === 'venue_hire' || gig.bookingMode === 'rental' || gig.kind === 'Venue Rental';
+  if (rental) return (gig.applicants || []).some((a) => a.status === 'confirmed');
+  return (gig.applicants || []).some(applicantBookedForCalendar);
+}
+
 function getGigCalendarLabel(gig, applicantNames = {}) {
   const isPast = gig.status === 'past';
-  const confirmed = gig.applicants?.some((a) => a.status === 'confirmed');
   const timeStr = gig.startTime || '—';
 
-  const hasConfirmedApplicant = !!confirmed;
+  const isRental = gig.itemType === 'venue_hire' || gig.bookingMode === 'rental' || gig.kind === 'Venue Rental';
   const hasRenterName = !!(gig.renterName && String(gig.renterName).trim());
-  const isHired = hasConfirmedApplicant || hasRenterName;
+  const hasRentalApplicantConfirmed = isRental && (gig.applicants || []).some((a) => a.status === 'confirmed');
+  const hasArtistBooked = !isRental && (gig.applicants || []).some(applicantBookedForCalendar);
+  const isHired = hasRenterName || hasRentalApplicantConfirmed || hasArtistBooked;
 
   if (isHired) {
-    const confirmedApplicants = (gig.applicants || []).filter((a) => a.status === 'confirmed');
+    const confirmedApplicants = (gig.applicants || []).filter((a) =>
+      isRental ? a.status === 'confirmed' : applicantBookedForCalendar(a)
+    );
     const count = confirmedApplicants.length;
     const title =
-      hasRenterName && !hasConfirmedApplicant
+      hasRenterName && !hasRentalApplicantConfirmed && !hasArtistBooked
         ? String(gig.renterName).trim() || 'Hired'
         : count > 1
           ? `${count} Artists`
           : getDisplayName(confirmedApplicants[0], applicantNames) || 'Artist';
-    const status = hasRenterName && !hasConfirmedApplicant ? 'Hired' : 'Confirmed';
+    const status = 'Confirmed';
     return {
       title,
       time: timeStr,
@@ -55,9 +72,9 @@ function getGigCalendarLabel(gig, applicantNames = {}) {
     };
   }
 
-  const isRental = gig.itemType === 'venue_hire' || gig.bookingMode === 'rental' || gig.kind === 'Venue Rental';
+  const hasMultipleSlots = Array.isArray(gig.gigSlots) && gig.gigSlots.length > 0;
   return {
-    title: isRental ? 'For Hire' : 'Looking for artist',
+    title: isRental ? 'For Hire' : (hasMultipleSlots ? 'Looking for artists' : 'Looking for artist'),
     time: timeStr,
     status: 'Unbooked',
     isPast,
@@ -135,6 +152,91 @@ function formatHireDateLine(dateIso, startTime, endTimeOrDuration) {
   return endTime ? `${dateStr} • ${startTime}–${endTime}` : `${dateStr} • ${startTime}`;
 }
 
+function normalizeTimeForDisplay(timeStr) {
+  if (!timeStr || !String(timeStr).trim()) return '';
+  const parts = String(timeStr).trim().split(':');
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1] ?? '0', 10);
+  if (!Number.isFinite(h)) return String(timeStr).trim().slice(0, 5);
+  return `${String(h).padStart(2, '0')}:${String(Number.isFinite(m) ? m : 0).padStart(2, '0')}`;
+}
+
+/** End HH:MM from start time + duration (minutes); same day wrap at midnight as existing calendar logic. */
+function endTimeFromStartAndDuration(startTime, durationMinutes) {
+  if (!startTime || !String(startTime).trim() || !(Number(durationMinutes) > 0)) return '';
+  const [h, m] = String(startTime).trim().split(':').map(Number);
+  if (!Number.isFinite(h)) return '';
+  const totalMins = h * 60 + (Number.isFinite(m) ? m : 0) + Number(durationMinutes);
+  const eh = Math.floor(totalMins / 60) % 24;
+  const em = totalMins % 60;
+  return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+}
+
+/**
+ * Popup meta line: first slot start through last slot end, e.g. "19:30 – 22:00".
+ * Uses allGigs when grouped; falls back to primaryGig only.
+ */
+function formatArtistBookingMetaTimeRange(allGigs, primaryGig) {
+  const list = Array.isArray(allGigs) && allGigs.length ? allGigs : primaryGig ? [primaryGig] : [];
+  const timed = list.filter(
+    (g) => g && String(g.startTime ?? '').trim() && Number(g.duration) > 0
+  );
+  if (!timed.length) return null;
+  const sorted = [...timed].sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)));
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const startDisp = normalizeTimeForDisplay(first.startTime);
+  const endDisp = endTimeFromStartAndDuration(last.startTime, last.duration);
+  if (!startDisp || !endDisp) return null;
+  return `${startDisp} – ${endDisp}`;
+}
+
+/** Calendar pill line 1: time span for artist bookings (matches venue hire “start – end” line). */
+function formatArtistCalendarPillLine1(allGigs, primaryGig) {
+  return (
+    formatArtistBookingMetaTimeRange(allGigs, primaryGig) ||
+    normalizeTimeForDisplay(primaryGig?.startTime) ||
+    '—'
+  );
+}
+
+function slotHasBookedArtistForCalendar(gig) {
+  return (gig.applicants || []).some(applicantBookedForCalendar);
+}
+
+/** Last-seen pending applicant count per multi-slot artist group (calendar popup + pills). */
+const ARTIST_GIG_PENDING_SEEN_KEY = 'gigin-artist-gig-pending-seen';
+
+/** Pending applications not yet acknowledged via opening the gig popup (same rules as popup). */
+function getArtistCalendarUnseenApplicationCount(allGigs) {
+  if (!Array.isArray(allGigs) || allGigs.length === 0 || typeof localStorage === 'undefined') return 0;
+
+  const byGroup = new Map();
+  allGigs.forEach((gig) => {
+    if (!gig) return;
+    const k = gig._groupKey ?? gig.gigId;
+    if (k == null || k === '') return;
+    const key = String(k);
+    if (!byGroup.has(key)) byGroup.set(key, []);
+    byGroup.get(key).push(gig);
+  });
+
+  let totalNew = 0;
+  byGroup.forEach((gigs) => {
+    const totalPending = gigs.reduce(
+      (sum, gig) => sum + (gig.applicants || []).filter((a) => a?.status === 'pending').length,
+      0
+    );
+    if (totalPending <= 0) return;
+    const groupKey = String(gigs[0]._groupKey ?? gigs[0].gigId ?? '');
+    if (!groupKey) return;
+    const seen = parseInt(localStorage.getItem(`${ARTIST_GIG_PENDING_SEEN_KEY}-${groupKey}`), 10);
+    const newCount = Number.isNaN(seen) ? totalPending : Math.max(0, totalPending - seen);
+    totalNew += newCount;
+  });
+  return totalNew;
+}
+
 export function GigsCalendarReact({
   gigs = [],
   onDeleteGigs,
@@ -165,22 +267,14 @@ export function GigsCalendarReact({
   /** Cancel booking confirm: show modal, notify booker checkbox. */
   const [hireCancelConfirm, setHireCancelConfirm] = useState(null);
   const [hireCancelNotifyBooker, setHireCancelNotifyBooker] = useState(true);
-  /** Overflow menu (⋯) in venue hire popup header. */
-  const [hireMoreMenuOpen, setHireMoreMenuOpen] = useState(false);
   /** Unconfirmed venue hire: delete confirm (gigId or null). */
   const [unconfirmedHireDeleteConfirm, setUnconfirmedHireDeleteConfirm] = useState(null);
-  /** CRM entries for resolving performer names and Add performers picker. */
-  const [hireCrmEntries, setHireCrmEntries] = useState([]);
-  const [hireCrmEntriesLoading, setHireCrmEntriesLoading] = useState(false);
-  /** Add performers modal: text input + optional CRM list. */
-  const [showAddPerformersModal, setShowAddPerformersModal] = useState(false);
-  const [addPerformerQuery, setAddPerformerQuery] = useState('');
-  const [addPerformerShowCrmList, setAddPerformerShowCrmList] = useState(false);
-  const [addPerformerSelectedIds, setAddPerformerSelectedIds] = useState([]);
-  const [addPerformerSaving, setAddPerformerSaving] = useState(false);
   /** For dates with multiple gigs: which pill index is shown (0-based). Key = dateKey (yyyy-mm-dd). */
   const [visiblePillIndexByDate, setVisiblePillIndexByDate] = useState({});
-  const hireMoreMenuRef = useRef(null);
+  /** Gig to show in Invite & Share modal (artist booking or venue hire). */
+  const [inviteShareGig, setInviteShareGig] = useState(null);
+  /** Application counts for unbooked venue hires (hireId -> count). */
+  const [hireApplicationCounts, setHireApplicationCounts] = useState({});
 
   const gigsByDate = useMemo(() => {
     const flat = Array.isArray(gigs)
@@ -252,34 +346,90 @@ export function GigsCalendarReact({
     return () => { cancelled = true; };
   }, [selectedGigDetail?.primaryGig?.gigId, user?.uid]);
 
-  // Load CRM entries for venue hire popup (performer names + Add performers picker).
+  // Reset Invite & Share modal when gig detail modal opens or closes (avoids stale state).
   useEffect(() => {
-    const primaryGig = selectedGigDetail?.primaryGig;
-    if (!primaryGig || !isConfirmedVenueHire(primaryGig) || !user?.uid) {
-      setHireCrmEntries([]);
-      setShowAddPerformersModal(false);
-      return;
-    }
-    let cancelled = false;
-    setHireCrmEntriesLoading(true);
-    getArtistCRMEntries(user.uid)
-      .then((entries) => { if (!cancelled) setHireCrmEntries(entries || []); })
-      .catch(() => { if (!cancelled) setHireCrmEntries([]); })
-      .finally(() => { if (!cancelled) setHireCrmEntriesLoading(false); });
-    return () => { cancelled = true; };
-  }, [selectedGigDetail?.primaryGig?.gigId, user?.uid]);
+    setInviteShareGig(null);
+  }, [selectedGigDetail?.primaryGig?.gigId, selectedGigDetail]);
 
+  // Unbooked venue hire IDs (for fetching application counts).
+  const unbookedHireIds = useMemo(() => {
+    const ids = new Set();
+    if (!Array.isArray(gigs) || !user?.uid) return [];
+    gigs.forEach((g) => {
+      const list = g.allGigs ?? (g.primaryGig ? [g.primaryGig] : []);
+      list.forEach((gig) => {
+        if (!gig || gig.itemType !== 'venue_hire') return;
+        if (gig.renterName && String(gig.renterName).trim()) return;
+        const id = gig.gigId ?? gig.hireSpaceId;
+        if (id) ids.add(id);
+      });
+    });
+    return Array.from(ids);
+  }, [gigs, user?.uid]);
+
+  // Fetch application (conversation) counts for unbooked venue hires.
   useEffect(() => {
-    if (!hireMoreMenuOpen) return;
-    const handleClickOutside = (e) => {
-      if (hireMoreMenuRef.current?.contains(e.target)) return;
-      setHireMoreMenuOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [hireMoreMenuOpen]);
+    if (unbookedHireIds.length === 0 || !user?.uid) return;
+    let cancelled = false;
+    const next = {};
+    (async () => {
+      for (const hireId of unbookedHireIds) {
+        if (cancelled) return;
+        const convs = await getConversationsByParticipantAndGigId(hireId, user.uid);
+        next[hireId] = (convs || []).length;
+      }
+      if (!cancelled) setHireApplicationCounts((prev) => ({ ...prev, ...next }));
+    })();
+    return () => { cancelled = true; };
+  }, [unbookedHireIds, user?.uid]);
 
   const formatShortWeekday = (_, date) => WEEKDAY_LABELS[date.getDay()];
+
+  /** Format venue hire time range for pill line 1: "start – end" or just "start" */
+  function formatVenueHireTimeRange(gig) {
+    const start = gig?.startTime?.trim() || gig?.rentalAccessFrom?.trim();
+    const end = gig?.rentalHardCurfew?.trim() || gig?.curfew?.trim() || gig?.endTime?.trim();
+    if (!start) return '—';
+    if (!end) return start;
+    return `${start} – ${end}`;
+  }
+
+  const HIRE_SEEN_KEY = 'gigin-hire-seen';
+  function getHireApplicationLine(pill) {
+    if (pill.itemType !== 'venue_hire' || pill.status !== 'Unbooked') return null;
+    const gigsToCount = pill.allGigs ?? (pill.primaryGig ? [pill.primaryGig] : []);
+    let total = 0;
+    let newCount = 0;
+    gigsToCount.forEach((gig) => {
+      const id = gig?.gigId ?? gig?.hireSpaceId;
+      if (!id) return;
+      const count = hireApplicationCounts[id] ?? 0;
+      total += count;
+      const seen = typeof localStorage !== 'undefined' ? parseInt(localStorage.getItem(`${HIRE_SEEN_KEY}-${id}`), 10) : NaN;
+      if (!Number.isNaN(seen)) newCount += Math.max(0, count - seen);
+      else if (count > 0) newCount += count;
+    });
+    if (total === 0) return null;
+    if (newCount > 0) return newCount === 1 ? '1 new application' : `${newCount} new applications`;
+    return total === 1 ? '1 application' : `${total} applications`;
+  }
+
+  /** Unseen new hire applications (same localStorage rules as getHireApplicationLine). */
+  function getHireUnseenNewApplicationCount(pill) {
+    if (pill.itemType !== 'venue_hire' || pill.status !== 'Unbooked') return 0;
+    const gigsToCount = pill.allGigs ?? (pill.primaryGig ? [pill.primaryGig] : []);
+    let newCount = 0;
+    gigsToCount.forEach((gig) => {
+      const id = gig?.gigId ?? gig?.hireSpaceId;
+      if (!id) return;
+      const count = hireApplicationCounts[id] ?? 0;
+      if (count <= 0) return;
+      const seen = typeof localStorage !== 'undefined' ? parseInt(localStorage.getItem(`${HIRE_SEEN_KEY}-${id}`), 10) : NaN;
+      if (!Number.isNaN(seen)) newCount += Math.max(0, count - seen);
+      else newCount += count;
+    });
+    return newCount;
+  }
 
   const tileContent = ({ date }) => {
     const dateKey = formatDateKey(date);
@@ -295,9 +445,7 @@ export function GigsCalendarReact({
     byGroup.forEach((groupGigs, groupKey) => {
       const allPastUnbooked =
         groupGigs.length > 1 &&
-        groupGigs.every(
-          (g) => g.status === 'past' && !(g.applicants || []).some((a) => a.status === 'confirmed')
-        );
+        groupGigs.every((g) => g.status === 'past' && !gigHasCalendarBookedSlot(g));
       const primaryGig = getPrimaryGig(groupGigs);
       if (allPastUnbooked) {
         const n = groupGigs.length;
@@ -308,16 +456,17 @@ export function GigsCalendarReact({
         pills.push({
           key: `group-${groupKey}`,
           title,
-          time: '',
+          time: primaryGig?.startTime || '',
           status: 'Unbooked',
           isPast: true,
           gigIds: groupGigs.map((g) => g.gigId),
           primaryGig,
           allGigs: groupGigs,
+          itemType: isRental ? 'venue_hire' : undefined,
         });
       } else if (groupGigs.length > 1) {
-        // Multiple sets (same gig group): one pill for the whole group; show first set's start time only
-        const confirmedCount = groupGigs.filter((g) => (g.applicants || []).some((a) => a.status === 'confirmed')).length;
+        // Multiple sets (same gig group): line 1 = time range, line 2 = X/Y booked (like venue hire pills)
+        const confirmedCount = groupGigs.filter((g) => slotHasBookedArtistForCalendar(g)).length;
         const totalCount = groupGigs.length;
         const unbookedCount = totalCount - confirmedCount;
         const allConfirmed = confirmedCount === totalCount;
@@ -325,9 +474,14 @@ export function GigsCalendarReact({
           allConfirmed
             ? `${totalCount} Artists`
             : unbookedCount === 1
-              ? 'Looking for Artist'
-              : 'Looking for Artists';
-        const status = `${confirmedCount}/${totalCount} Booked`;
+              ? 'Looking for artist'
+              : 'Looking for artists';
+        const status = `${confirmedCount}/${totalCount} booked`;
+        const isRentalGroup =
+          primaryGig?.itemType === 'venue_hire' ||
+          primaryGig?.bookingMode === 'rental' ||
+          primaryGig?.kind === 'Venue Rental';
+        const unseenAppCount = !isRentalGroup ? getArtistCalendarUnseenApplicationCount(groupGigs) : 0;
         pills.push({
           key: `group-${groupKey}`,
           title,
@@ -337,12 +491,15 @@ export function GigsCalendarReact({
           isPast: groupGigs[0]?.status === 'past',
           primaryGig,
           allGigs: groupGigs,
+          ...(!isRentalGroup && { calendarArtistLine1: formatArtistCalendarPillLine1(groupGigs, primaryGig) }),
+          ...(unseenAppCount > 0 && { artistCalendarUnseenAppCount: unseenAppCount }),
         });
       } else {
         const gig = groupGigs[0];
         const { title, time, status, isPast } = getGigCalendarLabel(gig, applicantNames);
         const isPastUnbooked = isPast && status === 'Unbooked';
         const isVenueHire = gig.itemType === 'venue_hire';
+        const unseenAppCount = !isVenueHire ? getArtistCalendarUnseenApplicationCount([gig]) : 0;
         pills.push({
           key: gig.gigId ?? gig.hireSpaceId,
           title,
@@ -353,6 +510,8 @@ export function GigsCalendarReact({
           itemType: isVenueHire ? 'venue_hire' : undefined,
           primaryGig: gig,
           allGigs: [gig],
+          ...(!isVenueHire && { calendarArtistLine1: formatArtistCalendarPillLine1([gig], gig) }),
+          ...(unseenAppCount > 0 && { artistCalendarUnseenAppCount: unseenAppCount }),
         });
       }
     });
@@ -360,6 +519,12 @@ export function GigsCalendarReact({
     // Merge multiple unbooked pills on this day into one "Looking for artists (0/N)"
     const unbookedPills = pills.filter((p) => p.status === 'Unbooked');
     const confirmedPills = pills.filter((p) => p.status !== 'Unbooked');
+    const mergedUnbookedAllGigs =
+      unbookedPills.length > 1 ? unbookedPills.flatMap((p) => p.allGigs || []) : [];
+    const mergedUnbookedUnseenCount =
+      unbookedPills.length > 1 && !unbookedPills[0].itemType
+        ? getArtistCalendarUnseenApplicationCount(mergedUnbookedAllGigs)
+        : 0;
     const finalPills =
       unbookedPills.length > 1
         ? [
@@ -372,7 +537,15 @@ export function GigsCalendarReact({
               isPast: unbookedPills[0].isPast,
               gigIds: unbookedPills[0].isPast ? unbookedPills.flatMap((p) => p.gigIds || (p.primaryGig ? [p.primaryGig.gigId] : [])) : undefined,
               primaryGig: unbookedPills[0].primaryGig,
-              allGigs: unbookedPills.flatMap((p) => p.allGigs || []),
+              allGigs: mergedUnbookedAllGigs,
+              itemType: unbookedPills[0].itemType,
+              ...(!unbookedPills[0].itemType && {
+                calendarArtistLine1: formatArtistCalendarPillLine1(
+                  unbookedPills[0].allGigs || [unbookedPills[0].primaryGig],
+                  unbookedPills[0].primaryGig
+                ),
+              }),
+              ...(mergedUnbookedUnseenCount > 0 && { artistCalendarUnseenAppCount: mergedUnbookedUnseenCount }),
             },
           ]
         : pills;
@@ -385,6 +558,7 @@ export function GigsCalendarReact({
 
     return (
       <>
+        <div className="gigs-calendar-react__day-hover-area" aria-hidden="true" />
         {hasMultiplePills && (
           <div className="gigs-calendar-react__day-gig-nav" onClick={(e) => e.stopPropagation()}>
             {currentIndex > 0 && (
@@ -427,12 +601,18 @@ export function GigsCalendarReact({
           </div>
         )}
         <div className={`gigs-calendar-react__day-gigs ${hasMultiplePills ? 'gigs-calendar-react__day-gigs--has-nav' : ''}`}>
-          {pillsToShow.map((pill) => (
+          {pillsToShow.map((pill) => {
+            const hireUnseenNewCount =
+              pill.itemType === 'venue_hire' && pill.status === 'Unbooked'
+                ? getHireUnseenNewApplicationCount(pill)
+                : 0;
+            const hireHasUnseenNewApplications = hireUnseenNewCount > 0;
+            return (
             <div
               key={pill.key}
               role="button"
               tabIndex={0}
-              className={`gigs-calendar-react__day-gig ${((pill.status === 'Confirmed' || pill.status === 'Hired') || pill.isAllConfirmed) ? 'gigs-calendar-react__day-gig--confirmed' : ''} ${pill.isPast ? 'gigs-calendar-react__day-gig--past' : ''} ${pill.isPast && pill.status === 'Unbooked' ? 'gigs-calendar-react__day-gig--past-unbooked' : ''} ${pill.gigIds?.length ? 'gigs-calendar-react__day-gig--deletable' : ''} gigs-calendar-react__day-gig--clickable`}
+              className={`gigs-calendar-react__day-gig ${((pill.status === 'Confirmed' || pill.status === 'Hired') || pill.isAllConfirmed) ? 'gigs-calendar-react__day-gig--confirmed' : ''} ${pill.isPast ? 'gigs-calendar-react__day-gig--past' : ''} ${pill.isPast && pill.status === 'Unbooked' ? 'gigs-calendar-react__day-gig--past-unbooked' : ''} ${pill.calendarArtistLine1 && !pill.itemType && !(pill.isPast && pill.status === 'Unbooked') ? 'gigs-calendar-react__day-gig--artist-booking-two-line' : ''} ${pill.artistCalendarUnseenAppCount > 0 ? 'gigs-calendar-react__day-gig--artist-new-pending' : ''} ${hireHasUnseenNewApplications ? 'gigs-calendar-react__day-gig--hire-new-pending' : ''} ${pill.gigIds?.length ? 'gigs-calendar-react__day-gig--deletable' : ''} gigs-calendar-react__day-gig--clickable`}
               onClick={(e) => {
                 e.stopPropagation();
                 if (e.target.closest('.gigs-calendar-react__day-gig-delete')) return;
@@ -459,16 +639,62 @@ export function GigsCalendarReact({
                 }
               }}
             >
-              {pill.isPast && pill.status === 'Unbooked' ? (
-                /* Past unbooked: single line (time • Unbooked), vertically centred */
+              {pill.itemType === 'venue_hire' ? (
+                /* Venue hire: line 1 "[start – end]"; line 2 unbooked; orange dot top-right when unseen new applications */
+                <>
+                  {hireHasUnseenNewApplications ? (
+                    <span className="gigs-calendar-react__day-gig-pill-new-badge" aria-hidden="true" />
+                  ) : null}
+                  <div className="gigs-calendar-react__day-gig-title">
+                    {formatVenueHireTimeRange(pill.primaryGig)}
+                  </div>
+                  <div
+                    className={`gigs-calendar-react__day-gig-meta${
+                      hireHasUnseenNewApplications ? ' gigs-calendar-react__day-gig-meta--artist-new-apps' : ''
+                    }`.trim()}
+                  >
+                    {pill.status === 'Unbooked'
+                      ? (() => {
+                          const line = getHireApplicationLine(pill);
+                          if (hireHasUnseenNewApplications && line) {
+                            return (
+                              <span className="gigs-calendar-react__day-gig-applications-line gigs-calendar-react__day-gig-applications-line--has-new">
+                                {`• ${line}`}
+                              </span>
+                            );
+                          }
+                          return line || 'Unbooked';
+                        })()
+                      : pill.title}
+                  </div>
+                </>
+              ) : pill.isPast && pill.status === 'Unbooked' ? (
                 <div className="gigs-calendar-react__day-gig-meta gigs-calendar-react__day-gig-meta--only">
                   {pill.time !== '—' && pill.time ? `${pill.time} • ` : ''}{pill.status}
                 </div>
+              ) : pill.calendarArtistLine1 && !pill.itemType ? (
+                <>
+                  {pill.artistCalendarUnseenAppCount > 0 ? (
+                    <span className="gigs-calendar-react__day-gig-pill-new-badge" aria-hidden="true" />
+                  ) : null}
+                  <div className="gigs-calendar-react__day-gig-title">{pill.calendarArtistLine1}</div>
+                  <div
+                    className={`gigs-calendar-react__day-gig-meta${pill.artistCalendarUnseenAppCount > 0 ? ' gigs-calendar-react__day-gig-meta--artist-new-apps' : ''}`.trim()}
+                  >
+                    {pill.artistCalendarUnseenAppCount > 0
+                      ? (pill.artistCalendarUnseenAppCount === 1
+                        ? '• 1 new application'
+                        : `• ${pill.artistCalendarUnseenAppCount} new applications`)
+                      : pill.status === 'Confirmed'
+                        ? pill.title
+                        : pill.key === 'unbooked-merged'
+                          ? pill.title
+                          : pill.status}
+                  </div>
+                </>
               ) : (
                 <>
-                  {/* Line 1 (primary, bold): artist name / "X Artists" / "Looking for artist" */}
                   <div className="gigs-calendar-react__day-gig-title">{pill.title}</div>
-                  {/* Line 2 (secondary, lighter): time • status */}
                   <div className="gigs-calendar-react__day-gig-meta">
                     {pill.time !== '—' && pill.time ? `${pill.time} • ` : ''}{pill.status}
                   </div>
@@ -505,7 +731,8 @@ export function GigsCalendarReact({
                 </span>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
         <span className="gigs-calendar-react__day-add-wrap">
           <span
@@ -533,11 +760,27 @@ export function GigsCalendarReact({
     );
   };
 
+  const handleClickDay = (date) => {
+    const dateKey = formatDateKey(date);
+    const dayGigs = gigsByDate[dateKey] || [];
+    if (dayGigs.length === 0 && onAddGigForDate) {
+      onAddGigForDate(dateKey);
+    }
+  };
+
+  const tileClassName = ({ date }) => {
+    const dateKey = formatDateKey(date);
+    const dayGigs = gigsByDate[dateKey] || [];
+    return dayGigs.length === 0 ? 'gigs-calendar-react__tile--add-on-click' : '';
+  };
+
   return (
     <div className="gigs-calendar-react">
       <Calendar
         value={value}
         onChange={setValue}
+        onClickDay={handleClickDay}
+        tileClassName={tileClassName}
         locale="en-GB"
         minDetail="month"
         maxDetail="month"
@@ -609,6 +852,9 @@ export function GigsCalendarReact({
 
         if (showVenueHirePopup) {
           const bookedViaGigin = isConfirmedHire && !!hireConversation;
+          /** Show Edit gig only when no booker yet, or booker is manually entered (not confirmed via Gigin). */
+          const isBookerManual = !hasRenter || primaryGig.hirerType === 'manual' || !primaryGig.hirerType;
+          const showEditGigHire = isBookerManual;
           const handleCancelBooking = async () => {
             if (!hireCancelConfirm || !canUpdate) return;
             try {
@@ -635,141 +881,30 @@ export function GigsCalendarReact({
             }
           };
 
-          const handleAddExistingPerformer = async (crmEntry) => {
-            if (!crmEntry?.id) return;
-            if (!canUpdate) {
-              toast.error("You don't have permission to update this gig.");
-              return;
-            }
-            const current = primaryGig.bookedPerformerIds || [];
-            if (current.includes(crmEntry.id)) {
-              toast.info('That performer is already on the gig.');
-              return;
-            }
-            setAddPerformerSaving(true);
-            try {
-              await updateGigDocument({
-                gigId: primaryGig.gigId,
-                action: 'gigs.update',
-                updates: { bookedPerformerIds: [...current, crmEntry.id] },
-              });
-              setSelectedGigDetail((prev) => prev ? { ...prev, primaryGig: { ...prev.primaryGig, bookedPerformerIds: [...(prev.primaryGig.bookedPerformerIds || []), crmEntry.id] } } : null);
-              refreshGigs?.();
-              toast.success(`Added ${crmEntry.name || 'performer'}.`);
-              setAddPerformerQuery('');
-            } catch (err) {
-              console.error(err);
-              toast.error('Failed to add performer.');
-            } finally {
-              setAddPerformerSaving(false);
-            }
-          };
-
-          const availableCrmEntries = hireCrmEntries.filter((e) => !(primaryGig.bookedPerformerIds || []).includes(e.id));
-          const queryLower = (addPerformerQuery || '').trim().toLowerCase();
-          const filteredCrmEntries = queryLower
-            ? availableCrmEntries.filter((e) => (e.name || '').toLowerCase().includes(queryLower))
-            : availableCrmEntries;
-
-          const handleAddFromTextBox = async () => {
-            const name = (addPerformerQuery || '').trim();
-            if (!name || !canUpdate) return;
-            const currentNames = primaryGig.bookedPerformerNames || [];
-            if (currentNames.includes(name)) {
-              toast.info('That performer is already on the gig.');
-              return;
-            }
-            setAddPerformerSaving(true);
-            try {
-              const newNames = [...currentNames, name];
-              await updateGigDocument({
-                gigId: primaryGig.gigId,
-                action: 'gigs.update',
-                updates: { bookedPerformerNames: newNames },
-              });
-              setSelectedGigDetail((prev) => prev ? { ...prev, primaryGig: { ...prev.primaryGig, bookedPerformerNames: newNames } } : null);
-              refreshGigs?.();
-              toast.success(`Added ${name}.`);
-              closeAddPerformersModal();
-            } catch (err) {
-              console.error(err);
-              toast.error('Failed to add performer.');
-            } finally {
-              setAddPerformerSaving(false);
-            }
-          };
-
-          const handleAddSelectedFromCrmList = async () => {
-            if (addPerformerSelectedIds.length === 0 || !canUpdate) return;
-            const current = primaryGig.bookedPerformerIds || [];
-            const newIds = [...new Set([...current, ...addPerformerSelectedIds])];
-            setAddPerformerSaving(true);
-            try {
-              await updateGigDocument({
-                gigId: primaryGig.gigId,
-                action: 'gigs.update',
-                updates: { bookedPerformerIds: newIds },
-              });
-              setSelectedGigDetail((prev) => prev ? { ...prev, primaryGig: { ...prev.primaryGig, bookedPerformerIds: newIds } } : null);
-              refreshGigs?.();
-              const n = addPerformerSelectedIds.length;
-              toast.success(n === 1 ? 'Added 1 performer.' : `Added ${n} performers.`);
-              closeAddPerformersModal();
-            } catch (err) {
-              console.error(err);
-              toast.error('Failed to add performers.');
-            } finally {
-              setAddPerformerSaving(false);
-            }
-          };
-
-          const toggleCrmListSelection = (entryId) => {
-            setAddPerformerSelectedIds((prev) =>
-              prev.includes(entryId) ? prev.filter((id) => id !== entryId) : [...prev, entryId]
-            );
-          };
-
-          const closeAddPerformersModal = () => {
-            setShowAddPerformersModal(false);
-            setAddPerformerQuery('');
-            setAddPerformerShowCrmList(false);
-            setAddPerformerSelectedIds([]);
-          };
-
-          const performerIds = primaryGig.bookedPerformerIds || [];
-          const crmNames = performerIds
-            .map((id) => hireCrmEntries.find((e) => e.id === id)?.name)
-            .filter(Boolean);
-          const manualNames = primaryGig.bookedPerformerNames || [];
-          const performerNames = [...crmNames, ...manualNames];
-          const hasMorePerformers = performerNames.length > 3;
-          const showPerformerNames = performerNames.slice(0, 3);
-
           const handleInviteToApply = () => {
-            setHireMoreMenuOpen(false);
             setSelectedGigDetail(null);
-            setSelectedGigForInvites?.(primaryGig);
-            setShowInvitesModal?.(true);
+            setInviteShareGig(primaryGig);
           };
-          const handleConfirmBooking = async () => {
+          const handleHirePrivateToggle = async (e) => {
             if (!canUpdate) return;
+            const newPrivate = e.target.checked;
             try {
               await updateGigDocument({
                 gigId: primaryGig.gigId,
                 action: 'gigs.update',
-                updates: {
-                  rentalStatus: 'confirmed_renter',
-                  renterName: (primaryGig.renterName && String(primaryGig.renterName).trim()) || undefined,
-                },
+                updates: { private: newPrivate },
               });
-              toast.success('Booking confirmed.');
-              setSelectedGigDetail(null);
+              toast.success(newPrivate ? 'Invite-only' : 'Open for applications');
               refreshGigs?.();
+              setSelectedGigDetail((prev) =>
+                prev ? { ...prev, primaryGig: { ...prev.primaryGig, private: newPrivate } } : null
+              );
             } catch (err) {
               console.error(err);
-              toast.error('Failed to confirm booking.');
+              toast.error('Failed to update.');
             }
           };
+          const hireIsInviteOnly = !!primaryGig.private;
           const handleUnconfirmedDelete = () => {
             const id = primaryGig?.hireSpaceId ?? primaryGig?.gigId;
             if (!id) return;
@@ -795,144 +930,74 @@ export function GigsCalendarReact({
                 <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                   <header className="gigs-calendar-react__venue-hire-header">
                     <h2 id="venue-hire-modal-title" className="gigs-calendar-react__venue-hire-title">Venue hire</h2>
-                    <div className="gigs-calendar-react__venue-hire-header-right" ref={hireMoreMenuRef}>
-                      <button
-                        type="button"
-                        className="gigs-calendar-react__venue-hire-more-btn gigs-calendar-react__venue-hire-options-btn"
-                        onClick={() => setHireMoreMenuOpen((v) => !v)}
-                        aria-haspopup="true"
-                        aria-expanded={hireMoreMenuOpen}
-                        aria-label="Options"
-                      >
-                        <SettingsIcon /> Options
+                    <div className="gigs-calendar-react__venue-hire-header-right">
+                      <button type="button" className="btn primary gigs-calendar-react__venue-hire-open-booking-btn" onClick={openFullScreen}>
+                        View gig details
                       </button>
-                      {hireMoreMenuOpen && (
-                        <div className="gigs-calendar-react__venue-hire-more-menu">
-                          <button
-                            type="button"
-                            className="gigs-calendar-react__venue-hire-more-menu-item"
-                            onClick={() => {
-                              setHireMoreMenuOpen(false);
-                              openInNewTab(`/gig/${primaryGig.gigId}?venue=${primaryGig.venueId}`);
-                            }}
-                          >
-                            View gig <NewTabIcon />
-                          </button>
-                          {canUpdate && (
-                            <button
-                              type="button"
-                              className="gigs-calendar-react__venue-hire-more-menu-item"
-                              onClick={() => {
-                                setHireMoreMenuOpen(false);
-                                setAddGigsEditData?.(primaryGig);
-                                setShowAddGigsModal?.(true);
-                                setSelectedGigDetail(null);
-                              }}
-                            >
-                              Edit gig details <EditIcon />
-                            </button>
-                          )}
-                          {isConfirmedHire ? (
-                            <button
-                              type="button"
-                              className="gigs-calendar-react__venue-hire-more-menu-item gigs-calendar-react__venue-hire-more-menu-item--danger"
-                              onClick={() => {
-                                setHireMoreMenuOpen(false);
-                                setHireCancelConfirm({ primaryGig, bookedViaGigin });
-                              }}
-                            >
-                              Cancel gig <CancelIcon />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="gigs-calendar-react__venue-hire-more-menu-item gigs-calendar-react__venue-hire-more-menu-item--danger"
-                              onClick={() => {
-                                setHireMoreMenuOpen(false);
-                                setUnconfirmedHireDeleteConfirm(primaryGig.gigId);
-                              }}
-                            >
-                              Delete gig <DeleteGigIcon />
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </header>
-                  <p className="gigs-calendar-react__venue-hire-datetime">
-                    {formatHireDateLine(primaryGig.dateIso, primaryGig.rentalAccessFrom || primaryGig.startTime, primaryGig.rentalHardCurfew || (primaryGig.duration != null ? primaryGig.duration : endTime))}
-                  </p>
+                  {(() => {
+                    const venueName = primaryGig.venueId && venues?.length ? (venues.find((v) => v.venueId === primaryGig.venueId)?.name || '') : '';
+                    const dateTimeLine = formatHireDateLine(primaryGig.dateIso, primaryGig.rentalAccessFrom || primaryGig.startTime, primaryGig.rentalHardCurfew || (primaryGig.duration != null ? primaryGig.duration : endTime));
+                    return (
+                      <div className="gigs-calendar-react__venue-hire-meta">
+                        {venueName ? <p className="gigs-calendar-react__venue-hire-venue-name">{venueName}</p> : null}
+                        <p className="gigs-calendar-react__venue-hire-datetime">{dateTimeLine}</p>
+                      </div>
+                    );
+                  })()}
 
                   <section className="gigs-calendar-react__venue-hire-section">
-                    <h4 className="gigs-calendar-react__venue-hire-section-title">Booked by</h4>
+                    {(hasRenter || isConfirmedHire) && <h4 className="gigs-calendar-react__venue-hire-section-title">Booked by</h4>}
                     <div className="gigs-calendar-react__venue-hire-booked-row">
-                      <p className="gigs-calendar-react__venue-hire-booked-name">
-                        {isConfirmedHire
-                          ? ((primaryGig.renterName && String(primaryGig.renterName).trim()) || '—')
-                          : hasRenter
-                            ? (primaryGig.renterName && String(primaryGig.renterName).trim()) || '—'
-                            : 'No hirer yet'}
-                      </p>
+                      {hasRenter || isConfirmedHire ? (
+                        <p className="gigs-calendar-react__venue-hire-booked-name">
+                          {isConfirmedHire
+                            ? ((primaryGig.renterName && String(primaryGig.renterName).trim()) || '—')
+                            : (primaryGig.renterName && String(primaryGig.renterName).trim()) || '—'}
+                        </p>
+                      ) : null}
                       <span className={`gigs-calendar-react__venue-hire-status-pill gigs-calendar-react__venue-hire-status-pill--${isConfirmedHire ? 'confirmed' : hasRenter ? 'ready' : 'available'}`}>
-                        {isConfirmedHire ? 'Confirmed' : hasRenter ? 'Ready to confirm' : 'Available'}
+                        {isConfirmedHire ? 'Confirmed' : hasRenter ? 'Ready to confirm' : 'Unbooked'}
                       </span>
                     </div>
-                    {isConfirmedHire && (primaryGig.depositPaid === true || primaryGig.depositPaid === false || (primaryGig.depositStatus && ['paid', 'unpaid'].includes(primaryGig.depositStatus))) && (
-                      <p className="gigs-calendar-react__venue-hire-deposit-status">
-                        Deposit: {primaryGig.depositStatus === 'paid' || primaryGig.depositPaid === true ? 'Paid' : 'Unpaid'}
-                      </p>
-                    )}
-                  </section>
-
-                  {!hasRenter ? (
-                    <div className="gigs-calendar-react__venue-hire-section gigs-calendar-react__venue-hire-body-actions">
-                      <button type="button" className="btn secondary gigs-calendar-react__venue-hire-invite-btn" onClick={handleInviteToApply}>
-                        Invite to apply
-                      </button>
-                    </div>
-                  ) : (
-                    <section className="gigs-calendar-react__venue-hire-section">
-                      <h4 className="gigs-calendar-react__venue-hire-section-title">Performers</h4>
-                      {performerNames.length === 0 ? (
-                        <p className="gigs-calendar-react__venue-hire-performers-empty">No performers added</p>
-                      ) : (
-                        <p className="gigs-calendar-react__venue-hire-performers-list">
-                          {showPerformerNames.join(', ')}
-                          {hasMorePerformers && <span className="gigs-calendar-react__venue-hire-performers-more"> +{performerNames.length - 3} more</span>}
+                    {!hasRenter && !isConfirmedHire && (() => {
+                      const hireId = primaryGig.id ?? primaryGig.gigId;
+                      const total = hireApplicationCounts[hireId] ?? 0;
+                      if (total === 0) return null;
+                      const seen = typeof localStorage !== 'undefined' ? parseInt(localStorage.getItem(`${HIRE_SEEN_KEY}-${hireId}`), 10) : NaN;
+                      const newCount = Number.isNaN(seen) ? total : Math.max(0, total - seen);
+                      const hasNew = newCount > 0;
+                      const text = hasNew
+                        ? (newCount === 1 ? '• 1 new application' : `• ${newCount} new applications`)
+                        : (total === 1 ? '1 application' : `${total} applications`);
+                      return (
+                        <p className={`gigs-calendar-react__venue-hire-applications-line ${hasNew ? 'gigs-calendar-react__venue-hire-applications-line--new' : ''}`}>
+                          {text}
                         </p>
-                      )}
-                      {isConfirmedHire && (
-                        <button
-                          type="button"
-                          className="btn tertiary gigs-calendar-react__venue-hire-add-performers-btn"
-                          onClick={() => { setShowAddPerformersModal(true); setAddPerformerQuery(''); setAddPerformerShowCrmList(false); setAddPerformerSelectedIds([]); }}
-                        >
-                          + Add performers
-                        </button>
-                      )}
-                    </section>
-                  )}
-
-                  <footer className="gigs-calendar-react__venue-hire-footer">
-                    {isConfirmedHire ? (
-                      <button type="button" className="btn primary gigs-calendar-react__venue-hire-open-booking-btn" onClick={openFullScreen}>
-                        View full details
-                      </button>
-                    ) : hasRenter ? (
-                      <>
-                        <button type="button" className="btn primary gigs-calendar-react__venue-hire-open-booking-btn" onClick={handleConfirmBooking}>
-                          Confirm booking
-                        </button>
-                        <button type="button" className="btn secondary" onClick={handleInviteToApply}>
-                          Invite to apply
-                        </button>
-                      </>
-                    ) : (
-                      <button type="button" className="btn primary gigs-calendar-react__venue-hire-open-booking-btn" onClick={openFullScreen}>
-                        View full details
-                      </button>
-                    )}
-                  </footer>
+                      );
+                    })()}
+                    {isConfirmedHire && (() => {
+                      const hasDeposit = primaryGig.rentalDepositRequired === true || primaryGig.depositRequired === true || (primaryGig.depositAmount != null && primaryGig.depositAmount !== '');
+                      const hireFeeRaw = String(primaryGig.hireFee ?? primaryGig.rentalFee ?? primaryGig.budget ?? '').trim().toLowerCase();
+                      const hireFeeNumeric = Number(hireFeeRaw.replace(/[^\d.]/g, ''));
+                      const hasPayableHireFee = !!hireFeeRaw && hireFeeRaw !== 'free' && (Number.isFinite(hireFeeNumeric) ? hireFeeNumeric > 0 : true);
+                      return (
+                        <div className="gigs-calendar-react__venue-hire-payment-status">
+                          {hasDeposit && (
+                            <p className="gigs-calendar-react__venue-hire-deposit-status">
+                              Deposit: {primaryGig.depositStatus === 'paid' || primaryGig.depositPaid === true ? 'Paid' : (primaryGig.depositPaid === false || primaryGig.depositStatus === 'unpaid' ? 'Unpaid' : '—')}
+                            </p>
+                          )}
+                        {hasPayableHireFee && (
+                          <p className="gigs-calendar-react__venue-hire-fee-status">
+                            Hire fee: {primaryGig.hireFeePaid === true ? 'Paid' : 'Unpaid'}
+                          </p>
+                        )}
+                        </div>
+                      );
+                    })()}
+                  </section>
                 </div>
               </div>
 
@@ -985,149 +1050,59 @@ export function GigsCalendarReact({
                 </Portal>
               )}
 
-              {showAddPerformersModal && (
-                <Portal>
-                  <div
-                    className="modal cancel-gig gigs-calendar-react__add-performers-modal"
-                    onClick={closeAddPerformersModal}
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="add-performers-title"
-                  >
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                      <div className="gigs-calendar-react__add-performers-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                        <h3 id="add-performers-title" style={{ margin: 0 }}>Add performers</h3>
-                        <button
-                          type="button"
-                          className="btn icon gigs-calendar-react__add-performers-close-btn"
-                          onClick={closeAddPerformersModal}
-                          aria-label="Close"
-                        >
-                          <CloseIcon />
-                        </button>
-                      </div>
-                      <div className="gigs-calendar-react__add-performers-search-wrap">
-                        <input
-                          type="text"
-                          className="input gigs-calendar-react__add-performers-input"
-                          value={addPerformerQuery}
-                          onChange={(e) => setAddPerformerQuery(e.target.value)}
-                          placeholder="Type artist name"
-                          id="add-performers-search"
-                        />
-                      </div>
-                      <div className="gigs-calendar-react__add-performers-actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          className="btn secondary"
-                          onClick={() => setAddPerformerShowCrmList((v) => !v)}
-                        >
-                          {addPerformerShowCrmList ? 'Hide CRM list' : 'Add from CRM list'}
-                        </button>
-                        {(addPerformerQuery || '').trim() && (
-                          <button
-                            type="button"
-                            className="btn primary"
-                            onClick={handleAddFromTextBox}
-                            disabled={addPerformerSaving}
-                            style={{ marginLeft: 'auto' }}
-                          >
-                            Add to gig
-                          </button>
-                        )}
-                      </div>
-                      {addPerformerShowCrmList && (
-                        <div className="gigs-calendar-react__add-performers-crm-list-wrap" style={{ marginTop: '1rem' }}>
-                          {hireCrmEntriesLoading ? (
-                            <p className="gigs-calendar-react__add-performers-muted">Loading…</p>
-                          ) : filteredCrmEntries.length === 0 ? (
-                            <p className="gigs-calendar-react__add-performers-muted">
-                              {availableCrmEntries.length === 0 && hireCrmEntries.length > 0
-                                ? 'All CRM artists are already added.'
-                                : 'No artists in CRM yet.'}
-                            </p>
-                          ) : (
-                            <>
-                              <p className="gigs-calendar-react__add-performers-muted" style={{ marginBottom: '0.5rem' }}>
-                                Select one or more, then click Add to gig.
-                              </p>
-                              <ul className="gigs-calendar-react__add-performers-list">
-                                {filteredCrmEntries.map((entry) => (
-                                  <li key={entry.id}>
-                                    <button
-                                      type="button"
-                                      className={`btn secondary gigs-calendar-react__add-performers-list-btn${addPerformerSelectedIds.includes(entry.id) ? ' gigs-calendar-react__add-performers-list-btn--selected' : ''}`}
-                                      onClick={() => toggleCrmListSelection(entry.id)}
-                                      disabled={addPerformerSaving}
-                                    >
-                                      {entry.name || 'Unknown'}
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                              {addPerformerSelectedIds.length > 0 && (
-                                <div style={{ marginTop: '0.75rem' }}>
-                                  <button
-                                    type="button"
-                                    className="btn primary"
-                                    onClick={handleAddSelectedFromCrmList}
-                                    disabled={addPerformerSaving}
-                                  >
-                                    Add to gig ({addPerformerSelectedIds.length})
-                                  </button>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Portal>
-              )}
             </Portal>
           );
         }
 
         if (isArtistBooking(primaryGig)) {
-          const handleInviteArtist = () => {
-            setSelectedGigDetail(null);
-            setSelectedGigForInvites?.(primaryGig);
-            setShowInvitesModal?.(true);
-          };
-          const handleArtistPrivateToggle = async (e) => {
-            if (!canUpdate) return;
-            const newPrivate = e.target.checked;
-            try {
-              await Promise.all(
-                allGigs.map((g) =>
-                  updateGigDocument({
-                    gigId: g.gigId,
-                    action: 'gigs.update',
-                    updates: { private: newPrivate },
-                  })
-                )
-              );
-              toast.success(`Applications ${newPrivate ? 'Invite only' : 'Public'}.`);
-              refreshGigs?.();
-              setSelectedGigDetail((prev) =>
-                prev ? { ...prev, primaryGig: { ...prev.primaryGig, private: newPrivate } } : null
-              );
-            } catch (err) {
-              console.error(err);
-              toast.error('Failed to update.');
-            }
-          };
           const confirmedArtists = allGigs.flatMap((g) =>
-            (g.applicants || []).filter((a) => a.status === 'confirmed' || a.status === 'paid').map((a) => a.name || a.profileName || 'Artist')
+            (g.applicants || [])
+              .filter((a) => a.status === 'confirmed' || a.status === 'paid' || a.status === 'accepted')
+              .map((a) => a.name || a.profileName || 'Artist')
           );
-          const rawFee = primaryGig.budget ?? '';
-          const feeDisplay = (typeof rawFee === 'string' && rawFee.trim() === '') || rawFee === '£'
-            ? 'No fee set'
-            : (rawFee || 'No fee set');
-          const isInviteOnly = !!primaryGig.private;
+          const totalSlots = Math.max(1, allGigs.length);
+          const bookedCount = allGigs.filter((g) =>
+            (g.applicants || []).some((a) =>
+              a.status === 'confirmed' || a.status === 'paid' || a.status === 'accepted'
+            )
+          ).length;
+          const totalPending = allGigs.reduce(
+            (sum, g) => sum + (g.applicants || []).filter((a) => a.status === 'pending').length,
+            0
+          );
+          const artistGroupKey = primaryGig._groupKey ?? primaryGig.gigId ?? '';
+          let artistApplicationLine = null;
+          let artistApplicationLineIsNew = false;
+          if (totalPending > 0 && artistGroupKey) {
+            const seen =
+              typeof localStorage !== 'undefined'
+                ? parseInt(localStorage.getItem(`${ARTIST_GIG_PENDING_SEEN_KEY}-${artistGroupKey}`), 10)
+                : NaN;
+            const newCount = Number.isNaN(seen) ? totalPending : Math.max(0, totalPending - seen);
+            artistApplicationLineIsNew = newCount > 0;
+            artistApplicationLine = artistApplicationLineIsNew
+              ? (newCount === 1 ? '• 1 new application' : `• ${newCount} new applications`)
+              : totalPending === 1
+                ? '1 application'
+                : `${totalPending} applications`;
+          }
+          let artistStatusPillVariant = 'available';
+          if (bookedCount >= totalSlots) {
+            artistStatusPillVariant = 'confirmed';
+          } else if (bookedCount > 0) {
+            artistStatusPillVariant = 'ready';
+          }
+          const artistSlotsBookedLabel = `${bookedCount}/${totalSlots} ${totalSlots === 1 ? 'slot' : 'slots'} booked`;
+          const openArtistGigFullScreen = () => {
+            if (typeof localStorage !== 'undefined' && artistGroupKey) {
+              localStorage.setItem(`${ARTIST_GIG_PENDING_SEEN_KEY}-${artistGroupKey}`, String(totalPending));
+            }
+            setSelectedGigDetail(null);
+            navigate('/venues/dashboard/gigs/gig-applications', { state: { gig: primaryGig } });
+          };
 
           return (
+            <>
             <Portal>
               <div
                 className="modal cancel-gig gigs-calendar-react__gig-detail-modal gigs-calendar-react__artist-booking-modal"
@@ -1137,66 +1112,99 @@ export function GigsCalendarReact({
                 aria-labelledby="artist-booking-modal-title"
               >
                 <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                  <h2 id="artist-booking-modal-title" className="gigs-calendar-react__venue-hire-title">
-                    {primaryGig.gigName || 'Gig'}
-                  </h2>
-                  <p className="gigs-calendar-react__venue-hire-datetime">
-                    {formatDisplayDate(primaryGig.dateIso)}
-                    {primaryGig.startTime ? ` · ${primaryGig.startTime}` : ''}
-                    {primaryGig.duration != null ? ` · ${primaryGig.duration} min` : ''}
-                  </p>
-
-                  <section className="gigs-calendar-react__venue-hire-section">
-                    <h4 className="gigs-calendar-react__venue-hire-section-title">Artist(s)</h4>
-                    <p className="gigs-calendar-react__gig-detail-value">
-                      {confirmedArtists.length > 0 ? confirmedArtists.join(', ') : 'No artists confirmed yet'}
-                    </p>
-                  </section>
-
-                  <section className="gigs-calendar-react__venue-hire-section">
-                    <h4 className="gigs-calendar-react__venue-hire-section-title">Fee</h4>
-                    <p className="gigs-calendar-react__gig-detail-value">{feeDisplay}</p>
-                  </section>
-
-                  <section className="gigs-calendar-react__venue-hire-section">
-                    <h4 className="gigs-calendar-react__venue-hire-section-title">Open for applications</h4>
-                    {canUpdate ? (
-                      <div className="gigs-calendar-react__artist-booking-visibility">
-                        <span className={`gigs-calendar-react__artist-booking-visibility-option ${!isInviteOnly ? 'gigs-calendar-react__artist-booking-visibility-option--active' : ''}`}>
-                          Yes
-                        </span>
-                        <div className="gigs-toggle-container gigs-calendar-react__artist-booking-visibility-toggle">
-                          <label className="gigs-toggle-switch">
-                            <input
-                              type="checkbox"
-                              checked={isInviteOnly}
-                              onChange={handleArtistPrivateToggle}
-                            />
-                            <span className="gigs-toggle-slider" />
-                          </label>
-                        </div>
-                        <span className={`gigs-calendar-react__artist-booking-visibility-option ${isInviteOnly ? 'gigs-calendar-react__artist-booking-visibility-option--active' : ''}`}>
-                          Invite-only
-                        </span>
-                      </div>
-                    ) : (
-                      <p className="gigs-calendar-react__gig-detail-value">{isInviteOnly ? 'Invite-only' : 'Yes'}</p>
-                    )}
-                  </section>
-
-                  <footer className="gigs-calendar-react__venue-hire-footer">
-                    {canUpdate && (
-                      <button type="button" className="btn secondary" onClick={handleInviteArtist}>
-                        Invite artist
+                  <header className="gigs-calendar-react__venue-hire-header">
+                    <h2 id="artist-booking-modal-title" className="gigs-calendar-react__venue-hire-title">
+                      {primaryGig.gigName || 'Gig'}
+                    </h2>
+                    <div className="gigs-calendar-react__venue-hire-header-right">
+                      <button type="button" className="btn primary gigs-calendar-react__venue-hire-open-booking-btn" onClick={openArtistGigFullScreen}>
+                        View gig details
                       </button>
-                    )}
-                    <button type="button" className="btn primary gigs-calendar-react__venue-hire-open-booking-btn" onClick={openFullScreen}>
-                      View full details
-                    </button>
-                  </footer>
+                    </div>
+                  </header>
+                  {(() => {
+                    const venueName = primaryGig.venueId && venues?.length ? (venues.find((v) => v.venueId === primaryGig.venueId)?.name || '') : '';
+                    const dateIso = primaryGig.dateIso;
+                    const d = dateIso ? new Date(`${dateIso}T12:00:00`) : null;
+                    const dateStr = !d || isNaN(d.getTime()) ? '—' : format(d, 'EEE d MMM');
+                    const timeRangeStr = formatArtistBookingMetaTimeRange(allGigs, primaryGig);
+                    let timePart = '';
+                    if (timeRangeStr) {
+                      timePart = timeRangeStr;
+                    } else if (primaryGig.startTime) {
+                      const dur = primaryGig.duration;
+                      if (dur != null && dur !== '' && Number(dur) > 0) {
+                        timePart = `${normalizeTimeForDisplay(primaryGig.startTime)} • ${dur} min`;
+                      } else {
+                        timePart = normalizeTimeForDisplay(primaryGig.startTime);
+                      }
+                    }
+                    const dateTimeLine = timePart ? `${dateStr} • ${timePart}` : dateStr;
+                    return (
+                      <div className="gigs-calendar-react__venue-hire-meta">
+                        {venueName ? <p className="gigs-calendar-react__venue-hire-venue-name">{venueName}</p> : null}
+                        <p className="gigs-calendar-react__venue-hire-datetime">{dateTimeLine}</p>
+                      </div>
+                    );
+                  })()}
+
+                  <section className="gigs-calendar-react__venue-hire-section">
+                    <div className="gigs-calendar-react__venue-hire-booked-row gigs-calendar-react__artist-booking-booked-row">
+                      <span
+                        className={`gigs-calendar-react__venue-hire-status-pill gigs-calendar-react__venue-hire-status-pill--${artistStatusPillVariant}`}
+                      >
+                        {artistSlotsBookedLabel}
+                      </span>
+                    </div>
+                    {artistApplicationLine ? (
+                      <p
+                        className={`gigs-calendar-react__venue-hire-applications-line ${artistApplicationLineIsNew ? 'gigs-calendar-react__venue-hire-applications-line--new' : ''}`.trim()}
+                      >
+                        {artistApplicationLine}
+                      </p>
+                    ) : null}
+                    {confirmedArtists.length > 0 ? (
+                      <>
+                        <h4 className="gigs-calendar-react__venue-hire-section-title">Artist(s)</h4>
+                        <p className="gigs-calendar-react__gig-detail-value">{confirmedArtists.join(', ')}</p>
+                      </>
+                    ) : null}
+                  </section>
+
                 </div>
               </div>
             </Portal>
+              {unconfirmedHireDeleteConfirm && (
+                <Portal>
+                  <div
+                    className="modal cancel-gig"
+                    onClick={() => setUnconfirmedHireDeleteConfirm(null)}
+                    role="dialog"
+                    aria-modal="true"
+                  >
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                      <h3>Delete this gig?</h3>
+                      <p>This slot will be removed. This action cannot be undone.</p>
+                      <div className="two-buttons" style={{ marginTop: '1rem' }}>
+                        <button type="button" className="btn tertiary" onClick={() => setUnconfirmedHireDeleteConfirm(null)}>Keep</button>
+                        <button
+                          type="button"
+                          className="btn danger"
+                          onClick={() => {
+                            onDeleteGigs?.([unconfirmedHireDeleteConfirm]);
+                            setUnconfirmedHireDeleteConfirm(null);
+                            setSelectedGigDetail(null);
+                            refreshGigs?.();
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </Portal>
+              )}
+          </>
           );
         }
 
@@ -1282,8 +1290,11 @@ export function GigsCalendarReact({
                     <span>{formatDisplayDate(primaryGig.dateIso)}</span>
                   </div>
                   <div className="gigs-calendar-react__gig-detail-row">
-                    <span className="gigs-calendar-react__gig-detail-label">Start time</span>
-                    <span>{primaryGig.startTime || '—'}</span>
+                    <span className="gigs-calendar-react__gig-detail-label">Time</span>
+                    <span>
+                      {formatArtistBookingMetaTimeRange(allGigs, primaryGig)
+                        || (primaryGig.startTime ? normalizeTimeForDisplay(primaryGig.startTime) : '—')}
+                    </span>
                   </div>
                   <div className="gigs-calendar-react__gig-detail-row">
                     <span className="gigs-calendar-react__gig-detail-label">Duration</span>
@@ -1410,6 +1421,24 @@ export function GigsCalendarReact({
           </Portal>
         );
       })()}
+      {inviteShareGig && inviteShareGig.itemType === 'venue_hire' && (
+        <FillThisSlotModal
+          gig={inviteShareGig}
+          venues={venues}
+          user={user}
+          refreshGigs={refreshGigs}
+          onClose={() => setInviteShareGig(null)}
+        />
+      )}
+      {inviteShareGig && inviteShareGig.itemType !== 'venue_hire' && (
+        <InviteAndShareModal
+          gig={inviteShareGig}
+          venues={venues}
+          user={user}
+          onClose={() => setInviteShareGig(null)}
+          refreshGigs={refreshGigs}
+        />
+      )}
     </div>
   );
 }

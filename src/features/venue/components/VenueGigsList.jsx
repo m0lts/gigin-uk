@@ -20,9 +20,8 @@ import { createVenueRequest } from "@services/api/artists";
 import { toast } from "sonner";
 import { useBreakpoint } from "../../../hooks/useBreakpoint";
 
-export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, musicianId = null, venueId }) => {
+export const VenueGigsList = ({ title, gigs, groupedGigs = [], hireOpportunities = [], isVenue = false, musicianId = null, venueId }) => {
     const { isMdUp } = useBreakpoint();
-    // Always show all gigs, container will be scrollable
     const displayed = gigs ?? [];
     const [profilesById, setProfilesById] = useState({});
     const [loadingProfiles, setLoadingProfiles] = useState(false);
@@ -81,7 +80,7 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, 
       }
     };
 
-    // For Gig Vacancies on the venue profile, hide the box entirely if there are no actual vacancies
+    // Gig Vacancies: filter to vacant gigs only. Hire Opportunities: show hire list only. Upcoming: all displayed.
     const gigsForList =
       title === 'Gig Vacancies'
         ? displayed.filter((gig) => {
@@ -89,9 +88,18 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, 
             const isHired = confirmed.length > 0 || (gig?.renterName && String(gig.renterName).trim());
             return confirmed.length === 0 && !isHired;
           })
-        : displayed;
+        : title === 'Hire Opportunities'
+          ? []
+          : displayed.filter((gig) => {
+              const confirmed = (gig?.applicants ?? []).filter((a) => a?.status === 'confirmed');
+              const isHired = confirmed.length > 0 || (gig?.renterName && String(gig.renterName).trim());
+              return confirmed.length === 0 && !isHired;
+            });
 
     if (title === 'Gig Vacancies' && gigsForList.length === 0) {
+      return null;
+    }
+    if (title === 'Hire Opportunities' && (!hireOpportunities || hireOpportunities.length === 0)) {
       return null;
     }
 
@@ -131,52 +139,101 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, 
         </div>
         
         <div className="gigs-list-container">
-        {gigsForList.length > 0 ? (
-          gigsForList.map((gig) => {
-            const gigDate = gig.date?.toDate ? gig.date.toDate() : new Date(gig.date);
+        {title === 'Hire Opportunities' ? (
+          (hireOpportunities && hireOpportunities.length > 0) ? (
+          hireOpportunities.map((hire) => {
+            const raw = hire.date ?? hire.startDateTime;
+            const hireDate = !raw ? new Date() : (typeof raw?.toDate === 'function' ? raw.toDate() : (Number.isFinite(raw?.seconds) ? new Date(raw.seconds * 1000) : new Date(raw)));
+            const day = hireDate.toLocaleDateString('en-US', { day: '2-digit' });
+            const month = hireDate.toLocaleDateString('en-US', { month: 'short' });
+            const timeRange = [hire.startTime, hire.endTime].filter(Boolean).join(' – ') || (hire.startTime || '');
+            const rawFee = hire.hireFee != null ? String(hire.hireFee).trim() : '';
+            const isFree = !rawFee || rawFee === '£' || rawFee === '£0' || rawFee === '0' || rawFee === 'No Fee' || rawFee === 'Free';
+            const hireFeeDisplay = isFree ? 'Free' : hire.hireFee;
+            return (
+              <div key={hire.id} className="venue-gig" onClick={(e) => openInNewTab(`/hire/${hire.id}`, e)}>
+                <div className="confirmed-musician">
+                  <div className="left">
+                    <div className="date-box">
+                      <h4 className="month">{month.toUpperCase()}</h4>
+                      <h2 className="day">{day}</h2>
+                    </div>
+                    <div className="gig-time" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', margin: '0 1rem' }}>
+                      <h4 style={{ marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '600' }}>Venue hire</h4>
+                      <h3>{timeRange}</h3>
+                    </div>
+                  </div>
+                  <div className="gig-type">
+                    <h4>Hire Price: {hireFeeDisplay}</h4>
+                  </div>
+                </div>
+                {!isVenue ? (
+                <button className="btn artist-profile" onClick={(e) => openInNewTab(`/hire/${hire.id}`, e)}>
+                  Apply
+                </button>
+              ) : (
+                <button className="btn tertiary" onClick={(e) => openInNewTab(`/hire/${hire.id}`, e)}>
+                  Open
+                </button>
+              )}
+              </div>
+            );
+          })
+          ) : (
+            <div className="no-gigs">
+              <h4>No hire opportunities at the moment.</h4>
+              <p style={{ marginTop: '0.5rem', marginBottom: musicianId ? '0.75rem' : 0 }}>You can request a gig from this venue.</p>
+              {musicianId && (
+                <button className="btn tertiary" onClick={handleMusicianRequest}>
+                  Request a Gig
+                </button>
+              )}
+            </div>
+          )
+        ) : gigsForList.length > 0 ? (
+          <>
+          {gigsForList.map((gig) => {
+            const isHire = false;
+            const rawDate = gig.date ?? gig.startDateTime;
+            const gigDate = !rawDate ? new Date() : (typeof rawDate?.toDate === 'function' ? rawDate.toDate() : (Number.isFinite(rawDate?.seconds) ? new Date(rawDate.seconds * 1000) : new Date(rawDate)));
             const day = gigDate.toLocaleDateString("en-US", { day: "2-digit" });
             const month = gigDate.toLocaleDateString("en-US", { month: "short" });
             const confirmed = (gig?.applicants ?? []).filter(a => a?.status === "confirmed");
             const isHired = confirmed.length > 0 || (gig?.renterName && String(gig.renterName).trim());
             if (title !== 'Gig Vacancies' && isHired) return null;
 
-            // Find the group this gig belongs to
-            const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
+            // Find the group this gig belongs to (only for artist-booking gigs)
+            const group = isHire ? null : groupedGigs.find(g => g.gigIds.includes(gig.gigId));
             
             // Get base gig name (remove "(Set X)" suffix for grouped gigs)
             const baseGigName = group && group.isGroup 
               ? gig.gigName.replace(/\s*\(Set\s+\d+\)\s*$/, '')
-              : gig.gigName;
+              : (gig.gigName ?? 'Venue hire');
 
-            // Calculate time range for grouped or single gigs
+            // Calculate time range for grouped or single gigs, or hire (startTime–endTime)
             const formatTimeRange = () => {
+              if (isHire) {
+                return [gig.startTime, gig.endTime].filter(Boolean).join(' – ') || (gig.startTime || '');
+              }
               if (group && group.isGroup && group.allGigs.length > 1) {
-                // For grouped gigs, find the earliest start and latest end
                 const allSlots = group.allGigs.filter(g => g.startTime && g.duration);
                 if (allSlots.length > 0) {
-                  // Sort by startTime to get first and last
                   const sortedSlots = [...allSlots].sort((a, b) => {
                     const [aH, aM] = a.startTime.split(':').map(Number);
                     const [bH, bM] = b.startTime.split(':').map(Number);
                     return (aH * 60 + aM) - (bH * 60 + bM);
                   });
-                  
                   const firstSlot = sortedSlots[0];
                   const lastSlot = sortedSlots[sortedSlots.length - 1];
                   const firstStartTime = firstSlot.startTime;
-                  
-                  // Calculate end time of last slot
                   const [lastHour, lastMinute] = lastSlot.startTime.split(':').map(Number);
                   const lastStartDate = new Date();
                   lastStartDate.setHours(lastHour, lastMinute, 0, 0);
                   const lastEndDate = new Date(lastStartDate.getTime() + lastSlot.duration * 60000);
                   const formatTime = (date) => date.toTimeString().slice(0, 5);
-                  
                   return `${firstStartTime}-${formatTime(lastEndDate)}`;
                 }
               }
-              
-              // For single gigs, calculate end time
               if (gig.startTime && gig.duration) {
                 const [startHour, startMinute] = gig.startTime.split(':').map(Number);
                 const startDate = new Date();
@@ -185,14 +242,14 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, 
                 const formatTime = (date) => date.toTimeString().slice(0, 5);
                 return `${gig.startTime}-${formatTime(endDate)}`;
               }
-              
               return gig.startTime || '';
             };
 
             const timeRange = formatTimeRange();
+            const linkUrl = isHire ? `/hire/${gig.gigId}` : `/gig/${gig.gigId}`;
 
             return (
-              <div key={gig.gigId} className="venue-gig" onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}>
+              <div key={gig.gigId} className="venue-gig" onClick={(e) => openInNewTab(linkUrl, e)}>
                   {title === 'Upcoming' ? (
                       <div className="confirmed-musician">
                           <div className="date-box">
@@ -245,21 +302,22 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, 
                 {title !== "Upcoming" && !isVenue ? (
                   <button
                     className="btn artist-profile"
-                    onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}
+                    onClick={(e) => openInNewTab(linkUrl, e)}
                   >
                     Apply
                   </button>
                 ) : (
                   <button
                     className="btn tertiary"
-                    onClick={(e) => openInNewTab(`/gig/${gig.gigId}`, e)}
+                    onClick={(e) => openInNewTab(linkUrl, e)}
                   >
                     Open
                   </button>
                 )}
               </div>
             );
-          })
+          })}
+          </>
         ) : (
           title === "Upcoming" ? (
             <div className="no-gigs">
@@ -267,7 +325,8 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], isVenue = false, 
             </div>
           ) : (
             <div className="no-gigs">
-              <h4>No Gig Vacancies</h4>
+              <h4>No gig vacancies at the moment.</h4>
+              <p style={{ marginTop: '0.5rem', marginBottom: musicianId ? '0.75rem' : 0 }}>You can request a gig from this venue.</p>
               {musicianId && (
                 <button className="btn tertiary" onClick={handleMusicianRequest}>
                   Request a Gig

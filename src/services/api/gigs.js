@@ -10,8 +10,8 @@ export function updateGigDocument({ gigId, action, updates }) {
   return post('/gigs/updateGigDocument', { body: { gigId, action, updates } });
 }
 
-export function applyToGig({ gigId, musicianProfile, inviteId }) {
-  return post('/gigs/applyToGig', { body: { gigId, musicianProfile, inviteId } });
+export function applyToGig({ gigId, musicianProfile, inviteId, techSetup }) {
+  return post('/gigs/applyToGig', { body: { gigId, musicianProfile, inviteId, techSetup } });
 }
 
 export function inviteToGig({ gigId, musicianProfile }) {

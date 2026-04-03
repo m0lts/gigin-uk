@@ -15,6 +15,7 @@ import { uploadImageArrayWithFallback, uploadFileWithFallback, uploadFileWithPro
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { toast } from 'sonner';
 import { Links } from './Links';
+import { normalizeTechRider, buildNewTechRiderShape, techRiderToSavePayload } from './techRiderConfig';
 import { geohashForLocation } from 'geofire-common';
 import Portal from '../../shared/components/Portal';
 import { useAuth } from '../../../hooks/useAuth';
@@ -42,31 +43,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         equipmentAvailable: '',
         equipment: [],
         equipmentInformation: '',
-        techRider: {
-            soundSystem: {
-                pa: { available: '', notes: '' },
-                mixingConsole: { available: '', notes: '' },
-                vocalMics: { count: '', notes: '' },
-                diBoxes: { count: '', notes: '' },
-                monitoring: '',
-                cables: ''
-            },
-            backline: {
-                drumKit: { available: '', notes: '' },
-                bassAmp: { available: '', notes: '' },
-                guitarAmp: { available: '', notes: '' },
-                keyboard: { available: '', notes: '' },
-                other: '',
-                stageSize: ''
-            },
-            houseRules: {
-                volumeLevel: '',
-                volumeNotes: '',
-                noiseCurfew: '',
-                powerAccess: '',
-                houseRules: ''
-            }
-        },
+        techRider: buildNewTechRiderShape(),
         photos: [],
         videos: [],
         extraInformation: '',
@@ -82,7 +59,9 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         primaryImageBlur: 0,
         termsAndConditions: '',
         prs: '',
+        houseRulesDocument: '',
         otherDocuments: '',
+        capacity: '',
     });
 
     useEffect(() => {
@@ -116,31 +95,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 equipmentAvailable: venue.equipmentAvailable || '',
                 equipment: venue.equipment || [],
                 equipmentInformation: venue.equipmentInformation || '',
-                techRider: venue.techRider || {
-                    soundSystem: {
-                        pa: { available: '', notes: '' },
-                        mixingConsole: { available: '', notes: '' },
-                        vocalMics: { count: '', notes: '' },
-                        diBoxes: { count: '', notes: '' },
-                        monitoring: '',
-                        cables: ''
-                    },
-                    backline: {
-                        drumKit: { available: '', notes: '' },
-                        bassAmp: { available: '', notes: '' },
-                        guitarAmp: { available: '', notes: '' },
-                        keyboard: { available: '', notes: '' },
-                        other: '',
-                        stageSize: ''
-                    },
-                    houseRules: {
-                        volumeLevel: '',
-                        volumeNotes: '',
-                        noiseCurfew: '',
-                        powerAccess: '',
-                        houseRules: ''
-                    }
-                },
+                techRider: normalizeTechRider(venue.techRider),
                 photos: photos || [],
                 videos: venue.videos || [],
                 extraInformation: venue.extraInformation || '',
@@ -152,7 +107,9 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 primaryImageBlur: venue.primaryImageBlur || 0,
                 termsAndConditions: venue.termsAndConditions || '',
                 prs: venue.prs || '',
+                houseRulesDocument: venue.houseRulesDocument || '',
                 otherDocuments: venue.otherDocuments || '',
+                capacity: venue.capacity != null && venue.capacity !== '' ? String(venue.capacity) : '',
             });
         }
     }, [venue])
@@ -275,9 +232,10 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             
             // Upload document files if they exist
             const documentsFolder = `venues/${formData.venueId}/documents`;
-            const [termsAndConditionsUrl, prsUrl, otherDocumentsUrl] = await Promise.all([
+            const [termsAndConditionsUrl, prsUrl, houseRulesDocumentUrl, otherDocumentsUrl] = await Promise.all([
                 uploadFileWithFallback(formData.termsAndConditions, documentsFolder),
                 uploadFileWithFallback(formData.prs, documentsFolder),
+                uploadFileWithFallback(formData.houseRulesDocument, documentsFolder),
                 uploadFileWithFallback(formData.otherDocuments, documentsFolder),
             ]);
             
@@ -289,10 +247,12 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 primaryImageBlur: formData.photos[0]?.blur || formData.primaryImageBlur || 0,
                 termsAndConditions: termsAndConditionsUrl,
                 prs: prsUrl,
+                houseRulesDocument: houseRulesDocumentUrl,
                 otherDocuments: otherDocumentsUrl,
                 completed: true,
                 ...getGeoField(formData.coordinates),
             };
+            updatedFormData.techRider = techRiderToSavePayload(formData.techRider);
             try {
                 await createVenueProfile(formData.venueId, updatedFormData, user.uid);
             } catch (error) {
@@ -481,14 +441,17 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             
             // Upload document files if they exist
             const documentsFolder = `venues/${formData.venueId}/documents`;
-            const [termsAndConditionsUrl, prsUrl, otherDocumentsUrl] = await Promise.all([
+            const [termsAndConditionsUrl, prsUrl, houseRulesDocumentUrl, otherDocumentsUrl] = await Promise.all([
                 uploadFileWithFallback(formData.termsAndConditions, documentsFolder),
                 uploadFileWithFallback(formData.prs, documentsFolder),
+                uploadFileWithFallback(formData.houseRulesDocument, documentsFolder),
                 uploadFileWithFallback(formData.otherDocuments, documentsFolder),
             ]);
             updatedFormData.termsAndConditions = termsAndConditionsUrl;
             updatedFormData.prs = prsUrl;
+            updatedFormData.houseRulesDocument = houseRulesDocumentUrl;
             updatedFormData.otherDocuments = otherDocumentsUrl;
+            updatedFormData.techRider = techRiderToSavePayload(formData.techRider);
             try {
                 await createVenueProfile(formData.venueId, updatedFormData, user.uid);
             } catch (error) {
@@ -678,22 +641,8 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         if (formData.type !== 'Public Establishment') {
             return true; // Step 3 doesn't exist for non-public establishments
         }
-        
-        // Check if all required tech rider fields are filled
-        const techRider = formData.techRider || {};
-        const soundSystem = techRider.soundSystem || {};
-        const backline = techRider.backline || {};
-        
-        return (
-            soundSystem.pa?.available &&
-            soundSystem.mixingConsole?.available &&
-            (soundSystem.vocalMics?.count !== '' && soundSystem.vocalMics?.count !== null && soundSystem.vocalMics?.count !== undefined) &&
-            (soundSystem.diBoxes?.count !== '' && soundSystem.diBoxes?.count !== null && soundSystem.diBoxes?.count !== undefined) &&
-            backline.drumKit?.available &&
-            backline.bassAmp?.available &&
-            backline.guitarAmp?.available &&
-            backline.keyboard?.available
-        );
+        // Tech rider step has no required fields; completion is optional
+        return true;
     };
     
     const isStep4Complete = () => formData.photos.length > 0;
@@ -800,7 +749,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                                     onClick={() => handleStepClick(3)}
                                 >
                                     <div className='circle'>{isStep3Complete() ? <TickIcon /> : 3}</div>
-                                    Tech Rider
+                                    Tech Spec
                                 </li>
                                 )}
 

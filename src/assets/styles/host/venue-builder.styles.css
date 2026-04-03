@@ -408,8 +408,9 @@
 }
 
 .venue-builder .stage.equipment .stage-content {
-    flex: 1;
-    height: 100%;
+    flex: 1 1 auto;
+    min-height: min-content;
+    padding-bottom: 5rem;
 }
 
 .venue-builder .stage.equipment .selections {
@@ -461,9 +462,8 @@
 }
 
 .venue-builder .stage.equipment .input-group label {
-    text-transform: uppercase;
     color: var(--gn-grey-600);
-    font-size: 0.75rem;
+    font-size: 1rem;
     font-weight: 600;
     margin-bottom: 5px;
 }
@@ -484,6 +484,303 @@
 
 .venue-builder .stage.equipment #houseRules {
     margin-bottom: 5rem;
+}
+
+/* Tech Rider refactor: Equipment & Backline grid – larger typography */
+.venue-builder .tech-rider-section {
+    margin-top: 1.5rem;
+}
+
+.venue-builder .tech-rider-section:first-of-type {
+    margin-top: 0;
+}
+
+.venue-builder .tech-rider-section h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gn-off-black, #111);
+    margin: 0 0 0.5rem;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.venue-builder .tech-rider-helper {
+    font-size: 0.95rem;
+    color: var(--gn-grey-600, #666);
+    margin: 0 0 1rem;
+    line-height: 1.4;
+}
+
+.venue-builder .tech-rider-equipment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+@media (max-width: 700px) {
+    .venue-builder .tech-rider-equipment-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Self-contained tile (card) – all controls inside */
+.venue-builder .tech-rider-equipment-tile {
+    padding: 12px 14px;
+    background: var(--gn-grey-050, #fafafa);
+    border: 2px solid var(--gn-grey-350, #d0d0d0);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: 0;
+}
+
+/* Inactive: dim equipment name only; border and toggle stay full */
+.venue-builder .tech-rider-equipment-tile--unavailable .tech-rider-equipment-label {
+    opacity: 0.6;
+}
+
+/* Header: name (left) | Available toggle (right) */
+.venue-builder .tech-rider-equipment-tile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2rem;
+}
+
+.venue-builder .tech-rider-equipment-label {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--gn-off-black, #111);
+    text-transform: none;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Controls row (only when Available ON): [Free][Hire] £ Qty + Add note */
+.venue-builder .tech-rider-equipment-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--gn-grey-250, #e8e8e8);
+}
+
+.venue-builder .tech-rider-available-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.venue-builder .tech-rider-available-label {
+    font-size: 0.875rem;
+    color: var(--gn-off-black, #111);
+    font-weight: 500;
+}
+
+.venue-builder .tech-rider-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+}
+
+.venue-builder .tech-rider-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.venue-builder .tech-rider-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--gn-grey-300, #ddd);
+    border-radius: 20px;
+    transition: background-color 0.2s;
+}
+
+.venue-builder .tech-rider-toggle-slider:before {
+    position: absolute;
+    content: '';
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s;
+}
+
+.venue-builder .tech-rider-toggle-switch input:checked + .tech-rider-toggle-slider {
+    background-color: var(--gn-orange);
+}
+
+.venue-builder .tech-rider-toggle-switch input:checked + .tech-rider-toggle-slider:before {
+    transform: translateX(16px);
+}
+
+/* Reveal panel: Qty + Add note inline */
+.venue-builder .tech-rider-equipment-row-notes {
+    margin-top: 0.5rem;
+}
+
+/* Free / Hire segmented control – match gigs list filter (white pill + shadow when selected) */
+.venue-builder .tech-rider-segments {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    background-color: var(--gn-grey-300, #ddd);
+    padding: 3px;
+    border-radius: 0.5rem;
+}
+
+.venue-builder .tech-rider-segment {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 400;
+    padding: 0.35rem 0.65rem;
+    background-color: transparent;
+    border: none;
+    border-radius: 5px;
+    color: var(--gn-grey-700, #555);
+    box-shadow: none;
+    transition: all 200ms ease-in-out;
+}
+
+.venue-builder .tech-rider-segment:has(input:checked) {
+    background-color: var(--gn-white, #fff);
+    color: var(--gn-off-black, #111);
+    font-weight: 600;
+    box-shadow: 0 0 5px var(--gn-grey-400, #ccc);
+}
+
+.venue-builder .tech-rider-segment:hover:not(:has(input:checked)) {
+    background-color: var(--gn-grey-350, #d5d5d5);
+}
+
+.venue-builder .tech-rider-segment input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.venue-builder .tech-rider-hire-input-wrap {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+.venue-builder .tech-rider-hire-input-wrap .tech-rider-currency {
+    position: absolute;
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.95rem;
+    color: var(--gn-grey-700);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.venue-builder .tech-rider-hire-input {
+    width: 4.75rem;
+    padding: 0.3rem 0.4rem 0.3rem 1.5rem;
+    font-size: 0.95rem;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.venue-builder .tech-rider-hire-input::-webkit-inner-spin-button,
+.venue-builder .tech-rider-hire-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.venue-builder .tech-rider-quantity-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.venue-builder .tech-rider-quantity-inline .tech-rider-quantity-label {
+    font-size: 0.875rem;
+    color: var(--gn-grey-600);
+    font-weight: 500;
+}
+
+.venue-builder .tech-rider-quantity-input {
+    width: 3rem;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.95rem;
+}
+
+/* + Add note / Edit note: same look as "+ Add performers" (btn tertiary), layout only */
+.venue-builder .tech-rider-equipment-controls .tech-rider-add-note-btn {
+    margin-left: auto;
+}
+
+.venue-builder .tech-rider-equipment-row-notes {
+    margin-top: 0.4rem;
+}
+
+.venue-builder .tech-rider-note-input {
+    min-height: 2.5rem;
+    min-width: 22rem;
+    width: 100%;
+    font-size: 0.95rem;
+    padding: 0.4rem 0.5rem;
+    resize: vertical;
+    margin-bottom: 0.25rem;
+    box-sizing: border-box;
+}
+
+/* Stage & Setup */
+.venue-builder .tech-rider-stage-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 480px;
+}
+
+.venue-builder .tech-rider-input-group--full {
+    max-width: 100%;
+}
+
+.venue-builder .tech-rider-house-rules-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 480px;
+}
+
+.venue-builder .tech-rider-house-rules-fields .input-group textarea {
+    min-height: 4rem;
+    resize: vertical;
+}
+
+/* Larger body text for Stage & Setup and House Rules in this step */
+.venue-builder .tech-rider-stage-fields .input-label,
+.venue-builder .tech-rider-house-rules-fields .input-label {
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.venue-builder .tech-rider-stage-fields .input,
+.venue-builder .tech-rider-house-rules-fields .input {
+    font-size: 0.95rem;
 }
 
 
@@ -760,17 +1057,20 @@
 
 
 .venue-builder .stage.extra-details {
-    height:100%;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     justify-content: flex-start;
-    padding:1.5rem 0;
-    overflow: scroll;
+    padding: 1.5rem 0;
+    overflow-y: auto;
+    overflow-x: hidden;
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
 
 .venue-builder .stage.extra-details .stage-content {
-    flex: 1;
-    height: 100%;
+    flex: 0 0 auto;
+    min-height: 0;
 }
 
 .venue-builder .stage.extra-details .input-group {
@@ -787,9 +1087,8 @@
 }
 
 .venue-builder .stage.extra-details .input-group label {
-    text-transform: uppercase;
     color: var(--gn-grey-600);
-    font-size: 0.75rem;
+    font-size: 1rem;
     font-weight: 600;
     margin-bottom: 5px;
 }

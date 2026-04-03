@@ -477,8 +477,14 @@
 }
 
 .header.musician .link.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    color: var(--gn-orange);
+    background-color: var(--gn-offset-orange);
+    cursor: default;
+}
+
+.header.musician .link.disabled:hover {
+    color: var(--gn-orange);
+    background-color: var(--gn-offset-orange);
 }
 
 .header.musician .active-profile {
