@@ -33,3 +33,11 @@ export async function saveGigTemplate({ templateData }) {
   return data?.templateId;
 }
 
+export async function deleteGigTemplate({ templateId }) {
+  await post('/venues/deleteGigTemplate', { body: { templateId } });
+}
+
+export async function renameGigTemplate({ templateId, templateName }) {
+  await post('/venues/renameGigTemplate', { body: { templateId, templateName } });
+}
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Portal from '@features/shared/components/Portal';
 import { getArtistCRMEntries } from '@services/client-side/artistCRM';
 import { getArtistProfileById } from '@services/client-side/artists';
@@ -10,18 +10,17 @@ import { hasVenuePerm } from '@services/utils/permissions';
 import { formatDate } from '@services/utils/dates';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '@features/shared/ui/loading/Loading';
-import { AddressBookIcon, CloseIcon, CopyIcon, EditIcon, InviteIcon, LinkIcon, ShareIcon, TickIcon } from '@features/shared/ui/extras/Icons';
+import { CloseIcon, InviteIcon, TickIcon } from '@features/shared/ui/extras/Icons';
+import { InviteArtistPromoterTile } from '@features/venue/components/InviteArtistPromoterTile';
 import '@styles/host/invite-and-share-modal.styles.css';
 import '@styles/host/venue-gig-page.styles.css';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Modal that shows the "Fill this slot" tile (Shareable Link, Invite from Contacts, Invite by Email, Add booker manually).
- * Used from the gig calendar popup when "Send hire invite" is clicked for an unbooked venue hire.
+ * Modal: invite artist / promoter for an unbooked venue hire (calendar / quick flow).
  */
 export function FillThisSlotModal({ gig, venues = [], user, refreshGigs, onClose }) {
-  const [fillThisSlotTab, setFillThisSlotTab] = useState('shareable_link');
   const [linkCopied, setLinkCopied] = useState(false);
   const [crmEntries, setCrmEntries] = useState([]);
   const [crmLoading, setCrmLoading] = useState(false);
@@ -133,7 +132,7 @@ export function FillThisSlotModal({ gig, venues = [], user, refreshGigs, onClose
         setInvitingContactId(null);
       }
     },
-    [bookingLinkUrl, gig, hireId, hireDateLabel, user?.uid, venueForHire, venueDisplayName, refreshGigs]
+    [bookingLinkUrl, gig, hireId, hireDateLabel, user?.uid, user?.name, venueForHire, venueDisplayName, refreshGigs]
   );
 
   const sendInviteByEmail = useCallback(async () => {
@@ -197,120 +196,62 @@ export function FillThisSlotModal({ gig, venues = [], user, refreshGigs, onClose
         aria-modal="true"
         aria-labelledby="fill-this-slot-modal-title"
       >
-        <div className="modal-content invite-and-share-modal__content" onClick={(e) => e.stopPropagation()}>
-          <div className="invite-and-share-modal__header">
-            <h2 id="fill-this-slot-modal-title" className="invite-and-share-modal__title">
-              Fill this slot
-            </h2>
-            <button
-              type="button"
-              className="btn icon invite-and-share-modal__close"
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <CloseIcon />
-            </button>
-          </div>
+      <div className="modal-content invite-and-share-modal__content" onClick={(e) => e.stopPropagation()}>
+        <div className="invite-and-share-modal__header">
+          <h2 id="fill-this-slot-modal-title" className="invite-and-share-modal__title">
+            Invite artist / promoter
+          </h2>
+          <button
+            type="button"
+            className="btn icon invite-and-share-modal__close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <CloseIcon />
+          </button>
+        </div>
 
-          <div className="invite-and-share-modal__body">
-          <div className="fill-this-slot">
-            <div className="fill-this-slot__header">
-              <ShareIcon />
-              <h3 className="fill-this-slot__title">Share or invite</h3>
-            </div>
-            <div className="fill-this-slot__tabs">
-              <button
-                type="button"
-                className={`fill-this-slot__tab ${fillThisSlotTab === 'shareable_link' ? 'fill-this-slot__tab--active' : ''}`}
-                onClick={() => setFillThisSlotTab('shareable_link')}
-              >
-                <LinkIcon /> Shareable Link
-              </button>
-              <button
-                type="button"
-                className={`fill-this-slot__tab ${fillThisSlotTab === 'invite_contacts' ? 'fill-this-slot__tab--active' : ''}`}
-                onClick={() => setFillThisSlotTab('invite_contacts')}
-              >
-                <AddressBookIcon /> Invite from Contacts
-              </button>
-              <button
-                type="button"
-                className={`fill-this-slot__tab ${fillThisSlotTab === 'invite_email' ? 'fill-this-slot__tab--active' : ''}`}
-                onClick={() => setFillThisSlotTab('invite_email')}
-              >
-                <InviteIcon /> Invite by Email
-              </button>
-              {canUpdate && (
-                <button
-                  type="button"
-                  className={`fill-this-slot__tab ${fillThisSlotTab === 'add_booker_manually' ? 'fill-this-slot__tab--active' : ''}`}
-                  onClick={() => setFillThisSlotTab('add_booker_manually')}
-                >
-                  <EditIcon /> Add booker manually
-                </button>
-              )}
-            </div>
-
-            {fillThisSlotTab === 'shareable_link' && (
-              <div className="fill-this-slot__content">
-                <p className="fill-this-slot__helper fill-this-slot__helper--above-input">
-                  Send this link to someone who would be interested in hiring this slot
-                </p>
-                <div className="fill-this-slot__share-row">
-                  <input
-                    type="text"
-                    className="input fill-this-slot__input"
-                    value={bookingLinkUrl || ''}
-                    readOnly
-                    onFocus={(e) => e.target.select()}
-                    aria-label="Booking link"
-                  />
-                  <button
-                    type="button"
-                    className="btn secondary fill-this-slot__copy-btn"
-                    onClick={copyBookingLink}
-                  >
-                    {linkCopied ? <TickIcon /> : <CopyIcon />} {linkCopied ? 'Copied' : 'Copy'}
-                  </button>
-                </div>
-              </div>
-            )}
-            {fillThisSlotTab === 'invite_contacts' && (
-              <div className="fill-this-slot__content">
-                <div className="invite-and-share-modal__list fill-this-slot__contacts-list">
-                  {crmLoading ? (
-                    <LoadingSpinner />
-                  ) : !crmEntries?.length ? (
-                    <p className="invite-and-share-modal__empty">No contacts yet. Add artists in My Artists.</p>
-                  ) : (
-                    crmEntries.map((entry) => {
-                      const invited = invitedContactIds.has(entry.id);
-                      const inviting = invitingContactId === entry.id;
-                      return (
-                        <div key={entry.id} className="invite-and-share-modal__row">
-                          <div className="invite-and-share-modal__row-info">
-                            <span className="invite-and-share-modal__row-name">{entry.name || 'Unknown'}</span>
-                            <span className="invite-and-share-modal__row-sub">
-                              {entry.artistId ? 'On Gigin' : entry.email || 'No email'}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className="btn tertiary invite-and-share-modal__row-btn"
-                            onClick={() => inviteContactToHire(entry)}
-                            disabled={invited || inviting}
-                          >
-                            {invited ? <><TickIcon /> Invited</> : inviting ? 'Inviting…' : 'Invite'}
-                          </button>
+        <div className="invite-and-share-modal__body">
+          <InviteArtistPromoterTile
+            showHeader={false}
+            bookingLinkUrl={bookingLinkUrl}
+            onCopyLink={copyBookingLink}
+            linkCopied={linkCopied}
+            showManualOption={canUpdate}
+            contactsBody={(
+              <div className="invite-and-share-modal__list fill-this-slot__contacts-list">
+                {crmLoading ? (
+                  <LoadingSpinner />
+                ) : !crmEntries?.length ? (
+                  <p className="invite-and-share-modal__empty">No contacts yet. Add artists in My Artists.</p>
+                ) : (
+                  crmEntries.map((entry) => {
+                    const invited = invitedContactIds.has(entry.id);
+                    const inviting = invitingContactId === entry.id;
+                    return (
+                      <div key={entry.id} className="invite-and-share-modal__row">
+                        <div className="invite-and-share-modal__row-info">
+                          <span className="invite-and-share-modal__row-name">{entry.name || 'Unknown'}</span>
+                          <span className="invite-and-share-modal__row-sub">
+                            {entry.artistId ? 'On Gigin' : entry.email || 'No email'}
+                          </span>
                         </div>
-                      );
-                    })
-                  )}
-                </div>
+                        <button
+                          type="button"
+                          className="btn tertiary invite-and-share-modal__row-btn"
+                          onClick={() => inviteContactToHire(entry)}
+                          disabled={invited || inviting}
+                        >
+                          {invited ? <><TickIcon /> Invited</> : inviting ? 'Inviting…' : 'Invite'}
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             )}
-            {fillThisSlotTab === 'invite_email' && (
-              <div className="fill-this-slot__content">
+            emailBody={(
+              <>
                 <div className="fill-this-slot__share-row">
                   <input
                     type="email"
@@ -331,40 +272,38 @@ export function FillThisSlotModal({ gig, venues = [], user, refreshGigs, onClose
                     {emailInviteSending ? 'Sending…' : <><InviteIcon /> Invite</>}
                   </button>
                 </div>
-                {emailInviteError && (
+                {emailInviteError ? (
                   <p className="fill-this-slot__helper fill-this-slot__helper--above-input" style={{ color: 'var(--gn-red-800)', marginTop: 6 }}>
                     {emailInviteError}
                   </p>
-                )}
-              </div>
+                ) : null}
+              </>
             )}
-            {fillThisSlotTab === 'add_booker_manually' && (
-              <div className="fill-this-slot__content">
-                <div className="fill-this-slot__share-row">
-                  <input
-                    type="text"
-                    className="input fill-this-slot__input"
-                    placeholder="Booker or hirer name"
-                    value={editBookerName}
-                    onChange={(e) => setEditBookerName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSaveBooker()}
-                    aria-label="Booker name"
-                  />
-                  <button
-                    type="button"
-                    className="btn secondary fill-this-slot__copy-btn"
-                    onClick={handleSaveBooker}
-                    disabled={savingBooker}
-                  >
-                    {savingBooker ? 'Saving…' : 'Save'}
-                  </button>
-                </div>
+            manualBody={canUpdate ? (
+              <div className="fill-this-slot__share-row">
+                <input
+                  type="text"
+                  className="input fill-this-slot__input"
+                  placeholder="Booker or hirer name"
+                  value={editBookerName}
+                  onChange={(e) => setEditBookerName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveBooker()}
+                  aria-label="Booker name"
+                />
+                <button
+                  type="button"
+                  className="btn secondary fill-this-slot__copy-btn"
+                  onClick={handleSaveBooker}
+                  disabled={savingBooker}
+                >
+                  {savingBooker ? 'Saving…' : 'Save'}
+                </button>
               </div>
-            )}
-          </div>
-          </div>
+            ) : null}
+          />
         </div>
       </div>
+    </div>
     </Portal>
   );
 }

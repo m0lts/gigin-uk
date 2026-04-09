@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import Portal from '@features/shared/components/Portal';
 import { useAuth } from '@hooks/useAuth';
@@ -20,9 +21,18 @@ import { AddPerformersButton, AddPerformersModal } from '@features/venue/compone
 import { AddToContactsModal } from '@features/venue/components/AddToContactsModal';
 import { ContactDetailsModal } from '@features/venue/components/ContactDetailsModal';
 import { ApplicantTechSetupModal } from '@features/venue/components/ApplicantTechSetupModal';
+import { InviteArtistPromoterTile } from '@features/venue/components/InviteArtistPromoterTile';
+import { VenueHireTechSetupMainCard } from '@features/venue/gigs/components/VenueHireTechSetupMainCard';
 import { computeCompatibility } from '@services/utils/techRiderCompatibility';
-import { AddressBookIcon, CloseIcon, CopyIcon, DownChevronIcon, EditIcon, InviteIcon, LinkIcon, MessageIcon, MicrophoneIcon, NewTabIcon, ShareIcon, TechRiderIcon, TickIcon, UpChevronIcon } from '@features/shared/ui/extras/Icons';
+import { CloseIcon, DownChevronIcon, MessageIcon, MicrophoneIcon, NewTabIcon, TechRiderIcon, TickIcon, UpChevronIcon } from '@features/shared/ui/extras/Icons';
 import '@styles/host/invite-and-share-modal.styles.css';
+import '@styles/host/venue-gig-page.styles.css';
+
+function normalizeCloseBookingAfterAcceptedCount(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(99, Math.floor(n));
+}
 
 /**
  * Shared venue hire full-page panel: Booked by + Performers cards.
@@ -43,6 +53,9 @@ export function VenueHireDetailsPanel({
   bookingLinkUrl,
   applicationsInviteOnly,
   onApplicationsVisibilityChange,
+  venueHireSwapApplicationsAndGigDetails = false,
+  venueHireApplicationsPortalContainer,
+  onVenueHireGigDetailsPortalMount,
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -69,8 +82,6 @@ export function VenueHireDetailsPanel({
   const [contactModalEntryId, setContactModalEntryId] = useState(null);
   /** For confirmed venue hires: whether the booker applications tile is expanded. */
   const [showApplicationsTile, setShowApplicationsTile] = useState(false);
-  /** For unbooked venue hires: active tab in "Fill this slot" (shareable_link | invite_contacts | invite_email). */
-  const [fillThisSlotTab, setFillThisSlotTab] = useState('shareable_link');
   /** Invite from Contacts: which contact we're currently inviting; and which we've already invited. */
   const [invitingContactId, setInvitingContactId] = useState(null);
   const [invitedContactIds, setInvitedContactIds] = useState(new Set());
@@ -89,6 +100,19 @@ export function VenueHireDetailsPanel({
   const [declinedApplicationConvIds, setDeclinedApplicationConvIds] = useState(() => new Set());
   /** Applications: artist profile (name, picture) per conversation id, from getArtistProfileById. */
   const [applicationProfiles, setApplicationProfiles] = useState({});
+  const closeBookingAfterAcceptedCount = React.useMemo(
+    () => normalizeCloseBookingAfterAcceptedCount(rawGig?.closeBookingAfterAcceptedCount),
+    [rawGig?.closeBookingAfterAcceptedCount]
+  );
+  const [draftCloseCount, setDraftCloseCount] = useState(closeBookingAfterAcceptedCount);
+  const [bookingLimitSaving, setBookingLimitSaving] = useState(false);
+  const [bookingLimitEditing, setBookingLimitEditing] = useState(false);
+
+  useEffect(() => {
+    if (!bookingLimitEditing) {
+      setDraftCloseCount(closeBookingAfterAcceptedCount);
+    }
+  }, [closeBookingAfterAcceptedCount, bookingLimitEditing]);
 
   useEffect(() => {
     if (addPerformersTrigger) {
@@ -107,6 +131,56 @@ export function VenueHireDetailsPanel({
 
   /** 'available' = no hirer yet; 'confirmed' = has booker (manual or confirmed rental). Manually entered bookers always show as Confirmed. */
   const hireState = !bookerName ? 'available' : (isConfirmedRental || !isBookerGigin) ? 'confirmed' : 'pending';
+
+  const showApplicationsVisibility =
+    canUpdate && applicationsInviteOnly != null && onApplicationsVisibilityChange;
+  const applicationsVisibilityControl = showApplicationsVisibility ? (
+    <div className="venue-hire-confirmed-panel__applications-visibility">
+      <label className="gigs-toggle-switch">
+        <input
+          type="checkbox"
+          checked={!applicationsInviteOnly}
+          onChange={(e) => onApplicationsVisibilityChange(!e.target.checked)}
+        />
+        <span className="gigs-toggle-slider" />
+      </label>
+      <span className="venue-hire-confirmed-panel__applications-visibility-label">
+        {applicationsInviteOnly ? (
+          <>
+            Hiding this available gig from{' '}
+            {rawGig?.venueId ? (
+              <button
+                type="button"
+                className="venue-hire-confirmed-panel__venue-profile-inline-link"
+                aria-label="Open your venue profile in a new tab"
+                onClick={(e) => openInNewTab(`/venues/${rawGig.venueId}`, e)}
+              >
+                my venue profile
+              </button>
+            ) : (
+              'my venue profile'
+            )}
+          </>
+        ) : (
+          <>
+            Showing gig as available on{' '}
+            {rawGig?.venueId ? (
+              <button
+                type="button"
+                className="venue-hire-confirmed-panel__venue-profile-inline-link"
+                aria-label="Open your venue profile in a new tab"
+                onClick={(e) => openInNewTab(`/venues/${rawGig.venueId}`, e)}
+              >
+                my venue profile
+              </button>
+            ) : (
+              'my venue profile'
+            )}
+          </>
+        )}
+      </span>
+    </div>
+  ) : null;
 
   /** For confirmed Gigin booker: the conversation with them (for Message button). */
   const bookerConversation = React.useMemo(() => {
@@ -149,6 +223,56 @@ export function VenueHireDetailsPanel({
   const hireId = rawGig?.id ?? rawGig?.gigId;
   const venueForHire = venues?.find((v) => v.venueId === rawGig?.venueId);
   const venueDisplayName = venueForHire?.accountName || venueForHire?.name || rawGig?.venue?.venueName || 'this venue';
+
+  const saveCloseBookingAfterAcceptedCount = useCallback(
+    async (nextRaw) => {
+      const n = normalizeCloseBookingAfterAcceptedCount(nextRaw);
+      if (!hireId || !canUpdate) return false;
+      const current = normalizeCloseBookingAfterAcceptedCount(rawGig?.closeBookingAfterAcceptedCount);
+      if (n === current) return false;
+      setBookingLimitSaving(true);
+      try {
+        await updateVenueHireOpportunity(hireId, { closeBookingAfterAcceptedCount: n });
+        setGigInfo((prev) => (prev ? { ...prev, closeBookingAfterAcceptedCount: n } : null));
+        refreshGigs?.();
+        return true;
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to save booking limit.');
+        setDraftCloseCount(current);
+        return false;
+      } finally {
+        setBookingLimitSaving(false);
+      }
+    },
+    [hireId, canUpdate, rawGig?.closeBookingAfterAcceptedCount, setGigInfo, refreshGigs]
+  );
+
+  const openBookingLimitEdit = useCallback(() => {
+    setDraftCloseCount(closeBookingAfterAcceptedCount);
+    setBookingLimitEditing(true);
+  }, [closeBookingAfterAcceptedCount]);
+
+  const cancelBookingLimitEdit = useCallback(() => {
+    setDraftCloseCount(closeBookingAfterAcceptedCount);
+    setBookingLimitEditing(false);
+  }, [closeBookingAfterAcceptedCount]);
+
+  const commitBookingLimitEdit = useCallback(async () => {
+    const n = normalizeCloseBookingAfterAcceptedCount(draftCloseCount);
+    const current = normalizeCloseBookingAfterAcceptedCount(rawGig?.closeBookingAfterAcceptedCount);
+    if (n === current) {
+      setBookingLimitEditing(false);
+      return;
+    }
+    const saved = await saveCloseBookingAfterAcceptedCount(n);
+    if (saved) setBookingLimitEditing(false);
+  }, [draftCloseCount, rawGig?.closeBookingAfterAcceptedCount, saveCloseBookingAfterAcceptedCount]);
+
+  const bumpBookingLimitDraft = useCallback((delta) => {
+    if (bookingLimitSaving) return;
+    setDraftCloseCount((prev) => normalizeCloseBookingAfterAcceptedCount(prev + delta));
+  }, [bookingLimitSaving]);
 
   const inviteContactToHire = useCallback(
     async (entry) => {
@@ -266,12 +390,6 @@ export function VenueHireDetailsPanel({
       .catch(() => setHireApplications([]))
       .finally(() => setHireApplicationsLoading(false));
   }, [isVenueHire, hireId, user?.uid]);
-
-  useEffect(() => {
-    if (fillThisSlotTab === 'add_booker_manually') {
-      setEditBookerName(bookerName || '');
-    }
-  }, [fillThisSlotTab, bookerName]);
 
   const handleSaveBooker = async () => {
     const name = (editBookerName || '').trim();
@@ -732,109 +850,371 @@ export function VenueHireDetailsPanel({
     }
   }, []);
 
+  const renderApplicationsBookingLimitBlock = () => {
+    if (!isVenueHire || !hireId) return null;
+
+    const singleLabel = 'Closing booking after 1 application is accepted';
+    const multiLabel = (x) => `Closing booking after ${x} applications are accepted`;
+
+    if (!canUpdate) {
+      return (
+        <div className="venue-hire-confirmed-panel__applications-booking-limit venue-hire-confirmed-panel__applications-booking-limit--readonly">
+          <p className="venue-hire-confirmed-panel__applications-booking-limit-readonly">
+            {closeBookingAfterAcceptedCount <= 1 ? singleLabel : multiLabel(closeBookingAfterAcceptedCount)}
+          </p>
+        </div>
+      );
+    }
+
+    const persistedLabel =
+      closeBookingAfterAcceptedCount <= 1 ? singleLabel : multiLabel(closeBookingAfterAcceptedCount);
+
+    if (!bookingLimitEditing) {
+      return (
+        <div className="venue-hire-confirmed-panel__applications-booking-limit">
+          <p className="venue-hire-confirmed-panel__applications-booking-limit-inline">
+            <span className="venue-hire-confirmed-panel__applications-booking-limit-label">
+              {persistedLabel}{' '}
+            </span>
+            <button
+              type="button"
+              className="venue-hire-confirmed-panel__applications-booking-limit-change"
+              onClick={openBookingLimitEdit}
+              disabled={bookingLimitSaving}
+            >
+              Change
+            </button>
+          </p>
+        </div>
+      );
+    }
+
+    const bookingLimitLabelId = 'venue-hire-booking-limit-label';
+
+    return (
+      <div className="venue-hire-confirmed-panel__applications-booking-limit">
+        <div className="venue-hire-confirmed-panel__applications-booking-limit-row venue-hire-confirmed-panel__applications-booking-limit-row--multi">
+          <span className="venue-hire-confirmed-panel__applications-booking-limit-label" id={bookingLimitLabelId}>
+            {multiLabel(draftCloseCount)}
+          </span>
+          <div
+            className="venue-hire-confirmed-panel__applications-booking-limit-stepper"
+            role="group"
+            aria-labelledby={bookingLimitLabelId}
+          >
+            <button
+              type="button"
+              className="venue-hire-confirmed-panel__applications-booking-limit-step"
+              onClick={() => bumpBookingLimitDraft(-1)}
+              disabled={bookingLimitSaving || draftCloseCount <= 1}
+              aria-label="Decrease accepted applications before close"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              className="venue-hire-confirmed-panel__applications-booking-limit-input"
+              min={1}
+              max={99}
+              value={draftCloseCount}
+              onChange={(e) => {
+                const v = e.target.valueAsNumber;
+                if (Number.isNaN(v)) return;
+                setDraftCloseCount(normalizeCloseBookingAfterAcceptedCount(v));
+              }}
+              disabled={bookingLimitSaving}
+              aria-label="Accepted applications before booking closes"
+            />
+            <button
+              type="button"
+              className="venue-hire-confirmed-panel__applications-booking-limit-step"
+              onClick={() => bumpBookingLimitDraft(1)}
+              disabled={bookingLimitSaving || draftCloseCount >= 99}
+              aria-label="Increase accepted applications before close"
+            >
+              +
+            </button>
+          </div>
+        </div>
+        <div className="venue-hire-confirmed-panel__applications-booking-limit-actions">
+          <button
+            type="button"
+            className="btn secondary venue-hire-confirmed-panel__applications-booking-limit-save"
+            onClick={() => void commitBookingLimitEdit()}
+            disabled={bookingLimitSaving}
+          >
+            {bookingLimitSaving ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            type="button"
+            className="btn tertiary venue-hire-confirmed-panel__applications-booking-limit-cancel"
+            onClick={cancelBookingLimitEdit}
+            disabled={bookingLimitSaving}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderVenueHireApplications = () => {
+    const applicationsVisibilityRow = hireState !== 'available' ? applicationsVisibilityControl : null;
+
+    return (
+      <>
+        {/* Applications: for confirmed hires, one card with title + toggle; content expands below */}
+        {isVenueHire && hireId && hireState === 'confirmed' && (
+          <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications">
+            <div className="venue-hire-confirmed-panel__applications-top">
+              <button
+                type="button"
+                className="venue-hire-confirmed-panel__applications-header"
+                onClick={() => setShowApplicationsTile((v) => !v)}
+                aria-expanded={showApplicationsTile}
+              >
+                <span className="venue-hire-confirmed-panel__applications-header-inner">
+                  <span className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+                    <MessageIcon />
+                    <span className="fill-this-slot__title fill-this-slot__title--invite-promoter venue-hire-confirmed-panel__applications-title">
+                      Applications ({hireApplicationsLoading ? '…' : hireApplications.length})
+                    </span>
+                  </span>
+                  {showApplicationsTile ? <UpChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden /> : <DownChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden />}
+                </span>
+              </button>
+              {applicationsVisibilityRow}
+            </div>
+            {showApplicationsTile && (
+              <div className="venue-hire-confirmed-panel__applications-body">
+                {renderApplicationsBookingLimitBlock()}
+                {hireApplicationsLoading ? (
+                  <p className="venue-hire-confirmed-card__empty-text">Loading…</p>
+                ) : hireApplications.length === 0 ? null : (
+                  <div className="venue-hire-application-tiles">
+                    {hireApplications.map((conv) => {
+                      const applicant = getApplicantFromConversation(conv);
+                      const profileData = applicationProfiles[conv.id];
+                      const name = (profileData?.name || applicant?.accountName || conv?.artistName || 'Artist').trim() || 'Artist';
+                      const photoUrl = profileData?.picture || applicant?.musicianImg || applicant?.accountImg;
+                      const participantId = applicant?.participantId;
+                      const isBooker = participantId && rawGig?.hirerUserId && participantId === rawGig.hirerUserId;
+                      const isDeclinedOther = !isBooker;
+                      return (
+                        <div key={conv.id} className="venue-hire-application-tile">
+                          <div className="venue-hire-application-tile__photo">
+                            {photoUrl ? (
+                              <img src={photoUrl} alt="" className="venue-hire-application-tile__img" />
+                            ) : (
+                              <MicrophoneIcon />
+                            )}
+                          </div>
+                          <div className="venue-hire-application-tile__main">
+                            <span className="venue-hire-application-tile__name">{name}</span>
+                            <div className="venue-hire-application-tile__actions">
+                              {participantId && (
+                                <button
+                                  type="button"
+                                  className="btn tertiary venue-hire-application-tile__btn"
+                                  onClick={() => openTechRiderForApplication(participantId)}
+                                  disabled={applicationsTechRiderLoading}
+                                >
+                                  <TechRiderIcon /> Tech setup
+                                </button>
+                              )}
+                              {participantId && (
+                                <button
+                                  type="button"
+                                  className="btn tertiary venue-hire-application-tile__btn"
+                                  onClick={(e) => openInNewTab(`/artist/${participantId}`, e)}
+                                >
+                                  <NewTabIcon /> View profile
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn secondary venue-hire-application-tile__btn"
+                                onClick={() => navigate(`/venues/dashboard/messages?conversationId=${conv.id}`)}
+                              >
+                                Message
+                              </button>
+                              {isBooker && (
+                                <span className="venue-gig-page__hire-booking-pill venue-gig-page__hire-booking-pill--confirmed">Confirmed</span>
+                              )}
+                              {isDeclinedOther && (
+                                <span className="venue-hire-application-tile__status venue-hire-application-tile__status--declined">Declined</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {isVenueHire && hireId && hireState !== 'confirmed' && (
+          <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications">
+            <div className="venue-hire-confirmed-panel__applications-top">
+              <div className="venue-hire-confirmed-panel__applications-title-row">
+                <div className="venue-hire-confirmed-panel__applications-title-block fill-this-slot__header fill-this-slot__header--invite-promoter">
+                  <MessageIcon />
+                  <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">
+                    Applications ({hireApplicationsLoading ? '…' : hireApplications.length})
+                  </h3>
+                </div>
+                {hireState === 'available' && canUpdate ? (
+                  <button
+                    type="button"
+                    className="venue-hire-confirmed-panel__applications-confirm-manual-link"
+                    onClick={openEditBooker}
+                  >
+                    Confirm manually
+                  </button>
+                ) : null}
+              </div>
+              {applicationsVisibilityRow}
+            </div>
+            {renderApplicationsBookingLimitBlock()}
+            {hireApplicationsLoading ? (
+              <p className="venue-hire-confirmed-card__empty-text">Loading…</p>
+            ) : hireApplications.length === 0 ? null : (
+              <div className="venue-hire-application-tiles">
+                {hireApplications.map((conv) => {
+                  const applicant = getApplicantFromConversation(conv);
+                  const profileData = applicationProfiles[conv.id];
+                  const name = (profileData?.name || applicant?.accountName || conv?.artistName || 'Artist').trim() || 'Artist';
+                  const photoUrl = profileData?.picture || applicant?.musicianImg || applicant?.accountImg;
+                  const participantId = applicant?.participantId;
+                  const isAccepting = acceptingApplicationConvId === conv.id;
+                  return (
+                    <div key={conv.id} className="venue-hire-application-tile">
+                      <div className="venue-hire-application-tile__photo">
+                        {photoUrl ? (
+                          <img src={photoUrl} alt="" className="venue-hire-application-tile__img" />
+                        ) : (
+                          <MicrophoneIcon />
+                        )}
+                      </div>
+                      <div className="venue-hire-application-tile__main">
+                        <span className="venue-hire-application-tile__name">{name}</span>
+                        <div className="venue-hire-application-tile__actions">
+                          {participantId && (
+                            <button
+                              type="button"
+                              className="btn tertiary venue-hire-application-tile__btn"
+                              onClick={() => openTechRiderForApplication(participantId)}
+                              disabled={applicationsTechRiderLoading}
+                            >
+                              <TechRiderIcon /> Tech setup
+                            </button>
+                          )}
+                          {participantId && (
+                            <button
+                              type="button"
+                              className="btn tertiary venue-hire-application-tile__btn"
+                              onClick={(e) => openInNewTab(`/artist/${participantId}`, e)}
+                            >
+                              <NewTabIcon /> View profile
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn secondary venue-hire-application-tile__btn"
+                            onClick={() => navigate(`/venues/dashboard/messages?conversationId=${conv.id}`)}
+                          >
+                            Message
+                          </button>
+                          {declinedApplicationConvIds.has(conv.id) ? (
+                            <span className="venue-hire-application-tile__status venue-hire-application-tile__status--declined">Declined</span>
+                          ) : (
+                            <>
+                              {canUpdate && (
+                                <button
+                                  type="button"
+                                  className="btn accept venue-hire-application-tile__btn"
+                                  onClick={() => handleAcceptApplication(conv)}
+                                  disabled={isAccepting}
+                                >
+                                  {isAccepting ? 'Accepting…' : 'Accept'}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn danger venue-hire-application-tile__btn"
+                                onClick={() => handleDeclineApplication(conv)}
+                                disabled={decliningApplicationConvId === conv.id}
+                              >
+                                {decliningApplicationConvId === conv.id ? (
+                                  <><LoadingSpinner width={14} height={14} /> Declining…</>
+                                ) : (
+                                  'Decline'
+                                )}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
     <>
       <div className="venue-hire-confirmed-panel">
-        <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__booked-by">
+        <div
+          className={`venue-hire-confirmed-card venue-hire-confirmed-panel__booked-by${hireState === 'available' ? ' venue-hire-confirmed-panel__booked-by--invite-promoter' : ''}`}
+        >
           {hireState === 'available' ? (
-            <div className="fill-this-slot">
-              <div className="fill-this-slot__header">
-                <ShareIcon />
-                <h3 className="fill-this-slot__title">Fill this slot</h3>
-              </div>
-              <div className="fill-this-slot__tabs">
-                <button
-                  type="button"
-                  className={`fill-this-slot__tab ${fillThisSlotTab === 'shareable_link' ? 'fill-this-slot__tab--active' : ''}`}
-                  onClick={() => setFillThisSlotTab('shareable_link')}
-                >
-                  <LinkIcon /> Shareable Link
-                </button>
-                <button
-                  type="button"
-                  className={`fill-this-slot__tab ${fillThisSlotTab === 'invite_contacts' ? 'fill-this-slot__tab--active' : ''}`}
-                  onClick={() => setFillThisSlotTab('invite_contacts')}
-                >
-                  <AddressBookIcon /> Invite from Contacts
-                </button>
-                <button
-                  type="button"
-                  className={`fill-this-slot__tab ${fillThisSlotTab === 'invite_email' ? 'fill-this-slot__tab--active' : ''}`}
-                  onClick={() => setFillThisSlotTab('invite_email')}
-                >
-                  <InviteIcon /> Invite by Email
-                </button>
-                {canUpdate && (
-                  <button
-                    type="button"
-                    className={`fill-this-slot__tab ${fillThisSlotTab === 'add_booker_manually' ? 'fill-this-slot__tab--active' : ''}`}
-                    onClick={() => setFillThisSlotTab('add_booker_manually')}
-                  >
-                    <EditIcon /> Add booker manually
-                  </button>
-                )}
-              </div>
-
-              {fillThisSlotTab === 'shareable_link' && (
-                <div className="fill-this-slot__content">
-                  <p className="fill-this-slot__helper fill-this-slot__helper--above-input">
-                    Send this link to someone who would be interested in hiring this slot
-                  </p>
-                  <div className="fill-this-slot__share-row">
-                    <input
-                      type="text"
-                      className="input fill-this-slot__input"
-                      value={bookingLinkUrl || ''}
-                      readOnly
-                      onFocus={(e) => e.target.select()}
-                      aria-label="Booking link"
-                    />
-                    <button
-                      type="button"
-                      className="btn secondary fill-this-slot__copy-btn"
-                      onClick={copyBookingLink}
-                    >
-                      {linkCopied ? <TickIcon /> : <CopyIcon />} {linkCopied ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-                </div>
-              )}
-              {fillThisSlotTab === 'invite_contacts' && (
-                <div className="fill-this-slot__content">
-                  <div className="invite-and-share-modal__list fill-this-slot__contacts-list">
-                    {crmLoading ? (
-                      <LoadingSpinner />
-                    ) : !crmEntries?.length ? (
-                      <p className="invite-and-share-modal__empty">No contacts yet. Add artists in My Artists.</p>
-                    ) : (
-                      crmEntries.map((entry) => {
-                        const invited = invitedContactIds.has(entry.id);
-                        const inviting = invitingContactId === entry.id;
-                        return (
-                          <div key={entry.id} className="invite-and-share-modal__row">
-                            <div className="invite-and-share-modal__row-info">
-                              <span className="invite-and-share-modal__row-name">{entry.name || 'Unknown'}</span>
-                              <span className="invite-and-share-modal__row-sub">
-                                {entry.artistId ? 'On Gigin' : entry.email || 'No email'}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              className="btn tertiary invite-and-share-modal__row-btn"
-                              onClick={() => inviteContactToHire(entry)}
-                              disabled={invited || inviting}
-                            >
-                              {invited ? <><TickIcon /> Invited</> : inviting ? 'Inviting…' : 'Invite'}
-                            </button>
+            <InviteArtistPromoterTile
+              bookingLinkUrl={bookingLinkUrl}
+              onCopyLink={onCopyBookingLink ?? copyBookingLink}
+              linkCopied={linkCopied}
+              showManualOption={false}
+              footerStart={applicationsVisibilityControl}
+              contactsBody={(
+                <div className="invite-and-share-modal__list fill-this-slot__contacts-list">
+                  {crmLoading ? (
+                    <LoadingSpinner />
+                  ) : !crmEntries?.length ? (
+                    <p className="invite-and-share-modal__empty">No contacts yet. Add artists in My Artists.</p>
+                  ) : (
+                    crmEntries.map((entry) => {
+                      const invited = invitedContactIds.has(entry.id);
+                      const inviting = invitingContactId === entry.id;
+                      return (
+                        <div key={entry.id} className="invite-and-share-modal__row">
+                          <div className="invite-and-share-modal__row-info">
+                            <span className="invite-and-share-modal__row-name">{entry.name || 'Unknown'}</span>
+                            <span className="invite-and-share-modal__row-sub">
+                              {entry.artistId ? 'On Gigin' : entry.email || 'No email'}
+                            </span>
                           </div>
-                        );
-                      })
-                    )}
-                  </div>
+                          <button
+                            type="button"
+                            className="btn tertiary invite-and-share-modal__row-btn"
+                            onClick={() => inviteContactToHire(entry)}
+                            disabled={invited || inviting}
+                          >
+                            {invited ? <><TickIcon /> Invited</> : inviting ? 'Inviting…' : 'Invite'}
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               )}
-              {fillThisSlotTab === 'invite_email' && (
-                <div className="fill-this-slot__content">
+              emailBody={(
+                <>
                   <div className="fill-this-slot__share-row">
                     <input
                       type="email"
@@ -852,40 +1232,17 @@ export function VenueHireDetailsPanel({
                       onClick={sendInviteByEmail}
                       disabled={emailInviteSending}
                     >
-                      {emailInviteSending ? 'Sending…' : <><InviteIcon /> Invite</>}
+                      {emailInviteSending ? 'Sending…' : 'Invite'}
                     </button>
                   </div>
-                  {emailInviteError && (
+                  {emailInviteError ? (
                     <p className="fill-this-slot__helper fill-this-slot__helper--above-input" style={{ color: 'var(--gn-red-800)', marginTop: 6 }}>
                       {emailInviteError}
                     </p>
-                  )}
-                </div>
+                  ) : null}
+                </>
               )}
-              {fillThisSlotTab === 'add_booker_manually' && (
-                <div className="fill-this-slot__content">
-                  <div className="fill-this-slot__share-row">
-                    <input
-                      type="text"
-                      className="input fill-this-slot__input"
-                      placeholder="Booker or hirer name"
-                      value={editBookerName}
-                      onChange={(e) => setEditBookerName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSaveBooker()}
-                      aria-label="Booker name"
-                    />
-                    <button
-                      type="button"
-                      className="btn secondary fill-this-slot__copy-btn"
-                      onClick={handleSaveBooker}
-                      disabled={savingBooker}
-                    >
-                      {savingBooker ? 'Saving…' : 'Save'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            />
           ) : hireState === 'pending' ? (
             <>
               <h3 className="venue-hire-confirmed-card__title venue-hire-confirmed-panel__booked-by-title">
@@ -1046,270 +1403,26 @@ export function VenueHireDetailsPanel({
         </div>
         )}
 
-        {/* Applications: for confirmed hires, one card with title + toggle; content expands below */}
-        {isVenueHire && hireId && hireState === 'confirmed' && (
-          <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications">
-            <button
-              type="button"
-              className="venue-hire-confirmed-panel__applications-header"
-              onClick={() => setShowApplicationsTile((v) => !v)}
-              aria-expanded={showApplicationsTile}
-            >
-              <span className="venue-hire-confirmed-panel__applications-header-inner">
-                <h3 className="venue-hire-confirmed-card__title venue-hire-confirmed-panel__applications-title">
-                  <span className="venue-hire-confirmed-card__title-inner">
-                    <MessageIcon /> Applications ({hireApplicationsLoading ? '…' : hireApplications.length})
-                  </span>
-                </h3>
-                {showApplicationsTile ? <UpChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden /> : <DownChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden />}
-              </span>
-            </button>
-            {showApplicationsTile && (
-              <div className="venue-hire-confirmed-panel__applications-body">
-                {canUpdate && applicationsInviteOnly != null && onApplicationsVisibilityChange && (
-                  <div className="venue-hire-confirmed-panel__applications-open-tile">
-                    <div className="venue-hire-confirmed-card__visibility">
-                      <span className="venue-hire-confirmed-card__visibility-label">Open for applications</span>
-                      <div className="venue-hire-confirmed-card__visibility-control">
-                        <span className={`venue-hire-confirmed-card__visibility-option ${applicationsInviteOnly ? 'venue-hire-confirmed-card__visibility-option--active' : ''}`}>
-                          Invite-only
-                        </span>
-                        <div className="gigs-toggle-container venue-hire-confirmed-card__visibility-toggle">
-                          <label className="gigs-toggle-switch">
-                            <input
-                              type="checkbox"
-                              checked={!applicationsInviteOnly}
-                              onChange={(e) => onApplicationsVisibilityChange(!e.target.checked)}
-                            />
-                            <span className="gigs-toggle-slider" />
-                          </label>
-                        </div>
-                        <span className={`venue-hire-confirmed-card__visibility-option ${!applicationsInviteOnly ? 'venue-hire-confirmed-card__visibility-option--active' : ''}`}>
-                          Yes
-                        </span>
-                      </div>
-                      {!applicationsInviteOnly && (
-                        <p className="venue-hire-confirmed-card__visibility-helper">
-                          When enabled, this date appears publicly on your{' '}
-                          <a
-                            href={rawGig?.venueId ? `/venues/${rawGig.venueId}` : undefined}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="venue-hire-confirmed-card__visibility-helper-link"
-                            onClick={(e) => !rawGig?.venueId && e.preventDefault()}
-                          >
-                            venue profile
-                          </a>
-                          .
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {hireApplicationsLoading ? (
-                  <p className="venue-hire-confirmed-card__empty-text">Loading…</p>
-                ) : hireApplications.length === 0 ? (
-                  <p className="venue-hire-confirmed-card__empty-text">Bookers applying to book this slot will show here</p>
-                ) : (
-                  <div className="venue-hire-application-tiles">
-                    {hireApplications.map((conv) => {
-                      const applicant = getApplicantFromConversation(conv);
-                      const profileData = applicationProfiles[conv.id];
-                      const name = (profileData?.name || applicant?.accountName || conv?.artistName || 'Artist').trim() || 'Artist';
-                      const photoUrl = profileData?.picture || applicant?.musicianImg || applicant?.accountImg;
-                      const participantId = applicant?.participantId;
-                      const isBooker = participantId && rawGig?.hirerUserId && participantId === rawGig.hirerUserId;
-                      const isDeclinedOther = !isBooker;
-                      return (
-                        <div key={conv.id} className="venue-hire-application-tile">
-                          <div className="venue-hire-application-tile__photo">
-                            {photoUrl ? (
-                              <img src={photoUrl} alt="" className="venue-hire-application-tile__img" />
-                            ) : (
-                              <MicrophoneIcon />
-                            )}
-                          </div>
-                          <div className="venue-hire-application-tile__main">
-                            <span className="venue-hire-application-tile__name">{name}</span>
-                            <div className="venue-hire-application-tile__actions">
-                              {participantId && (
-                                <button
-                                  type="button"
-                                  className="btn tertiary venue-hire-application-tile__btn"
-                                  onClick={() => openTechRiderForApplication(participantId)}
-                                  disabled={applicationsTechRiderLoading}
-                                >
-                                  <TechRiderIcon /> Tech setup
-                                </button>
-                              )}
-                              {participantId && (
-                                <button
-                                  type="button"
-                                  className="btn tertiary venue-hire-application-tile__btn"
-                                  onClick={(e) => openInNewTab(`/artist/${participantId}`, e)}
-                                >
-                                  <NewTabIcon /> View profile
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                className="btn secondary venue-hire-application-tile__btn"
-                                onClick={() => navigate(`/venues/dashboard/messages?conversationId=${conv.id}`)}
-                              >
-                                Message
-                              </button>
-                              {isBooker && (
-                                <span className="venue-gig-page__hire-booking-pill venue-gig-page__hire-booking-pill--confirmed">Confirmed</span>
-                              )}
-                              {isDeclinedOther && (
-                                <span className="venue-hire-application-tile__status venue-hire-application-tile__status--declined">Declined</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-        {isVenueHire && hireId && hireState !== 'confirmed' && (
-          <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications">
-            <h3 className="venue-hire-confirmed-card__title">
-              <span className="venue-hire-confirmed-card__title-inner">
-                <MessageIcon /> Applications ({hireApplicationsLoading ? '…' : hireApplications.length})
-              </span>
-            </h3>
-            {canUpdate && applicationsInviteOnly != null && onApplicationsVisibilityChange && (
-              <div className="venue-hire-confirmed-panel__applications-open-tile">
-                <div className="venue-hire-confirmed-card__visibility">
-                  <span className="venue-hire-confirmed-card__visibility-label">Open for applications</span>
-                  <div className="venue-hire-confirmed-card__visibility-control">
-                    <span className={`venue-hire-confirmed-card__visibility-option ${applicationsInviteOnly ? 'venue-hire-confirmed-card__visibility-option--active' : ''}`}>
-                      Invite-only
-                    </span>
-                    <div className="gigs-toggle-container venue-hire-confirmed-card__visibility-toggle">
-                      <label className="gigs-toggle-switch">
-                        <input
-                          type="checkbox"
-                          checked={!applicationsInviteOnly}
-                          onChange={(e) => onApplicationsVisibilityChange(!e.target.checked)}
-                        />
-                        <span className="gigs-toggle-slider" />
-                      </label>
-                    </div>
-                    <span className={`venue-hire-confirmed-card__visibility-option ${!applicationsInviteOnly ? 'venue-hire-confirmed-card__visibility-option--active' : ''}`}>
-                      Yes
-                    </span>
-                  </div>
-                  {!applicationsInviteOnly && (
-                    <p className="venue-hire-confirmed-card__visibility-helper">
-                      When enabled, this date appears publicly on your{' '}
-                      <a
-                        href={rawGig?.venueId ? `/venues/${rawGig.venueId}` : undefined}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="venue-hire-confirmed-card__visibility-helper-link"
-                        onClick={(e) => !rawGig?.venueId && e.preventDefault()}
-                      >
-                        venue profile
-                      </a>
-                      .
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-            {hireApplicationsLoading ? (
-              <p className="venue-hire-confirmed-card__empty-text">Loading…</p>
-            ) : hireApplications.length === 0 ? (
-              <p className="venue-hire-confirmed-card__empty-text">Bookers applying to book this slot will show here</p>
-            ) : (
-              <div className="venue-hire-application-tiles">
-                {hireApplications.map((conv) => {
-                  const applicant = getApplicantFromConversation(conv);
-                  const profileData = applicationProfiles[conv.id];
-                  const name = (profileData?.name || applicant?.accountName || conv?.artistName || 'Artist').trim() || 'Artist';
-                  const photoUrl = profileData?.picture || applicant?.musicianImg || applicant?.accountImg;
-                  const participantId = applicant?.participantId;
-                  const isAccepting = acceptingApplicationConvId === conv.id;
-                  return (
-                    <div key={conv.id} className="venue-hire-application-tile">
-                      <div className="venue-hire-application-tile__photo">
-                        {photoUrl ? (
-                          <img src={photoUrl} alt="" className="venue-hire-application-tile__img" />
-                        ) : (
-                          <MicrophoneIcon />
-                        )}
-                      </div>
-                      <div className="venue-hire-application-tile__main">
-                        <span className="venue-hire-application-tile__name">{name}</span>
-                        <div className="venue-hire-application-tile__actions">
-                          {participantId && (
-                            <button
-                              type="button"
-                              className="btn tertiary venue-hire-application-tile__btn"
-                              onClick={() => openTechRiderForApplication(participantId)}
-                              disabled={applicationsTechRiderLoading}
-                            >
-                              <TechRiderIcon /> Tech setup
-                            </button>
-                          )}
-                          {participantId && (
-                            <button
-                              type="button"
-                              className="btn tertiary venue-hire-application-tile__btn"
-                              onClick={(e) => openInNewTab(`/artist/${participantId}`, e)}
-                            >
-                              <NewTabIcon /> View profile
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className="btn secondary venue-hire-application-tile__btn"
-                            onClick={() => navigate(`/venues/dashboard/messages?conversationId=${conv.id}`)}
-                          >
-                            Message
-                          </button>
-                          {declinedApplicationConvIds.has(conv.id) ? (
-                            <span className="venue-hire-application-tile__status venue-hire-application-tile__status--declined">Declined</span>
-                          ) : (
-                            <>
-                              {canUpdate && (
-                                <button
-                                  type="button"
-                                  className="btn accept venue-hire-application-tile__btn"
-                                  onClick={() => handleAcceptApplication(conv)}
-                                  disabled={isAccepting}
-                                >
-                                  {isAccepting ? 'Accepting…' : 'Accept'}
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                className="btn danger venue-hire-application-tile__btn"
-                                onClick={() => handleDeclineApplication(conv)}
-                                disabled={decliningApplicationConvId === conv.id}
-                              >
-                                {decliningApplicationConvId === conv.id ? (
-                                  <><LoadingSpinner width={14} height={14} /> Declining…</>
-                                ) : (
-                                  'Decline'
-                                )}
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        {venueHireSwapApplicationsAndGigDetails ? (
+          <div
+            ref={(el) => onVenueHireGigDetailsPortalMount?.(el)}
+            className="venue-hire-gig-details-portal-target"
+          />
+        ) : null}
+        {venueHireSwapApplicationsAndGigDetails && venueHireApplicationsPortalContainer
+          ? createPortal(renderVenueHireApplications(), venueHireApplicationsPortalContainer)
+          : !venueHireSwapApplicationsAndGigDetails
+            ? renderVenueHireApplications()
+            : null}
+        {isVenueHire && hireId ? (
+          <VenueHireTechSetupMainCard
+            rawGig={rawGig}
+            normalisedGig={normalisedGig}
+            setGigInfo={setGigInfo}
+            refreshGigs={refreshGigs}
+            venues={venues}
+          />
+        ) : null}
       </div>
 
       {applicationsTechRiderProfile && (
@@ -1327,7 +1440,7 @@ export function VenueHireDetailsPanel({
           <div className="modal" onClick={() => setShowEditBookerModal(false)} role="dialog" aria-modal="true">
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3 style={{ margin: 0 }}>Booker</h3>
+                <h3 style={{ margin: 0 }}>{bookerName ? 'Booker' : 'Confirm manually'}</h3>
                 <button type="button" className="btn icon" onClick={() => setShowEditBookerModal(false)} aria-label="Close">
                   <CloseIcon />
                 </button>

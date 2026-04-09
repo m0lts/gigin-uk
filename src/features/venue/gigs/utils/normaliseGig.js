@@ -1,3 +1,5 @@
+import { buildVenueHireEarliestLatestTimeRangeLabel } from './venueHireGigDetailsTimings';
+
 /**
  * Normalised gig view model for venue-side full gig page.
  * Single source of truth for display; behaviour is NOT driven by event type (kind).
@@ -21,7 +23,11 @@ export function normaliseGig(rawGig, options = {}) {
   const bookingMode = inferBookingMode(rawGig);
   const status = inferStatus(rawGig);
   const eventTypeLabel = getEventTypeLabel(rawGig);
-  const { dateLabel, timeRangeLabel } = buildDateAndTimeLabels(rawGig, sortedSlots);
+  let { dateLabel, timeRangeLabel } = buildDateAndTimeLabels(rawGig, sortedSlots);
+  if (bookingMode === 'venue_hire') {
+    const fromTimings = buildVenueHireEarliestLatestTimeRangeLabel(rawGig);
+    if (fromTimings) timeRangeLabel = fromTimings;
+  }
   const fee = buildFeeLabel(rawGig);
   const depositAmount = rawGig.depositAmount ?? rawGig.deposit ?? null;
   const depositStatus = rawGig.depositStatus ?? (rawGig.depositPaid === true ? 'paid' : rawGig.depositPaid === false ? 'unpaid' : null);

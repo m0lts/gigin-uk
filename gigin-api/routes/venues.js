@@ -474,6 +474,34 @@ router.post("/deleteVenueData", requireAuth, asyncHandler(async (req, res) => {
   return res.json({ data: { success: true, venueId } });
 }));
 
+/** Venue owner or active member may manage gig templates for that venue. */
+async function assertVenueGigTemplateAccess(uid, venueId) {
+  const venueRef = db.doc(`venueProfiles/${venueId}`);
+  const venueSnap = await venueRef.get();
+  if (!venueSnap.exists) {
+    return { ok: false, status: 404, body: { error: "NOT_FOUND", message: "Venue not found" } };
+  }
+  const venue = venueSnap.data() || {};
+  const ownerUid = venue.createdBy || venue.userId || null;
+  if (ownerUid === uid) return { ok: true };
+  const memberRef = venueRef.collection("members").doc(uid);
+  const memberSnap = await memberRef.get();
+  const isActiveMember = memberSnap.exists && ((memberSnap.data() || {}).status === "active");
+  if (isActiveMember) return { ok: true };
+  return {
+    ok: false,
+    status: 403,
+    body: {
+      error: "FORBIDDEN",
+      message: "Only the venue owner or an active member can manage templates",
+    },
+  };
+}
+
+function normalizeTemplateName(s) {
+  return String(s || "").trim().toLowerCase();
+}
+
 // POST /api/venues/saveGigTemplate (auth)
 router.post("/saveGigTemplate", requireAuth, asyncHandler(async (req, res) => {
   const uid = req.auth.uid;
@@ -484,36 +512,33 @@ router.post("/saveGigTemplate", requireAuth, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "venueId is required" });
   }
 
-  const venueRef = db.doc(`venueProfiles/${venueId}`);
-  const venueSnap = await venueRef.get();
-  if (!venueSnap.exists) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Venue not found" });
-  }
-  const venue = venueSnap.data() || {};
-  const ownerUid = venue.createdBy || venue.userId || null;
-
-  // Authorize owner or active member
-  const isOwner = ownerUid === uid;
-  let isActiveMember = false;
-  if (!isOwner) {
-    const memberRef = venueRef.collection("members").doc(uid);
-    const memberSnap = await memberRef.get();
-    isActiveMember = memberSnap.exists && ((memberSnap.data() || {}).status === "active");
-  }
-  if (!isOwner && !isActiveMember) {
-    return res.status(403).json({
-      error: "FORBIDDEN",
-      message: "Only the venue owner or an active member can save templates",
-    });
-  }
+  const perm = await assertVenueGigTemplateAccess(uid, venueId);
+  if (!perm.ok) return res.status(perm.status).json(perm.body);
 
   const templateId = payload.templateId;
   if (!templateId) {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "templateId is required" });
   }
 
+  const nameTrimmed = String(payload.templateName || "").trim();
+  if (!nameTrimmed) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "templateName is required" });
+  }
+
+  const newNorm = normalizeTemplateName(nameTrimmed);
+  const venueTemplatesSnap = await db.collection("templates").where("venueId", "==", venueId).get();
+  for (const doc of venueTemplatesSnap.docs) {
+    if (doc.id === templateId) continue;
+    if (normalizeTemplateName(doc.data()?.templateName) === newNorm) {
+      return res.status(409).json({
+        error: "DUPLICATE_TEMPLATE_NAME",
+        message: "A template with this name already exists for this venue.",
+      });
+    }
+  }
+
   // Remove payment, applicant, and task-related fields from template - templates should be plain gig documents
-  const templateData = { ...payload };
+  const templateData = { ...payload, templateName: nameTrimmed };
   const fieldsToRemove = [
     "payoutConfig",
     "agreedFee",
@@ -549,10 +574,70 @@ router.post("/saveGigTemplate", requireAuth, asyncHandler(async (req, res) => {
     }
 
     tx.set(templateRef, templateData, { merge: true });
-
   });
 
   return res.json({ data: { templateId } });
+}));
+
+// POST /api/venues/deleteGigTemplate (auth)
+router.post("/deleteGigTemplate", requireAuth, asyncHandler(async (req, res) => {
+  const uid = req.auth.uid;
+  const templateId = String(req.body.templateId || "");
+  if (!templateId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "templateId is required" });
+  }
+  const ref = db.doc(`templates/${templateId}`);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Template not found" });
+  }
+  const venueId = String((snap.data() || {}).venueId || "");
+  if (!venueId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Invalid template" });
+  }
+  const perm = await assertVenueGigTemplateAccess(uid, venueId);
+  if (!perm.ok) return res.status(perm.status).json(perm.body);
+  await ref.delete();
+  return res.json({ data: { success: true } });
+}));
+
+// POST /api/venues/renameGigTemplate (auth)
+router.post("/renameGigTemplate", requireAuth, asyncHandler(async (req, res) => {
+  const uid = req.auth.uid;
+  const templateId = String(req.body.templateId || "");
+  const nameTrimmed = String(req.body.templateName || "").trim();
+  if (!templateId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "templateId is required" });
+  }
+  if (!nameTrimmed) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "templateName is required" });
+  }
+  const ref = db.doc(`templates/${templateId}`);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Template not found" });
+  }
+  const venueId = String((snap.data() || {}).venueId || "");
+  if (!venueId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Invalid template" });
+  }
+  const perm = await assertVenueGigTemplateAccess(uid, venueId);
+  if (!perm.ok) return res.status(perm.status).json(perm.body);
+
+  const newNorm = normalizeTemplateName(nameTrimmed);
+  const venueTemplatesSnap = await db.collection("templates").where("venueId", "==", venueId).get();
+  for (const doc of venueTemplatesSnap.docs) {
+    if (doc.id === templateId) continue;
+    if (normalizeTemplateName(doc.data()?.templateName) === newNorm) {
+      return res.status(409).json({
+        error: "DUPLICATE_TEMPLATE_NAME",
+        message: "A template with this name already exists for this venue.",
+      });
+    }
+  }
+
+  await ref.set({ templateName: nameTrimmed }, { merge: true });
+  return res.json({ data: { success: true } });
 }));
 
 export default router;

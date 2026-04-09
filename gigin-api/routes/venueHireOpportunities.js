@@ -80,6 +80,18 @@ function buildHirePayload(data, now) {
     linkedGigId: data.linkedGigId ?? null,
     ...(data.startDateTime && { startDateTime: toAdminTimestamp(data.startDateTime) }),
     ...(data.endDateTime && { endDateTime: toAdminTimestamp(data.endDateTime) }),
+    ticketingResponsibility: data.ticketingResponsibility ?? null,
+    hireFeeVisibility: data.hireFeeVisibility ?? null,
+    listingDocuments: Array.isArray(data.listingDocuments) ? data.listingDocuments : [],
+    eventTimings: data.eventTimings && typeof data.eventTimings === "object" ? data.eventTimings : null,
+    gigName: data.gigName ?? null,
+    kind: data.kind ?? null,
+    gigType: data.gigType ?? null,
+    extraInformation: data.extraInformation ?? null,
+    closeBookingAfterAcceptedCount:
+      data.closeBookingAfterAcceptedCount != null && Number.isFinite(Number(data.closeBookingAfterAcceptedCount))
+        ? Math.max(1, Math.min(99, Math.floor(Number(data.closeBookingAfterAcceptedCount))))
+        : 1,
   });
 }
 

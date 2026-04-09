@@ -9,7 +9,7 @@ import {
     PreviousIcon,
     TickIcon,
 CloseIcon, RightArrowIcon } from '@features/shared/ui/extras/Icons';
-import { CalendarIconSolid, CalendarPlusIcon, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon, InviteIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
+import { CalendarIconSolid, CalendarPlusIcon, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DownChevronIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, LocationPinIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, SolidCalendarRotateFullIcon, TemplateIcon, InviteIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
 import { deleteGigsBatch } from '@services/client-side/gigs';
 import { deleteVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,13 +26,18 @@ import { toJsDate } from '../../../services/utils/dates';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { duplicateGig, updateGigDocument } from '@services/api/gigs';
-import { saveGigTemplate } from '@services/api/venues';
+import { saveGigTemplate, deleteGigTemplate, renameGigTemplate } from '@services/api/venues';
 import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/api/gigs';
 import { GigInvitesModal } from '../components/GigInvitesModal';
 import { GigsCalendarReact } from './GigsCalendarReact';
 import { getCalendarFeedUrl } from '@services/api/calendar';
+import {
+  filterBookNewEventTemplatesForVenue,
+  templateNameExistsForVenue,
+  templateDocId,
+} from './bookNewEventTemplateHelpers';
 
 
 function getLocalHireDateTime(hire) {
@@ -45,7 +50,24 @@ function getLocalHireDateTime(hire) {
   return null;
 }
 
-export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModal, setEditGigData, setShowAddGigsModal, setAddGigsEditData, setAddGigsInitialDateIso, setAddGigsMode, requests, setRequests, user, refreshGigs }) => {
+export const Gigs = ({
+  gigs,
+  venueHireOpportunities = [],
+  venues,
+  setGigPostModal,
+  setEditGigData,
+  setShowAddGigsModal,
+  setAddGigsEditData,
+  setAddGigsInitialDateIso,
+  setAddGigsMode,
+  requests,
+  setRequests,
+  user,
+  refreshGigs,
+  templates = [],
+  refreshTemplates = () => {},
+  setAddGigsBookNewTemplate,
+}) => {
     const location = useLocation();
     const navigate = useNavigate();
     const {isMdUp, isLgUp, isXlUp} = useBreakpoint();
@@ -75,6 +97,71 @@ export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModa
     const [calendarFeedUrl, setCalendarFeedUrl] = useState(null);
     const [subscribeLoading, setSubscribeLoading] = useState(false);
     const [addGigsChoiceDateIso, setAddGigsChoiceDateIso] = useState(null);
+    const [showManageTemplatesModal, setShowManageTemplatesModal] = useState(false);
+    const [manageTemplatesVenueId, setManageTemplatesVenueId] = useState('');
+    const [renamingTemplateId, setRenamingTemplateId] = useState(null);
+    const [renameTemplateInput, setRenameTemplateInput] = useState('');
+    const [renameTemplateBusy, setRenameTemplateBusy] = useState(false);
+    const [templateUseChoiceTemplate, setTemplateUseChoiceTemplate] = useState(null);
+
+    const canShowTemplatesButton = useMemo(
+      () => Array.isArray(venues) && venues.some((v) => v?.venueId && hasVenuePerm(venues, v.venueId, 'gigs.create')),
+      [venues],
+    );
+
+    const bookNewTemplatesForManageModal = useMemo(
+      () => filterBookNewEventTemplatesForVenue(templates, manageTemplatesVenueId),
+      [templates, manageTemplatesVenueId],
+    );
+
+    const handleDeleteBookNewTemplate = async (t) => {
+      const tid = templateDocId(t);
+      if (!tid) return;
+      if (!window.confirm(`Delete template "${t.templateName || 'Untitled'}"?`)) return;
+      try {
+        await deleteGigTemplate({ templateId: tid });
+        await refreshTemplates?.();
+        toast.success('Template deleted');
+        if (renamingTemplateId === tid) {
+          setRenamingTemplateId(null);
+          setRenameTemplateInput('');
+        }
+      } catch {
+        toast.error('Failed to delete template');
+      }
+    };
+
+    const handleStartRenameTemplate = (t) => {
+      const tid = templateDocId(t);
+      setRenamingTemplateId(tid);
+      setRenameTemplateInput(String(t.templateName || ''));
+    };
+
+    const handleSaveRenameTemplate = async () => {
+      const tid = renamingTemplateId;
+      const name = renameTemplateInput.trim();
+      if (!tid || !name || !manageTemplatesVenueId) return;
+      if (templateNameExistsForVenue(templates, manageTemplatesVenueId, name, tid)) {
+        toast.error('A template with this name already exists for this venue.');
+        return;
+      }
+      setRenameTemplateBusy(true);
+      try {
+        await renameGigTemplate({ templateId: tid, templateName: name });
+        await refreshTemplates?.();
+        toast.success('Template renamed');
+        setRenamingTemplateId(null);
+        setRenameTemplateInput('');
+      } catch (err) {
+        if (err.status === 409) {
+          toast.error(err.payload?.message || err.message || 'A template with this name already exists.');
+        } else {
+          toast.error('Failed to rename template');
+        }
+      } finally {
+        setRenameTemplateBusy(false);
+      }
+    };
 
     const toggleOptionsMenu = (gigId) => {
         setOpenOptionsGigId(prev => (prev === gigId ? null : gigId));
@@ -108,6 +195,16 @@ export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModa
     const selectedVenue = searchParams.get('venue') || '';
     const selectedDate = searchParams.get('date') || '';
     const selectedStatus = searchParams.get('status') || 'all';
+
+    const openManageTemplatesModal = () => {
+      const firstVenueId = venues?.find((v) => v?.venueId)?.venueId || '';
+      const fromFilter =
+        selectedVenue && venues?.some((v) => v.venueId === selectedVenue) ? selectedVenue : '';
+      setManageTemplatesVenueId(fromFilter || firstVenueId);
+      setRenamingTemplateId(null);
+      setRenameTemplateInput('');
+      setShowManageTemplatesModal(true);
+    };
   
     const now = useMemo(() => new Date(), []);
   
@@ -874,24 +971,36 @@ export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModa
             </div>
             <div className="gigs-head-create-buttons">
               {gigsView === 'react' && (
-                <>
-                  <button
-                    type="button"
-                    className="btn primary gigs-react-book-gig-btn"
-                    onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setAddGigsMode?.('bookNew'); setShowAddGigsModal(true); }}
-                  >
-                    <CalendarPlusIcon />
-                    <span>Book an Event</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn secondary gigs-react-add-booking-btn"
-                    onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setAddGigsMode?.('addExisting'); setShowAddGigsModal(true); }}
-                  >
-                    <CalendarIconSolid />
-                    <span>Add Existing Event</span>
-                  </button>
-                </>
+                <div className="gigs-head-create-buttons-calendar-stack">
+                  <div className="gigs-head-create-buttons-calendar-row">
+                    <button
+                      type="button"
+                      className="btn primary gigs-react-book-gig-btn"
+                      onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setAddGigsMode?.('bookNew'); setShowAddGigsModal(true); }}
+                    >
+                      <CalendarIconSolid />
+                      <span>Book an Event</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn secondary gigs-react-add-booking-btn"
+                      onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setAddGigsMode?.('addExisting'); setShowAddGigsModal(true); }}
+                    >
+                      <CalendarPlusIcon />
+                      <span>Add Existing Event</span>
+                    </button>
+                  </div>
+                  {canShowTemplatesButton && (
+                    <button
+                      type="button"
+                      className="btn tertiary gigs-react-templates-btn"
+                      onClick={openManageTemplatesModal}
+                    >
+                      <SolidCalendarRotateFullIcon />
+                      <span>Templates</span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -1670,7 +1779,7 @@ export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModa
                       setAddGigsChoiceDateIso(null);
                     }}
                   >
-                    <CalendarPlusIcon />
+                    <CalendarIconSolid />
                     <span>Book an Event</span>
                   </button>
                   <button
@@ -1684,7 +1793,190 @@ export const Gigs = ({ gigs, venueHireOpportunities = [], venues, setGigPostModa
                       setAddGigsChoiceDateIso(null);
                     }}
                   >
+                    <CalendarPlusIcon />
+                    <span>Add Existing Event</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Portal>
+        )}
+        {showManageTemplatesModal && (
+          <Portal>
+            <div
+              className="modal gigs-manage-templates-modal"
+              onClick={() => setShowManageTemplatesModal(false)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="gigs-manage-templates-title"
+            >
+              <div className="modal-content gigs-manage-templates-modal__content" onClick={(e) => e.stopPropagation()}>
+                <div className="gigs-manage-templates-modal__header">
+                  <h3 id="gigs-manage-templates-title">Templates</h3>
+                  <button
+                    type="button"
+                    className="btn tertiary gigs-manage-templates-modal__close"
+                    onClick={() => setShowManageTemplatesModal(false)}
+                  >
+                    Close <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+                {venues.length > 1 && (
+                  <div className="gigs-manage-templates-modal__field add-gigs-header-field-pill">
+                    <label className="add-gigs-header-field-label" htmlFor="gigs-manage-templates-venue-select">
+                      Venue
+                    </label>
+                    <div className="add-gigs-header-pill add-gigs-header-pill--venue">
+                      <span className="add-gigs-header-pill-icon" aria-hidden="true">
+                        <LocationPinIcon />
+                      </span>
+                      <select
+                        id="gigs-manage-templates-venue-select"
+                        className="add-gigs-header-venue-select"
+                        value={manageTemplatesVenueId}
+                        onChange={(e) => {
+                          setManageTemplatesVenueId(e.target.value);
+                          setRenamingTemplateId(null);
+                          setRenameTemplateInput('');
+                        }}
+                        aria-required="true"
+                      >
+                        {venues.map((v) => (
+                          <option key={v.venueId} value={v.venueId}>
+                            {v.name}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="add-gigs-header-pill-chevron" aria-hidden="true">
+                        <DownChevronIcon />
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {!manageTemplatesVenueId ? (
+                  <p className="gigs-manage-templates-modal__empty">No venue selected.</p>
+                ) : !hasVenuePerm(venues, manageTemplatesVenueId, 'gigs.create') ? (
+                  <p className="gigs-manage-templates-modal__empty">You do not have permission to manage templates for this venue.</p>
+                ) : bookNewTemplatesForManageModal.length === 0 ? (
+                  <p className="gigs-manage-templates-modal__empty">No templates saved for this venue yet.</p>
+                ) : (
+                  <ul className="gigs-manage-templates-list">
+                    {bookNewTemplatesForManageModal.map((t) => {
+                      const tid = templateDocId(t);
+                      const isRenaming = renamingTemplateId === tid;
+                      const displayName = t.templateName || 'Untitled';
+                      return (
+                        <li key={tid} className="gigs-manage-templates-row">
+                          {isRenaming ? (
+                            <div className="gigs-manage-templates-rename">
+                              <input
+                                type="text"
+                                className="input"
+                                value={renameTemplateInput}
+                                onChange={(e) => setRenameTemplateInput(e.target.value)}
+                                disabled={renameTemplateBusy}
+                                maxLength={120}
+                              />
+                              <button
+                                type="button"
+                                className="btn tertiary small"
+                                disabled={renameTemplateBusy || !renameTemplateInput.trim()}
+                                onClick={handleSaveRenameTemplate}
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                className="btn tertiary small"
+                                disabled={renameTemplateBusy}
+                                onClick={() => {
+                                  setRenamingTemplateId(null);
+                                  setRenameTemplateInput('');
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="gigs-manage-templates-name">{displayName}</span>
+                              <div className="gigs-manage-templates-actions">
+                                <button
+                                  type="button"
+                                  className="btn icon tertiary gigs-manage-templates-icon-btn"
+                                  onClick={() => handleStartRenameTemplate(t)}
+                                  aria-label={`Rename template ${displayName}`}
+                                  title="Rename"
+                                >
+                                  <EditIcon />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn icon tertiary gigs-manage-templates-icon-btn"
+                                  onClick={() => handleDeleteBookNewTemplate(t)}
+                                  aria-label={`Delete template ${displayName}`}
+                                  title="Delete"
+                                >
+                                  <DeleteGigIcon />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn tertiary small gigs-manage-templates-use-btn"
+                                  onClick={() => {
+                                    setTemplateUseChoiceTemplate(t);
+                                    setShowManageTemplatesModal(false);
+                                  }}
+                                >
+                                  Use
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </Portal>
+        )}
+        {templateUseChoiceTemplate && (
+          <Portal>
+            <div
+              className="modal add-gigs-choice-modal gigs-template-use-choice-modal"
+              onClick={() => setTemplateUseChoiceTemplate(null)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="gigs-template-use-choice-title"
+            >
+              <div className="modal-content add-gigs-choice-modal__content" onClick={(e) => e.stopPropagation()}>
+                <h3 id="gigs-template-use-choice-title">
+                  Use a Template &ldquo;{templateUseChoiceTemplate.templateName || 'Untitled'}&rdquo;
+                </h3>
+                <div className="add-gigs-choice-modal__buttons">
+                  <button
+                    type="button"
+                    className="btn primary gigs-react-book-gig-btn"
+                    onClick={() => {
+                      const tpl = templateUseChoiceTemplate;
+                      setTemplateUseChoiceTemplate(null);
+                      setAddGigsBookNewTemplate?.(tpl);
+                      setAddGigsEditData(null);
+                      setAddGigsInitialDateIso(null);
+                      setAddGigsMode?.('bookNew');
+                      setShowAddGigsModal(true);
+                    }}
+                  >
                     <CalendarIconSolid />
+                    <span>Book an Event</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn secondary gigs-react-add-booking-btn"
+                    onClick={() => setTemplateUseChoiceTemplate(null)}
+                  >
+                    <CalendarPlusIcon />
                     <span>Add Existing Event</span>
                   </button>
                 </div>

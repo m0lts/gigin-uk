@@ -343,16 +343,6 @@ export function VenueGigPageShell({
                     <NewTabIcon /> Preview gig post
                   </button>
                 )}
-                {!isConfirmedVenueHire && gigInfo?.venueId && (
-                  <button
-                    type="button"
-                    className="btn tertiary"
-                    onClick={(e) => openInNewTab(`/venues/${gigInfo.venueId}`, e)}
-                    title="Preview venue profile"
-                  >
-                    <NewTabIcon /> Preview venue profile
-                  </button>
-                )}
                 {isVenueHirePage && !isConfirmedVenueHire && !noBookerYet && (
                   <button
                     type="button"

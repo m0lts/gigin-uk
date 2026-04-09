@@ -311,6 +311,38 @@
     margin-left: auto;
 }
 
+.window.venues .head.gigs .gigs-head-create-buttons-calendar-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+.window.venues .head.gigs .gigs-head-create-buttons-calendar-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.window.venues .head.gigs .gigs-react-templates-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* public/icons/solid-calendar-rotate-full.svg via CSS mask (SolidCalendarRotateFullIcon) */
+.solid-calendar-rotate-full-icon {
+    display: inline-block;
+    width: 1.4em;
+    height: 1.4em;
+    flex-shrink: 0;
+    vertical-align: -0.125em; /* ~Font Awesome svg alignment next to label text */
+}
+
 .window.venues .head.gigs .gigs-react-book-gig-btn {
   display: inline-flex;
   align-items: center;
@@ -363,6 +395,134 @@
   filter: brightness(1.05);
 }
 
+/* Book an Event: manage saved templates (rename / delete) */
+.gigs-manage-templates-modal .gigs-manage-templates-modal__content {
+  min-width: min(100%, 22rem);
+  max-width: 26rem;
+  padding: 1.35rem 1.5rem 1.25rem;
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+
+.gigs-manage-templates-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.gigs-manage-templates-modal__header h3 {
+  margin: 0;
+  padding-top: 0.1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.gigs-manage-templates-modal .btn.tertiary.gigs-manage-templates-modal__close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  margin: 0;
+  padding: 0.15rem 0;
+  font-weight: 500;
+  background-color: transparent;
+  border: none;
+  color: var(--gn-grey-600, #666);
+  transition: color 150ms ease;
+}
+
+.gigs-manage-templates-modal .btn.tertiary.gigs-manage-templates-modal__close:hover {
+  background-color: transparent;
+  color: var(--gn-grey-800, #333);
+}
+
+.gigs-manage-templates-modal__field {
+  margin-bottom: 1rem;
+}
+
+.gigs-manage-templates-modal__field .select {
+  width: 100%;
+}
+
+.gigs-manage-templates-modal__empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.gigs-manage-templates-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.gigs-manage-templates-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.gigs-manage-templates-row:last-child {
+  border-bottom: none;
+}
+
+.gigs-manage-templates-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.gigs-manage-templates-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.gigs-manage-templates-use-btn {
+  flex-shrink: 0;
+}
+
+.gigs-manage-templates-modal .btn.icon.tertiary.gigs-manage-templates-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.2rem;
+  background-color: transparent;
+  border: none;
+  border-radius: 999px;
+}
+
+.gigs-manage-templates-modal .btn.icon.tertiary.gigs-manage-templates-icon-btn:hover {
+  background-color: rgba(15, 23, 42, 0.06);
+}
+
+.gigs-manage-templates-rename {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.gigs-manage-templates-rename .input {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
 .gigs-subscribe-intro {
     margin: 0.5rem 0 1rem;
     color: var(--gn-grey-700, #555);
@@ -409,7 +569,7 @@
 }
 
 .add-gigs-modal .modal-content.add-gigs-modal-content {
-    max-width: 640px;
+    max-width: 600px;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -417,34 +577,106 @@
     overflow: hidden;
     gap: 0;
     padding: 0;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.09);
+    box-shadow:
+        0 0 0 1px rgba(15, 23, 42, 0.04),
+        0 4px 6px -1px rgba(15, 23, 42, 0.06),
+        0 22px 48px -12px rgba(15, 23, 42, 0.14);
 }
 
 .add-gigs-modal .add-gigs-modal-header {
     flex-shrink: 0;
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 1.35rem 2.5rem 1.1rem;
+    background: #fff;
+    border-bottom: none;
+}
+
+.add-gigs-modal .add-gigs-modal-header-top {
+    display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 1rem;
-    padding: 1rem 0.5rem 0.5rem 2.5rem;
+    width: 100%;
 }
 
 .add-gigs-modal .add-gigs-modal-title-wrap {
     min-width: 0;
 }
 
+/* Multi-date: tabs live under the title row inside the modal chrome */
+.add-gigs-modal .add-gigs-modal-header-tabs-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.add-gigs-modal .add-gigs-modal-header-date-tabs {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-right: 0.25rem;
+}
+
+.add-gigs-modal .add-gigs-modal-header-date-tabs .add-gigs-tab {
+    flex-shrink: 0;
+}
+
+.add-gigs-modal .add-gigs-apply-all-wrap--in-modal-header {
+    flex-shrink: 0;
+    align-self: center;
+    margin-top: 0;
+}
+
 .add-gigs-modal .add-gigs-modal-title,
 .add-gigs-modal h2.add-gigs-modal-title {
     margin: 0;
-    padding-bottom: 0.5rem;
+    padding-bottom: 0;
     font-size: 1.5rem;
     font-weight: 600;
+    text-transform: none;
+    letter-spacing: -0.03em;
+    line-height: 1.25;
+    color: #0f172a;
+}
+
+/* Global forms `.label` is uppercase; keep this modal sentence/title case */
+.add-gigs-modal h2,
+.add-gigs-modal h3,
+.add-gigs-modal h4,
+.add-gigs-modal .label {
     text-transform: none;
     letter-spacing: normal;
 }
 
 .add-gigs-modal .modal-content .btn.close {
+    /* Match header/body horizontal inset (global modal rule is right: 5px) */
+    position: absolute;
+    top: 1.35rem;
+    right: 2.5rem;
     color: var(--gn-grey-600, #666);
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font-weight: 500;
 }
 
 .add-gigs-modal .modal-content .btn.close:hover {
@@ -457,10 +689,13 @@
     overflow-y: auto;
     overflow-x: hidden;
     width: 100%;
-    padding: 0 0.5rem 0 2.5rem;
+    padding: 1.5rem 2.5rem 2rem;
     border-right: none;
+    background: #fff;
+    /* Reserve space for scrollbar so content inset matches the left edge */
+    scrollbar-gutter: stable;
     /* Avoid default OS scrollbar track border (vertical line left of the thumb) */
-    scrollbar-color: var(--gn-grey-400, #c4c4c4) transparent;
+    scrollbar-color: rgba(15, 23, 42, 0.2) transparent;
     scrollbar-width: thin;
 }
 
@@ -475,6 +710,205 @@
 .add-gigs-modal .add-gigs-modal-body::-webkit-scrollbar-thumb {
     background-color: var(--gn-grey-400, #c4c4c4);
     border-radius: 4px;
+}
+
+/* Book an Event: side-by-side live listing preview (no navigation / no save) */
+.modal.add-gigs-modal.add-gigs-modal--with-listing-preview {
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem;
+    box-sizing: border-box;
+}
+
+.add-gigs-modal-layout-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+}
+
+.add-gigs-modal-layout-row--split {
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: min(1480px, 100%);
+}
+
+.add-gigs-modal--with-listing-preview .modal-content.add-gigs-modal-content {
+    flex: 0 1 600px;
+    max-width: min(600px, 100%);
+    min-width: 0;
+}
+
+.add-gigs-book-new-secondary-action-btn--active {
+    background-color: rgba(15, 23, 42, 0.06);
+    border-color: rgba(15, 23, 42, 0.18);
+}
+
+.book-new-listing-preview-panel {
+    flex: 1 1 520px;
+    min-width: min(520px, 100%);
+    max-width: min(820px, 52vw);
+    display: flex;
+    flex-direction: column;
+    max-height: min(90vh, 920px);
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow:
+        0 0 0 1px rgba(15, 23, 42, 0.04),
+        0 22px 48px -12px rgba(15, 23, 42, 0.16);
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.book-new-listing-preview-panel-header {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    padding: 0.65rem 1rem;
+    background: linear-gradient(180deg, #fff7ed 0%, #fff 100%);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.book-new-listing-preview-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9a3412;
+    background: #ffedd5;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+}
+
+.book-new-listing-preview-hint {
+    flex: 1 1 auto;
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: #64748b;
+    min-width: 12rem;
+}
+
+.book-new-listing-preview-close {
+    margin-left: auto;
+}
+
+.book-new-listing-preview-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.book-new-listing-preview-gig-body {
+    margin: 0 auto !important;
+    padding: 0.75rem 1rem 2.5rem !important;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.book-new-listing-preview-gig-body .images-and-location {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    height: auto;
+    min-height: 0;
+}
+
+.book-new-listing-preview-gig-body .images-and-location .main-image {
+    min-height: 160px;
+}
+
+.book-new-listing-preview-gig-body .images-and-location .location {
+    min-height: 140px;
+    position: relative;
+}
+
+.book-new-listing-preview-map-placeholder {
+    background: #e2e8f0;
+}
+
+.book-new-listing-preview-map-placeholder .map-container {
+    width: 100%;
+    height: 100%;
+    min-height: 120px;
+    background: linear-gradient(145deg, #dbeafe 0%, #e2e8f0 100%);
+}
+
+.book-new-listing-preview-map-hint {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #475569;
+    background: rgba(255, 255, 255, 0.92);
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    pointer-events: none;
+}
+
+.book-new-listing-preview-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    min-height: 160px;
+    background: linear-gradient(145deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+.book-new-listing-preview-gig-body .main {
+    grid-template-columns: 1fr;
+}
+
+.book-new-listing-preview-gig-body .sticky-right {
+    position: relative;
+    top: auto;
+    padding-right: 0;
+}
+
+.book-new-listing-preview-fake-link {
+    color: var(--gn-grey-700, #555);
+    word-break: break-all;
+}
+
+.book-new-listing-preview-social-pill {
+    display: inline-flex;
+    opacity: 0.85;
+}
+
+.book-new-listing-preview-cta-note {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    color: var(--gn-grey-600, #666);
+    text-align: center;
+    line-height: 1.35;
+}
+
+@media (max-width: 960px) {
+    .add-gigs-modal-layout-row--split {
+        flex-direction: column;
+        align-items: center;
+        max-height: calc(100vh - 1rem);
+        overflow-y: auto;
+    }
+
+    .book-new-listing-preview-panel {
+        max-width: 100%;
+        max-height: 60vh;
+        min-width: 0;
+    }
+
+    .add-gigs-modal--with-listing-preview .modal-content.add-gigs-modal-content {
+        flex: 0 1 auto;
+        max-height: 50vh;
+    }
 }
 
 .add-gigs-sticky-date-bar {
@@ -492,51 +926,378 @@
     gap: 0.75rem;
 }
 
+.add-gigs-modal .add-gigs-sticky-date-bar {
+    /* Scroll with body — not position:sticky; align with body padding (no horizontal bleed) */
+    position: static;
+    top: auto;
+    z-index: auto;
+    background: #fff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: none;
+    margin: 0 0 1.75rem;
+    padding: 0;
+    box-shadow: none;
+}
+
 .add-gigs-sticky-date-bar-inner {
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
 }
 
-.add-gigs-sticky-date-bar .add-gigs-date-field {
+.add-gigs-sticky-date-bar .add-gigs-header-field-pill {
     margin-bottom: 0;
 }
 
-.add-gigs-date-venue-row {
+/* Create event (single date): two columns — label + grey rounded fields (not full capsules) */
+.add-gigs-modal .add-gigs-date-venue-header-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem 1.75rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.add-gigs-modal .add-gigs-date-venue-header-row--two-cols {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.add-gigs-modal .add-gigs-header-field-label,
+.gigs-manage-templates-modal .add-gigs-header-field-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.875rem;
+    letter-spacing: 0.01em;
+    color: #1e293b;
+    margin-bottom: 0.4rem;
+}
+
+.add-gigs-modal .add-gigs-header-pill,
+.gigs-manage-templates-modal .add-gigs-header-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 2.5rem;
+    padding: 0.45rem 0.85rem 0.45rem 0.75rem;
+    background-color: var(--gn-grey-300);
+    border: none;
+    border-radius: 0.5rem;
+    outline: 1px solid transparent;
+    transition: outline 200ms linear;
+}
+
+.add-gigs-modal .add-gigs-header-pill-icon,
+.gigs-manage-templates-modal .add-gigs-header-pill-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gn-grey-700, #555);
+}
+
+.add-gigs-modal .add-gigs-header-pill-icon .icon,
+.gigs-manage-templates-modal .add-gigs-header-pill-icon .icon {
+    font-size: 0.95rem;
+}
+
+.add-gigs-modal .add-gigs-header-pill-value {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: #0f172a;
+    line-height: 1.35;
+}
+
+.add-gigs-modal .add-gigs-header-pill--date {
+    margin: 0;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.add-gigs-modal .add-gigs-header-pill--date:focus-visible {
+    outline: 1px solid var(--gn-off-black);
+    outline-offset: 0;
+}
+
+.add-gigs-modal .add-gigs-header-pill--venue,
+.gigs-manage-templates-modal .add-gigs-header-pill--venue {
+    position: relative;
+    padding-right: 2rem;
+}
+
+.add-gigs-modal .add-gigs-header-venue-select,
+.gigs-manage-templates-modal .add-gigs-header-venue-select {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0.25rem 0 0;
+    border: none;
+    background: transparent;
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: #0f172a;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.add-gigs-modal .add-gigs-header-venue-select:focus,
+.gigs-manage-templates-modal .add-gigs-header-venue-select:focus {
+    outline: none;
+}
+
+.add-gigs-modal .add-gigs-header-venue-select:focus-visible,
+.gigs-manage-templates-modal .add-gigs-header-venue-select:focus-visible {
+    outline: none;
+}
+
+.add-gigs-modal .add-gigs-header-pill--venue:focus-within,
+.gigs-manage-templates-modal .add-gigs-header-pill--venue:focus-within {
+    outline: 1px solid var(--gn-off-black);
+    outline-offset: 0;
+}
+
+.add-gigs-modal .add-gigs-header-pill-chevron,
+.gigs-manage-templates-modal .add-gigs-header-pill-chevron {
+    position: absolute;
+    right: 0.65rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    color: var(--gn-grey-700, #555);
+    opacity: 0.85;
+}
+
+.add-gigs-modal .add-gigs-header-pill-chevron .icon,
+.gigs-manage-templates-modal .add-gigs-header-pill-chevron .icon {
+    font-size: 0.75rem;
+}
+
+/* Date/venue row: flat white strip (no extra line or frosted glass) */
+.add-gigs-modal .add-gigs-sticky-date-bar:has(.add-gigs-date-venue-header-row) {
+    background: #fff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: none;
+    box-shadow: none;
+    padding-bottom: 0;
+    margin-bottom: 1.75rem;
+}
+
+.add-gigs-book-new-use-template-row {
+    margin-top: 0.65rem;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.add-gigs-modal .add-gigs-book-new-use-template-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Template already applied this session — muted green pill, darker label */
+.add-gigs-modal .add-gigs-book-new-use-template-btn--used,
+.add-gigs-modal .add-gigs-book-new-use-template-btn--used:disabled {
+    background-color: var(--gn-green-100, #dcfce7);
+    color: var(--gn-green-800, #166534);
+    border-color: var(--gn-green-300, #86efac);
+    opacity: 1;
+    cursor: default;
+    font-weight: 600;
+}
+
+.add-gigs-modal .add-gigs-book-new-use-template-btn--used:disabled:hover {
+    background-color: var(--gn-green-100, #dcfce7);
+    color: var(--gn-green-800, #166534);
+    filter: none;
+}
+
+.add-gigs-modal .add-gigs-book-new-use-template-btn--used .add-gigs-icon-wrap,
+.add-gigs-modal .add-gigs-book-new-use-template-btn--used .icon {
+    color: var(--gn-green-700, #15803d);
+}
+
+/* Nested dialogs (save / use / apply template scope) — siblings of main modal in Portal */
+.add-gigs-submodal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: rgba(15, 23, 42, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.add-gigs-submodal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    max-width: 22rem;
+    width: 100%;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-sizing: border-box;
+}
+
+.add-gigs-submodal--wide {
+    max-width: 26rem;
+}
+
+.add-gigs-submodal-header {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+    min-height: 2.25rem;
+}
+
+.add-gigs-submodal-header .add-gigs-submodal-title {
+    margin: 0;
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 0.1rem 4.25rem 0;
+    text-align: center;
+}
+
+.add-gigs-submodal .btn.tertiary.add-gigs-submodal-close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font-weight: 500;
+    padding: 0.15rem 0;
+    background-color: transparent;
+    border: none;
+    color: var(--gn-grey-600, #666);
+    transition: color 150ms ease;
+}
+
+.add-gigs-submodal .btn.tertiary.add-gigs-submodal-close:hover {
+    background-color: transparent;
+    color: var(--gn-grey-800, #333);
+}
+
+.add-gigs-submodal-title {
+    margin: 0 0 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.add-gigs-submodal-hint {
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: #64748b;
+}
+
+.add-gigs-submodal-actions {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 1rem 1.5rem;
-}
-.add-gigs-date-venue-row .add-gigs-venue-field {
-    margin-bottom: 0;
-    min-width: 10rem;
-}
-.add-gigs-date-venue-row .add-gigs-venue-field .select {
-    min-width: 12rem;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.1rem;
 }
 
-.add-gigs-sticky-date-bar .add-gigs-tabs {
-    margin-bottom: 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    padding-right: 0.25rem;
+.add-gigs-submodal-actions--single {
+    justify-content: flex-end;
 }
 
-.add-gigs-sticky-date-bar .add-gigs-tabs .add-gigs-tab {
-    flex-shrink: 0;
+.add-gigs-submodal-actions--stack {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.add-gigs-book-new-template-pill-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    max-height: 16rem;
+    overflow-y: auto;
+}
+
+.add-gigs-book-new-template-pill-item {
+    flex: 0 1 auto;
+    max-width: 100%;
+}
+
+.add-gigs-book-new-template-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    max-width: min(100%, 19rem);
+    min-height: 2.35rem;
+    margin: 0;
+    padding: 0.45rem 0.95rem;
+    box-sizing: border-box;
+    border-radius: 9999px;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    background: #f8fafc;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: #0f172a;
+    text-align: center;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.add-gigs-book-new-template-pill:hover {
+    background: rgba(15, 23, 42, 0.05);
+    border-color: rgba(15, 23, 42, 0.16);
+}
+
+.add-gigs-book-new-template-pill:focus-visible {
+    outline: 2px solid var(--gn-orange, #ff6c4b);
+    outline-offset: 2px;
+}
+
+.add-gigs-book-new-template-pill-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+    .add-gigs-modal .add-gigs-date-venue-header-row--two-cols {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .add-gigs-apply-all-wrap {
     flex-shrink: 0;
     align-self: center;
-}
-
-.add-gigs-sticky-date-bar .add-gigs-apply-all-wrap {
-    margin-top: -0.35rem;
 }
 
 .add-gigs-apply-all-btn--inline {
@@ -563,7 +1324,7 @@
 
 .add-gigs-field label.add-gigs-section-heading {
     font-weight: 500;
-    font-size: 1rem;
+    font-size: 1.0625rem;
     text-transform: none;
     letter-spacing: normal;
     margin-bottom: 0.5rem;
@@ -690,12 +1451,23 @@
     align-items: center;
 }
 
+.add-gigs-modal .add-gigs-actions--footer {
+    background: #fff;
+    border-top: none;
+    padding: 1.25rem 2.5rem 1.35rem;
+    box-shadow: 0 -6px 28px rgba(15, 23, 42, 0.06);
+}
+
 .add-gigs-actions--footer .btn.tertiary {
     margin-right: auto;
 }
 
 .add-gigs-actions--footer--shadow {
     box-shadow: 0 -8px 16px rgba(0, 0, 0, 0.12);
+}
+
+.add-gigs-modal .add-gigs-actions--footer--shadow {
+    box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.08);
 }
 
 .add-gigs-actions--footer .btn.primary:only-of-type {
@@ -1789,7 +2561,7 @@
     border: none;
     background: none;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 1rem;
     font-weight: 500;
     color: var(--gn-grey-700, #555);
     text-align: left;
@@ -1816,7 +2588,7 @@
     text-transform: none;
 }
 
-/* Match Event name: wins over .add-gigs-field label (font-weight 400 / 0.9rem) */
+/* Match Gig listing title: wins over .add-gigs-field label (font-weight 400 / 0.9rem) */
 .add-gigs-more-details .add-gigs-field > label.add-gigs-more-details-field-label {
     display: block;
     font-weight: 500;
@@ -1826,7 +2598,17 @@
     text-transform: none;
 }
 
-/* Event name and Capacity in more details: white box, no border */
+/* Book an Event — More details field labels match main section titles (Timings, Gig description, Payment, etc.) */
+.add-gigs-modal .add-gigs-book-new-more-expanded .add-gigs-book-new-more-fields > .add-gigs-field > label.add-gigs-more-details-field-label {
+    font-weight: 600;
+    font-size: 1.0625rem;
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+    color: #0f172a;
+    margin-bottom: 0.5rem;
+}
+
+/* Gig listing title and Capacity in more details: white box, no border */
 .add-gigs-more-details .add-gigs-input-no-border.input {
     border: none;
     background-color: var(--gn-white, #fff);
@@ -4198,4 +4980,598 @@
         font-size: 1rem;
     }
     
+}
+
+/* Book an Event — single scrollable form (addGigsMode bookNew) */
+.add-gigs-book-new-flow {
+    padding-bottom: 0.5rem;
+}
+
+.add-gigs-book-new-section {
+    margin: 0 0 1.5rem;
+    padding-bottom: 1.25rem;
+}
+
+.add-gigs-modal .add-gigs-book-new-section {
+    margin-bottom: 0;
+    padding-bottom: 2rem;
+}
+
+.add-gigs-book-new-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.add-gigs-modal .add-gigs-book-new-section:last-child {
+    padding-bottom: 0;
+}
+
+.add-gigs-book-new-section h3.label {
+    margin-top: 0;
+}
+
+/* Match `.add-gigs-field label.add-gigs-section-heading` for standalone section titles in Book an Event */
+.add-gigs-book-new-section h3.label.add-gigs-section-heading,
+.add-gigs-book-new-section h4.label.add-gigs-section-heading {
+    font-weight: 600;
+    font-size: 1.0625rem;
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+    color: #0f172a;
+}
+
+.add-gigs-book-new-section h3.label.add-gigs-section-heading.add-gigs-book-new-section-heading--roomy {
+    margin-bottom: 0.85rem;
+}
+
+/* Timings: a bit more space under the section title before the intro line */
+.add-gigs-book-new-flow > .add-gigs-book-new-section:first-of-type h3.label.add-gigs-section-heading {
+    margin-bottom: 0.9rem;
+}
+
+/* Visibility: space under section title before toggle */
+.add-gigs-book-new-flow h3.label.add-gigs-section-heading[id^="bn-vis-"] {
+    margin-bottom: 0.9rem;
+}
+
+.add-gigs-book-new-desc-heading-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.35rem 1rem;
+    margin-bottom: 1.2rem;
+}
+
+.add-gigs-book-new-desc-heading-row .add-gigs-book-new-section-heading--roomy {
+    margin-bottom: 0;
+}
+
+.add-gigs-modal .add-gigs-book-new-remove-desc {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #64748b;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.add-gigs-modal .add-gigs-book-new-remove-desc:hover {
+    color: #0f172a;
+}
+
+.add-gigs-modal .add-gigs-book-new-remove-desc:focus-visible {
+    outline: 2px solid var(--gn-orange, #ff6c4b);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+.add-gigs-book-new-optional {
+    font-weight: 400;
+    color: var(--gn-grey-600, #666);
+    font-size: 0.9rem;
+}
+
+.add-gigs-book-new-docs-heading {
+    margin-top: 0;
+}
+
+.add-gigs-book-new-timings-intro {
+    margin: 0 0 0.8rem;
+    max-width: 40rem;
+    line-height: 1.5;
+}
+
+/* Book new: native input hidden; orange circular control (timings, documents, payment + ticketing radios) */
+.add-gigs-book-new-checkbox-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.add-gigs-book-new-checkbox-mark {
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-top: 0.12rem;
+    border: 2px solid var(--gn-grey-400, #ccc);
+    border-radius: 50%;
+    background-color: var(--gn-white, #fff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.add-gigs-book-new-checkbox-mark::after {
+    content: '';
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 50%;
+    background-color: var(--gn-orange, #ff6c4b);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.add-gigs-book-new-checkbox-input:checked + .add-gigs-book-new-checkbox-mark {
+    border-color: var(--gn-orange, #ff6c4b);
+    background-color: rgba(255, 108, 75, 0.14);
+}
+
+.add-gigs-book-new-checkbox-input:checked + .add-gigs-book-new-checkbox-mark::after {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.add-gigs-book-new-checkbox-input:focus-visible + .add-gigs-book-new-checkbox-mark {
+    outline: 2px solid var(--gn-orange, #ff6c4b);
+    outline-offset: 2px;
+}
+
+.add-gigs-book-new-checkbox-input:focus:not(:focus-visible) + .add-gigs-book-new-checkbox-mark {
+    outline: none;
+}
+
+/* Book new timings — horizontal fields only (no connector lines / baseline) */
+.add-gigs-book-new-timeline-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0.2rem 0 1rem;
+    box-sizing: border-box;
+}
+
+/* Five equal columns inside modal body width — no horizontal scroll */
+.add-gigs-book-new-timeline-cont {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: start;
+    gap: 0.4rem;
+    width: 100%;
+    max-width: 100%;
+    margin: 0.55rem 0 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+@media (min-width: 900px) {
+    .add-gigs-book-new-timeline-cont {
+        gap: 0.5rem;
+    }
+}
+
+.add-gigs-book-new-timeline-event {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    position: relative;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+}
+
+.add-gigs-book-new-timeline-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+.add-gigs-book-new-timeline-label {
+    font-size: 0.8125rem;
+    text-align: left;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0 0 0.35rem;
+    width: 100%;
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+.add-gigs-book-new-timeline-time {
+    display: block;
+    width: 5.85rem;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 2.6rem;
+    padding: 0.5rem 0.55rem;
+    text-align: center;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    background-color: #fff;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    box-sizing: border-box;
+    color: #0f172a;
+}
+
+.add-gigs-book-new-timeline-time:focus {
+    outline: 2px solid var(--gn-orange, #e85d04);
+    outline-offset: 1px;
+}
+
+.add-gigs-book-new-cb {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+    min-width: 12rem;
+    position: relative;
+    line-height: 1.35;
+}
+
+.add-gigs-book-new-error {
+    color: #b00020;
+    font-size: 0.875rem;
+    margin: 0.5rem 0 0;
+}
+
+.add-gigs-book-new-radio-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.add-gigs-book-new-radio {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+    position: relative;
+    line-height: 1.35;
+}
+
+/* Payment + Ticketing side by side (Book an Event) */
+.add-gigs-modal .add-gigs-book-new-pay-tix-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem 1.75rem;
+    align-items: start;
+    margin: 0 0 1.75rem;
+    padding-bottom: 2rem;
+}
+
+.add-gigs-modal .add-gigs-book-new-pay-tix-row .add-gigs-book-new-section--pay-tix-col {
+    margin: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.add-gigs-modal .add-gigs-book-new-pay-tix-row .add-gigs-book-new-section--pay-tix-col h3.label.add-gigs-section-heading.add-gigs-book-new-section-heading--roomy {
+    margin-bottom: 1.15rem;
+}
+
+.add-gigs-book-new-payment-stack {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.add-gigs-book-new-fee-field {
+    margin-top: 0.75rem;
+    max-width: 12rem;
+}
+
+.add-gigs-book-new-payment-stack .add-gigs-book-new-fee-field {
+    max-width: 13rem;
+}
+
+.add-gigs-book-new-payment-stack .add-gigs-book-new-fee-field .input {
+    width: 100%;
+    max-width: 13rem;
+    box-sizing: border-box;
+}
+
+@media (max-width: 560px) {
+    .add-gigs-modal .add-gigs-book-new-pay-tix-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.35rem;
+    }
+}
+
+.add-gigs-book-new-visibility-row.add-gigs-invite-only-row {
+    justify-content: flex-start;
+    margin-top: 0.25rem;
+}
+
+/* Below Visibility — centred actions (separate from visibility section chrome) */
+.add-gigs-book-new-secondary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0.75rem 0 1.5rem;
+    padding: 0;
+}
+
+.add-gigs-modal .add-gigs-book-new-secondary-action-btn {
+    display: inline-flex;
+    align-items: center;
+}
+
+.add-gigs-modal .add-gigs-book-new-secondary-action-btn .icon {
+    margin-right: 0.4rem;
+}
+
+.add-gigs-book-new-more-toggle {
+    width: 100%;
+    text-align: left;
+    justify-content: space-between;
+    display: flex;
+    align-items: center;
+}
+
+.add-gigs-book-new-more-fields {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Space before Documents: match `.add-gigs-book-new-more-fields` gap between Gig listing title and Capacity */
+.add-gigs-book-new-docs {
+    margin-top: 0.5rem;
+    padding-top: 0;
+}
+
+.add-gigs-book-new-doc-block {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border: 1px solid var(--gn-grey-200, #eee);
+    border-radius: 0.5rem;
+    background: var(--gn-grey-100, #fafafa);
+}
+
+.add-gigs-book-new-doc-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.add-gigs-modal .add-gigs-book-new-doc-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.7rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.25;
+    color: var(--gn-off-black, #1a1a1a);
+    text-decoration: none;
+    background: var(--gn-grey-100, #f2f2f2);
+    border: 1px solid var(--gn-grey-200, #e5e5e5);
+    border-radius: 999px;
+    box-sizing: border-box;
+}
+
+.add-gigs-modal .add-gigs-book-new-doc-link:hover {
+    background: var(--gn-grey-200, #e8e8e8);
+    text-decoration: none;
+    color: var(--gn-off-black, #1a1a1a);
+}
+
+.add-gigs-book-new-add-desc-btn {
+    align-self: flex-start;
+}
+
+/* Add existing — “Who have you booked?”: full width of normal modal content (no gutter breakout) */
+.add-gigs-modal .add-gigs-book-new-booked-section .add-gigs-book-new-booked-name-field {
+    margin-bottom: 0;
+}
+
+.add-gigs-modal .add-gigs-book-new-booked-section .add-gigs-book-new-booked-name-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.add-gigs-modal .add-gigs-book-new-gig-desc-area {
+    margin: 0 0 1.15rem;
+    padding: 0.85rem 1rem 1rem;
+    border-radius: 10px;
+    /* Same surface as + Add Description tertiary pill */
+    background-color: var(--gn-grey-300, #d4d4d4);
+    box-sizing: border-box;
+}
+
+.add-gigs-modal .add-gigs-book-new-gig-desc-area .add-gigs-book-new-gig-description-textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.add-gigs-modal .add-gigs-book-new-flow .btn.tertiary.add-gigs-book-new-add-description-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0;
+    padding: 0.5rem 1.15rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--gn-grey-800, #333);
+    background-color: var(--gn-grey-300, #d4d4d4);
+    border: 1px dashed var(--gn-grey-600, #525252);
+    border-radius: 9999px;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.add-gigs-modal .add-gigs-book-new-flow .btn.tertiary.add-gigs-book-new-add-description-pill:hover {
+    background-color: var(--gn-grey-400, #d4d4d4);
+    color: var(--gn-off-black, #111);
+    border-color: var(--gn-grey-700, #404040);
+}
+
+.add-gigs-modal .add-gigs-book-new-flow .btn.tertiary.add-gigs-book-new-add-description-pill:focus-visible {
+    outline: 2px solid var(--gn-orange, #ff6c4b);
+    outline-offset: 2px;
+}
+
+/* —— Add Gigs modal: premium polish (typography, spacing, surfaces; Gigin orange accent) —— */
+.modal.add-gigs-modal {
+    backdrop-filter: blur(6px);
+}
+
+.add-gigs-modal .add-gigs-details-step {
+    padding-top: 0;
+}
+
+.add-gigs-modal .add-gigs-panel {
+    margin-bottom: 0;
+}
+
+.add-gigs-modal .add-gigs-book-new-flow textarea.input.add-gigs-input-no-border {
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 10px;
+    padding: 0.8rem 0.95rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.add-gigs-modal .add-gigs-book-new-flow textarea.input.add-gigs-input-no-border:focus-visible {
+    border-color: var(--gn-orange, #ff6c4b);
+    box-shadow: 0 0 0 3px rgba(255, 108, 75, 0.18);
+    outline: none;
+}
+
+.add-gigs-modal .add-gigs-book-new-flow .input:not(textarea),
+.add-gigs-modal .add-gigs-book-new-flow .select {
+    border-radius: 8px;
+    border-color: rgba(15, 23, 42, 0.12);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.add-gigs-modal .add-gigs-book-new-flow .input:focus-visible,
+.add-gigs-modal .add-gigs-book-new-flow .select:focus-visible {
+    border-color: var(--gn-orange, #ff6c4b);
+    box-shadow: 0 0 0 3px rgba(255, 108, 75, 0.16);
+    outline: none;
+}
+
+.add-gigs-modal .add-gigs-book-new-radio-list {
+    gap: 0.8rem;
+}
+
+.add-gigs-modal .add-gigs-book-new-timeline-time {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.add-gigs-modal .add-gigs-book-new-timeline-time:focus-visible {
+    outline: none;
+    border-color: var(--gn-orange, #ff6c4b);
+    box-shadow: 0 0 0 3px rgba(255, 108, 75, 0.18);
+}
+
+.add-gigs-modal .add-gigs-book-new-doc-block {
+    background: #fff;
+    border-color: rgba(15, 23, 42, 0.08);
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.add-gigs-modal .add-gigs-more-details {
+    background: var(--gn-grey-300, #d4d4d4);
+    border-radius: 12px;
+    border: 1px solid var(--gn-grey-400, #c4c4c4);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.add-gigs-modal .add-gigs-invite-only-text {
+    line-height: 1.55;
+    margin-top: 0.5rem;
+}
+
+.add-gigs-modal .add-gigs-book-new-section .add-gigs-helper {
+    line-height: 1.55;
+    color: #64748b;
+}
+
+.add-gigs-modal .add-gigs-book-new-timings-intro {
+    margin-bottom: 0.75rem;
+}
+
+.add-gigs-modal .add-gigs-tabs {
+    border-bottom-color: rgba(15, 23, 42, 0.1);
+}
+
+.add-gigs-modal .add-gigs-tab {
+    border-radius: 8px;
+}
+
+.add-gigs-modal .modal-content .btn.close.tertiary {
+    border-radius: 8px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+.add-gigs-modal .add-gigs-actions--footer .btn.primary {
+    border-radius: 8px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    box-shadow: 0 1px 2px rgba(255, 108, 75, 0.25);
+}
+
+.add-gigs-modal .add-gigs-actions--footer .btn.tertiary {
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.add-gigs-modal .add-gigs-details-step .add-gigs-field .select,
+.add-gigs-modal .add-gigs-details-step .add-gigs-field .input {
+    border-radius: 8px;
+    border-color: rgba(15, 23, 42, 0.12);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.add-gigs-modal .add-gigs-details-step .add-gigs-field .select:focus-visible,
+.add-gigs-modal .add-gigs-details-step .add-gigs-field .input:focus-visible {
+    border-color: var(--gn-orange, #ff6c4b);
+    box-shadow: 0 0 0 3px rgba(255, 108, 75, 0.16);
+    outline: none;
 }

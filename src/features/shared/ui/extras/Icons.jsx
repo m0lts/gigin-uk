@@ -319,6 +319,27 @@ export const CalendarPlusIcon = () => {
         <FontAwesomeIcon icon={faCalendarCirclePlus} className='icon' />
     )
 }
+/** solid-calendar-rotate-full from `public/icons/solid-calendar-rotate-full.svg` (mask + currentColor for tertiary buttons). */
+export const SolidCalendarRotateFullIcon = () => {
+    const href = `${import.meta.env.BASE_URL}icons/solid-calendar-rotate-full.svg`;
+    return (
+        <span
+            className="icon solid-calendar-rotate-full-icon"
+            aria-hidden="true"
+            style={{
+                backgroundColor: 'currentColor',
+                WebkitMaskImage: `url("${href}")`,
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center',
+                WebkitMaskSize: 'contain',
+                maskImage: `url("${href}")`,
+                maskRepeat: 'no-repeat',
+                maskPosition: 'center',
+                maskSize: 'contain',
+            }}
+        />
+    );
+};
 export const TickIcon = () => {
     return (
         <FontAwesomeIcon icon={faCheck} className='icon' />

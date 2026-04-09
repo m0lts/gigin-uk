@@ -22,6 +22,7 @@
  * - performers: [{ type: 'manual'|'gigin_artist', contactId?, artistId?, name }]
  * - private (boolean) – invite-only applications
  * - linkedGigId? – set when a gig is created from this hire (on-platform confirmation)
+ * - closeBookingAfterAcceptedCount (number, default 1) – auto-close listing to new applications after this many accepts (platform / apply flow)
  */
 
 import { firestore } from '@lib/firebase';

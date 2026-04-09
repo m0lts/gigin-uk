@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { updateGigDocument } from '@services/api/gigs';
 import { updateVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { getVenueProfileById } from '@services/client-side/venues';
@@ -6,8 +7,36 @@ import { getArtistProfileById } from '@services/client-side/artists';
 import { hasVenuePerm } from '@services/utils/permissions';
 import { computeCompatibility } from '@services/utils/techRiderCompatibility';
 import { toast } from 'sonner';
-import { MoreInformationIcon, EditIcon, TechRiderIcon } from '@features/shared/ui/extras/Icons';
+import { MoreInformationIcon, EditIcon, TechRiderIcon, CashIcon, TicketIcon } from '@features/shared/ui/extras/Icons';
+import { buildVenueHireGigDetailsTimingDisplayRows } from '../utils/venueHireGigDetailsTimings';
 import { TechSetupTile } from './TechSetupTile';
+
+/** Same copy as BookNewEventWizard payment radios. */
+const VENUE_HIRE_PAYMENT_LABEL = {
+  venue_pays_artist: "I'll pay the artist",
+  artist_pays_venue: 'They pay to hire the space',
+  no_fee: 'No fee',
+};
+
+function inferVenueHirePaymentModelKey(rawGig) {
+  const explicit = rawGig?.paymentModel;
+  if (explicit === 'venue_pays_artist' || explicit === 'artist_pays_venue' || explicit === 'no_fee') {
+    return explicit;
+  }
+  const feeRaw = rawGig?.hireFee ?? rawGig?.budget ?? '';
+  const feeStr = String(feeRaw).trim();
+  if (!feeStr || feeStr === '£' || feeStr.toLowerCase() === 'free') return 'no_fee';
+  const digits = feeStr.replace(/[^\d.]/g, '');
+  if (digits === '' || parseFloat(digits) === 0) return 'no_fee';
+  return 'artist_pays_venue';
+}
+
+function formatVenueHireTicketingResponsibility(v) {
+  if (v === 'venue') return 'Venue handles ticketing';
+  if (v === 'artist') return 'Artist handles ticketing';
+  if (v === 'free_entry') return 'Free entry';
+  return '';
+}
 
 /**
  * Sidebar: For venue hire (confirmed or unconfirmed), same right column: Financial status, Access & restrictions, Internal notes.
@@ -20,6 +49,10 @@ export function BookingSummarySidebar({
   refreshGigs,
   venues,
   onEdit,
+  /** Venue hire: Applications ↔ Gig details column swap (gig page layout). */
+  venueHireSwapApplicationsAndGigDetails = false,
+  onVenueHireApplicationsPortalMount,
+  venueHireGigDetailsPortalContainer,
 }) {
   const [internalNotesSaving, setInternalNotesSaving] = useState(false);
   const [internalNotesLocal, setInternalNotesLocal] = useState(null); // null = use rawGig value
@@ -33,6 +66,11 @@ export function BookingSummarySidebar({
   const [bookerVenueEquipmentInUse, setBookerVenueEquipmentInUse] = useState([]);
 
   useEffect(() => {
+    /* Venue hire loads full venue profile in the main column Tech Setup card. */
+    if (normalisedGig?.bookingMode === 'venue_hire') {
+      setVenueProfile(null);
+      return;
+    }
     const venueId = rawGig?.venueId;
     if (!venueId) {
       setVenueProfile(null);
@@ -43,7 +81,7 @@ export function BookingSummarySidebar({
       .then((profile) => { if (!cancelled) setVenueProfile(profile || null); })
       .catch(() => { if (!cancelled) setVenueProfile(null); });
     return () => { cancelled = true; };
-  }, [rawGig?.venueId]);
+  }, [rawGig?.venueId, normalisedGig?.bookingMode]);
 
   // For venue hire with a booker: only compute from current tech rider when gig has no saved tech setup (use snapshot from confirm time).
   useEffect(() => {
@@ -306,155 +344,162 @@ export function BookingSummarySidebar({
     const feeText = fee == null ? '' : String(fee).trim().toLowerCase();
     const feeNumeric = Number((feeText || '').replace(/[^\d.]/g, ''));
     const hasPayableHireFee = !!feeText && feeText !== 'free' && (Number.isFinite(feeNumeric) ? feeNumeric > 0 : true);
+    const paymentModelKey = inferVenueHirePaymentModelKey(rawGig);
+    const paymentModelLabel = VENUE_HIRE_PAYMENT_LABEL[paymentModelKey] ?? '—';
+    const ticketingLabel = formatVenueHireTicketingResponsibility(rawGig?.ticketingResponsibility) || '—';
+    const timingDisplayRows = buildVenueHireGigDetailsTimingDisplayRows(rawGig, accessFrom, curfew);
+
+    const venueHireGigDetailsCard = (
+      <div className="venue-gig-page-sidebar__card venue-gig-page-sidebar__card--gig-details">
+        {onEdit && canUpdate ? (
+          <div className="venue-gig-page-sidebar__card-header venue-gig-page-sidebar__card-header--with-title venue-gig-page-sidebar__card-header--gig-details-top">
+            <h3 className="venue-gig-page-sidebar__gig-details-title">Gig details</h3>
+            <button type="button" className="btn tertiary venue-gig-page-sidebar__edit-btn" onClick={onEdit}>
+              Edit
+            </button>
+          </div>
+        ) : (
+          <h3 className="venue-gig-page-sidebar__gig-details-title">Gig details</h3>
+        )}
+        <div className="venue-gig-page-sidebar__gig-details-rule" role="presentation" />
+
+        <div className="venue-gig-page-sidebar__gig-details-summary">
+          <div className="venue-gig-page-sidebar__gig-details-summary-col venue-gig-page-sidebar__gig-details-summary-col--timings">
+            <h4 className="venue-gig-page-sidebar__gig-details-kicker">Event timings</h4>
+            <dl className="venue-gig-page-sidebar__gig-details-timings-dl">
+              {timingDisplayRows.map(({ key, label, displayTime }) => (
+                <div key={key} className="venue-gig-page-sidebar__gig-details-timing-row">
+                  <dt>{label}</dt>
+                  <dd>{displayTime}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+          <div className="venue-gig-page-sidebar__gig-details-summary-col venue-gig-page-sidebar__gig-details-summary-col--highlights">
+            <div className="venue-gig-page-sidebar__gig-details-highlight">
+              <h4 className="venue-gig-page-sidebar__gig-details-kicker">Payment model</h4>
+              <div className="venue-gig-page-sidebar__gig-details-highlight-body">
+                <span className="venue-gig-page-sidebar__gig-details-highlight-icon" aria-hidden="true">
+                  <CashIcon />
+                </span>
+                <div className="venue-gig-page-sidebar__gig-details-highlight-stack">
+                  <p className="venue-gig-page-sidebar__gig-details-highlight-value">{paymentModelLabel}</p>
+                  <div className="venue-gig-page-sidebar__financial-row venue-gig-page-sidebar__gig-details-hire-fee-row">
+                    <span className="venue-gig-page-sidebar__gig-details-inline-text">
+                      Hire fee: {fee != null && fee !== '' ? fee : '—'}
+                    </span>
+                    {hasBooker && (
+                      <>
+                        {hasPayableHireFee && (
+                          <span className={`venue-gig-page-sidebar__badge venue-gig-page-sidebar__badge--${hireFeePaid ? 'paid' : 'unpaid'}`}>
+                            {hireFeePaid ? 'Paid' : 'Unpaid'}
+                          </span>
+                        )}
+                        {canUpdate && hasPayableHireFee && (
+                          <button
+                            type="button"
+                            className="btn tertiary venue-gig-page-sidebar__mark-btn"
+                            onClick={() => markHireFeePaid(!hireFeePaid)}
+                            disabled={hireFeeUpdating}
+                          >
+                            Mark as {hireFeePaid ? 'unpaid' : 'paid'}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="venue-gig-page-sidebar__gig-details-highlight">
+              <h4 className="venue-gig-page-sidebar__gig-details-kicker">Ticketing</h4>
+              <div className="venue-gig-page-sidebar__gig-details-highlight-body">
+                <span className="venue-gig-page-sidebar__gig-details-highlight-icon" aria-hidden="true">
+                  <TicketIcon />
+                </span>
+                <div className="venue-gig-page-sidebar__gig-details-highlight-stack">
+                  <p className="venue-gig-page-sidebar__gig-details-highlight-value">{ticketingLabel}</p>
+                  <p className="venue-gig-page-sidebar__gig-details-inline-text">
+                    Capacity: {capacity != null && capacity !== '' ? capacity : '—'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {hasDepositConfigured ? (
+        <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__section--gig-details-financial">
+          <dl className="venue-gig-page-sidebar__list">
+            {hasBooker && hasDepositConfigured && (
+            <div className="venue-gig-page-sidebar__row">
+              <dt>Deposit</dt>
+              <dd className="venue-gig-page-sidebar__financial-row">
+                <span>{depositAmount != null && depositAmount !== '' ? String(depositAmount) : '—'}</span>
+                <span className={`venue-gig-page-sidebar__badge venue-gig-page-sidebar__badge--${depositPaid ? 'paid' : 'unpaid'}`}>
+                  {depositPaid ? 'Paid' : 'Unpaid'}
+                </span>
+                {canUpdate && (
+                  <button
+                    type="button"
+                    className="btn tertiary venue-gig-page-sidebar__mark-btn"
+                    onClick={() => markDepositPaid(!depositPaid)}
+                    disabled={depositUpdating}
+                  >
+                    Mark as {depositPaid ? 'unpaid' : 'paid'}
+                  </button>
+                )}
+              </dd>
+            </div>
+            )}
+            {!hasBooker && hasDepositConfigured && (
+            <div className="venue-gig-page-sidebar__row">
+              <dt>Deposit</dt>
+              <dd className="venue-gig-page-sidebar__financial-row">
+                <span>{depositAmount != null && depositAmount !== '' ? String(depositAmount) : '—'}</span>
+              </dd>
+            </div>
+            )}
+          </dl>
+        </section>
+        ) : null}
+
+        {Array.isArray(rawGig?.documents) && rawGig.documents.length > 0 && (
+          <section className="venue-gig-page-sidebar__section">
+            <h2 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">Documents</h2>
+            <ul className="venue-gig-page-sidebar__documents-list">
+              {rawGig.documents.map((doc, i) => (
+                <li key={i}>
+                  <a href={doc.url} target="_blank" rel="noopener noreferrer" className="venue-gig-page-sidebar__document-link">
+                    {doc.name || (doc.url ? 'View document' : '')}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+    );
 
     return (
       <aside className="venue-gig-page-sidebar" aria-label="Financial status and access">
         <div className="venue-gig-page-sidebar__cards">
-          <div className="venue-gig-page-sidebar__card">
-          {onEdit && canUpdate ? (
-            <div className="venue-gig-page-sidebar__card-header venue-gig-page-sidebar__card-header--with-title">
-              <h3 className="venue-gig-page-sidebar__title">
-                <span className="venue-gig-page-sidebar__title-inner">
-                  <MoreInformationIcon /> Gig details
-                </span>
-              </h3>
-              <button type="button" className="btn tertiary venue-gig-page-sidebar__edit-btn" onClick={onEdit}>
-                Edit
-              </button>
-            </div>
-          ) : (
-            <h3 className="venue-gig-page-sidebar__title">
-              <span className="venue-gig-page-sidebar__title-inner">
-                <MoreInformationIcon /> Gig details
-              </span>
-            </h3>
-          )}
-          <section className="venue-gig-page-sidebar__section">
-            {(accessFrom || curfew) && (
-              <div className="venue-gig-page-sidebar__time-tiles">
-                <div className="venue-gig-page-sidebar__time-tile">
-                  <span className="venue-gig-page-sidebar__time-tile-label">Access from</span>
-                  <div className="venue-gig-page-sidebar__time-tile-value">{accessFrom || '—'}</div>
-                </div>
-                <div className="venue-gig-page-sidebar__time-tiles-connector" aria-hidden="true" />
-                <div className="venue-gig-page-sidebar__time-tile">
-                  <span className="venue-gig-page-sidebar__time-tile-label">Music stop by</span>
-                  <div className="venue-gig-page-sidebar__time-tile-value">{curfew || '—'}</div>
-                </div>
-              </div>
-            )}
-          </section>
-
-          <section className="venue-gig-page-sidebar__section">
-            <dl className="venue-gig-page-sidebar__list">
-              <div className="venue-gig-page-sidebar__row">
-                <dt>Hire fee</dt>
-                <dd className="venue-gig-page-sidebar__financial-row">
-                  <span>{fee != null && fee !== '' ? fee : '—'}</span>
-                  {hasBooker && (
-                    <>
-                      {hasPayableHireFee && (
-                        <span className={`venue-gig-page-sidebar__badge venue-gig-page-sidebar__badge--${hireFeePaid ? 'paid' : 'unpaid'}`}>
-                          {hireFeePaid ? 'Paid' : 'Unpaid'}
-                        </span>
-                      )}
-                      {canUpdate && hasPayableHireFee && (
-                        <button
-                          type="button"
-                          className="btn tertiary venue-gig-page-sidebar__mark-btn"
-                          onClick={() => markHireFeePaid(!hireFeePaid)}
-                          disabled={hireFeeUpdating}
-                        >
-                          Mark as {hireFeePaid ? 'unpaid' : 'paid'}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </dd>
-              </div>
-              {hasBooker && hasDepositConfigured && (
-              <div className="venue-gig-page-sidebar__row">
-                <dt>Deposit</dt>
-                <dd className="venue-gig-page-sidebar__financial-row">
-                  <span>{depositAmount != null && depositAmount !== '' ? String(depositAmount) : '—'}</span>
-                  <span className={`venue-gig-page-sidebar__badge venue-gig-page-sidebar__badge--${depositPaid ? 'paid' : 'unpaid'}`}>
-                    {depositPaid ? 'Paid' : 'Unpaid'}
-                  </span>
-                  {canUpdate && (
-                    <button
-                      type="button"
-                      className="btn tertiary venue-gig-page-sidebar__mark-btn"
-                      onClick={() => markDepositPaid(!depositPaid)}
-                      disabled={depositUpdating}
-                    >
-                      Mark as {depositPaid ? 'unpaid' : 'paid'}
-                    </button>
-                  )}
-                </dd>
-              </div>
-              )}
-              {!hasBooker && hasDepositConfigured && (
-              <div className="venue-gig-page-sidebar__row">
-                <dt>Deposit</dt>
-                <dd className="venue-gig-page-sidebar__financial-row">
-                  <span>{depositAmount != null && depositAmount !== '' ? String(depositAmount) : '—'}</span>
-                </dd>
-              </div>
-              )}
-              <div className="venue-gig-page-sidebar__row">
-                <dt>Capacity</dt>
-                <dd>{capacity != null && capacity !== '' ? capacity : '—'}</dd>
-              </div>
-            </dl>
-          </section>
-
-          {Array.isArray(rawGig?.documents) && rawGig.documents.length > 0 && (
-            <section className="venue-gig-page-sidebar__section">
-              <h2 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">Documents</h2>
-              <ul className="venue-gig-page-sidebar__documents-list">
-                {rawGig.documents.map((doc, i) => (
-                  <li key={i}>
-                    <a href={doc.url} target="_blank" rel="noopener noreferrer" className="venue-gig-page-sidebar__document-link">
-                      {doc.name || (doc.url ? 'View document' : '')}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          </div>
-
-          <div className="venue-gig-page-sidebar__card">
-            <h3 className="venue-gig-page-sidebar__title">
-              <span className="venue-gig-page-sidebar__title-inner">
-                <TechRiderIcon /> Tech Setup
-              </span>
-            </h3>
-            <TechSetupTile
-              rawGig={rawGig}
-              normalisedGig={normalisedGig}
-              venueProfile={venueProfile}
-              canUpdate={canUpdate}
-              onSaveSoundEngineer={saveSoundManager}
-              soundEngineerSaving={internalNotesSaving}
-              hireFeePaid={rawGig?.hireFeePaid}
-              onMarkHireFeePaid={markHireFeePaid}
-              equipmentHireFeesPaid={rawGig?.equipmentHireFeesPaid}
-              onMarkEquipmentHireFeesPaid={markEquipmentHireFeesPaid}
-              equipmentHireFeesUpdating={equipmentHireFeesUpdating}
-              missingEquipmentSortedUpdating={missingEquipmentSortedUpdating}
-              missingEquipmentSorted={rawGig?.missingEquipmentSorted}
-              onMarkMissingEquipmentSorted={markMissingEquipmentSorted}
-              bookerVenueEquipmentInUse={bookerVenueEquipmentInUse}
+          {venueHireSwapApplicationsAndGigDetails ? (
+            <div
+              ref={(el) => onVenueHireApplicationsPortalMount?.(el)}
+              className="venue-hire-applications-portal-mount"
             />
-          </div>
+          ) : null}
+          {(!venueHireSwapApplicationsAndGigDetails || !venueHireGigDetailsPortalContainer) ? venueHireGigDetailsCard : null}
+          {venueHireSwapApplicationsAndGigDetails && venueHireGigDetailsPortalContainer
+            ? createPortal(venueHireGigDetailsCard, venueHireGigDetailsPortalContainer)
+            : null}
 
           <div className="venue-gig-page-sidebar__card">
-            <h3 className="venue-gig-page-sidebar__title">
-              <span className="venue-gig-page-sidebar__title-inner">
-                <EditIcon /> Internal notes
-              </span>
-            </h3>
+            <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+              <EditIcon />
+              <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Internal notes</h3>
+            </div>
             {canUpdate ? (
               <>
                 <textarea
@@ -488,24 +533,22 @@ export function BookingSummarySidebar({
     return (
       <aside className="venue-gig-page-sidebar" aria-label="Financial status and access">
         <div className="venue-gig-page-sidebar__cards">
-          <div className="venue-gig-page-sidebar__card">
+          <div className="venue-gig-page-sidebar__card venue-gig-page-sidebar__card--gig-details">
           {onEdit && canUpdate ? (
             <div className="venue-gig-page-sidebar__card-header venue-gig-page-sidebar__card-header--with-title">
-              <h3 className="venue-gig-page-sidebar__title">
-                <span className="venue-gig-page-sidebar__title-inner">
-                  <MoreInformationIcon /> Gig details
-                </span>
-              </h3>
+              <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+                <MoreInformationIcon />
+                <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Gig details</h3>
+              </div>
               <button type="button" className="btn tertiary venue-gig-page-sidebar__edit-btn" onClick={onEdit}>
                 Edit
               </button>
             </div>
           ) : (
-            <h3 className="venue-gig-page-sidebar__title">
-              <span className="venue-gig-page-sidebar__title-inner">
-                <MoreInformationIcon /> Gig details
-              </span>
-            </h3>
+            <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+              <MoreInformationIcon />
+              <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Gig details</h3>
+            </div>
           )}
           <section className="venue-gig-page-sidebar__section">
             {(accessFrom || curfew) && (
@@ -523,15 +566,12 @@ export function BookingSummarySidebar({
             )}
           </section>
 
-          <section className="venue-gig-page-sidebar__section">
-            <dl className="venue-gig-page-sidebar__list">
-              {fee != null && fee !== '' && (
-                <div className="venue-gig-page-sidebar__row">
-                  <dt>Fee</dt>
-                  <dd>{fee}</dd>
-                </div>
-              )}
-              {hasDeposit && (
+          <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__section--gig-details-fee-capacity">
+            <p className="venue-gig-page-sidebar__gig-details-inline-text">
+              Fee: {fee != null && fee !== '' ? fee : '—'}
+            </p>
+            {hasDeposit && (
+              <dl className="venue-gig-page-sidebar__list">
                 <div className="venue-gig-page-sidebar__row">
                   <dt>Deposit</dt>
                   <dd>
@@ -539,18 +579,11 @@ export function BookingSummarySidebar({
                     {depositStatus ? ` · ${depositStatus}` : ''}
                   </dd>
                 </div>
-              )}
-              {!hasMoney && (
-                <div className="venue-gig-page-sidebar__row">
-                  <dt>Fee</dt>
-                  <dd>—</dd>
-                </div>
-              )}
-              <div className="venue-gig-page-sidebar__row">
-                <dt>Capacity</dt>
-                <dd>{capacity != null && capacity !== '' ? capacity : '—'}</dd>
-              </div>
-            </dl>
+              </dl>
+            )}
+            <p className="venue-gig-page-sidebar__gig-details-inline-text">
+              Capacity: {capacity != null && capacity !== '' ? capacity : '—'}
+            </p>
           </section>
 
           {Array.isArray(rawGig?.documents) && rawGig.documents.length > 0 && (
@@ -570,11 +603,10 @@ export function BookingSummarySidebar({
           </div>
 
           <div className="venue-gig-page-sidebar__card">
-            <h3 className="venue-gig-page-sidebar__title">
-              <span className="venue-gig-page-sidebar__title-inner">
-                <TechRiderIcon /> Tech Setup
-              </span>
-            </h3>
+            <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+              <TechRiderIcon />
+              <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Tech Setup</h3>
+            </div>
             <TechSetupTile
               rawGig={rawGig}
               normalisedGig={normalisedGig}
@@ -595,11 +627,10 @@ export function BookingSummarySidebar({
           </div>
 
           <div className="venue-gig-page-sidebar__card">
-            <h3 className="venue-gig-page-sidebar__title">
-              <span className="venue-gig-page-sidebar__title-inner">
-                <EditIcon /> Internal notes
-              </span>
-            </h3>
+            <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+              <EditIcon />
+              <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Internal notes</h3>
+            </div>
             {canUpdate ? (
               <>
                 <label className="venue-gig-page-sidebar__notes-label">Notes</label>

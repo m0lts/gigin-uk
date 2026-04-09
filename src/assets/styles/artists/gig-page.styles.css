@@ -553,6 +553,66 @@
     gap:0.5rem;
 }
 
+.gig-page-body .gig-page-meta-pills {
+    list-style: none;
+    margin: 0.65rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.5rem;
+}
+
+.gig-page-body .gig-page-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    background: var(--gn-grey-100, #f2f2f2);
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--gn-off-black, #1a1a1a);
+    line-height: 1.3;
+}
+
+.gig-page-body .gig-page-meta-pill-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 0;
+}
+
+.gig-page-body .gig-page-meta-pill-icon .icon {
+    font-size: 0.72rem;
+    color: var(--gn-grey-700, #404040);
+}
+
+.gig-page-body .gig-listing-doc-view-wrap {
+    margin: 0.35rem 0 0;
+}
+
+.gig-page-body .gig-listing-doc-view-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.65rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--gn-off-black, #1a1a1a);
+    text-decoration: none;
+    background: var(--gn-grey-100, #f2f2f2);
+    border: 1px solid var(--gn-grey-200, #e5e5e5);
+    border-radius: 999px;
+    box-sizing: border-box;
+}
+
+.gig-page-body .gig-listing-doc-view-pill:hover {
+    background: var(--gn-grey-200, #e8e8e8);
+    text-decoration: none;
+    color: var(--gn-off-black, #1a1a1a);
+}
+
 /* DETAILS */
 
 .gig-page-body .details {
@@ -1290,6 +1350,11 @@
         gap:5px;
     }
 
+    .gig-page-body.mobile .main .section .gig-venue .gig-page-meta-pills {
+        justify-content: center;
+        margin-top: 0.6rem;
+    }
+
     .gig-page-body.mobile .main .section .gig-host {
         padding-left: 1rem;
     }
@@ -1586,6 +1651,121 @@
 .equipment-check-footer .equipment-check-actions .btn.artist-profile {
     flex: 1 1 auto;
     min-width: 10rem;
+}
+
+.apply-wizard-modal .apply-wizard-progress {
+    margin: 0 0 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--gn-grey-600);
+}
+
+.apply-wizard-documents-body {
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
+}
+
+.apply-wizard-doc-section {
+    margin-bottom: 1.5rem;
+}
+
+.apply-wizard-doc-section:last-child {
+    margin-bottom: 0;
+}
+
+.apply-wizard-doc-section h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.apply-wizard-doc-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.apply-wizard-doc-embed-wrap {
+    border: 1px solid var(--gn-grey-200);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--gn-grey-100, #f2f2f2);
+    margin-bottom: 0.65rem;
+}
+
+.apply-wizard-doc-embed {
+    display: block;
+    width: 100%;
+    min-height: 240px;
+    border: 0;
+    background: var(--gn-white);
+}
+
+.apply-wizard-doc-accept {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    line-height: 1.35;
+}
+
+.apply-wizard-doc-accept input {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+}
+
+.apply-wizard-message label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.apply-wizard-message .input {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+}
+
+.apply-wizard-message-input--invalid {
+    border-color: var(--gn-red-600, #c62828) !important;
+    box-shadow: 0 0 0 1px rgba(198, 40, 40, 0.2);
+}
+
+.apply-wizard-footer--split {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.apply-wizard-footer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.apply-wizard-footer--message {
+    justify-content: space-between;
+}
+
+@media (--bp-lg) {
+    .apply-wizard-modal .modal-content.equipment-check-content {
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .apply-wizard-modal .equipment-check-modal-body {
+        overflow-y: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
 }
 
 /* Tech rider modal – stronger tile outlines for visibility */

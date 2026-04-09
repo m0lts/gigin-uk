@@ -2,15 +2,26 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import Portal from '../../shared/components/Portal';
-import { CalendarIconSolid, CoinsIcon, CoinsIconSolid, TicketIcon, TicketIconLight, NoPaymentIcon, DeleteGigIcon, MoreInformationIcon, ClockIcon } from '../../shared/ui/extras/Icons';
+import { BookNewEventWizard } from './BookNewEventWizard';
+import { BookNewEventListingPreview } from './BookNewEventListingPreview';
+import { CalendarIconSolid, CoinsIcon, CoinsIconSolid, TicketIcon, TicketIconLight, NoPaymentIcon, DeleteGigIcon, MoreInformationIcon, ClockIcon, LocationPinIcon, SolidCalendarRotateFullIcon } from '../../shared/ui/extras/Icons';
 import { createArtistCRMEntry, getArtistCRMEntries } from '@services/client-side/artistCRM';
 import { createVenueHireOpportunitiesBatch, updateVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { postMultipleGigs, updateGigDocument } from '@services/api/gigs';
+import { saveGigTemplate } from '@services/api/venues';
 import { hasVenuePerm } from '@services/utils/permissions';
 import { uploadFileWithFallback } from '@services/storage';
 import { CopyIcon, TickIcon, DownChevronIcon, UpChevronIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import '@styles/shared/modals.styles.css';
+import {
+  buildBookNewTemplatePayload,
+  applyBookNewTemplateToGig,
+  applyBookNewTemplateToGigAddExisting,
+  filterBookNewEventTemplatesForVenue,
+  templateNameExistsForVenue,
+  templateDocId,
+} from './bookNewEventTemplateHelpers';
 
 function formatTabDate(iso) {
   const d = new Date(iso + 'T12:00:00');
@@ -26,6 +37,13 @@ function formatDisplayDate(iso) {
   const day = d.getDate();
   const suffix = day === 1 || day === 21 || day === 31 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th';
   return `${day}${suffix} ${format(d, 'MMM yyyy')}`;
+}
+
+/** Full weekday + date for Create event header pills (e.g. Thursday 11 July 2024). */
+function formatHeaderDisplayDate(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  if (isNaN(d.getTime())) return iso;
+  return format(d, 'EEEE d MMMM yyyy');
 }
 
 const GIG_KIND_OPTIONS = ['Live Music', 'Background Music', 'Wedding', 'Open Mic', 'House Party'];
@@ -102,7 +120,150 @@ const defaultGigForDate = () => ({
   rentalDepositAmount: '£',
   // More details – documents: default to "Upload a PDF" for house rules
   rentalHouseRulesMode: 'document',
+  // Unified "Book an Event" flow (addGigsMode === 'bookNew')
+  timingIncludeAccess: false,
+  timingAccessTime: '',
+  timingIncludeSoundcheck: false,
+  timingSoundcheckTime: '',
+  timingIncludeMusicStart: false,
+  timingMusicStartTime: '',
+  timingIncludeMusicStop: false,
+  timingMusicStopTime: '',
+  timingIncludeVacate: false,
+  timingVacateTime: '',
+  paymentModel: '', // 'venue_pays_artist' | 'artist_pays_venue' | 'no_fee'
+  unifiedFeeAmount: '£',
+  ticketingModel: '', // 'venue' | 'artist' | 'free_entry'
+  showOnVenueProfile: true,
+  moreDetailsSectionOpen: false,
+  listingDocEntries: null,
 });
+
+function defaultBookNewGigNameFromVenue(venue) {
+  const n = venue?.name != null ? String(venue.name).trim() : '';
+  return n ? `Gig at ${n}` : '';
+}
+
+function timeToMinutesHHMM(t) {
+  if (!t || !String(t).trim()) return null;
+  const [h, m] = String(t).trim().split(':').map(Number);
+  if (!Number.isFinite(h)) return null;
+  return h * 60 + (Number.isFinite(m) ? m : 0);
+}
+
+function diffMinutesEndAfterStart(start, end) {
+  const sm = timeToMinutesHHMM(start);
+  const em = timeToMinutesHHMM(end);
+  if (sm == null || em == null) return 60;
+  let d = em - sm;
+  if (d <= 0) d += 24 * 60;
+  return d;
+}
+
+function validateBookNewTimings(gig) {
+  const g = gig || {};
+  const hasStart = [g.timingAccessTime, g.timingSoundcheckTime, g.timingMusicStartTime].some((t) => String(t || '').trim());
+  const hasEnd = [g.timingMusicStopTime, g.timingVacateTime].some((t) => String(t || '').trim());
+  if (!hasStart || !hasEnd) {
+    return {
+      ok: false,
+      message:
+        'Add at least one start time (access, soundcheck, or music start) and one end time (music stop or must vacate).',
+    };
+  }
+  return { ok: true };
+}
+
+function buildEventTimingsForStorage(gig) {
+  const g = gig || {};
+  const o = {};
+  if (String(g.timingAccessTime || '').trim()) o.accessFrom = g.timingAccessTime.trim();
+  if (String(g.timingSoundcheckTime || '').trim()) o.soundcheck = g.timingSoundcheckTime.trim();
+  if (String(g.timingMusicStartTime || '').trim()) o.musicStart = g.timingMusicStartTime.trim();
+  if (String(g.timingMusicStopTime || '').trim()) o.musicStop = g.timingMusicStopTime.trim();
+  if (String(g.timingVacateTime || '').trim()) o.mustVacate = g.timingVacateTime.trim();
+  return Object.keys(o).length ? o : undefined;
+}
+
+function pickArtistPerformanceStart(gig) {
+  const g = gig || {};
+  if (String(g.timingMusicStartTime || '').trim()) return g.timingMusicStartTime.trim();
+  if (String(g.timingSoundcheckTime || '').trim()) return g.timingSoundcheckTime.trim();
+  if (String(g.timingAccessTime || '').trim()) return g.timingAccessTime.trim();
+  return '';
+}
+
+function pickArtistPerformanceEnd(gig) {
+  const g = gig || {};
+  if (String(g.timingMusicStopTime || '').trim()) return g.timingMusicStopTime.trim();
+  if (String(g.timingVacateTime || '').trim()) return g.timingVacateTime.trim();
+  return '';
+}
+
+function pickRentalStart(gig) {
+  const g = gig || {};
+  if (String(g.timingAccessTime || '').trim()) return g.timingAccessTime.trim();
+  if (String(g.timingSoundcheckTime || '').trim()) return g.timingSoundcheckTime.trim();
+  if (String(g.timingMusicStartTime || '').trim()) return g.timingMusicStartTime.trim();
+  return '';
+}
+
+function pickRentalEnd(gig) {
+  const g = gig || {};
+  if (String(g.timingMusicStopTime || '').trim()) return g.timingMusicStopTime.trim();
+  if (String(g.timingVacateTime || '').trim()) return g.timingVacateTime.trim();
+  return '';
+}
+
+function buildListingDocEntriesFromVenue(venue) {
+  if (!venue) return [];
+  const rows = [];
+  const push = (key, title, url) => {
+    const u = typeof url === 'string' && url.trim() ? url.trim() : '';
+    if (!u) return;
+    rows.push({
+      key,
+      title,
+      sourceUrl: u,
+      body: '',
+      included: true,
+    });
+  };
+  push('terms', 'Venue T&Cs', venue.termsAndConditions);
+  push('prs', 'PRS form', venue.prs);
+  push('house_rules', 'House rules', venue.houseRulesDocument);
+  push('other', 'Other documents', venue.otherDocuments);
+  return rows;
+}
+
+function normalizeListingDocumentsForApi(entries) {
+  if (!Array.isArray(entries)) return [];
+  return entries
+    .filter((e) => e && e.included && (String(e.body || '').trim() || (e.sourceUrl && String(e.sourceUrl).trim())))
+    .map((e) => ({
+      key: e.key,
+      title: e.title || 'Document',
+      body: String(e.body || '').trim(),
+      sourceUrl: e.sourceUrl && String(e.sourceUrl).trim() ? String(e.sourceUrl).trim() : null,
+    }));
+}
+
+function isBookNewGigComplete(gig) {
+  const g = gig || {};
+  const t = validateBookNewTimings(g);
+  if (!t.ok) return false;
+  if (!g.paymentModel) return false;
+  if (g.paymentModel !== 'no_fee' && !hasPositiveBudgetValue(g.unifiedFeeAmount)) return false;
+  if (!g.ticketingModel) return false;
+  return true;
+}
+
+/** Add existing event → Book artists: same fields as Book an Event, plus booked name. */
+function isAddExistingArtistWizardComplete(gig) {
+  const g = gig || {};
+  if (!isBookNewGigComplete(g)) return false;
+  return String(getArtistNamesForSlots(g, 1)[0] ?? '').trim().length > 0;
+}
 
 /** Get dateIso string from an API gig (for edit mode). */
 function getDateIsoFromGig(gig) {
@@ -343,7 +504,19 @@ function getFirstMissingField(gig) {
   return null;
 }
 
-export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialDateIso, editGigData, addGigsMode }) {
+export function AddGigsModal({
+  onClose,
+  venues = [],
+  user,
+  refreshGigs,
+  initialDateIso,
+  editGigData,
+  addGigsMode,
+  templates = [],
+  refreshTemplates,
+  bookNewTemplateToApply = null,
+  onBookNewTemplateConsumed,
+}) {
   const isEditMode = !!(
     editGigData &&
     (editGigData.kind === 'Venue Rental' ||
@@ -366,6 +539,7 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
     isVenueHireEdit && (effectiveRentalStatus === 'confirmed_renter' || hasRenterName);
 
   const [step, setStep] = useState(() => (initialIso ? 'details' : 'dates'));
+  const [bookNewTimingError, setBookNewTimingError] = useState(null);
   const [month, setMonth] = useState(() => {
     if (initialIso) {
       const d = new Date(initialIso + 'T12:00:00');
@@ -381,7 +555,12 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
     return initialIso ? { [initialIso]: defaultGigForDate() } : {};
   });
   const [activeTab, setActiveTab] = useState(initialIso || null);
-  const [venueId, setVenueId] = useState(() => (isEditMode && editGigData?.venueId) ? editGigData.venueId : (venues[0]?.venueId || ''));
+  const [venueId, setVenueId] = useState(() => {
+    if (isEditMode && editGigData?.venueId) return editGigData.venueId;
+    const tplVid = bookNewTemplateToApply?.venueId;
+    if (tplVid && venues.some((v) => v.venueId === tplVid)) return tplVid;
+    return venues[0]?.venueId || '';
+  });
   const [addingToCrm, setAddingToCrm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [focusInvalidField, setFocusInvalidField] = useState(null);
@@ -394,6 +573,15 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
   const [artistSlotCountByDate, setArtistSlotCountByDate] = useState({});
   const [modalHasScroll, setModalHasScroll] = useState(false);
   const [hasCopiedRentalLink, setHasCopiedRentalLink] = useState(false);
+  const [showSaveBookNewTemplateModal, setShowSaveBookNewTemplateModal] = useState(false);
+  const [templateSaveNameInput, setTemplateSaveNameInput] = useState('');
+  const [savingBookNewTemplate, setSavingBookNewTemplate] = useState(false);
+  const [showUseBookNewTemplateModal, setShowUseBookNewTemplateModal] = useState(false);
+  const [showApplyBookNewTemplateScopeModal, setShowApplyBookNewTemplateScopeModal] = useState(false);
+  const [pendingApplyBookNewTemplate, setPendingApplyBookNewTemplate] = useState(null);
+  const [showBookNewListingPreview, setShowBookNewListingPreview] = useState(false);
+  /** After a template is applied in this modal session, show success styling on the CTA (modal remount resets). */
+  const [bookNewTemplateAppliedInSession, setBookNewTemplateAppliedInSession] = useState(false);
   const artistDropdownRef = useRef(null);
 
   const modalBodyRef = useRef(null);
@@ -405,10 +593,24 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
 
   const sortedDates = useMemo(() => [...selectedDates].sort(), [selectedDates]);
 
+  const bookNewTemplatesForVenue = useMemo(() => {
+    const list = filterBookNewEventTemplatesForVenue(templates, venueId);
+    return [...list].sort((a, b) =>
+      String(a.templateName || '').localeCompare(String(b.templateName || ''), undefined, { sensitivity: 'base' })
+    );
+  }, [templates, venueId]);
+
   const selectedVenue = useMemo(
     () => venues.find((v) => v.venueId === venueId),
     [venues, venueId]
   );
+
+  useEffect(() => {
+    if (addGigsMode !== 'bookNew' || step !== 'details') {
+      setShowBookNewListingPreview(false);
+    }
+  }, [addGigsMode, step]);
+
   useEffect(() => {
     setHasCopiedRentalLink(false);
   }, [activeTab, step]);
@@ -586,15 +788,59 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
   };
 
   const goNext = () => {
+    const venue = venues.find((v) => v.venueId === venueId);
+    const autoGigName = addGigsMode === 'bookNew' ? defaultBookNewGigNameFromVenue(venue) : '';
+    const tpl = addGigsMode === 'bookNew' ? bookNewTemplateToApply : null;
     const byDate = {};
     selectedDates.forEach((iso) => {
-      byDate[iso] = gigsByDate[iso] || defaultGigForDate();
+      let g = gigsByDate[iso] || defaultGigForDate();
+      if (autoGigName && !String(g.gigName ?? '').trim()) {
+        g = { ...g, gigName: autoGigName };
+      }
+      if (tpl) {
+        g = applyBookNewTemplateToGig(g, tpl);
+      }
+      byDate[iso] = g;
     });
     setGigsByDate(byDate);
     const firstIso = [...selectedDates].sort()[0];
     setActiveTab(firstIso || null);
+    if (addGigsMode === 'bookNew') {
+      setBookNewTimingError(null);
+    }
+    if (tpl) {
+      onBookNewTemplateConsumed?.();
+      setBookNewTemplateAppliedInSession(true);
+    }
     setStep('details');
   };
+
+  useEffect(() => {
+    if (step !== 'details' || !activeTab) return;
+    const gig = gigsByDate[activeTab];
+    const needsVenueListingDocs =
+      addGigsMode === 'bookNew' || addGigsMode === 'addExisting';
+    if (!needsVenueListingDocs) return;
+    if (gig?.listingDocEntries && Array.isArray(gig.listingDocEntries)) return;
+    updateGig(activeTab, { listingDocEntries: buildListingDocEntriesFromVenue(selectedVenue) });
+  }, [addGigsMode, activeTab, step, selectedVenue?.venueId]);
+
+  useEffect(() => {
+    if (addGigsMode !== 'bookNew' || step !== 'details') return;
+    const auto = defaultBookNewGigNameFromVenue(selectedVenue);
+    if (!auto) return;
+    setGigsByDate((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const iso of Object.keys(next)) {
+        const gig = next[iso];
+        if (!gig || String(gig.gigName ?? '').trim()) continue;
+        next[iso] = { ...gig, gigName: auto };
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [addGigsMode, step, selectedVenue?.venueId, selectedVenue?.name]);
 
   const removeDate = (iso) => {
     setSelectedDates((prev) => prev.filter((d) => d !== iso));
@@ -920,7 +1166,7 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
   };
 
   const handleSubmitClick = () => {
-    if (initialDateIso && venues.length > 0 && !venueId) {
+    if (venues.length > 0 && !venueId) {
       toast.error('Please select a venue.');
       return;
     }
@@ -929,11 +1175,57 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
       return;
     }
     if (!canSubmit) {
+      if (addGigsMode === 'bookNew') {
+        const firstInvalidIso = sortedDates.find(
+          (iso) => !isBookNewGigComplete(gigsByDate[iso] || defaultGigForDate())
+        );
+        if (firstInvalidIso) {
+          setActiveTab(firstInvalidIso);
+          const gig = gigsByDate[firstInvalidIso] || defaultGigForDate();
+          const tv = validateBookNewTimings(gig);
+          if (!tv.ok) {
+            setBookNewTimingError(tv.message);
+            toast.error(tv.message);
+            return;
+          }
+          if (!gig.paymentModel || (gig.paymentModel !== 'no_fee' && !hasPositiveBudgetValue(gig.unifiedFeeAmount))) {
+            toast.error('Choose a payment model and enter a valid fee where required.');
+            return;
+          }
+          if (!gig.ticketingModel) {
+            toast.error('Select who handles ticketing.');
+            return;
+          }
+        }
+        return;
+      }
       const firstInvalidIso = sortedDates.find(
         (iso) => !isGigValidWithMode(gigsByDate[iso] || defaultGigForDate())
       );
       if (firstInvalidIso) {
         const gig = gigsByDate[firstInvalidIso] || defaultGigForDate();
+        if (addGigsMode === 'addExisting') {
+          setActiveTab(firstInvalidIso);
+          const tv = validateBookNewTimings(gig);
+          if (!tv.ok) {
+            setBookNewTimingError(tv.message);
+            toast.error(tv.message);
+            return;
+          }
+          if (!gig.paymentModel || (gig.paymentModel !== 'no_fee' && !hasPositiveBudgetValue(gig.unifiedFeeAmount))) {
+            toast.error('Choose a payment model and enter a valid fee where required.');
+            return;
+          }
+          if (!gig.ticketingModel) {
+            toast.error('Select who handles ticketing.');
+            return;
+          }
+          if (!String(getArtistNamesForSlots(gig, 1)[0] ?? '').trim()) {
+            toast.error('Enter who you have booked.');
+            return;
+          }
+          return;
+        }
         const missing = getFirstMissingFieldWithMode(gig);
         setActiveTab(firstInvalidIso);
         setFocusInvalidField(missing);
@@ -1063,6 +1355,210 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
 
       for (const dateIso of sortedDates) {
         const gig = gigsByDate[dateIso] || defaultGigForDate();
+
+        if (addGigsMode === 'bookNew') {
+          const venue = selectedVenue;
+          const extraInformation = String(gig.extraInformation ?? '').trim() || undefined;
+          const eventTimings = buildEventTimingsForStorage(gig);
+          const listingDocs = normalizeListingDocumentsForApi(gig.listingDocEntries);
+          const ticketingResponsibility = gig.ticketingModel;
+          const privateListing = !gig.showOnVenueProfile;
+          const capacityFromFormBn = parseInt(String(gig.rentalCapacity ?? '').replace(/[^\d]/g, ''), 10);
+          const capacityFromVenueBn = parseInt(String(selectedVenue?.capacity ?? '').replace(/[^\d]/g, ''), 10);
+          const capacityNumBn = Number.isFinite(capacityFromFormBn) && capacityFromFormBn > 0
+            ? capacityFromFormBn
+            : (Number.isFinite(capacityFromVenueBn) && capacityFromVenueBn > 0 ? capacityFromVenueBn : undefined);
+          const kindBn = gig.kind || 'Live Music';
+          const gigTypeBn = gig.gigType || 'Musician/Band';
+
+          if (gig.paymentModel === 'artist_pays_venue') {
+            const rentalStart = pickRentalStart(gig);
+            const rentalEnd = pickRentalEnd(gig);
+            const startDateTime = getStartDateTime(dateIso, rentalStart);
+            const feeValueBn = getBudgetValue(gig.unifiedFeeAmount ?? '£');
+            const feeTextBn = formatPounds(feeValueBn);
+            const hireTitle = String(gig.gigName ?? '').trim() || (venue ? `${venue.name} For Hire` : 'Venue hire');
+            hireOpportunities.push({
+              venueId,
+              createdByUserId: user?.uid ?? '',
+              date: startDateTime,
+              startDateTime,
+              startTime: rentalStart,
+              endTime: rentalEnd,
+              accessFrom: rentalStart || null,
+              curfew: rentalEnd || null,
+              hireFee: feeTextBn,
+              ...(capacityNumBn != null && { capacity: capacityNumBn }),
+              depositRequired: false,
+              depositAmount: null,
+              documents: [],
+              notesInternal: '',
+              status: 'available',
+              hirerType: 'none',
+              hirerName: null,
+              performers: [],
+              private: privateListing,
+              ticketingResponsibility,
+              listingDocuments: listingDocs,
+              eventTimings,
+              gigName: hireTitle,
+              kind: kindBn,
+              gigType: gigTypeBn,
+              extraInformation,
+            });
+          } else {
+            const startTimeBn = pickArtistPerformanceStart(gig);
+            const endTimeBn = pickArtistPerformanceEnd(gig);
+            const durationBn = diffMinutesEndAfterStart(startTimeBn, endTimeBn);
+            const slotGigId = uuidv4();
+            const slotPayTypeBn = gig.paymentModel === 'no_fee' ? 'no_payment' : 'flat_fee';
+            const feeValueBn = slotPayTypeBn === 'flat_fee' ? getBudgetValue(gig.unifiedFeeAmount ?? '£') : 0;
+            const slotBudgetTextBn = formatPounds(feeValueBn);
+            const startDateTimeBn = getStartDateTime(dateIso, startTimeBn);
+            const loadInBn = String(gig.timingAccessTime || '').trim()
+              ? gig.timingAccessTime.trim()
+              : undefined;
+            const soundCheckBn = String(gig.timingSoundcheckTime || '').trim()
+              ? gig.timingSoundcheckTime.trim()
+              : undefined;
+            const artistTitle = String(gig.gigName ?? '').trim() || (venue ? `Gig at ${venue.name}` : 'Gig');
+            gigDocuments.push({
+              gigId: slotGigId,
+              venueId,
+              date: startDateTimeBn,
+              startDateTime: startDateTimeBn,
+              startTime: startTimeBn,
+              duration: durationBn,
+              bookingMode: 'artist',
+              ...(geopoint && { geopoint }),
+              ...(loadInBn && { loadInTime: loadInBn }),
+              ...(soundCheckBn && { soundCheckTime: soundCheckBn }),
+              ...(extraInformation && { extraInformation }),
+              private: privateListing,
+              createdAt: new Date(),
+              status: 'open',
+              complete: true,
+              gigName: artistTitle,
+              kind: kindBn,
+              gigType: gigTypeBn,
+              genre: '',
+              technicalInformation: extraInformation || '',
+              createdBy: user?.uid ?? '',
+              accountName: user?.name ?? '',
+              budget: slotBudgetTextBn,
+              budgetValue: feeValueBn,
+              applicants: [],
+              ticketingResponsibility,
+              eventTimings,
+              listingDocuments: listingDocs,
+              ...(capacityNumBn != null && { capacity: capacityNumBn }),
+            });
+          }
+          continue;
+        }
+
+        if (addGigsMode === 'addExisting') {
+          const venue = selectedVenue;
+          const bookedName = String(getArtistNamesForSlots(gig, 1)[0] ?? '').trim();
+          const extraInformation = String(gig.extraInformation ?? '').trim() || undefined;
+          const eventTimings = buildEventTimingsForStorage(gig);
+          const listingDocs = normalizeListingDocumentsForApi(gig.listingDocEntries);
+          const ticketingResponsibility = gig.ticketingModel;
+          const capacityFromFormBn = parseInt(String(gig.rentalCapacity ?? '').replace(/[^\d]/g, ''), 10);
+          const capacityFromVenueBn = parseInt(String(selectedVenue?.capacity ?? '').replace(/[^\d]/g, ''), 10);
+          const capacityNumBn = Number.isFinite(capacityFromFormBn) && capacityFromFormBn > 0
+            ? capacityFromFormBn
+            : (Number.isFinite(capacityFromVenueBn) && capacityFromVenueBn > 0 ? capacityFromVenueBn : undefined);
+          const kindBn = gig.kind || 'Live Music';
+          const gigTypeBn = gig.gigType || 'Musician/Band';
+
+          if (gig.paymentModel === 'artist_pays_venue') {
+            const rentalStart = pickRentalStart(gig);
+            const rentalEnd = pickRentalEnd(gig);
+            const startDateTime = getStartDateTime(dateIso, rentalStart);
+            const feeValueBn = getBudgetValue(gig.unifiedFeeAmount ?? '£');
+            const feeTextBn = formatPounds(feeValueBn);
+            const hireTitle = String(gig.gigName ?? '').trim() || (venue ? `${venue.name} For Hire` : 'Venue hire');
+            hireOpportunities.push({
+              venueId,
+              createdByUserId: user?.uid ?? '',
+              date: startDateTime,
+              startDateTime,
+              startTime: rentalStart,
+              endTime: rentalEnd,
+              accessFrom: rentalStart || null,
+              curfew: rentalEnd || null,
+              hireFee: feeTextBn,
+              ...(capacityNumBn != null && { capacity: capacityNumBn }),
+              depositRequired: false,
+              depositAmount: null,
+              documents: [],
+              notesInternal: '',
+              status: 'confirmed',
+              hirerType: bookedName ? 'manual' : 'none',
+              hirerName: bookedName || null,
+              performers: [],
+              private: true,
+              ticketingResponsibility,
+              listingDocuments: listingDocs,
+              eventTimings,
+              gigName: hireTitle,
+              kind: kindBn,
+              gigType: gigTypeBn,
+              extraInformation,
+            });
+          } else {
+            const startTimeBn = pickArtistPerformanceStart(gig);
+            const endTimeBn = pickArtistPerformanceEnd(gig);
+            const durationBn = diffMinutesEndAfterStart(startTimeBn, endTimeBn);
+            const slotGigId = uuidv4();
+            const slotPayTypeBn = gig.paymentModel === 'no_fee' ? 'no_payment' : 'flat_fee';
+            const feeValueBn = slotPayTypeBn === 'flat_fee' ? getBudgetValue(gig.unifiedFeeAmount ?? '£') : 0;
+            const slotBudgetTextBn = formatPounds(feeValueBn);
+            const startDateTimeBn = getStartDateTime(dateIso, startTimeBn);
+            const loadInBn = String(gig.timingAccessTime || '').trim()
+              ? gig.timingAccessTime.trim()
+              : undefined;
+            const soundCheckBn = String(gig.timingSoundcheckTime || '').trim()
+              ? gig.timingSoundcheckTime.trim()
+              : undefined;
+            const artistTitle = String(gig.gigName ?? '').trim() || (venue ? `Gig at ${venue.name}` : 'Gig');
+            const applicantsBn = bookedName ? [{ status: 'confirmed', name: bookedName }] : [];
+            gigDocuments.push({
+              gigId: slotGigId,
+              venueId,
+              date: startDateTimeBn,
+              startDateTime: startDateTimeBn,
+              startTime: startTimeBn,
+              duration: durationBn,
+              bookingMode: 'artist',
+              ...(geopoint && { geopoint }),
+              ...(loadInBn && { loadInTime: loadInBn }),
+              ...(soundCheckBn && { soundCheckTime: soundCheckBn }),
+              ...(extraInformation && { extraInformation }),
+              private: true,
+              createdAt: new Date(),
+              status: 'open',
+              complete: true,
+              gigName: artistTitle,
+              kind: kindBn,
+              gigType: gigTypeBn,
+              genre: '',
+              technicalInformation: extraInformation || '',
+              createdBy: user?.uid ?? '',
+              accountName: user?.name ?? '',
+              budget: slotBudgetTextBn,
+              budgetValue: feeValueBn,
+              applicants: applicantsBn,
+              ticketingResponsibility,
+              eventTimings,
+              listingDocuments: listingDocs,
+              ...(capacityNumBn != null && { capacity: capacityNumBn }),
+            });
+          }
+          continue;
+        }
+
         const bookingMode = gig.bookingMode === 'rental' ? 'rental' : 'artist';
         const venue = selectedVenue;
         const baseGigName = String(gig.gigName ?? '').trim() || (venue ? (bookingMode === 'rental' ? `${venue.name} For Hire` : `Gig at ${venue.name}`) : 'Gig');
@@ -1321,6 +1817,9 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
   const isGigValidWithMode = (gig) => {
     const g = gig || defaultGigForDate();
     if (!addGigsMode) return isGigValid(g);
+    if (addGigsMode === 'addExisting') {
+      return isAddExistingArtistWizardComplete(g);
+    }
     if (g.bookingMode === 'rental') {
       const effectiveRental = addGigsMode === 'bookNew' ? 'available' : 'confirmed_renter';
       const virtualRental = {
@@ -1352,6 +1851,9 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
   const getFirstMissingFieldWithMode = (gig) => {
     const g = gig || defaultGigForDate();
     if (!addGigsMode) return getFirstMissingField(g);
+    if (addGigsMode === 'addExisting') {
+      return null;
+    }
     if (g.bookingMode === 'rental') {
       const virtual = {
         ...g,
@@ -1375,12 +1877,22 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
 
   const canSubmit =
     sortedDates.length > 0 &&
-    sortedDates.every((iso) => isGigValidWithMode(gigsByDate[iso] || defaultGigForDate()));
+    sortedDates.every((iso) => {
+      const g = gigsByDate[iso] || defaultGigForDate();
+      if (addGigsMode === 'bookNew') return isBookNewGigComplete(g);
+      return isGigValidWithMode(g);
+    });
 
   const isMultipleGigs = sortedDates.length > 1;
 
   const submitButtonLabel = useMemo(() => {
+    if (addGigsMode === 'bookNew') {
+      return isMultipleGigs ? 'Create events' : 'Create event';
+    }
     if (!activeTab) return isMultipleGigs ? 'Add/Book Gigs' : 'Add/Book a Gig';
+    if (addGigsMode === 'addExisting') {
+      return isMultipleGigs ? 'Add Gigs' : 'Add Gig';
+    }
     if (!isMultipleGigs && currentBookingMode === 'rental') return isEditMode ? 'Update Gig' : (addGigsMode === 'addExisting' ? 'Add Gig' : 'List Gig');
     if (isMultipleGigs && !canSubmit) return 'Next Gig';
     const gig = gigsByDate[activeTab] || defaultGigForDate();
@@ -1394,7 +1906,9 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
   }, [activeTab, gigsByDate, isMultipleGigs, currentBookingMode, canSubmit, isEditMode, addGigsMode]);
 
   const submitButtonBusyLabel = useMemo(() => {
+    if (addGigsMode === 'bookNew') return 'Creating…';
     if (!activeTab) return 'Adding…';
+    if (addGigsMode === 'addExisting') return 'Adding…';
     if (currentBookingMode === 'rental') return isEditMode ? 'Updating…' : (addGigsMode === 'addExisting' ? 'Adding…' : 'Listing…');
     const gig = gigsByDate[activeTab] || defaultGigForDate();
     const slotCount = 1 + (gig.extraSlots?.length || 0);
@@ -1403,17 +1917,145 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
     return anyConfirmed ? 'Adding…' : 'Booking…';
   }, [activeTab, gigsByDate, isMultipleGigs, currentBookingMode, isEditMode, addGigsMode]);
 
+  const applyBookNewTemplateToDates = (template, dateIsos, templateApplyMode = 'bookNew') => {
+    if (!template || !Array.isArray(dateIsos)) return;
+    const applyFn = templateApplyMode === 'addExisting' ? applyBookNewTemplateToGigAddExisting : applyBookNewTemplateToGig;
+    setGigsByDate((prev) => {
+      const next = { ...prev };
+      for (const iso of dateIsos) {
+        if (!iso) continue;
+        const g = next[iso] || defaultGigForDate();
+        next[iso] = applyFn(g, template);
+      }
+      return next;
+    });
+    setBookNewTimingError(null);
+    setBookNewTemplateAppliedInSession(true);
+  };
+
+  const bookNewTemplateApplyMode = addGigsMode === 'addExisting' ? 'addExisting' : 'bookNew';
+
+  const handleSaveBookNewTemplate = async () => {
+    const name = templateSaveNameInput.trim();
+    if (!name || !venueId || !activeTab || addGigsMode !== 'bookNew') return;
+    if (templateNameExistsForVenue(templates, venueId, name, null)) {
+      toast.error('A template with this name already exists for this venue.');
+      return;
+    }
+    const gig = gigsByDate[activeTab];
+    if (!gig) return;
+    setSavingBookNewTemplate(true);
+    try {
+      const templateId = uuidv4();
+      const payload = buildBookNewTemplatePayload(gig, venueId, templateId, name);
+      await saveGigTemplate({ templateData: payload });
+      await refreshTemplates?.();
+      toast.success('Template saved');
+      setShowSaveBookNewTemplateModal(false);
+      setTemplateSaveNameInput('');
+    } catch (err) {
+      if (err.status === 409) {
+        toast.error(err.payload?.message || err.message || 'A template with this name already exists.');
+      } else {
+        toast.error('Failed to save template');
+      }
+    } finally {
+      setSavingBookNewTemplate(false);
+    }
+  };
+
+  const handleUseBookNewTemplateClick = (template) => {
+    if (!template) return;
+    if (sortedDates.length > 1) {
+      setShowUseBookNewTemplateModal(false);
+      setPendingApplyBookNewTemplate(template);
+      setShowApplyBookNewTemplateScopeModal(true);
+    } else {
+      applyBookNewTemplateToDates(template, sortedDates, bookNewTemplateApplyMode);
+      toast.success('Template applied');
+      setShowUseBookNewTemplateModal(false);
+    }
+  };
+
+  const handleConfirmApplyBookNewTemplateScope = (allDates) => {
+    const tpl = pendingApplyBookNewTemplate;
+    if (!tpl) return;
+    const isos = allDates ? sortedDates : (activeTab ? [activeTab] : []);
+    applyBookNewTemplateToDates(tpl, isos, bookNewTemplateApplyMode);
+    toast.success(allDates ? 'Template applied to all dates' : 'Template applied');
+    setShowApplyBookNewTemplateScopeModal(false);
+    setPendingApplyBookNewTemplate(null);
+  };
+
+  const previewOpen = showBookNewListingPreview && addGigsMode === 'bookNew' && step === 'details' && !!activeTab;
+
   return (
     <Portal>
-      <div className="modal add-gigs-modal" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="add-gigs-title">
-        <div className="modal-content add-gigs-modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className={`modal add-gigs-modal${previewOpen ? ' add-gigs-modal--with-listing-preview' : ''}`}
+        onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-gigs-title"
+      >
+        <div
+          className={`add-gigs-modal-layout-row${previewOpen ? ' add-gigs-modal-layout-row--split' : ''}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+        <div className="modal-content add-gigs-modal-content">
           <div className="add-gigs-modal-header">
-            <div className="add-gigs-modal-title-wrap">
-              <h2 id="add-gigs-title" className="add-gigs-modal-title">{isEditMode ? 'Edit Event' : 'Create event'}</h2>
+            <div className="add-gigs-modal-header-top">
+              <div className="add-gigs-modal-title-wrap">
+                <h2 id="add-gigs-title" className="add-gigs-modal-title">
+                  {isEditMode ? 'Edit Event' : isMultipleGigs ? 'Create Events' : 'Create event'}
+                </h2>
+              </div>
+              <button type="button" className="btn close tertiary" onClick={onClose}>
+                Close <span aria-hidden="true">×</span>
+              </button>
             </div>
-            <button type="button" className="btn close tertiary" onClick={onClose}>
-              Close
-            </button>
+            {step === 'details' && !isEditManuallyConfirmed && sortedDates.length >= 2 && (
+              <div className="add-gigs-modal-header-tabs-row">
+                <div className="add-gigs-tabs add-gigs-modal-header-date-tabs">
+                  {sortedDates.map((iso) => {
+                    const g = gigsByDate[iso] || defaultGigForDate();
+                    const gigValid = addGigsMode === 'bookNew'
+                      ? isBookNewGigComplete(g)
+                      : isGigValidWithMode(g);
+                    return (
+                      <div
+                        key={iso}
+                        className={`add-gigs-tab ${activeTab === iso ? 'add-gigs-tab--active' : ''} ${gigValid ? 'add-gigs-tab--complete' : ''}`}
+                      >
+                        <button type="button" className="add-gigs-tab-btn" onClick={() => setActiveTab(iso)}>
+                          {gigValid && <TickIcon />}
+                          {formatTabDate(iso)}
+                        </button>
+                        <button
+                          type="button"
+                          className="add-gigs-tab-remove"
+                          onClick={() => removeDate(iso)}
+                          aria-label={`Remove date ${formatTabDate(iso)}`}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {sortedDates.length >= 2 && addGigsMode !== 'bookNew' && (addGigsMode === 'addExisting' || currentBookingMode) && (
+                  <div className="add-gigs-apply-all-wrap add-gigs-apply-all-wrap--in-modal-header">
+                    <button
+                      type="button"
+                      className="btn tertiary add-gigs-apply-all-btn add-gigs-apply-all-btn--inline"
+                      onClick={applyGigSettingsToAll}
+                    >
+                      Apply gig settings to all
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className={`add-gigs-modal-body ${isEditManuallyConfirmed ? 'add-gigs-modal-body--edit-confirmed' : ''}`.trim()} ref={modalBodyRef}>
           {step === 'dates' && (
@@ -1421,7 +2063,12 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
               {venues.length > 1 && (
                 <div className="add-gigs-field">
                   <label>Venue</label>
-                  <select className="select add-gigs-filter-select add-gigs-venue-select" value={venueId} onChange={(e) => setVenueId(e.target.value)}>
+                  <select
+                    className="select add-gigs-filter-select add-gigs-venue-select"
+                    value={venueId}
+                    onChange={(e) => setVenueId(e.target.value)}
+                    disabled={!!bookNewTemplateToApply && addGigsMode === 'bookNew'}
+                  >
                     {venues.map((v) => (
                       <option key={v.venueId} value={v.venueId}>{v.name}</option>
                     ))}
@@ -1468,31 +2115,39 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
 
           {step === 'details' && (
             <div className="add-gigs-details-step">
-              {!isEditManuallyConfirmed && (
+              {!isEditManuallyConfirmed && activeTab && (
               <div className="add-gigs-sticky-date-bar">
                 <div className="add-gigs-sticky-date-bar-inner">
-                  {sortedDates.length === 1 ? (
-                    <div className="add-gigs-date-venue-row">
-                      <div className="add-gigs-field add-gigs-date-field">
-                        <label>Date</label>
-                        <div className="add-gigs-date-row">
-                          <span className="add-gigs-date-value">{formatDisplayDate(activeTab)}</span>
-                          <button
-                            type="button"
-                            className="btn icon tertiary add-gigs-date-picker-btn"
-                            onClick={() => setStep('dates')}
-                            aria-label="Pick a different date"
-                          >
-                            <CalendarIconSolid />
-                          </button>
-                        </div>
-                      </div>
-                      {initialDateIso && venues.length > 0 && (
-                        <div className="add-gigs-field add-gigs-venue-field">
-                          <label htmlFor="add-gigs-venue-select-details">Venue</label>
+                  <div
+                    className={`add-gigs-date-venue-header-row${
+                      venues.length > 0 ? ' add-gigs-date-venue-header-row--two-cols' : ''
+                    }`}
+                  >
+                    <div className="add-gigs-field add-gigs-header-field-pill">
+                      <label className="add-gigs-header-field-label" htmlFor={`add-gigs-header-date-${activeTab}`}>Date</label>
+                      <button
+                        id={`add-gigs-header-date-${activeTab}`}
+                        type="button"
+                        className="add-gigs-header-pill add-gigs-header-pill--date"
+                        onClick={() => setStep('dates')}
+                        aria-label="Change date"
+                      >
+                        <span className="add-gigs-header-pill-icon" aria-hidden="true">
+                          <CalendarIconSolid />
+                        </span>
+                        <span className="add-gigs-header-pill-value">{formatHeaderDisplayDate(activeTab)}</span>
+                      </button>
+                    </div>
+                    {venues.length > 0 && (
+                      <div className="add-gigs-field add-gigs-header-field-pill">
+                        <label className="add-gigs-header-field-label" htmlFor="add-gigs-venue-select-details">Venue</label>
+                        <div className="add-gigs-header-pill add-gigs-header-pill--venue">
+                          <span className="add-gigs-header-pill-icon" aria-hidden="true">
+                            <LocationPinIcon />
+                          </span>
                           <select
                             id="add-gigs-venue-select-details"
-                            className="select add-gigs-filter-select add-gigs-venue-select"
+                            className="add-gigs-header-venue-select"
                             value={venueId}
                             onChange={(e) => setVenueId(e.target.value)}
                             required
@@ -1502,53 +2157,53 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                               <option key={v.venueId} value={v.venueId}>{v.name}</option>
                             ))}
                           </select>
+                          <span className="add-gigs-header-pill-chevron" aria-hidden="true">
+                            <DownChevronIcon />
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="add-gigs-tabs">
-                      {sortedDates.map((iso) => {
-                        const gigValid = isGigValid(gigsByDate[iso] || defaultGigForDate());
-                        return (
-                        <div
-                          key={iso}
-                          className={`add-gigs-tab ${activeTab === iso ? 'add-gigs-tab--active' : ''} ${gigValid ? 'add-gigs-tab--complete' : ''}`}
-                        >
-                          <button type="button" className="add-gigs-tab-btn" onClick={() => setActiveTab(iso)}>
-                            {gigValid && <TickIcon />}
-                            {formatTabDate(iso)}
-                          </button>
-                          <button
-                            type="button"
-                            className="add-gigs-tab-remove"
-                            onClick={() => removeDate(iso)}
-                            aria-label={`Remove date ${formatTabDate(iso)}`}
-                          >
-                            ×
-                          </button>
-                        </div>
-                        );
-                      })}
+                      </div>
+                    )}
+                  </div>
+                  {(addGigsMode === 'bookNew' || addGigsMode === 'addExisting') && venueId && bookNewTemplatesForVenue.length > 0 && (
+                    <div className="add-gigs-book-new-use-template-row">
+                      <button
+                        type="button"
+                        className={`btn tertiary add-gigs-book-new-use-template-btn${bookNewTemplateAppliedInSession ? ' add-gigs-book-new-use-template-btn--used' : ''}`}
+                        disabled={bookNewTemplateAppliedInSession}
+                        onClick={() => setShowUseBookNewTemplateModal(true)}
+                        aria-label={bookNewTemplateAppliedInSession ? 'Template used' : 'Use a Template'}
+                      >
+                        <SolidCalendarRotateFullIcon />
+                        <span>{bookNewTemplateAppliedInSession ? 'Template used' : 'Use a Template'}</span>
+                      </button>
                     </div>
                   )}
                 </div>
-                {sortedDates.length >= 2 && currentBookingMode && (
-                  <div className="add-gigs-apply-all-wrap">
-                    <button
-                      type="button"
-                      className="btn tertiary add-gigs-apply-all-btn add-gigs-apply-all-btn--inline"
-                      onClick={applyGigSettingsToAll}
-                    >
-                      Apply gig settings to all
-                    </button>
-                  </div>
-                )}
               </div>
               )}
 
               {activeTab && currentGig && (
                 <div className="add-gigs-panel">
-                  {!isEditManuallyConfirmed && (
+                  {addGigsMode === 'bookNew' && (
+                    <BookNewEventWizard
+                      variant="bookNew"
+                      activeTab={activeTab}
+                      currentGig={currentGig}
+                      selectedVenue={selectedVenue}
+                      patchGig={(updates) => updateGig(activeTab, updates)}
+                      bookNewTimingError={bookNewTimingError}
+                      onClearTimingError={() => setBookNewTimingError(null)}
+                      onOpenSaveTemplateModal={() => {
+                        setTemplateSaveNameInput('');
+                        setShowSaveBookNewTemplateModal(true);
+                      }}
+                      listingPreviewOpen={showBookNewListingPreview}
+                      onToggleListingPreview={() => setShowBookNewListingPreview((v) => !v)}
+                    />
+                  )}
+                  {addGigsMode !== 'bookNew' && (
+                  <>
+                  {!isEditManuallyConfirmed && addGigsMode !== 'addExisting' && (
                     <div className="add-gigs-booking-mode">
                       <button
                         type="button"
@@ -1569,7 +2224,19 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                     </div>
                   )}
 
-                  {currentBookingMode === 'artist' && (
+                  {addGigsMode === 'addExisting' && (
+                    <BookNewEventWizard
+                      variant="addExisting"
+                      showTemplateAndListingPreview={false}
+                      activeTab={activeTab}
+                      currentGig={currentGig}
+                      selectedVenue={selectedVenue}
+                      patchGig={(updates) => updateGig(activeTab, updates)}
+                      bookNewTimingError={bookNewTimingError}
+                      onClearTimingError={() => setBookNewTimingError(null)}
+                    />
+                  )}
+                  {currentBookingMode === 'artist' && addGigsMode !== 'addExisting' && (
                     <>
                   <div className="add-gigs-field add-gigs-artist-count">
                     <label className="label add-gigs-section-heading">Number of artist slots</label>
@@ -1894,7 +2561,7 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                   </>
                   )}
 
-                  {currentBookingMode === 'rental' && (
+                  {currentBookingMode === 'rental' && addGigsMode !== 'addExisting' && (
                     <div className="add-gigs-rental-panel">
                       <div className="add-gigs-field add-gigs-booker-times-row add-gigs-rental-top-row">
                         {!isEditManuallyConfirmed && displayRentalStatus === 'confirmed_renter' && (
@@ -1955,66 +2622,7 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                             </div>
                           </div>
                         )}
-                        {!isEditManuallyConfirmed && addGigsMode === 'addExisting' && currentBookingMode === 'rental' && (
-                          <div className="add-gigs-field add-gigs-rental-fee-deposit-row add-gigs-rental-second-row">
-                            <div className="add-gigs-booker-times-col add-gigs-hire-fee-col">
-                              <label className="label add-gigs-section-heading">Hire fee</label>
-                              <div className="add-gigs-rental-price-row">
-                                <div className="add-gigs-slot-payment-row add-gigs-rental-price-input">
-                                  <input
-                                    type="text"
-                                    className="input"
-                                    placeholder="£"
-                                    value={currentGig?.rentalFee ?? '£'}
-                                    onChange={(e) => updateGig(activeTab, { rentalFee: formatPoundsInput(e.target.value) })}
-                                    autoComplete="off"
-                                  />
-                                </div>
-                                <button
-                                  type="button"
-                                  className="btn tertiary add-gigs-free-price-btn"
-                                  onClick={() => updateGig(activeTab, { rentalFee: formatPoundsInput('0') })}
-                                >
-                                  Free
-                                </button>
-                              </div>
-                            </div>
-                            <div className="add-gigs-booker-times-col add-gigs-deposit-col">
-                              <label className="label add-gigs-section-heading">Deposit required</label>
-                              <div className="add-gigs-deposit-controls">
-                                <div className="add-gigs-deposit-options">
-                                  <button
-                                    type="button"
-                                    className={`btn tertiary add-gigs-deposit-option-btn ${(currentGig?.rentalDepositRequired ?? false) === true ? 'add-gigs-deposit-option-btn--selected' : ''}`}
-                                    onClick={() => updateGig(activeTab, { rentalDepositRequired: true })}
-                                  >
-                                    Yes
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={`btn tertiary add-gigs-deposit-option-btn ${(currentGig?.rentalDepositRequired ?? false) === false ? 'add-gigs-deposit-option-btn--selected' : ''}`}
-                                    onClick={() => updateGig(activeTab, { rentalDepositRequired: false })}
-                                  >
-                                    No
-                                  </button>
-                                </div>
-                                {currentGig?.rentalDepositRequired && (
-                                  <div className={`add-gigs-deposit-amount-wrap ${invalidFieldHighlightTab === activeTab && invalidFieldHighlight === 'rentalDepositAmount' ? 'add-gigs-field--invalid' : ''}`}>
-                                    <input
-                                      type="text"
-                                      className="input add-gigs-deposit-amount-input"
-                                      placeholder="£"
-                                      value={currentGig?.rentalDepositAmount ?? '£'}
-                                      onChange={(e) => updateGig(activeTab, { rentalDepositAmount: formatPoundsInput(e.target.value) })}
-                                      autoComplete="off"
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        {!isEditManuallyConfirmed && addGigsMode !== 'addExisting' && currentBookingMode === 'rental' && (
+                        {!isEditManuallyConfirmed && currentBookingMode === 'rental' && (
                           <div className="add-gigs-rental-fee-deposit-row">
                             <div className="add-gigs-booker-times-col add-gigs-hire-fee-col">
                               <label className="label add-gigs-section-heading">Hire fee</label>
@@ -2100,7 +2708,7 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                       </div>
                     </div>
                   )}
-                  {currentBookingMode && (
+                  {currentBookingMode && addGigsMode !== 'addExisting' && (
                     <div className="add-gigs-more-details">
                       <div className="add-gigs-more-details-divider" />
                       <button
@@ -2117,7 +2725,7 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                         <div className="add-gigs-extra-timings">
                           {addGigsMode !== 'addExisting' && (
                             <div className="add-gigs-field add-gigs-field--full">
-                              <label className="label add-gigs-more-details-field-label">Event name</label>
+                              <label className="label add-gigs-more-details-field-label">Gig listing title</label>
                               <input
                                 type="text"
                                 className="input add-gigs-input-no-border"
@@ -2226,28 +2834,54 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
                       )}
                     </div>
                   )}
+                  </>
+                  )}
                 </div>
               )}
             </div>
           )}
           </div>
 
-          <div className={`add-gigs-actions add-gigs-actions--footer ${modalHasScroll ? 'add-gigs-actions--footer--shadow' : ''}`}>
+          <div
+            className={`add-gigs-actions add-gigs-actions--footer ${modalHasScroll ? 'add-gigs-actions--footer--shadow' : ''}`}
+          >
             {step === 'details' ? (
               <>
-                {!initialDateIso && (
-                  <button type="button" className="btn tertiary" onClick={() => setStep('dates')}>
-                    Back
-                  </button>
+                {addGigsMode === 'bookNew' ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn tertiary"
+                      onClick={() => setStep('dates')}
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={handleSubmitClick}
+                      disabled={submitting}
+                    >
+                      {submitting ? submitButtonBusyLabel : submitButtonLabel}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {!initialDateIso && (
+                      <button type="button" className="btn tertiary" onClick={() => setStep('dates')}>
+                        Back
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={handleSubmitClick}
+                      disabled={submitting}
+                    >
+                      {submitting ? submitButtonBusyLabel : submitButtonLabel}
+                    </button>
+                  </>
                 )}
-                <button
-                  type="button"
-                  className="btn primary"
-                  onClick={handleSubmitClick}
-                  disabled={submitting}
-                >
-                  {submitting ? submitButtonBusyLabel : submitButtonLabel}
-                </button>
               </>
             ) : (
               <button
@@ -2260,9 +2894,169 @@ export function AddGigsModal({ onClose, venues = [], user, refreshGigs, initialD
               </button>
             )}
           </div>
-        
+        </div>
+        {previewOpen && (
+          <BookNewEventListingPreview
+            gig={gigsByDate[activeTab] || defaultGigForDate()}
+            venue={selectedVenue}
+            dateIso={activeTab}
+            onClose={() => setShowBookNewListingPreview(false)}
+          />
+        )}
+        </div>
       </div>
-      </div>
+
+      {showSaveBookNewTemplateModal && addGigsMode === 'bookNew' && (
+        <div
+          className="add-gigs-submodal-overlay"
+          onClick={() => !savingBookNewTemplate && setShowSaveBookNewTemplateModal(false)}
+          role="presentation"
+        >
+          <div
+            className="add-gigs-submodal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="add-gigs-save-template-title"
+          >
+            <h3 id="add-gigs-save-template-title" className="add-gigs-submodal-title">
+              Save as template
+            </h3>
+            <div className="add-gigs-field">
+              <label className="label" htmlFor="add-gigs-book-new-template-name">
+                Template name
+              </label>
+              <input
+                id="add-gigs-book-new-template-name"
+                type="text"
+                className="input"
+                value={templateSaveNameInput}
+                onChange={(e) => setTemplateSaveNameInput(e.target.value)}
+                placeholder="e.g. Friday jazz night"
+                disabled={savingBookNewTemplate}
+                maxLength={120}
+                autoComplete="off"
+              />
+            </div>
+            <div className="add-gigs-submodal-actions">
+              <button
+                type="button"
+                className="btn tertiary"
+                disabled={savingBookNewTemplate}
+                onClick={() => setShowSaveBookNewTemplateModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={savingBookNewTemplate || !templateSaveNameInput.trim()}
+                onClick={handleSaveBookNewTemplate}
+              >
+                {savingBookNewTemplate ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUseBookNewTemplateModal && (addGigsMode === 'bookNew' || addGigsMode === 'addExisting') && (
+        <div
+          className="add-gigs-submodal-overlay"
+          onClick={() => setShowUseBookNewTemplateModal(false)}
+          role="presentation"
+        >
+          <div
+            className="add-gigs-submodal add-gigs-submodal--wide"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="add-gigs-use-template-title"
+          >
+            <div className="add-gigs-submodal-header">
+              <h3 id="add-gigs-use-template-title" className="add-gigs-submodal-title">
+                Use a Template
+              </h3>
+              <button
+                type="button"
+                className="btn tertiary add-gigs-submodal-close"
+                onClick={() => setShowUseBookNewTemplateModal(false)}
+              >
+                Close <span aria-hidden="true">×</span>
+              </button>
+            </div>
+            <ul className="add-gigs-book-new-template-pill-list">
+              {bookNewTemplatesForVenue.map((t) => {
+                const tid = templateDocId(t);
+                const displayName = t.templateName || 'Untitled';
+                return (
+                  <li key={tid} className="add-gigs-book-new-template-pill-item">
+                    <button
+                      type="button"
+                      className="add-gigs-book-new-template-pill"
+                      onClick={() => handleUseBookNewTemplateClick(t)}
+                      aria-label={`Use a Template: ${displayName}`}
+                      title={`Use “${displayName}”`}
+                    >
+                      <span className="add-gigs-book-new-template-pill-label">{displayName}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {showApplyBookNewTemplateScopeModal && pendingApplyBookNewTemplate && (
+        <div
+          className="add-gigs-submodal-overlay"
+          onClick={() => {
+            setShowApplyBookNewTemplateScopeModal(false);
+            setPendingApplyBookNewTemplate(null);
+          }}
+          role="presentation"
+        >
+          <div
+            className="add-gigs-submodal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="add-gigs-apply-template-scope-title"
+          >
+            <h3 id="add-gigs-apply-template-scope-title" className="add-gigs-submodal-title">
+              Apply template
+            </h3>
+            <p className="add-gigs-submodal-hint">
+              Apply &ldquo;{pendingApplyBookNewTemplate.templateName || 'Untitled'}&rdquo; to which dates?
+            </p>
+            <div className="add-gigs-submodal-actions add-gigs-submodal-actions--stack">
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => handleConfirmApplyBookNewTemplateScope(false)}
+              >
+                This date only ({activeTab ? formatTabDate(activeTab) : ''})
+              </button>
+              <button
+                type="button"
+                className="btn tertiary"
+                onClick={() => handleConfirmApplyBookNewTemplateScope(true)}
+              >
+                All dates ({sortedDates.length})
+              </button>
+              <button
+                type="button"
+                className="btn tertiary"
+                onClick={() => {
+                  setShowApplyBookNewTemplateScopeModal(false);
+                  setPendingApplyBookNewTemplate(null);
+                  setShowUseBookNewTemplateModal(true);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Portal>
   );
 }

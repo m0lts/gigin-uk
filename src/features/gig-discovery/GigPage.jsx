@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo, Fragment } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
@@ -66,6 +66,19 @@ function getGigCapacityDisplay(slot, venue) {
   return s || null;
 }
 
+/** Venue T&Cs / house rules PDF URLs shown during apply flow (if present). */
+function getVenueApplicantDocuments(venue) {
+  const clean = (v) => {
+    if (v == null) return null;
+    const s = String(v).trim();
+    return s.length > 0 ? s : null;
+  };
+  return {
+    terms: clean(venue?.termsAndConditions),
+    houseRules: clean(venue?.houseRulesDocument),
+  };
+}
+
 export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
     const { gigId, hireId } = useParams();
     const navigate = useNavigate();
@@ -96,7 +109,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const [invitedToGig, setInvitedToGig] = useState(false);
     const [userAcceptedInvite, setUserAcceptedInvite] = useState(false);
     const [showCreateProfileModal, setShowCreateProfileModal] = useState(null);
-    const [showEquipmentCheckModal, setShowEquipmentCheckModal] = useState(false);
+    /** Apply flow: equipment → venue documents (if any) → message to venue */
+    const [applyWizardOpen, setApplyWizardOpen] = useState(false);
+    const [applyWizardStep, setApplyWizardStep] = useState(null); // 'equipment' | 'documents' | 'message'
+    const [applyWizardMessage, setApplyWizardMessage] = useState('');
+    const [applyWizardDocTermsAccepted, setApplyWizardDocTermsAccepted] = useState(false);
+    const [applyWizardDocHouseAccepted, setApplyWizardDocHouseAccepted] = useState(false);
+    const [applyWizardMessageShowError, setApplyWizardMessageShowError] = useState(false);
     const [equipmentCheckNote, setEquipmentCheckNote] = useState('');
     const [equipmentCheckHireChoices, setEquipmentCheckHireChoices] = useState({});
     const [gigSaved, setGigSaved] = useState(false);
@@ -476,7 +495,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 const normalized = {
                     gigId: hire.id,
                     venueId: hire.venueId,
-                    gigName: 'Venue hire',
+                    gigName: hire.gigName && String(hire.gigName).trim() ? hire.gigName : 'Venue hire',
                     startDateTime,
                     date: hire.date ?? hire.startDateTime,
                     startTime: hire.startTime ?? '',
@@ -489,8 +508,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                     private: !!hire.private,
                     status: 'open',
                     itemType: 'venue_hire',
-                    kind: 'Venue Rental',
+                    kind: hire.kind && String(hire.kind).trim() ? hire.kind : 'Venue Rental',
                     accountName: venue.name ?? 'Venue',
+                    ticketingResponsibility: hire.ticketingResponsibility,
+                    listingDocuments: hire.listingDocuments,
+                    eventTimings: hire.eventTimings,
+                    technicalInformation: hire.extraInformation && String(hire.extraInformation).trim() ? hire.extraInformation : '',
                 };
 
                 const rawArtistProfiles = Array.isArray(user?.artistProfiles) ? user.artistProfiles : [];
@@ -758,6 +781,15 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     };
 
+    const formatTicketingResponsibility = (v) => {
+        if (v === 'venue') return 'Venue handles ticketing';
+        if (v === 'artist') return 'Artist handles ticketing';
+        if (v === 'free_entry') return 'Free entry';
+        return '';
+    };
+
+    const eventTimings = currentSlot?.eventTimings;
+
     const calculateTime = (time, offset) => {
         const [hours, minutes] = time.split(':').map(Number);
         const totalMinutes = (hours * 60) + minutes + offset;
@@ -780,6 +812,47 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const getBaseGigName = (gigName) => {
         if (!gigName) return '';
         return gigName.replace(/\s*\(Set\s+\d+\)\s*$/, '');
+    };
+
+    const renderGigMetaPills = () => {
+        if (!gigData || !currentSlot) return null;
+        const ticketingLabel = formatTicketingResponsibility(gigData?.ticketingResponsibility);
+        const cap = getGigCapacityDisplay(currentSlot, venueProfile);
+
+        let paymentLabel = '';
+        if (currentSlot.itemType === 'venue_hire') {
+            const b = currentSlot.budget;
+            if (b === '£' || b === '£0' || b === 'Free') paymentLabel = 'Venue hire';
+            else paymentLabel = `${b} venue hire`;
+            if (currentSlot.depositAmount) {
+                paymentLabel = `${paymentLabel} · ${currentSlot.depositAmount} deposit`;
+            }
+        } else {
+            const b = currentSlot.budget;
+            if (b === '£' || b === '£0' || b === 'Free' || b == null || b === '') paymentLabel = 'No fee';
+            else paymentLabel = `${b} gig fee`;
+        }
+
+        return (
+            <ul className="gig-page-meta-pills" aria-label="Listing summary">
+                {ticketingLabel ? (
+                    <li className="gig-page-meta-pill">
+                        <span className="gig-page-meta-pill-icon" aria-hidden="true"><TicketIcon /></span>
+                        <span>{ticketingLabel}</span>
+                    </li>
+                ) : null}
+                {cap ? (
+                    <li className="gig-page-meta-pill">
+                        <span className="gig-page-meta-pill-icon" aria-hidden="true"><PeopleGroupIconSolid /></span>
+                        <span>{cap} capacity</span>
+                    </li>
+                ) : null}
+                <li className="gig-page-meta-pill">
+                    <span className="gig-page-meta-pill-icon" aria-hidden="true"><CoinsIconSolid /></span>
+                    <span>{paymentLabel}</span>
+                </li>
+            </ul>
+        );
     };
 
     const formatDuration = (duration) => {
@@ -849,11 +922,125 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         return !!artistProfilePerms['gigs.book'];
     })();
 
-    const handleGigApplication = async (applicationNote = '', applicationHireChoices = {}) => {
-        if (!canBookCurrentArtistProfile) {
-            return toast.error('You do not have permission to apply to gigs for this artist profile.');
+    const applicantDocs = useMemo(() => getVenueApplicantDocuments(venueProfile), [venueProfile]);
+    const needsEquipmentStep = Boolean(selectedProfile?.techRider && venueProfile?.techRider);
+    const needsDocumentsStep = Boolean(applicantDocs.terms || applicantDocs.houseRules);
+    const applyWizardStepList = useMemo(() => {
+        const steps = [];
+        if (needsEquipmentStep) steps.push('equipment');
+        if (needsDocumentsStep) steps.push('documents');
+        steps.push('message');
+        return steps;
+    }, [needsEquipmentStep, needsDocumentsStep]);
+    const applyWizardProgress = useMemo(() => {
+        if (!applyWizardStep) return { index: 0, total: applyWizardStepList.length };
+        const idx = applyWizardStepList.indexOf(applyWizardStep);
+        return { index: idx >= 0 ? idx + 1 : 0, total: applyWizardStepList.length };
+    }, [applyWizardStep, applyWizardStepList]);
+
+    const closeApplyWizard = () => {
+        setApplyWizardOpen(false);
+        setApplyWizardStep(null);
+        setApplyWizardMessage('');
+        setApplyWizardDocTermsAccepted(false);
+        setApplyWizardDocHouseAccepted(false);
+        setApplyWizardMessageShowError(false);
+        setEquipmentCheckNote('');
+        setEquipmentCheckHireChoices({});
+    };
+
+    const openApplyWizard = () => {
+        setApplyWizardMessage('');
+        setApplyWizardDocTermsAccepted(false);
+        setApplyWizardDocHouseAccepted(false);
+        setApplyWizardMessageShowError(false);
+        setEquipmentCheckNote('');
+        setEquipmentCheckHireChoices({});
+        if (needsEquipmentStep) {
+            setApplyWizardStep('equipment');
+        } else if (needsDocumentsStep) {
+            setApplyWizardStep('documents');
+        } else {
+            setApplyWizardStep('message');
         }
-        if (getLocalGigDateTime(gigData) < new Date()) return toast.error('Gig is in the past.');
+        setApplyWizardOpen(true);
+    };
+
+    const goBackApplyWizard = () => {
+        if (applyWizardStep === 'message') {
+            if (needsDocumentsStep) {
+                setApplyWizardStep('documents');
+                return;
+            }
+            if (needsEquipmentStep) {
+                setApplyWizardStep('equipment');
+                return;
+            }
+            closeApplyWizard();
+            return;
+        }
+        if (applyWizardStep === 'documents') {
+            if (needsEquipmentStep) {
+                setApplyWizardStep('equipment');
+                return;
+            }
+            closeApplyWizard();
+            return;
+        }
+        closeApplyWizard();
+    };
+
+    const handleEquipmentStepContinue = () => {
+        setApplyWizardDocTermsAccepted(false);
+        setApplyWizardDocHouseAccepted(false);
+        if (needsDocumentsStep) {
+            setApplyWizardStep('documents');
+        } else {
+            setApplyWizardStep('message');
+        }
+    };
+
+    const handleDocumentsStepContinue = () => {
+        if (applicantDocs.terms && !applyWizardDocTermsAccepted) {
+            toast.error('Please confirm you have read and accept the venue terms and conditions.');
+            return;
+        }
+        if (applicantDocs.houseRules && !applyWizardDocHouseAccepted) {
+            toast.error('Please confirm you have read and accept the house rules.');
+            return;
+        }
+        setApplyWizardStep('message');
+    };
+
+    const handleDocumentsStepDecline = () => {
+        closeApplyWizard();
+        toast.info('You need to accept the venue documents to apply.');
+    };
+
+    const handleApplyWizardSubmit = async () => {
+        const msg = applyWizardMessage.trim();
+        if (!msg) {
+            setApplyWizardMessageShowError(true);
+            toast.error('Please add a message to the venue.');
+            return;
+        }
+        setApplyWizardMessageShowError(false);
+        const ok = await handleGigApplication(equipmentCheckNote, equipmentCheckHireChoices, msg);
+        if (ok) {
+            closeApplyWizard();
+        }
+    };
+
+    const handleGigApplication = async (applicationNote = '', applicationHireChoices = {}, venueApplicationMessage = '') => {
+        const messageTrimmed = typeof venueApplicationMessage === 'string' ? venueApplicationMessage.trim() : '';
+        if (!canBookCurrentArtistProfile) {
+            toast.error('You do not have permission to apply to gigs for this artist profile.');
+            return false;
+        }
+        if (getLocalGigDateTime(gigData) < new Date()) {
+            toast.error('Gig is in the past.');
+            return false;
+        }
         const { valid, musicianProfile, modal, reason } = validateMusicianUser({
             user,
             setAuthModal,
@@ -870,9 +1057,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 toast.info('Complete your artist profile before applying for gigs.');
               }
             }
-            return;
+            return false;
           }
-          if (currentSlotStatus.applied) return;
+          if (currentSlotStatus.applied) return false;
           setApplyingToGig(true);
           try {
             const slotGigId = currentSlot.gigId;
@@ -882,22 +1069,36 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
               profileId: musicianProfile.id || musicianProfile.profileId || musicianProfile.musicianId,
             };
 
+            const buildHireApplicationText = () => {
+                const venueName = currentSlot?.venue?.venueName ?? venueProfile?.name ?? 'the venue';
+                const head = `${normalizedProfile.name} has applied to your venue hire on ${formatDate(currentSlot.startDateTime)} at ${venueName}`;
+                const parts = [head];
+                const setup = typeof applicationNote === 'string' ? applicationNote.trim() : '';
+                if (setup) {
+                    parts.push(`Equipment / setup: ${setup}`);
+                }
+                if (messageTrimmed) {
+                    parts.push(messageTrimmed);
+                }
+                return parts.join('\n\n');
+            };
+
             if (currentSlot.itemType === 'venue_hire') {
               // Hire: create conversation + message only (no applyToGig, no artist gig applications)
               const gigDataForConv = { ...currentSlot, gigId: slotGigId };
               const { conversationId } = await getOrCreateConversation(
                 { musicianProfile: normalizedProfile, gigData: gigDataForConv, venueProfile, type: 'application' }
               );
-              const venueName = currentSlot?.venue?.venueName ?? venueProfile?.name ?? 'the venue';
               await sendGigApplicationMessage(conversationId, {
                 senderId: user.uid,
-                text: `${normalizedProfile.name} has applied to your venue hire on ${formatDate(currentSlot.startDateTime)} at ${venueName}`,
+                text: buildHireApplicationText(),
                 profileId: normalizedProfile.musicianId,
                 profileType: 'artist',
               });
               setUserAppliedToGig(true);
               setHireApplicationProfileIds((prev) => new Set(prev).add(normalizedProfile.musicianId));
               toast.success('Application sent!');
+              return true;
             } else {
               const nonPayableGig = currentSlot.kind === 'Open Mic' || currentSlot.kind === 'Ticketed Gig' || currentSlot.budget === '£' || currentSlot.budget === '£0';
               let techSetup = null;
@@ -976,9 +1177,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
               const { conversationId } = await getOrCreateConversation(
                   { musicianProfile: normalizedProfile, gigData: { ...currentSlot, gigId: slotGigId }, venueProfile, type: 'application' }
               );
+              const gigApplyHead = `${normalizedProfile.name} has applied to your gig on ${formatDate(currentSlot.startDateTime)} at ${currentSlot?.venue?.venueName ?? venueProfile?.name ?? 'the venue'}${nonPayableGig ? '' : ` for ${currentSlot.budget}`}`;
+              const gigApplyText = messageTrimmed ? `${gigApplyHead}\n\n${messageTrimmed}` : gigApplyHead;
               await sendGigApplicationMessage(conversationId, {
                   senderId: user.uid,
-                  text: `${normalizedProfile.name} has applied to your gig on ${formatDate(currentSlot.startDateTime)} at ${currentSlot?.venue?.venueName ?? venueProfile?.name ?? 'the venue'}${nonPayableGig ? '' : ` for ${currentSlot.budget}`}`,
+                  text: gigApplyText,
                   profileId: normalizedProfile.musicianId,
                   profileType: 'artist',
               });
@@ -992,10 +1195,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                   nonPayableGig,
               });
               toast.success('Applied to gig!');
+              return true;
             }
         } catch (error) {
             console.error(error)
             toast.error('Failed to apply to gig. Please try again.')
+            return false;
         } finally {
             setApplyingToGig(false);
         }
@@ -1003,21 +1208,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
 
     const handleApplyClick = () => {
         if (!canBookCurrentArtistProfile) return;
-        if (selectedProfile?.techRider && venueProfile?.techRider) {
-            setShowEquipmentCheckModal(true);
-            setEquipmentCheckNote('');
-        } else {
-            handleGigApplication();
-        }
-    };
-
-    const handleEquipmentCheckContinue = () => {
-        const note = equipmentCheckNote;
-        const choices = equipmentCheckHireChoices;
-        setShowEquipmentCheckModal(false);
-        setEquipmentCheckNote('');
-        setEquipmentCheckHireChoices({});
-        handleGigApplication(note, choices);
+        openApplyWizard();
     };
 
     const handleWithdrawApplication = async () => {
@@ -1964,6 +2155,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         <div className='address'>
                                             <h4>{gigData?.venue?.address ?? venueProfile?.address ?? ''}</h4>
                                         </div>
+                                        {renderGigMetaPills()}
                                     </div>
                                     <div className="gig-host">
                                         <h5>Gig Posted By: {gigData.accountName}</h5>
@@ -2026,11 +2218,51 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                             <p className='detail-text'>{gigData.technicalInformation}</p>
                                         </div>
                                     )}
+                                    {Array.isArray(gigData?.listingDocuments) && gigData.listingDocuments.length > 0 && (
+                                        <div className='equipment'>
+                                            <h4 className="subtitle">Documents</h4>
+                                            {gigData.listingDocuments.map((doc, i) => (
+                                                <div key={doc.key || `doc-${i}`} className="gig-listing-doc-block">
+                                                    <h5 className="subtitle">{doc.title || 'Document'}</h5>
+                                                    {doc.sourceUrl && (
+                                                        <p className="gig-listing-doc-view-wrap">
+                                                            <a href={doc.sourceUrl} target="_blank" rel="noopener noreferrer" className="gig-listing-doc-view-pill">View</a>
+                                                        </p>
+                                                    )}
+                                                    {doc.body && String(doc.body).trim() && (
+                                                        <p className='detail-text'>{doc.body}</p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                     <div className='timeline'>
                                         <h4 className='subtitle'>Timings</h4>
-                                        {currentSlot?.startTime && (
+                                        {(currentSlot?.startTime || (eventTimings && typeof eventTimings === 'object' && Object.keys(eventTimings).length > 0)) && (
                                             <div className='timeline-cont'>
-                                                {currentSlot?.itemType === 'venue_hire' ? (
+                                                {eventTimings && typeof eventTimings === 'object' && Object.keys(eventTimings).length > 0 ? (
+                                                    (() => {
+                                                        const order = [
+                                                            ['accessFrom', 'Access from / load-in'],
+                                                            ['soundcheck', 'Soundcheck'],
+                                                            ['musicStart', 'Music start'],
+                                                            ['musicStop', 'Music stop'],
+                                                            ['mustVacate', 'Must vacate by'],
+                                                        ];
+                                                        const items = order.filter(([k]) => eventTimings[k]);
+                                                        return items.map(([k, label], idx) => (
+                                                            <Fragment key={k}>
+                                                                <div className='timeline-event'>
+                                                                    <div className='timeline-content'>
+                                                                        <p>{label}</p>
+                                                                        <div className={`timeline-time ${idx >= 2 ? 'orange' : ''}`}>{formatTime(eventTimings[k])}</div>
+                                                                    </div>
+                                                                    {idx < items.length - 1 && <div className='timeline-line'></div>}
+                                                                </div>
+                                                            </Fragment>
+                                                        ));
+                                                    })()
+                                                ) : currentSlot?.itemType === 'venue_hire' ? (
                                                     <>
                                                         <div className='timeline-event'>
                                                             <div className='timeline-content'>
@@ -2228,22 +2460,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         </>
                                                     )}
                                                 </div>
-                                                {currentSlot?.itemType !== 'venue_hire' && (() => {
-                                                    const capacityDisplay = getGigCapacityDisplay(currentSlot, venueProfile);
-                                                    return (
+                                                {currentSlot?.itemType !== 'venue_hire' && (
                                                 <div className="action-box-side-meta">
                                                     <div className='action-box-duration'>
                                                         <h4>{formatDuration(currentSlot?.duration)}</h4>
                                                     </div>
-                                                    {capacityDisplay ? (
-                                                        <div className="action-box-capacity">
-                                                            <h4>{capacityDisplay}</h4>
-                                                            <p>capacity</p>
-                                                        </div>
-                                                    ) : null}
                                                 </div>
-                                                    );
-                                                })()}
+                                                )}
                                             </div>
                                             <div className='action-box-date-and-time'>
                                                 <div className='action-box-date'>
@@ -2449,6 +2672,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                     <div className="gig-venue">
                                         <h4>{gigData?.venue?.venueName ?? venueProfile?.name ?? 'Venue'}</h4>
                                         <p>{gigData?.venue?.address ?? venueProfile?.address ?? ''}</p>
+                                        {renderGigMetaPills()}
                                     </div>
                                     <div className="gig-host">
                                         <h5>Gig Posted By: {gigData.accountName}</h5>
@@ -2516,12 +2740,54 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                     </div>
                                 </div>
                                 )}
+                                {Array.isArray(gigData?.listingDocuments) && gigData.listingDocuments.length > 0 && (
+                                <div className="section">
+                                    <div className='equipment'>
+                                        <h4 className="subtitle">Documents</h4>
+                                        {gigData.listingDocuments.map((doc, i) => (
+                                            <div key={doc.key || `doc-m-${i}`} className="gig-listing-doc-block">
+                                                <h5 className="subtitle">{doc.title || 'Document'}</h5>
+                                                {doc.sourceUrl && (
+                                                    <p className="gig-listing-doc-view-wrap">
+                                                        <a href={doc.sourceUrl} target="_blank" rel="noopener noreferrer" className="gig-listing-doc-view-pill">View</a>
+                                                    </p>
+                                                )}
+                                                {doc.body && String(doc.body).trim() && (
+                                                    <p className='detail-text'>{doc.body}</p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                )}
                                 <div className="section">
                                     <div className='timeline'>
                                         <h4 className='subtitle'>Timings</h4>
-                                        {currentSlot?.startTime && (
+                                        {(currentSlot?.startTime || (eventTimings && typeof eventTimings === 'object' && Object.keys(eventTimings).length > 0)) && (
                                             <div className='timeline-cont'>
-                                                {currentSlot?.itemType === 'venue_hire' ? (
+                                                {eventTimings && typeof eventTimings === 'object' && Object.keys(eventTimings).length > 0 ? (
+                                                    (() => {
+                                                        const order = [
+                                                            ['accessFrom', 'Access from / load-in'],
+                                                            ['soundcheck', 'Soundcheck'],
+                                                            ['musicStart', 'Music start'],
+                                                            ['musicStop', 'Music stop'],
+                                                            ['mustVacate', 'Must vacate by'],
+                                                        ];
+                                                        const items = order.filter(([k]) => eventTimings[k]);
+                                                        return items.map(([k, label], idx) => (
+                                                            <Fragment key={k}>
+                                                                <div className='timeline-event'>
+                                                                    <div className='timeline-content'>
+                                                                        <p>{label}</p>
+                                                                        <div className={`timeline-time ${idx >= 2 ? 'orange' : ''}`}>{formatTime(eventTimings[k])}</div>
+                                                                    </div>
+                                                                    {idx < items.length - 1 && <div className='timeline-line'></div>}
+                                                                </div>
+                                                            </Fragment>
+                                                        ));
+                                                    })()
+                                                ) : currentSlot?.itemType === 'venue_hire' ? (
                                                     <>
                                                         <div className='timeline-event'>
                                                             <div className='timeline-content'>
@@ -2723,22 +2989,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         </>
                                                     )}
                                                 </div>
-                                                {currentSlot?.itemType !== 'venue_hire' && (() => {
-                                                    const capacityDisplay = getGigCapacityDisplay(currentSlot, venueProfile);
-                                                    return (
+                                                {currentSlot?.itemType !== 'venue_hire' && (
                                                 <div className="action-box-side-meta">
                                                     <div className='action-box-duration'>
                                                         <h4>{formatDuration(currentSlot?.duration)}</h4>
                                                     </div>
-                                                    {capacityDisplay ? (
-                                                        <div className="action-box-capacity">
-                                                            <h4>{capacityDisplay}</h4>
-                                                            <p>capacity</p>
-                                                        </div>
-                                                    ) : null}
                                                 </div>
-                                                    );
-                                                })()}
+                                                )}
                                             </div>
                                             <div className='action-box-date-and-time'>
                                                 <div className='action-box-date'>
@@ -2940,14 +3197,35 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 )}
             </section>
 
-            {showEquipmentCheckModal && selectedProfile?.techRider && venueProfile?.techRider && (
+            {applyWizardOpen && applyWizardStep && (
                 <Portal>
-                    <div className="modal equipment-check-modal" onClick={() => setShowEquipmentCheckModal(false)}>
+                    <div className="modal equipment-check-modal apply-wizard-modal" onClick={() => { if (!applyingToGig) closeApplyWizard(); }}>
                         <div className="modal-content equipment-check-content" onClick={(e) => e.stopPropagation()}>
                             <div className="modal-header">
-                                <h2>Equipment check</h2>
-                                <p>We&apos;ve compared your tech rider with this gig&apos;s listed equipment.</p>
+                                {applyWizardProgress.total > 1 && applyWizardProgress.index > 0 && (
+                                    <p className="apply-wizard-progress">Step {applyWizardProgress.index} of {applyWizardProgress.total}</p>
+                                )}
+                                {applyWizardStep === 'equipment' && (
+                                    <>
+                                        <h2>Equipment check</h2>
+                                        <p>We&apos;ve compared your tech rider with this gig&apos;s listed equipment.</p>
+                                    </>
+                                )}
+                                {applyWizardStep === 'documents' && (
+                                    <>
+                                        <h2>Venue documents</h2>
+                                        <p>Please read and accept the venue&apos;s terms and any house rules before you apply.</p>
+                                    </>
+                                )}
+                                {applyWizardStep === 'message' && (
+                                    <>
+                                        <h2>Message to the venue</h2>
+                                        <p>Add a note to send with your application.</p>
+                                    </>
+                                )}
                             </div>
+
+                            {applyWizardStep === 'equipment' && selectedProfile?.techRider && venueProfile?.techRider && (
                             <div className="equipment-check-modal-body">
                             {(() => {
                                 const compat = computeCompatibility(selectedProfile.techRider, venueProfile.techRider);
@@ -3049,22 +3327,119 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 );
                             })()}
                             <div className="equipment-check-optional-note">
-                                <label htmlFor="equipment-check-note">You can still apply, but highlighted items may need discussing with the venue.</label>
+                                <label htmlFor="equipment-check-note">Optional: note anything about equipment you may need to discuss with the venue (this is separate from your application message).</label>
                                 <textarea
                                     id="equipment-check-note"
                                     className="input"
-                                    placeholder="Write a message (optional)"
+                                    placeholder="Equipment / setup notes (optional)"
                                     value={equipmentCheckNote}
                                     onChange={(e) => setEquipmentCheckNote(e.target.value)}
                                     rows={2}
                                 />
                             </div>
                             </div>
+                            )}
+
+                            {applyWizardStep === 'documents' && (
+                            <div className="equipment-check-modal-body apply-wizard-documents-body">
+                                {applicantDocs.terms && (
+                                    <section className="apply-wizard-doc-section">
+                                        <h4>Terms and conditions</h4>
+                                        <div className="apply-wizard-doc-toolbar">
+                                            <a
+                                                href={ensureProtocol(applicantDocs.terms)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="btn secondary"
+                                            >
+                                                Open in new tab
+                                            </a>
+                                        </div>
+                                        <div className="apply-wizard-doc-embed-wrap">
+                                            <iframe title="Venue terms and conditions" className="apply-wizard-doc-embed" src={ensureProtocol(applicantDocs.terms)} />
+                                        </div>
+                                        <label className="apply-wizard-doc-accept">
+                                            <input
+                                                type="checkbox"
+                                                checked={applyWizardDocTermsAccepted}
+                                                onChange={(e) => setApplyWizardDocTermsAccepted(e.target.checked)}
+                                            />
+                                            <span>I have read and accept the venue&apos;s terms and conditions</span>
+                                        </label>
+                                    </section>
+                                )}
+                                {applicantDocs.houseRules && (
+                                    <section className="apply-wizard-doc-section">
+                                        <h4>House rules</h4>
+                                        <div className="apply-wizard-doc-toolbar">
+                                            <a
+                                                href={ensureProtocol(applicantDocs.houseRules)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="btn secondary"
+                                            >
+                                                Open in new tab
+                                            </a>
+                                        </div>
+                                        <div className="apply-wizard-doc-embed-wrap">
+                                            <iframe title="Venue house rules" className="apply-wizard-doc-embed" src={ensureProtocol(applicantDocs.houseRules)} />
+                                        </div>
+                                        <label className="apply-wizard-doc-accept">
+                                            <input
+                                                type="checkbox"
+                                                checked={applyWizardDocHouseAccepted}
+                                                onChange={(e) => setApplyWizardDocHouseAccepted(e.target.checked)}
+                                            />
+                                            <span>I have read and accept the house rules</span>
+                                        </label>
+                                    </section>
+                                )}
+                            </div>
+                            )}
+
+                            {applyWizardStep === 'message' && (
+                            <div className="equipment-check-modal-body apply-wizard-message">
+                                <label htmlFor="apply-wizard-message-input">Your message</label>
+                                <textarea
+                                    id="apply-wizard-message-input"
+                                    className={`input${applyWizardMessageShowError ? ' apply-wizard-message-input--invalid' : ''}`}
+                                    placeholder="Introduce yourself, confirm details, or ask the venue a question…"
+                                    value={applyWizardMessage}
+                                    onChange={(e) => {
+                                        setApplyWizardMessage(e.target.value);
+                                        if (applyWizardMessageShowError && e.target.value.trim()) {
+                                            setApplyWizardMessageShowError(false);
+                                        }
+                                    }}
+                                    rows={5}
+                                />
+                            </div>
+                            )}
+
                             <div className="equipment-check-footer">
-                                <div className="two-buttons equipment-check-actions">
-                                    <button type="button" className="btn tertiary" onClick={() => setShowEquipmentCheckModal(false)}>Go back</button>
-                                    <button type="button" className="btn artist-profile" onClick={handleEquipmentCheckContinue}>Apply</button>
-                                </div>
+                                {applyWizardStep === 'equipment' && (
+                                    <div className="two-buttons equipment-check-actions">
+                                        <button type="button" className="btn tertiary" onClick={closeApplyWizard} disabled={applyingToGig}>Cancel</button>
+                                        <button type="button" className="btn artist-profile" onClick={handleEquipmentStepContinue} disabled={applyingToGig}>Continue</button>
+                                    </div>
+                                )}
+                                {applyWizardStep === 'documents' && (
+                                    <div className="apply-wizard-footer--split">
+                                        <button type="button" className="btn tertiary" onClick={goBackApplyWizard} disabled={applyingToGig}>Go back</button>
+                                        <div className="apply-wizard-footer-actions">
+                                            <button type="button" className="btn secondary" onClick={handleDocumentsStepDecline} disabled={applyingToGig}>Decline</button>
+                                            <button type="button" className="btn artist-profile" onClick={handleDocumentsStepContinue} disabled={applyingToGig}>Continue</button>
+                                        </div>
+                                    </div>
+                                )}
+                                {applyWizardStep === 'message' && (
+                                    <div className="apply-wizard-footer--split apply-wizard-footer--message">
+                                        <button type="button" className="btn tertiary" onClick={goBackApplyWizard} disabled={applyingToGig}>Go back</button>
+                                        <button type="button" className="btn artist-profile" onClick={handleApplyWizardSubmit} disabled={applyingToGig}>
+                                            {applyingToGig ? 'Sending…' : 'Submit application'}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
