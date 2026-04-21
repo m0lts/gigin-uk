@@ -54,8 +54,8 @@ export const RequestCard = ({ request, handleRemoveRequest, openBuildGigModal, o
           other: null,
         },
         buildingForMusician: true,
-        showGigPostModal: true,
-        skipTemplate: true,
+        showAddGigsModal: true,
+        addGigsMode: 'bookNew',
         requestId: request.id,
         preferredDate: date, // Pass the date
       }

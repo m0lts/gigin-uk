@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { getGigsByVenueIds } from '@services/client-side/gigs';
-import { getTemplatesByVenueIds } from '@services/client-side/venues';
+import { fetchGigTemplates } from '@services/api/venues';
 import { subscribeToUpcomingOrRecentGigs } from '@services/client-side/gigs';
 import {
   getVenueHireOpportunitiesByVenueIds,
@@ -34,7 +34,6 @@ export const VenueDashboardProvider = ({ user, children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [venueProfiles, setVenueProfiles] = useState([]);
   const [gigs, setGigs] = useState([]);
-  const [incompleteGigs, setIncompleteGigs] = useState([]);
   const [venueHireOpportunities, setVenueHireOpportunities] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -52,7 +51,6 @@ export const VenueDashboardProvider = ({ user, children }) => {
     const venueIds = venueProfiles.map(v => v.venueId);
     const unsubGigs = subscribeToUpcomingOrRecentGigs(venueIds, (updatedGigs) => {
       setGigs(updatedGigs.filter(g => g.complete !== false));
-      setIncompleteGigs(updatedGigs.filter(g => g.complete === false));
     });
     const unsubHire = subscribeToVenueHireOpportunities(venueIds, (updated) => {
       setVenueHireOpportunities(updated || []);
@@ -82,13 +80,18 @@ export const VenueDashboardProvider = ({ user, children }) => {
         ...updateVenues.map(v => v.stripeCustomerId).filter(Boolean),
       ]));
       setVenueProfiles(safeVenues);
-      const [gigsRes, templatesRes, requestsRes] = await Promise.all([
+      const [gigsRes, requestsRes] = await Promise.all([
         getGigsByVenueIds(venueIds),
-        getTemplatesByVenueIds(venueIds),
         getVenueRequestsByVenueIds(venueIds),
       ]);
+      let templatesRes = [];
+      try {
+        templatesRes = await fetchGigTemplates({ venueIds });
+      } catch (templatesErr) {
+        console.error('Venue dashboard: could not load gig templates (API).', templatesErr);
+      }
       applyGigs(gigsRes);
-      setTemplates(templatesRes);
+      setTemplates(Array.isArray(templatesRes) ? templatesRes : []);
       const visibleRequests = requestsRes.filter(req => !req.removed);
       setRequests(visibleRequests);
 
@@ -180,8 +183,8 @@ export const VenueDashboardProvider = ({ user, children }) => {
   const refreshTemplates = async () => {
     try {
       const venueIds = venueProfiles.map(v => v.venueId);
-      const templatesRes = await getTemplatesByVenueIds(venueIds);
-      setTemplates(templatesRes);
+      const templatesRes = await fetchGigTemplates({ venueIds });
+      setTemplates(Array.isArray(templatesRes) ? templatesRes : []);
     } catch (err) {
       console.error('Error refreshing templates:', err);
     }
@@ -254,12 +257,11 @@ const refreshStripe = async () => {
   
   const applyGigs = (gigsRes) => {
     setGigs(gigsRes.filter(g => g.complete !== false));
-    setIncompleteGigs(gigsRes.filter(g => g.complete === false));
   };
 
   return (
     <VenueDashboardContext.Provider
-      value={{ loading, sidebarCollapsed, setSidebarCollapsed, venueProfiles, setVenueProfiles, gigs, incompleteGigs, venueHireOpportunities, templates, requests, setRequests, stripe, refreshData, setStripe,
+      value={{ loading, sidebarCollapsed, setSidebarCollapsed, venueProfiles, setVenueProfiles, gigs, venueHireOpportunities, templates, requests, setRequests, stripe, refreshData, setStripe,
         refreshGigs,
         refreshTemplates,
         refreshStripe }}

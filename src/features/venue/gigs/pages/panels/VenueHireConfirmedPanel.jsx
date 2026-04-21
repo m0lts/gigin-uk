@@ -1,6 +1,11 @@
-import { VenueHireDetailsPanel } from './VenueHireDetailsPanel';
+import { GigDetailsPanel } from './GigDetailsPanel';
 
-/** @deprecated Use VenueHireDetailsPanel. Kept for backward compatibility. */
+/** @deprecated Use GigDetailsPanel. Kept for backward compatibility with existing imports. */
 export function VenueHireConfirmedPanel(props) {
-  return <VenueHireDetailsPanel {...props} />;
+  return <GigDetailsPanel {...props} />;
+}
+
+/** @deprecated Use GigDetailsPanel. Kept for backward compatibility with existing imports. */
+export function VenueHireDetailsPanel(props) {
+  return <GigDetailsPanel {...props} />;
 }

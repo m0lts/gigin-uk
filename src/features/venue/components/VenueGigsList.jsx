@@ -80,7 +80,7 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], hireOpportunities
       }
     };
 
-    // Gig Vacancies: filter to vacant gigs only. Hire Opportunities: show hire list only. Upcoming: all displayed.
+    // Gig Vacancies: filter to vacant gigs only. Hire This Venue: show hire list only. Upcoming: all displayed.
     const gigsForList =
       title === 'Gig Vacancies'
         ? displayed.filter((gig) => {
@@ -88,7 +88,7 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], hireOpportunities
             const isHired = confirmed.length > 0 || (gig?.renterName && String(gig.renterName).trim());
             return confirmed.length === 0 && !isHired;
           })
-        : title === 'Hire Opportunities'
+        : title === 'Hire This Venue'
           ? []
           : displayed.filter((gig) => {
               const confirmed = (gig?.applicants ?? []).filter((a) => a?.status === 'confirmed');
@@ -99,7 +99,7 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], hireOpportunities
     if (title === 'Gig Vacancies' && gigsForList.length === 0) {
       return null;
     }
-    if (title === 'Hire Opportunities' && (!hireOpportunities || hireOpportunities.length === 0)) {
+    if (title === 'Hire This Venue' && (!hireOpportunities || hireOpportunities.length === 0)) {
       return null;
     }
 
@@ -139,7 +139,7 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], hireOpportunities
         </div>
         
         <div className="gigs-list-container">
-        {title === 'Hire Opportunities' ? (
+        {title === 'Hire This Venue' ? (
           (hireOpportunities && hireOpportunities.length > 0) ? (
           hireOpportunities.map((hire) => {
             const raw = hire.date ?? hire.startDateTime;

@@ -258,12 +258,27 @@ export const listenToTemplatesByVenueIds = (venueIds, onUpdate) => {
 
 export const getTemplatesByVenueIds = async (venueIds) => {
   try {
+    if (!venueIds || venueIds.length === 0) return [];
     const templatesCol = collection(firestore, "templates");
-    const qy = query(templatesCol, where("venueId", "in", venueIds));
-    const snapshot = await getDocs(qy);
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    const chunks = [];
+    for (let i = 0; i < venueIds.length; i += 10) {
+      chunks.push(venueIds.slice(i, i + 10));
+    }
+
+    const allResults = [];
+    for (const chunk of chunks) {
+      const qy = query(templatesCol, where("venueId", "in", chunk));
+      const snapshot = await getDocs(qy);
+      snapshot.forEach((d) => {
+        allResults.push({ id: d.id, ...d.data() });
+      });
+    }
+
+    return allResults;
   } catch (error) {
     console.error("[Firestore Error] getTemplatesByVenueIds:", error);
+    return [];
   }
 };
 

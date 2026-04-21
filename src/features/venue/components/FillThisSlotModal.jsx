@@ -18,7 +18,7 @@ import '@styles/host/venue-gig-page.styles.css';
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Modal: invite artist / promoter for an unbooked venue hire (calendar / quick flow).
+ * Modal: invite artist or promoter for an unbooked venue hire (calendar / quick flow).
  */
 export function FillThisSlotModal({ gig, venues = [], user, refreshGigs, onClose }) {
   const [linkCopied, setLinkCopied] = useState(false);
@@ -199,7 +199,7 @@ export function FillThisSlotModal({ gig, venues = [], user, refreshGigs, onClose
       <div className="modal-content invite-and-share-modal__content" onClick={(e) => e.stopPropagation()}>
         <div className="invite-and-share-modal__header">
           <h2 id="fill-this-slot-modal-title" className="invite-and-share-modal__title">
-            Invite artist / promoter
+            Invite artist or promoter
           </h2>
           <button
             type="button"

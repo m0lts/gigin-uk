@@ -54,8 +54,6 @@ export const Gigs = ({
   gigs,
   venueHireOpportunities = [],
   venues,
-  setGigPostModal,
-  setEditGigData,
   setShowAddGigsModal,
   setAddGigsEditData,
   setAddGigsInitialDateIso,
@@ -489,53 +487,80 @@ export const Gigs = ({
       setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'));
     };
 
-    const openGigPostModal = (gig) => {
-        // Find the group this gig belongs to
+    const openEditGigModal = (gig) => {
+        // Route every artist-booking edit (single-slot and multi-slot) through
+        // the unified AddGigsModal. The wizard now renders multi-slot set rows
+        // when `extraSlots` are present, and the update path writes each of
+        // the `existingGigIds` Firestore docs in place.
+        //
+        // Records originally created via "Add existing" (private, manually
+        // confirmed artist) re-enter the addExisting variant so the editor
+        // shows the per-set Artist inputs and the wizard's visibility /
+        // listing-preview chrome stays hidden.
+        const isAddExistingOriginGig = (g) => {
+            if (!g) return false;
+            const apps = Array.isArray(g.applicants) ? g.applicants : [];
+            return g.private === true && apps.some((a) => a?.status === 'confirmed' && !a?.id && !a?.artistId);
+        };
         const group = groupedGigs.find(g => g.gigIds.includes(gig.gigId));
-        
-        if (group && group.isGroup && group.allGigs.length > 1) {
-            // Package all slots together for editing
+        const isMultiSlotGroup = !!(group && group.isGroup && group.allGigs.length > 1);
+
+        if (isMultiSlotGroup) {
             const sortedSlots = [...group.allGigs].sort((a, b) => {
                 if (!a.startTime || !b.startTime) return 0;
                 const [aH, aM] = a.startTime.split(':').map(Number);
                 const [bH, bM] = b.startTime.split(':').map(Number);
                 return (aH * 60 + aM) - (bH * 60 + bM);
             });
-            
+
             const primaryGig = sortedSlots[0];
             const baseGigName = primaryGig.gigName.replace(/\s*\(Set\s+\d+\)\s*$/, '');
-            
-            // Create extraSlots from remaining slots
+
             const extraSlots = sortedSlots.slice(1).map(slot => ({
                 startTime: slot.startTime,
                 duration: slot.duration,
             }));
-            
-            // Get budgets for each slot
+
             const slotBudgets = sortedSlots.map(slot => {
                 return slot.budgetValue !== undefined ? slot.budgetValue : null;
             });
-            
+
+            // Per-set confirmed artist names — read from each slot's applicants
+            // so editing a multi-set addExisting record pre-fills the right
+            // name for each set's row.
+            const artistNames = sortedSlots.map(slot => {
+                const apps = Array.isArray(slot.applicants) ? slot.applicants : [];
+                const confirmed = apps.find(a => a?.status === 'confirmed');
+                return confirmed?.name ?? slot.artistName ?? '';
+            });
+
             const convertedGig = {
                 ...primaryGig,
                 gigName: baseGigName,
                 date: primaryGig.date ? primaryGig.date.toDate() : null,
                 extraSlots: extraSlots,
                 slotBudgets: slotBudgets,
-                // Preserve existing gig IDs for editing
+                artistNames,
                 existingGigIds: sortedSlots.map(slot => slot.gigId),
             };
-            setEditGigData(convertedGig);
-        } else {
-            const convertedGig = {
-                ...gig,
-                date: gig.date ? gig.date.toDate() : null,
-                // Set existingGigIds for single-slot gigs so we can add slots to the same gig
-                existingGigIds: [gig.gigId],
-            };
-            setEditGigData(convertedGig);
+            const mode = sortedSlots.some(isAddExistingOriginGig) ? 'addExisting' : 'bookNew';
+            setAddGigsEditData?.(convertedGig);
+            setAddGigsMode?.(mode);
+            setShowAddGigsModal?.(true);
+            return;
         }
-        setGigPostModal(true);
+
+        // Single-slot: same unified path. The modal picks the right mapper
+        // (rental vs artist-booking) based on the gig's shape.
+        const convertedGig = {
+            ...gig,
+            date: gig.date ? gig.date.toDate() : null,
+            existingGigIds: [gig.gigId],
+        };
+        const mode = isAddExistingOriginGig(gig) ? 'addExisting' : 'bookNew';
+        setAddGigsEditData?.(convertedGig);
+        setAddGigsMode?.(mode);
+        setShowAddGigsModal?.(true);
     }
 
     const handleDeleteSelected = async () => {
@@ -1241,7 +1266,14 @@ export const Gigs = ({
                           </tr>
                         )}
                         <tr onClick={(e) => {
-                            navigate('/venues/dashboard/gigs/gig-applications', { state: { gig: group.primaryGig } })
+                            navigate('/venues/dashboard/gigs/gig-applications', {
+                              state: {
+                                gig: group.primaryGig,
+                                ...(group.isGroup && group.gigIds?.length > 1
+                                  ? { linkedGigIds: group.gigIds }
+                                  : {}),
+                              },
+                            });
                           }}>
                           {/* {gig.dateTime > now ? (
                               <td onClick={(e) => e.stopPropagation()}>
@@ -1558,14 +1590,14 @@ export const Gigs = ({
                               </div>
                               {openOptionsGigId === group.primaryGig.gigId && (
                                   <div className="options-dropdown" onClick={(e) => e.stopPropagation()}>
-                                  <button onClick={() => { closeOptionsMenu(); navigate('/venues/dashboard/gigs/gig-applications', { state: { gig } }) }}>View Details <GigIcon /></button>
+                                  <button onClick={() => { closeOptionsMenu(); navigate('/venues/dashboard/gigs/gig-applications', { state: { gig, ...(group.isGroup && group.gigIds?.length > 1 ? { linkedGigIds: group.gigIds } : {}) } }) }}>View Details <GigIcon /></button>
                                   {(gig.dateTime > now && (gig.status === 'open' || gig.status === 'upcoming') && !gig?.applicants.some(applicant => applicant.status === 'accepted' || applicant.status === 'confirmed')) && hasVenuePerm(venues, gig.venueId, 'gigs.update') && (
                                       <button onClick={() => { 
                                         if (!hasVenuePerm(venues, gig.venueId, 'gigs.create')) {
                                           toast.error('You do not have permission to duplicate this gig.');
                                         };
                                         closeOptionsMenu();
-                                        openGigPostModal(gig);
+                                        openEditGigModal(gig);
                                     }}>Edit <EditIcon /></button>
                                   )}
                                   {gig.dateTime > now && hasVenuePerm(venues, gig.venueId, 'gigs.create')&& (

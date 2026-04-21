@@ -201,7 +201,7 @@ export function ArtistFillThisSlotTile({ gig, venues = [], refreshGigs }) {
   if (!gigId) return null;
 
   return (
-    <div className="venue-gig-page__main-card venue-gig-page__main-card--invite-promoter" style={{ marginBottom: '1rem' }}>
+    <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__booked-by venue-hire-confirmed-panel__booked-by--invite-promoter">
       <InviteArtistPromoterTile
         bookingLinkUrl={bookingLinkUrl}
         onCopyLink={copyBookingLink}

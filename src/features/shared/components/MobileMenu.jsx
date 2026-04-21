@@ -63,7 +63,8 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                     navigate(
                                         '/venues/dashboard/gigs',
                                         { state: {
-                                            showGigPostModal: true,
+                                            showAddGigsModal: true,
+                                            addGigsMode: 'bookNew',
                                         }}
                                     )
                                 }

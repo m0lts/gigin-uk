@@ -115,16 +115,24 @@ app.use(cors({
 }));
 
 // Rate limiting - protect against DDoS and brute force
-// 200/15min allows dashboard load (venues, gigs, billing) + book/create gig without hitting limit
+// Production: default 200/15min per IP. Non-production: 2000/15min — local + dev fire many
+// parallel requests on page load; the old 200 cap was hit before a single user action (429).
+// Tune with API_RATE_LIMIT_MAX; set API_RATE_LIMIT_DISABLED=true to turn off limiting.
+const rateLimitDisabled = process.env.API_RATE_LIMIT_DISABLED === "true";
+const rateLimitMax = Math.max(
+  1,
+  Number(process.env.API_RATE_LIMIT_MAX) || (IS_PROD ? 200 : 2000)
+);
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // Limit each IP to 200 requests per windowMs
+  max: rateLimitMax,
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
   message: "Too many requests from this IP, please try again later.",
   // Trust 1 proxy (Google's load balancer) for accurate IP
   // This matches the Express trust proxy setting
   trustProxy: 1,
+  skip: () => rateLimitDisabled,
 });
 
 // Apply rate limiting to all requests except health check and OPTIONS (preflight)

@@ -1,16 +1,18 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { DownChevronIcon, RightChevronIcon } from '@features/shared/ui/extras/Icons';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { getArtistProfileById } from '@services/client-side/artists';
 import { hasVenuePerm } from '@services/utils/permissions';
 import { computeCompatibility } from '@services/utils/techRiderCompatibility';
 import { updateVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
+import { updateGigDocument } from '@services/api/gigs';
 import { toast } from 'sonner';
-import { TechRiderIcon } from '@features/shared/ui/extras/Icons';
 import { TechSetupTile } from './TechSetupTile';
 
 /**
- * Venue hire tech setup tile for the main column (e.g. below Applications).
- * Uses the same data + updates as the former sidebar card.
+ * Gig tech setup tile for the main column (e.g. below Applications).
+ * Renders for both venue-hire and artist-booking gigs; writes through to the
+ * correct API based on `normalisedGig.bookingMode`.
  */
 export function VenueHireTechSetupMainCard({
   rawGig,
@@ -21,6 +23,21 @@ export function VenueHireTechSetupMainCard({
 }) {
   const hireId = rawGig?.id ?? rawGig?.gigId;
   const canUpdate = rawGig?.venueId && hasVenuePerm(venues, rawGig.venueId, 'gigs.update');
+  const isVenueHire = normalisedGig?.bookingMode === 'venue_hire';
+
+  const [techSetupExpanded, setTechSetupExpanded] = useState(false);
+
+  const persistGigFields = useCallback(
+    async (updates) => {
+      if (!hireId) return;
+      if (isVenueHire) {
+        await updateVenueHireOpportunity(hireId, updates);
+      } else {
+        await updateGigDocument({ gigId: hireId, action: 'gigs.update', updates });
+      }
+    },
+    [hireId, isVenueHire]
+  );
 
   const [internalNotesSaving, setInternalNotesSaving] = useState(false);
   const [equipmentHireFeesUpdating, setEquipmentHireFeesUpdating] = useState(false);
@@ -76,7 +93,7 @@ export function VenueHireTechSetupMainCard({
     if (trimmed === (current || '').trim()) return;
     setInternalNotesSaving(true);
     try {
-      await updateVenueHireOpportunity(hireId, { soundManager: trimmed || null });
+      await persistGigFields({ soundManager: trimmed || null });
       setGigInfo?.((prev) => (prev ? { ...prev, soundManager: trimmed || null } : null));
       refreshGigs?.();
       toast.success('Saved.');
@@ -86,26 +103,13 @@ export function VenueHireTechSetupMainCard({
     } finally {
       setInternalNotesSaving(false);
     }
-  }, [hireId, rawGig?.soundManager, canUpdate, setGigInfo, refreshGigs]);
-
-  const markHireFeePaid = useCallback(async (paid) => {
-    if (!hireId || !canUpdate) return;
-    try {
-      await updateVenueHireOpportunity(hireId, { hireFeePaid: paid });
-      setGigInfo?.((prev) => (prev ? { ...prev, hireFeePaid: paid } : null));
-      refreshGigs?.();
-      toast.success(paid ? 'Hire fee marked as paid.' : 'Hire fee marked as unpaid.');
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to update.');
-    }
-  }, [hireId, canUpdate, setGigInfo, refreshGigs]);
+  }, [hireId, rawGig?.soundManager, canUpdate, setGigInfo, refreshGigs, persistGigFields]);
 
   const markEquipmentHireFeesPaid = useCallback(async (paid) => {
     if (!hireId || !canUpdate) return;
     setEquipmentHireFeesUpdating(true);
     try {
-      await updateVenueHireOpportunity(hireId, { equipmentHireFeesPaid: paid });
+      await persistGigFields({ equipmentHireFeesPaid: paid });
       setGigInfo?.((prev) => (prev ? { ...prev, equipmentHireFeesPaid: paid } : null));
       refreshGigs?.();
       toast.success(paid ? 'Equipment hire fees marked as paid.' : 'Equipment hire fees marked as unpaid.');
@@ -115,13 +119,13 @@ export function VenueHireTechSetupMainCard({
     } finally {
       setEquipmentHireFeesUpdating(false);
     }
-  }, [hireId, canUpdate, setGigInfo, refreshGigs]);
+  }, [hireId, canUpdate, setGigInfo, refreshGigs, persistGigFields]);
 
   const markMissingEquipmentSorted = useCallback(async (sorted) => {
     if (!hireId || !canUpdate) return;
     setMissingEquipmentSortedUpdating(true);
     try {
-      await updateVenueHireOpportunity(hireId, { missingEquipmentSorted: sorted });
+      await persistGigFields({ missingEquipmentSorted: sorted });
       setGigInfo?.((prev) => (prev ? { ...prev, missingEquipmentSorted: sorted } : null));
       refreshGigs?.();
       toast.success(sorted ? 'Marked as sorted.' : 'Marked as not sorted.');
@@ -131,33 +135,46 @@ export function VenueHireTechSetupMainCard({
     } finally {
       setMissingEquipmentSortedUpdating(false);
     }
-  }, [hireId, canUpdate, setGigInfo, refreshGigs]);
+  }, [hireId, canUpdate, setGigInfo, refreshGigs, persistGigFields]);
 
-  if (!hireId || normalisedGig?.bookingMode !== 'venue_hire') return null;
+  if (!hireId) return null;
 
   return (
-    <div className="venue-gig-page-sidebar__card venue-hire-main-column__tech-setup">
-      <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
-        <TechRiderIcon />
+    <div
+      className={`venue-gig-page-sidebar__card venue-hire-main-column__tech-setup${techSetupExpanded ? '' : ' venue-hire-main-column__tech-setup--collapsed'}`}
+    >
+      <button
+        type="button"
+        className="venue-hire-main-column__tech-setup-expand-trigger fill-this-slot__header fill-this-slot__header--invite-promoter"
+        onClick={() => setTechSetupExpanded((o) => !o)}
+        aria-expanded={techSetupExpanded}
+        aria-controls="venue-hire-tech-setup-panel"
+        id="venue-hire-tech-setup-expand-label"
+      >
         <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Tech Setup</h3>
-      </div>
-      <TechSetupTile
-        rawGig={rawGig}
-        normalisedGig={normalisedGig}
-        venueProfile={venueProfile}
-        canUpdate={canUpdate}
-        onSaveSoundEngineer={saveSoundManager}
-        soundEngineerSaving={internalNotesSaving}
-        hireFeePaid={rawGig?.hireFeePaid}
-        onMarkHireFeePaid={markHireFeePaid}
-        equipmentHireFeesPaid={rawGig?.equipmentHireFeesPaid}
-        onMarkEquipmentHireFeesPaid={markEquipmentHireFeesPaid}
-        equipmentHireFeesUpdating={equipmentHireFeesUpdating}
-        missingEquipmentSortedUpdating={missingEquipmentSortedUpdating}
-        missingEquipmentSorted={rawGig?.missingEquipmentSorted}
-        onMarkMissingEquipmentSorted={markMissingEquipmentSorted}
-        bookerVenueEquipmentInUse={bookerVenueEquipmentInUse}
-      />
+        <span className="venue-hire-main-column__tech-setup-expand-chevron" aria-hidden>
+          {techSetupExpanded ? <DownChevronIcon /> : <RightChevronIcon />}
+        </span>
+      </button>
+      {techSetupExpanded ? (
+        <div id="venue-hire-tech-setup-panel" role="region" aria-labelledby="venue-hire-tech-setup-expand-label">
+          <TechSetupTile
+            rawGig={rawGig}
+            normalisedGig={normalisedGig}
+            venueTechRider={venueProfile?.techRider}
+            canUpdate={canUpdate}
+            onSaveSoundEngineer={saveSoundManager}
+            soundEngineerSaving={internalNotesSaving}
+            equipmentHireFeesPaid={rawGig?.equipmentHireFeesPaid}
+            onMarkEquipmentHireFeesPaid={markEquipmentHireFeesPaid}
+            equipmentHireFeesUpdating={equipmentHireFeesUpdating}
+            missingEquipmentSortedUpdating={missingEquipmentSortedUpdating}
+            missingEquipmentSorted={rawGig?.missingEquipmentSorted}
+            onMarkMissingEquipmentSorted={markMissingEquipmentSorted}
+            bookerVenueEquipmentInUse={bookerVenueEquipmentInUse}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

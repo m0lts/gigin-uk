@@ -499,7 +499,8 @@ const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
                           crmEntryId: !artist?.artistId ? artist?.id : null, // Store CRM entry ID if no Gigin profile
                         },
                         buildingForMusician: true,
-                        showGigPostModal: true,
+                        showAddGigsModal: true,
+                        addGigsMode: 'bookNew',
                       },
                     });
                   }}

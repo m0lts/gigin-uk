@@ -21,7 +21,7 @@ function formatTime(timeString) {
 function formatTicketingResponsibility(v) {
   if (v === 'venue') return 'Venue handles ticketing';
   if (v === 'artist') return 'Artist handles ticketing';
-  if (v === 'free_entry') return 'Free entry';
+  if (v === 'free_entry') return 'Not ticketed';
   return '';
 }
 

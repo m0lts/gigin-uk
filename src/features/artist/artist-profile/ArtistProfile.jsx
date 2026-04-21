@@ -4214,7 +4214,8 @@ const ArtistProfileComponent = ({
                               other: null,
                             },
                             buildingForMusician: true,
-                            showGigPostModal: true,
+                            showAddGigsModal: true,
+                            addGigsMode: 'bookNew',
                           },
                         });
                       }}

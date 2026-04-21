@@ -38,7 +38,7 @@ export function InviteArtistPromoterTile({
         <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
           <FontAwesomeIcon icon={faPaperPlaneTop} className="icon" aria-hidden />
           <h3 id={titleId} className="fill-this-slot__title fill-this-slot__title--invite-promoter">
-            Invite artist / promoter
+            Invite artist or promoter
           </h3>
         </div>
       ) : null}

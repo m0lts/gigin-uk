@@ -26,10 +26,18 @@ console.log('Firebase project:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// App Check (browser only)
-if (typeof window !== 'undefined') {
+// App Check (browser only). reCAPTCHA often returns 401 in the Network tab on localhost or when
+// the site key’s allowed domains omit your origin — harmless for dev if App Check isn’t enforced.
+// Production builds always enable it; set VITE_ENABLE_APP_CHECK=true locally only if you need it.
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_V3_SITE_KEY;
+const shouldInitializeAppCheck =
+  typeof window !== 'undefined' &&
+  !!recaptchaSiteKey &&
+  (import.meta.env.PROD || import.meta.env.VITE_ENABLE_APP_CHECK === 'true');
+
+if (shouldInitializeAppCheck) {
   initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_V3_SITE_KEY),
+    provider: new ReCaptchaV3Provider(recaptchaSiteKey),
     isTokenAutoRefreshEnabled: true,
   });
 }

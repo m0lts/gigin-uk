@@ -16,6 +16,11 @@ export const BOOK_NEW_TEMPLATE_FIELD_KEYS = [
   'rentalCapacity',
   'listingDocEntries',
   'moreDetailsSectionOpen',
+  /** Multi-set Book an Event: slot 0 + extras (times, fees per set). */
+  'startTime',
+  'duration',
+  'extraSlots',
+  'slotBudgets',
 ];
 
 export function filterBookNewEventTemplatesForVenue(templates, venueId) {
@@ -32,6 +37,23 @@ export function buildBookNewTemplatePayload(gig, venueId, templateId, templateNa
   const entries = gig?.listingDocEntries;
   const listingClone = Array.isArray(entries) ? JSON.parse(JSON.stringify(entries)) : null;
 
+  const extraSlots = Array.isArray(gig?.extraSlots)
+    ? JSON.parse(JSON.stringify(gig.extraSlots))
+    : [];
+  const slotCount = 1 + extraSlots.length;
+  const rawBudgets = gig?.slotBudgets;
+  const slotBudgets =
+    Array.isArray(rawBudgets) && rawBudgets.length >= slotCount
+      ? rawBudgets.slice(0, slotCount).map((x) => (x === undefined || x === null ? '£' : x))
+      : Array.from({ length: slotCount }, (_, i) =>
+          rawBudgets && rawBudgets[i] !== undefined && rawBudgets[i] !== null ? rawBudgets[i] : '£',
+        );
+
+  let paymentModel = gig?.paymentModel ?? '';
+  if (slotCount > 1 && paymentModel === 'artist_pays_venue') {
+    paymentModel = 'no_fee';
+  }
+
   return {
     venueId,
     templateId,
@@ -43,7 +65,7 @@ export function buildBookNewTemplatePayload(gig, venueId, templateId, templateNa
     timingMusicStopTime: gig?.timingMusicStopTime ?? '',
     timingVacateTime: gig?.timingVacateTime ?? '',
     extraInformation: gig?.extraInformation ?? '',
-    paymentModel: gig?.paymentModel ?? '',
+    paymentModel,
     unifiedFeeAmount: gig?.unifiedFeeAmount ?? '£',
     ticketingModel: gig?.ticketingModel ?? '',
     showOnVenueProfile: !!gig?.showOnVenueProfile,
@@ -53,6 +75,10 @@ export function buildBookNewTemplatePayload(gig, venueId, templateId, templateNa
     rentalCapacity: gig?.rentalCapacity ?? '',
     listingDocEntries: listingClone,
     moreDetailsSectionOpen: !!gig?.moreDetailsSectionOpen,
+    startTime: gig?.startTime ?? '',
+    duration: gig?.duration != null && gig?.duration !== '' ? gig.duration : '',
+    extraSlots,
+    slotBudgets,
   };
 }
 
@@ -83,6 +109,35 @@ export function applyBookNewTemplateToGig(gig, template) {
     next.listingDocEntries = null;
   }
 
+  if (Array.isArray(t.extraSlots)) {
+    next.extraSlots = JSON.parse(JSON.stringify(t.extraSlots));
+  }
+  if (t.startTime !== undefined && t.startTime !== null) {
+    next.startTime = t.startTime;
+  }
+  if (t.duration !== undefined && t.duration !== null && t.duration !== '') {
+    next.duration = t.duration;
+  }
+  if (Array.isArray(t.slotBudgets)) {
+    const n = 1 + (Array.isArray(next.extraSlots) ? next.extraSlots.length : 0);
+    const budgets = t.slotBudgets.slice(0, n);
+    next.slotBudgets = [
+      ...budgets,
+      ...Array.from({ length: Math.max(0, n - budgets.length) }, () => '£'),
+    ];
+  }
+
+  const appliedSlotCount = 1 + (Array.isArray(next.extraSlots) ? next.extraSlots.length : 0);
+  if (appliedSlotCount > 1 && next.paymentModel === 'artist_pays_venue') {
+    next.paymentModel = 'no_fee';
+  }
+
+  // Template values are treated as explicit user choices, so the venue-change
+  // effect in AddGigsModal won't clobber them on a later venue switch.
+  next._gigNameAutoFromVenue = false;
+  next._rentalCapacityAutoFromVenue = false;
+  next._listingDocsVenueId = t.venueId ?? null;
+
   return next;
 }
 
@@ -111,6 +166,35 @@ export function applyBookNewTemplateToGigAddExisting(gig, template) {
   if (Array.isArray(t.listingDocEntries)) {
     next.listingDocEntries = JSON.parse(JSON.stringify(t.listingDocEntries));
   }
+
+  if (Array.isArray(t.extraSlots)) {
+    next.extraSlots = JSON.parse(JSON.stringify(t.extraSlots));
+  }
+  if (t.startTime !== undefined && t.startTime !== null) {
+    next.startTime = t.startTime;
+  }
+  if (t.duration !== undefined && t.duration !== null && t.duration !== '') {
+    next.duration = t.duration;
+  }
+  if (Array.isArray(t.slotBudgets)) {
+    const n = 1 + (Array.isArray(next.extraSlots) ? next.extraSlots.length : 0);
+    const budgets = t.slotBudgets.slice(0, n);
+    next.slotBudgets = [
+      ...budgets,
+      ...Array.from({ length: Math.max(0, n - budgets.length) }, () => '£'),
+    ];
+  }
+
+  const appliedSlotCountAddExisting = 1 + (Array.isArray(next.extraSlots) ? next.extraSlots.length : 0);
+  if (appliedSlotCountAddExisting > 1 && next.paymentModel === 'artist_pays_venue') {
+    next.paymentModel = 'no_fee';
+  }
+
+  // Template values are treated as explicit user choices, so the venue-change
+  // effect in AddGigsModal won't clobber them on a later venue switch.
+  // (Add-existing variant does not overwrite gigName, so we don't touch that flag.)
+  next._rentalCapacityAutoFromVenue = false;
+  next._listingDocsVenueId = t.venueId ?? null;
 
   return next;
 }

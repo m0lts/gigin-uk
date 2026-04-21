@@ -47,7 +47,7 @@ const getEquipmentIcon = (equipmentName) => {
     return <MicrophoneIcon />; // Default icon
 };
 
-export const TechRiderEquipmentCard = ({ equipmentName, available, count, notes, hireFee }) => {
+export const TechRiderEquipmentCard = ({ equipmentName, available, count, notes, hireFee, hideNotes }) => {
     const isCountBased = count !== undefined && count !== null && count !== '';
     const isAvailable = isCountBased
         ? (parseInt(count, 10) > 0)
@@ -71,7 +71,9 @@ export const TechRiderEquipmentCard = ({ equipmentName, available, count, notes,
                     {isAvailable ? (
                         <>
                             {hireLabel ? (
-                                <span className="tech-rider-count">{hireLabel}</span>
+                                <span className="tech-rider-count">
+                                    Hire fee {hireLabel}
+                                </span>
                             ) : isCountBased && displayValue ? (
                                 <span className="tech-rider-count">{displayValue}</span>
                             ) : (
@@ -91,7 +93,7 @@ export const TechRiderEquipmentCard = ({ equipmentName, available, count, notes,
                     )}
                 </div>
             </div>
-            {notes && (
+            {!hideNotes && notes && (
                 <div style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--gn-grey-300)', width: '100%' }}>
                     <p style={{ margin: 0, color: 'var(--gn-off-black)', lineHeight: 1.5 }}>{notes}</p>
                 </div>

@@ -33,12 +33,12 @@ import { formatDate } from '@services/utils/dates';
 import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
 import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication, withdrawArtistApplication, getArtistProfileMembers } from '../../services/client-side/artists';
 import { getBandMembers } from '../../services/client-side/bands';
-import { getGigById, getGigsByIds, getGigInviteById } from '../../services/client-side/gigs';
+import { getGigById, getGigsByIds, getGigInviteById, getGigsByVenueId } from '../../services/client-side/gigs';
 import { getVenueHireOpportunityById } from '../../services/client-side/venueHireOpportunities';
 import { getMostRecentMessage } from '../../services/client-side/messages';
 import { toast } from 'sonner';
 import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
-import { AmpIcon, BassIcon, ClubIconSolid, CoinsIconSolid, ErrorIcon, InviteIconSolid, LinkIcon, LeftArrowIcon, RightArrowIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PermissionsIcon, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, TickIcon, VenueIconSolid, WarningIcon } from '../shared/ui/extras/Icons';
+import { AmpIcon, BassIcon, ClubIconSolid, ClockIcon, CoinsIconSolid, ErrorIcon, InviteIconSolid, LeftChevronIcon, LinkIcon, RightChevronIcon, MonitorIcon, MoreInformationIcon, MusicianIconSolid, NewTabIcon, PeopleGroupIconSolid, PeopleRoofIconLight, PeopleRoofIconSolid, PermissionsIcon, PianoIcon, PlugIcon, ProfileIconSolid, SaveIcon, SavedIcon, ShareIcon, SpeakerIcon, TickIcon, VenueIconSolid, WarningIcon } from '../shared/ui/extras/Icons';
 import { TechRiderEquipmentCard } from '../shared/ui/tech-rider/TechRiderEquipmentCard';
 import { getTechRiderForDisplay } from '../venue/builder/techRiderConfig';
 import { ensureProtocol, openInNewTab } from '../../services/utils/misc';
@@ -48,6 +48,7 @@ import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import Portal from '../shared/components/Portal';
 import { getLocalGigDateTime } from '../../services/utils/filtering';
+import { isGigClosedToNewApplicants, musicianOccupiesBookedSlotOnGig } from '@services/utils/gigSlotCapacity';
 import { sanitizeArtistPermissions } from '@services/utils/permissions';
 import { applyToGig, negotiateGigFee, acceptGigOffer, acceptGigOfferOM } from '@services/api/gigs';
 import { sendGigAcceptedMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, sendGigAcceptanceAnnouncement } from '@services/api/messages';
@@ -55,9 +56,74 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { NoTextLogo } from '../shared/ui/logos/Logos';
 import { updateCRMEntryWithArtistId } from '../../services/api/users';
 import { computeCompatibility } from '../../services/utils/techRiderCompatibility';
+import { findSlotSiblingsFromFlatGigs } from '../venue/gigs/utils/multiSlotGigGroup';
 
 const TECH_SPEC_SOUND_KEYS = new Set(['pa', 'mixingConsole', 'soundEngineer', 'microphones', 'micStands', 'diBoxes', 'stageMonitors']);
 const TECH_SPEC_BACKLINE_KEYS = new Set(['drumKit', 'bassAmp', 'guitarAmp', 'keyboard', 'keyboardStand', 'stageLighting', 'djDecks']);
+
+function normalizeFirestoreGigId(g) {
+    if (!g) return null;
+    return g.gigId ?? g.id ?? null;
+}
+
+/**
+ * Collect all gig document ids in a multi-set night: walk gigSlots until stable, then same-venue/date/name heuristic
+ * (dashboard list sometimes has gigSlots when individual Firestore reads do not).
+ */
+async function resolveMultiSlotPeerIds(anchorGig, { isCancelled, fetchByIds, fetchVenueGigs }) {
+    const anchorId = normalizeFirestoreGigId(anchorGig);
+    if (!anchorId) return new Set();
+
+    const mergeSlotRefs = (doc, into) => {
+        if (!doc || !Array.isArray(doc.gigSlots)) return;
+        for (const sid of doc.gigSlots) {
+            if (sid && typeof sid === 'string') into.add(sid);
+        }
+    };
+
+    const idSet = new Set([anchorId]);
+    mergeSlotRefs(anchorGig, idSet);
+
+    let stable = false;
+    while (!stable) {
+        if (isCancelled()) return new Set();
+        const sizeBefore = idSet.size;
+        const docs = await fetchByIds([...idSet]);
+        for (const d of docs) {
+            if ((d?.status || '').toLowerCase() === 'closed') continue;
+            mergeSlotRefs(d, idSet);
+        }
+        stable = idSet.size === sizeBefore;
+    }
+
+    if (anchorGig?.venueId && typeof fetchVenueGigs === 'function') {
+        try {
+            const venueGigs = await fetchVenueGigs(anchorGig.venueId);
+            if (isCancelled()) return idSet;
+            const siblings = findSlotSiblingsFromFlatGigs({ ...anchorGig, gigId: anchorId }, venueGigs);
+            for (const s of siblings) {
+                const sid = normalizeFirestoreGigId(s);
+                if (sid) idSet.add(sid);
+            }
+        } catch {
+            /* ignore */
+        }
+
+        stable = false;
+        while (!stable) {
+            if (isCancelled()) return new Set();
+            const sizeBefore = idSet.size;
+            const docs = await fetchByIds([...idSet]);
+            for (const d of docs) {
+                if ((d?.status || '').toLowerCase() === 'closed') continue;
+                mergeSlotRefs(d, idSet);
+            }
+            stable = idSet.size === sizeBefore;
+        }
+    }
+
+    return idSet;
+}
 
 function getGigCapacityDisplay(slot, venue) {
   const raw = slot?.capacity ?? slot?.rentalCapacity ?? venue?.capacity;
@@ -196,6 +262,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         }
     };
 
+    const goToSlotIndex = (index) => {
+        if (index === currentSlotIndex || isTransitioning) return;
+        if (index < 0 || index >= allSlots.length) return;
+        setIsTransitioning(true);
+        setTransitionDirection(index > currentSlotIndex ? 'left' : 'right');
+        setCurrentSlotIndex(index);
+        setTimeout(() => {
+            setIsTransitioning(false);
+            setTransitionDirection(null);
+        }, 400);
+    };
+
     // Swipe handlers
     const minSwipeDistance = 50;
     const onTouchStart = (e) => {
@@ -270,12 +348,26 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         const profileId = profile?.id || profile?.profileId || profile?.musicianId;
         const applicant = gig?.applicants?.find(a => a?.id === profileId);
         const invited = !!(applicant && applicant.invited === true);
-        const applied = !!(applicant && applicant.invited !== true && applicant.status !== 'withdrawn');
+        const st = applicant?.status;
+        const declined = st === 'declined';
+        const declinedForOtherSet = !!(declined && applicant?.declinedForOtherSet);
+        const applied = !!(
+            applicant &&
+            applicant.invited !== true &&
+            st !== 'withdrawn' &&
+            !declined
+        );
         const accepted = !!(
             applicant &&
             (applicant?.status === 'accepted' || applicant?.status === 'confirmed')
           );
-        return { invited, applied, accepted };
+        return {
+            invited,
+            applied,
+            accepted,
+            declinedForOtherSet,
+            acceptedOnGigId: applicant?.acceptedOnGigId || null,
+        };
     };
       
     useEffect(() => {
@@ -283,15 +375,29 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         let cancelled = false;
         const run = async () => {
           setLoading(true);
+          setOtherSlots(null);
           try {
             const gig = await getGigById(gigId);
             if (!gig || cancelled) return;
-            let enrichedGig = gig;
-            if (Array.isArray(enrichedGig?.gigSlots)) {
-                const ids = enrichedGig.gigSlots;
-                const otherGigs = await getGigsByIds(ids);
+            const anchorId = normalizeFirestoreGigId(gig);
+            let enrichedGig = anchorId ? { ...gig, gigId: anchorId } : gig;
+
+            if (enrichedGig.itemType !== 'venue_hire') {
+                const peerIds = await resolveMultiSlotPeerIds(enrichedGig, {
+                    isCancelled: () => cancelled,
+                    fetchByIds: getGigsByIds,
+                    fetchVenueGigs: getGigsByVenueId,
+                });
                 if (cancelled) return;
-                setOtherSlots(otherGigs.filter(g => (g.status || '').toLowerCase() !== 'closed'));
+                const otherIds = [...peerIds].filter((id) => id !== anchorId);
+                if (otherIds.length > 0) {
+                    const otherGigsRaw = await getGigsByIds(otherIds);
+                    if (cancelled) return;
+                    const otherGigs = otherGigsRaw
+                        .map((g) => ({ ...g, gigId: normalizeFirestoreGigId(g) }))
+                        .filter((g) => g.gigId && (g.status || '').toLowerCase() !== 'closed');
+                    setOtherSlots(otherGigs.length ? otherGigs : null);
+                }
             }
             // Get artist profiles and normalize them for compatibility
             const rawArtistProfiles = Array.isArray(user?.artistProfiles) ? user.artistProfiles : [];
@@ -784,7 +890,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const formatTicketingResponsibility = (v) => {
         if (v === 'venue') return 'Venue handles ticketing';
         if (v === 'artist') return 'Artist handles ticketing';
-        if (v === 'free_entry') return 'Free entry';
+        if (v === 'free_entry') return 'Not ticketed';
         return '';
     };
 
@@ -814,6 +920,22 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         return gigName.replace(/\s*\(Set\s+\d+\)\s*$/, '');
     };
 
+    const formatDuration = (duration) => {
+        const n = Number(duration);
+        if (duration == null || duration === '' || !Number.isFinite(n) || n <= 0) return '';
+        const hours = Math.floor(n / 60);
+        const minutes = n % 60;
+        const hourStr = hours === 1 ? 'hr' : 'hrs';
+        const minuteStr = minutes === 1 ? 'min' : 'mins';
+        if (minutes === 0) {
+            return `${hours} ${hourStr}`;
+        } else if (hours === 0) {
+            return `${minutes} ${minuteStr}`;
+        } else {
+            return `${hours} ${hourStr} and ${minutes} ${minuteStr}`;
+        }
+    };
+
     const renderGigMetaPills = () => {
         if (!gigData || !currentSlot) return null;
         const ticketingLabel = formatTicketingResponsibility(gigData?.ticketingResponsibility);
@@ -833,6 +955,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             else paymentLabel = `${b} gig fee`;
         }
 
+        const durMins = currentSlot.duration != null ? Number(currentSlot.duration) : NaN;
+        const durationLabel =
+            currentSlot.itemType !== 'venue_hire' && Number.isFinite(durMins) && durMins > 0
+                ? formatDuration(durMins)
+                : null;
+
         return (
             <ul className="gig-page-meta-pills" aria-label="Listing summary">
                 {ticketingLabel ? (
@@ -847,26 +975,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                         <span>{cap} capacity</span>
                     </li>
                 ) : null}
+                {durationLabel ? (
+                    <li className="gig-page-meta-pill">
+                        <span className="gig-page-meta-pill-icon" aria-hidden="true"><ClockIcon /></span>
+                        <span>{durationLabel}</span>
+                    </li>
+                ) : null}
                 <li className="gig-page-meta-pill">
                     <span className="gig-page-meta-pill-icon" aria-hidden="true"><CoinsIconSolid /></span>
                     <span>{paymentLabel}</span>
                 </li>
             </ul>
         );
-    };
-
-    const formatDuration = (duration) => {
-        const hours = Math.floor(duration / 60);
-        const minutes = duration % 60;
-        const hourStr = hours === 1 ? 'hr' : 'hrs';
-        const minuteStr = minutes === 1 ? 'min' : 'mins';
-        if (minutes === 0) {
-            return `${hours} ${hourStr}`;
-        } else if (hours === 0) {
-            return `${minutes} ${minuteStr}`;
-        } else {
-            return `${hours} ${hourStr} and ${minutes} ${minuteStr}`;
-        }
     };
 
     const calculateServiceFee = (budget) => {
@@ -1060,6 +1180,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             return false;
           }
           if (currentSlotStatus.applied) return false;
+          if (currentSlot.itemType !== 'venue_hire' && isGigClosedToNewApplicants(currentSlot)) {
+            toast.error('This set is fully booked and is no longer accepting applications.');
+            return false;
+          }
           setApplyingToGig(true);
           try {
             const slotGigId = currentSlot.gigId;
@@ -1449,6 +1573,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             if (!currentSlot) return console.error('Gig data is missing');
             const slotGigId = currentSlot.gigId;
             if (getLocalGigDateTime(currentSlot) < new Date()) return toast.error('Gig is in the past.');
+            if (
+                currentSlot.itemType !== 'venue_hire' &&
+                isGigClosedToNewApplicants(currentSlot) &&
+                !musicianOccupiesBookedSlotOnGig(currentSlot, musicianId)
+            ) {
+                toast.error('This set is fully booked.');
+                return;
+            }
             const nonPayableGig = currentSlot.kind === 'Open Mic' || currentSlot.kind === "Ticketed Gig" || currentSlot.budget === '£' || currentSlot.budget === '£0';
             let globalAgreedFee;
             if (currentSlot.kind === 'Open Mic') {
@@ -1544,7 +1676,23 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                 nonPayableGig: nonPayableGig,
             })
             if (nonPayableGig) {
-                await notifyOtherApplicantsGigConfirmed({ gigData: currentSlot, acceptedMusicianId: musicianId });
+                // Only notify other applicants once the gig has filled to its
+                // `maxApplicants` cap — for multi-artist listings (line-ups,
+                // open mics) we keep them open until the venue has confirmed
+                // the agreed number of acts. Open Mic listings without an
+                // explicit cap are treated as unlimited (matching server-side
+                // OM semantics — venue closes manually).
+                const rawMax = Number(currentSlot?.maxApplicants);
+                const hasExplicitMax = Number.isFinite(rawMax) && rawMax >= 1;
+                const isOpenMicGig = currentSlot?.kind === 'Open Mic';
+                const maxApplicants = hasExplicitMax ? Math.max(1, Math.floor(rawMax)) : (isOpenMicGig ? Infinity : 1);
+                const apps = Array.isArray(currentSlot?.applicants) ? currentSlot.applicants : [];
+                const wasAlreadyConfirmed = apps.some((a) => a?.id === musicianId && a?.status === 'confirmed');
+                const baseConfirmed = apps.filter((a) => a?.status === 'confirmed').length;
+                const confirmedCount = wasAlreadyConfirmed ? baseConfirmed : baseConfirmed + 1;
+                if (confirmedCount >= maxApplicants) {
+                    await notifyOtherApplicantsGigConfirmed({ gigData: currentSlot, acceptedMusicianId: musicianId });
+                }
             }
             toast.success('Invitation Accepted.')
         } catch (error) {
@@ -2045,7 +2193,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
     const now = new Date();
     // Compute status for current slot
     const currentSlotStatus = useMemo(() => {
-        if (!currentSlot || !selectedProfile) return { invited: false, applied: false, accepted: false };
+        if (!currentSlot || !selectedProfile) {
+            return { invited: false, applied: false, accepted: false, declinedForOtherSet: false, acceptedOnGigId: null };
+        }
         const status = computeStatusForProfile(currentSlot, selectedProfile);
         if (currentSlot?.itemType === 'venue_hire') {
             const profileId = selectedProfile.id || selectedProfile.profileId || selectedProfile.musicianId;
@@ -2054,11 +2204,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         return status;
     }, [currentSlot, selectedProfile, inviteToken, hireApplicationProfileIds]);
 
+    const slotClosedToNewApplicants = useMemo(
+        () => (currentSlot && currentSlot.itemType !== 'venue_hire' ? isGigClosedToNewApplicants(currentSlot) : false),
+        [currentSlot]
+    );
+
     const isFutureOpen = getLocalGigDateTime(currentSlot) > now && (currentSlot?.status || '').toLowerCase() !== 'closed';
     const isPrivate = !!currentSlot?.private;
     const invited = !!currentSlotStatus.invited;
     const applied = !!currentSlotStatus.applied;
     const accepted = !!currentSlotStatus.accepted;
+    const declinedForOtherSet = !!currentSlotStatus.declinedForOtherSet;
+    const acceptedOnOtherSlotGigId = currentSlotStatus.acceptedOnGigId || null;
     const inviteExpired = inviteValidationStatus === 'expired';
     const inviteInvalid = inviteValidationStatus === 'invalid' || inviteValidationStatus === 'wrong-artist';
     const inviteValid = inviteValidationStatus === 'valid';
@@ -2066,22 +2223,22 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
 
     // Visibility per your spec
     const showApply =
-    !invited && !isPrivate && !applied && !accepted;
+    !invited && !isPrivate && !applied && !accepted && !declinedForOtherSet && !slotClosedToNewApplicants;
 
     const showApplied =
-    ( // already applied covers both public and private
+    (( // already applied covers both public and private
         applied
     ) || (
         // (you also wanted "if invited and already applied" -> show applied)
         invited && applied
-    );
+    )) && !declinedForOtherSet;
 
     const showAcceptInvite =
-        (invited && !applied && !accepted && !inviteExpired) || (hasValidInvite && !applied && !accepted); // private or not, but not if expired
+        (((invited && !applied && !accepted && !inviteExpired) || (hasValidInvite && !applied && !accepted)) && !declinedForOtherSet && !slotClosedToNewApplicants); // private or not, but not if expired
 
     // Negotiate: show only if (not applied/accepted) OR (private AND invited), but not if invite expired, and user must be logged in
     const showNegotiate =
-        ((!applied && !accepted) || (isPrivate && invited)) && !inviteExpired && !!user;
+        ((!applied && !accepted) || (isPrivate && invited)) && !inviteExpired && !!user && !declinedForOtherSet && !slotClosedToNewApplicants;
 
     // Message: show in any case EXCEPT (private AND not invited AND not expired), and user must be logged in
     const showMessage =
@@ -2089,7 +2246,113 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
 
     // Optional: hide negotiate for kinds you excluded earlier
     const kindBlocksNegotiate = currentSlot?.kind === 'Ticketed Gig' || currentSlot?.kind === 'Open Mic';
-    
+
+    /** Multi-set gigs only: strip at top of apply / action box (Set x of y, chevrons; dot pager). */
+    const renderApplyBoxSlotCarousel = () => {
+        if (!allSlots.length || !currentSlot || currentSlot?.itemType === 'venue_hire') return null;
+        if (allSlots.length <= 1) return null;
+        const atStart = currentSlotIndex === 0;
+        const atEnd = currentSlotIndex === allSlots.length - 1;
+        const showTimeFee =
+            currentSlot?.startTime &&
+            currentSlot?.duration != null &&
+            Number(currentSlot.duration) > 0;
+        return (
+            <div className="gig-page-slot-carousel" role="region" aria-label="Choose performance set">
+                <div className="gig-page-slot-carousel__row">
+                    <button
+                        type="button"
+                        className="gig-page-slot-carousel__chev-btn"
+                        onClick={goToPreviousSlot}
+                        disabled={atStart || isTransitioning || allSlots.length <= 1}
+                        aria-label="Previous set"
+                    >
+                        <LeftChevronIcon />
+                    </button>
+                    <div className="gig-page-slot-carousel__center">
+                        <p className="gig-page-slot-carousel__set-label">
+                            Set {currentSlotIndex + 1} of {allSlots.length}
+                        </p>
+                        {showTimeFee ? (
+                            <p className="gig-page-slot-carousel__meta">
+                                {formatTime(currentSlot.startTime)}–{formatTime(calculateEndTime(currentSlot))}
+                                <span aria-hidden="true"> · </span>
+                                Fee:{' '}
+                                {currentSlot?.budget === '£' ||
+                                currentSlot?.budget === '£0' ||
+                                currentSlot?.budget === 'Free'
+                                    ? 'No fee'
+                                    : currentSlot?.budget || '—'}
+                            </p>
+                        ) : null}
+                    </div>
+                    <button
+                        type="button"
+                        className="gig-page-slot-carousel__chev-btn"
+                        onClick={goToNextSlot}
+                        disabled={atEnd || isTransitioning || allSlots.length <= 1}
+                        aria-label="Next set"
+                    >
+                        <RightChevronIcon />
+                    </button>
+                </div>
+                {allSlots.length > 1 ? (
+                    <div className="gig-page-slot-carousel__dots" role="tablist" aria-label="Sets">
+                        {allSlots.map((slot, i) => (
+                            <button
+                                key={slot?.gigId || slot?.id || `slot-${i}`}
+                                type="button"
+                                role="tab"
+                                aria-selected={i === currentSlotIndex}
+                                aria-label={`Set ${i + 1} of ${allSlots.length}`}
+                                className={`gig-page-slot-carousel__dot${i === currentSlotIndex ? ' gig-page-slot-carousel__dot--active' : ''}`}
+                                onClick={() => goToSlotIndex(i)}
+                                disabled={isTransitioning}
+                            />
+                        ))}
+                    </div>
+                ) : null}
+            </div>
+        );
+    };
+
+    const actionBoxDurationAside =
+        currentSlot?.itemType !== 'venue_hire' ? formatDuration(currentSlot?.duration) : '';
+
+    const renderActionBoxDateTime = () => {
+        if (!currentSlot) return null;
+        if (currentSlot.itemType === 'venue_hire') {
+            return (
+                <>
+                    <h3>{formatDate(currentSlot?.startDateTime)}</h3>
+                    {currentSlot?.startTime && (currentSlot?.endTime && String(currentSlot.endTime).trim() ? (
+                        <h4>{formatTime(currentSlot.startTime)} – {formatTime(currentSlot.endTime)}</h4>
+                    ) : (
+                        <h4>{formatTime(currentSlot.startTime)}</h4>
+                    ))}
+                </>
+            );
+        }
+        const shortDate = formatDate(currentSlot?.startDateTime, 'short');
+        if (!currentSlot.startTime) {
+            const combined = formatDate(currentSlot?.startDateTime, 'withTime');
+            const pretty = combined.includes(' - ') ? combined.replace(' - ', ' • ') : combined;
+            return <h3>{pretty}</h3>;
+        }
+        const dur = currentSlot.duration != null ? Number(currentSlot.duration) : 0;
+        const timePart =
+            dur > 0
+                ? `${formatTime(currentSlot.startTime)}–${formatTime(calculateEndTime(currentSlot))}`
+                : formatTime(currentSlot.startTime);
+        return (
+            <h3>
+                {shortDate}
+                <span aria-hidden="true"> • </span>
+                {timePart}
+            </h3>
+        );
+    };
+
     return (
         <div className='gig-page'>
             {!user ? (
@@ -2382,36 +2645,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         onTouchEnd={onTouchEnd}
                                         style={{ overflow: 'hidden' }}
                                     >
-                                        {allSlots.length > 1 && (
-                                            <div className='slot-navigation' style={{ 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                justifyContent: 'space-between',
-                                                padding: '1rem',
-                                                borderBottom: '1px solid var(--gn-grey-300)',
-                                                marginBottom: '1rem'
-                                            }}>
-                                                <button 
-                                                    className='btn icon' 
-                                                    onClick={goToPreviousSlot}
-                                                    disabled={currentSlotIndex === 0 || isTransitioning}
-                                                    style={{ opacity: currentSlotIndex === 0 ? 0.5 : 1 }}
-                                                >
-                                                    <LeftArrowIcon />
-                                                </button>
-                                                <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>
-                                                    Set {currentSlotIndex + 1} of {allSlots.length}
-                                                </h4>
-                                                <button 
-                                                    className='btn icon' 
-                                                    onClick={goToNextSlot}
-                                                    disabled={currentSlotIndex === allSlots.length - 1 || isTransitioning}
-                                                    style={{ opacity: currentSlotIndex === allSlots.length - 1 ? 0.5 : 1 }}
-                                                >
-                                                    <RightArrowIcon />
-                                                </button>
-                                            </div>
-                                        )}
+                                        {renderApplyBoxSlotCarousel()}
                                         <div 
                                             className='action-box-content'
                                             style={{
@@ -2460,28 +2694,17 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         </>
                                                     )}
                                                 </div>
-                                                {currentSlot?.itemType !== 'venue_hire' && (
+                                                {actionBoxDurationAside ? (
                                                 <div className="action-box-side-meta">
                                                     <div className='action-box-duration'>
-                                                        <h4>{formatDuration(currentSlot?.duration)}</h4>
+                                                        <h4>{actionBoxDurationAside}</h4>
                                                     </div>
                                                 </div>
-                                                )}
+                                                ) : null}
                                             </div>
                                             <div className='action-box-date-and-time'>
                                                 <div className='action-box-date'>
-                                                    {currentSlot?.itemType === 'venue_hire' ? (
-                                                        <>
-                                                            <h3>{formatDate(currentSlot?.startDateTime)}</h3>
-                                                            {currentSlot?.startTime && (currentSlot?.endTime && String(currentSlot.endTime).trim() ? (
-                                                                <h4>{formatTime(currentSlot.startTime)} – {formatTime(currentSlot.endTime)}</h4>
-                                                            ) : (
-                                                                <h4>{formatTime(currentSlot.startTime)}</h4>
-                                                            ))}
-                                                        </>
-                                                    ) : (
-                                                        <h3>{formatDate(currentSlot?.startDateTime, 'withTime')}</h3>
-                                                    )}
+                                                    {renderActionBoxDateTime()}
                                                 </div>
                                             </div>
                                         </div>
@@ -2499,17 +2722,30 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         )} */}
                                         {!(user?.venueProfiles?.length > 0 && !user.artistProfiles?.length) && !venueVisiting && (
                                             <>
-                                                {selectedProfile && !applyingToGig && (
-                                                    <div className="active-profile-status">
-                                                    <h6 className="active-profile-badge">ACTIVE PROFILE:</h6>
-                                                    <span className="active-profile-name">{selectedProfile.name || 'Unnamed Profile'}</span>
-                                                </div>
-                                                )}
                                                 <div className='action-box-buttons'>
                                                     {isFutureOpen  ? (
                                                         applyingToGig ? (
                                                             <div className="applying-to-gig">
                                                                 <LoadingSpinner width={20} height={20} />
+                                                            </div>
+                                                        ) : declinedForOtherSet && hasAccessToPrivateGig ? (
+                                                            <div className="status-box confirmed" style={{ textAlign: 'left' }}>
+                                                                <p style={{ margin: 0 }}>
+                                                                    You were confirmed for another set at this event, so this application was declined automatically.
+                                                                </p>
+                                                                {allSlots.length > 1 && acceptedOnOtherSlotGigId ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn secondary"
+                                                                        style={{ marginTop: '0.75rem' }}
+                                                                        onClick={() => {
+                                                                            const idx = allSlots.findIndex((s) => s.gigId === acceptedOnOtherSlotGigId);
+                                                                            if (idx >= 0) goToSlotIndex(idx);
+                                                                        }}
+                                                                    >
+                                                                        View the set you&apos;re booked for
+                                                                    </button>
+                                                                ) : null}
                                                             </div>
                                                         ) : inviteInvalid ? (
                                                             // Invalid invite screen
@@ -2911,36 +3147,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         onTouchEnd={onTouchEnd}
                                         style={{ overflow: 'hidden' }}
                                     >
-                                        {allSlots.length > 1 && (
-                                            <div className='slot-navigation' style={{ 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                justifyContent: 'space-between',
-                                                padding: '1rem',
-                                                borderBottom: '1px solid var(--gn-grey-300)',
-                                                marginBottom: '1rem'
-                                            }}>
-                                                <button 
-                                                    className='btn icon' 
-                                                    onClick={goToPreviousSlot}
-                                                    disabled={currentSlotIndex === 0 || isTransitioning}
-                                                    style={{ opacity: currentSlotIndex === 0 ? 0.5 : 1 }}
-                                                >
-                                                    <LeftArrowIcon />
-                                                </button>
-                                                <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>
-                                                    Set {currentSlotIndex + 1} of {allSlots.length}
-                                                </h4>
-                                                <button 
-                                                    className='btn icon' 
-                                                    onClick={goToNextSlot}
-                                                    disabled={currentSlotIndex === allSlots.length - 1 || isTransitioning}
-                                                    style={{ opacity: currentSlotIndex === allSlots.length - 1 ? 0.5 : 1 }}
-                                                >
-                                                    <RightArrowIcon />
-                                                </button>
-                                            </div>
-                                        )}
+                                        {renderApplyBoxSlotCarousel()}
                                         <div 
                                             className='action-box-content'
                                             style={{
@@ -2989,28 +3196,17 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         </>
                                                     )}
                                                 </div>
-                                                {currentSlot?.itemType !== 'venue_hire' && (
+                                                {actionBoxDurationAside ? (
                                                 <div className="action-box-side-meta">
                                                     <div className='action-box-duration'>
-                                                        <h4>{formatDuration(currentSlot?.duration)}</h4>
+                                                        <h4>{actionBoxDurationAside}</h4>
                                                     </div>
                                                 </div>
-                                                )}
+                                                ) : null}
                                             </div>
                                             <div className='action-box-date-and-time'>
                                                 <div className='action-box-date'>
-                                                    {currentSlot?.itemType === 'venue_hire' ? (
-                                                        <>
-                                                            <h3>{formatDate(currentSlot?.startDateTime)}</h3>
-                                                            {currentSlot?.startTime && (currentSlot?.endTime && String(currentSlot.endTime).trim() ? (
-                                                                <h4>{formatTime(currentSlot.startTime)} – {formatTime(currentSlot.endTime)}</h4>
-                                                            ) : (
-                                                                <h4>{formatTime(currentSlot.startTime)}</h4>
-                                                            ))}
-                                                        </>
-                                                    ) : (
-                                                        <h3>{formatDate(currentSlot?.startDateTime, 'withTime')}</h3>
-                                                    )}
+                                                    {renderActionBoxDateTime()}
                                                 </div>
                                             </div>
                                         </div>
@@ -3028,12 +3224,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         )} */}
                                         {!(user?.venueProfiles?.length > 0 && !user.artistProfiles?.length) && !venueVisiting && (
                                             <>
-                                                {selectedProfile && !applyingToGig && (
-                                                    <div className="active-profile-status">
-                                                        <h6 className="active-profile-badge">ACTIVE PROFILE</h6>
-                                                        <span className="active-profile-name">{selectedProfile.name || 'Unnamed Profile'}</span>
-                                                    </div>
-                                                )}
                                                 {/* Tech Rider Mismatch Warning */}
                                                 {selectedProfile && hasAccessToPrivateGig && (() => {
                                                     const mismatches = checkTechRiderMismatches();
@@ -3060,6 +3250,25 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                         applyingToGig ? (
                                                             <div className="applying-to-gig">
                                                                 <LoadingSpinner width={20} height={20} />
+                                                            </div>
+                                                        ) : declinedForOtherSet && hasAccessToPrivateGig ? (
+                                                            <div className="status-box confirmed" style={{ textAlign: 'left' }}>
+                                                                <p style={{ margin: 0 }}>
+                                                                    You were confirmed for another set at this event, so this application was declined automatically.
+                                                                </p>
+                                                                {allSlots.length > 1 && acceptedOnOtherSlotGigId ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn secondary"
+                                                                        style={{ marginTop: '0.75rem' }}
+                                                                        onClick={() => {
+                                                                            const idx = allSlots.findIndex((s) => s.gigId === acceptedOnOtherSlotGigId);
+                                                                            if (idx >= 0) goToSlotIndex(idx);
+                                                                        }}
+                                                                    >
+                                                                        View the set you&apos;re booked for
+                                                                    </button>
+                                                                ) : null}
                                                             </div>
                                                         ) : inviteInvalid ? (
                                                             // Invalid invite screen

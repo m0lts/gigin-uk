@@ -122,6 +122,170 @@ async function validateGigInvite(gig, inviteId, musicianId) {
   return { valid: true };
 }
 
+/** Aligns with GigPage / Book New Event: Open Mic without maxApplicants is uncapped. */
+function resolveMaxApplicantsForListing(gig) {
+  const rawMax = Number(gig?.maxApplicants);
+  const hasExplicitMax = Number.isFinite(rawMax) && rawMax >= 1;
+  const isOpenMicGig = gig?.kind === "Open Mic";
+  if (hasExplicitMax) return Math.max(1, Math.floor(rawMax));
+  if (isOpenMicGig) return Number.POSITIVE_INFINITY;
+  return 1;
+}
+
+function countBookedApplicantsForListing(gig) {
+  const applicants = gig?.applicants;
+  if (!Array.isArray(applicants)) return 0;
+  if (gig?.kind === "Open Mic") {
+    return applicants.filter((a) => a?.status === "confirmed").length;
+  }
+  return applicants.filter((a) =>
+    ["confirmed", "accepted", "paid", "payment processing"].includes(a?.status)
+  ).length;
+}
+
+function isListingClosedToNewApplicants(gig) {
+  if (!gig) return false;
+  const max = resolveMaxApplicantsForListing(gig);
+  if (!Number.isFinite(max)) return false;
+  return countBookedApplicantsForListing(gig) >= max;
+}
+
+function musicianOccupiesBookedSlotOnListing(gig, musicianProfileId) {
+  if (!musicianProfileId) return false;
+  const me = (Array.isArray(gig?.applicants) ? gig.applicants : []).find((a) => a?.id === musicianProfileId);
+  if (!me) return false;
+  if (gig?.kind === "Open Mic") {
+    return me.status === "confirmed";
+  }
+  return ["confirmed", "accepted", "paid", "payment processing"].includes(me?.status);
+}
+
+/** All gig doc ids in the same multi-set group (BFS over `gigSlots` links). */
+async function collectMultiSlotGigGroupIds(startGigId) {
+  const visited = new Set();
+  const queue = [startGigId];
+  while (queue.length) {
+    const id = queue.shift();
+    if (!id || typeof id !== "string" || visited.has(id)) continue;
+    visited.add(id);
+    const snap = await db.doc(`gigs/${id}`).get();
+    if (!snap.exists) continue;
+    const slots = snap.data()?.gigSlots;
+    if (!Array.isArray(slots)) continue;
+    for (const sid of slots) {
+      if (sid && typeof sid === "string" && !visited.has(sid)) queue.push(sid);
+    }
+  }
+  return visited;
+}
+
+const BOOKED_APPLICANT_STATUSES = new Set(["confirmed", "accepted", "paid", "payment processing"]);
+
+function shouldAutoDeclineApplicantOnSiblingSlot(applicant) {
+  if (!applicant || applicant.id == null) return false;
+  const st = String(applicant.status || "").toLowerCase();
+  if (BOOKED_APPLICANT_STATUSES.has(st)) return false;
+  if (st === "withdrawn" || st === "declined") return false;
+  return true;
+}
+
+const OTHER_SET_DECLINE_LAST_MESSAGE =
+  "Application declined — you were confirmed for another set at this event.";
+
+async function markApplicationThreadDeclinedForOtherSet(gigId, musicianProfileId) {
+  const convQ = await db
+    .collection("conversations")
+    .where("participants", "array-contains", musicianProfileId)
+    .where("gigId", "==", gigId)
+    .limit(1)
+    .get();
+  if (convQ.empty) return;
+  const convId = convQ.docs[0].id;
+  const ts = Timestamp.now();
+  const msgsSnap = await db
+    .collection("conversations")
+    .doc(convId)
+    .collection("messages")
+    .orderBy("timestamp", "desc")
+    .limit(40)
+    .get();
+  let targetRef = null;
+  for (const doc of msgsSnap.docs) {
+    const m = doc.data() || {};
+    if (m.type === "application" || m.type === "invitation") {
+      targetRef = doc.ref;
+      break;
+    }
+  }
+  if (!targetRef) return;
+  await targetRef.update({
+    status: "declined",
+    declineDetail: "accepted_other_set",
+    timestamp: ts,
+  });
+  await db.doc(`conversations/${convId}`).update({
+    lastMessage: OTHER_SET_DECLINE_LAST_MESSAGE,
+    lastMessageTimestamp: ts,
+    lastMessageSenderId: "system",
+  });
+}
+
+/**
+ * When an artist is confirmed/accepted on one set, decline their pending applications
+ * on sibling sets in the same multi-set night and mark threads so the reason is clear.
+ */
+async function declineArtistOnOtherSetsInGroup(acceptedGigId, musicianProfileId) {
+  if (!acceptedGigId || !musicianProfileId) return;
+  let groupIds;
+  try {
+    groupIds = await collectMultiSlotGigGroupIds(acceptedGigId);
+  } catch (e) {
+    console.error("collectMultiSlotGigGroupIds failed", e);
+    return;
+  }
+  if (groupIds.size <= 1) return;
+
+  for (const otherGigId of groupIds) {
+    if (otherGigId === acceptedGigId) continue;
+    const gigRef = db.doc(`gigs/${otherGigId}`);
+    let snap;
+    try {
+      snap = await gigRef.get();
+    } catch (e) {
+      console.error("sibling gig read failed", otherGigId, e);
+      continue;
+    }
+    if (!snap.exists) continue;
+    const gig = snap.data() || {};
+    const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+    let changed = false;
+    const nextApplicants = applicants.map((a) => {
+      if (a?.id !== musicianProfileId || !shouldAutoDeclineApplicantOnSiblingSlot(a)) {
+        return a;
+      }
+      changed = true;
+      return {
+        ...a,
+        status: "declined",
+        declinedForOtherSet: true,
+        acceptedOnGigId: acceptedGigId,
+      };
+    });
+    if (!changed) continue;
+    try {
+      await gigRef.update({ applicants: nextApplicants });
+    } catch (e) {
+      console.error("sibling gig applicant update failed", otherGigId, e);
+      continue;
+    }
+    try {
+      await markApplicationThreadDeclinedForOtherSet(otherGigId, musicianProfileId);
+    } catch (e) {
+      console.error("markApplicationThreadDeclinedForOtherSet failed", otherGigId, e);
+    }
+  }
+}
+
 // POST /api/gigs/postMultipleGigs
 router.post("/postMultipleGigs", requireAuth, asyncHandler(async (req, res) => {
   const caller = req.auth.uid;
@@ -282,6 +446,12 @@ router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
   const gigSnap = await gigRef.get();
   if (!gigSnap.exists) return res.json({ data: { applicants: null } });
   const gig = gigSnap.data() || {};
+  if (isListingClosedToNewApplicants(gig)) {
+    return res.status(409).json({
+      error: "GIG_SLOT_FILLED",
+      message: "This set is no longer accepting applications.",
+    });
+  }
 
   // Validate invite if gig is private
   const inviteValidation = await validateGigInvite(gig, inviteId, musicianId);
@@ -424,6 +594,12 @@ router.post("/negotiateGigFee", requireAuth, asyncHandler(async (req, res) => {
   const gigSnap = await gigRef.get();
   if (!gigSnap.exists) return res.json({ data: { applicants: [] } });
   const gig = gigSnap.data() || {};
+  if (isListingClosedToNewApplicants(gig)) {
+    return res.status(409).json({
+      error: "GIG_SLOT_FILLED",
+      message: "This set is fully booked.",
+    });
+  }
   const now = new Date();
   const newApplication = {
     id: musicianProfile?.musicianId,
@@ -538,6 +714,24 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
     }
   }
 
+  if (role === "musician" && gigData?.gigId) {
+    const gigRefFresh = db.doc(`gigs/${gigData.gigId}`);
+    const gigFreshSnap = await gigRefFresh.get();
+    if (!gigFreshSnap.exists) {
+      return res.status(404).json({ error: "NOT_FOUND", message: "gig not found" });
+    }
+    const gigFresh = gigFreshSnap.data() || {};
+    if (
+      isListingClosedToNewApplicants(gigFresh) &&
+      !musicianOccupiesBookedSlotOnListing(gigFresh, musicianProfileId)
+    ) {
+      return res.status(409).json({
+        error: "GIG_SLOT_FILLED",
+        message: "This set is fully booked.",
+      });
+    }
+  }
+
   const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
   const isInApplicants = applicants.some(a => a?.id === musicianProfileId);
   
@@ -579,12 +773,29 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
   }
   
   let agreedFee = null;
+  // maxApplicants gates the "auto-decline other pending applicants" behaviour
+  // for paid gigs and the "auto-close" behaviour below. When > 1 the venue
+  // can keep accepting up to `maxApplicants` artists for the same gig before
+  // the listing closes. Default 1 preserves today's "first-accept-wins"
+  // behaviour for paid gigs.
+  const rawMaxApplicants = Number(gigData?.maxApplicants);
+  const maxApplicants = Number.isFinite(rawMaxApplicants) && rawMaxApplicants >= 1
+    ? Math.max(1, Math.min(50, Math.floor(rawMaxApplicants)))
+    : 1;
+  const confirmedBefore = applicantsToProcess.filter((a) => a?.status === "confirmed" || a?.status === "accepted").length;
+  const willHitMax = (confirmedBefore + 1) >= maxApplicants;
+
   const updatedApplicants = applicantsToProcess.map((applicant) => {
     if (applicant.id === musicianProfileId) {
       agreedFee = applicant.fee;
       return { ...applicant, status: nonPayableGig ? "confirmed" : "accepted" };
     }
-    return nonPayableGig ? { ...applicant } : { ...applicant, status: "declined" };
+    // For paid gigs we historically auto-declined every other applicant on
+    // first acceptance. With maxApplicants > 1 we only do that once the
+    // listing fills up; otherwise we leave other applicants pending so
+    // additional acceptances can still happen.
+    if (!nonPayableGig && willHitMax) return { ...applicant, status: "declined" };
+    return { ...applicant };
   });
 
   // Compute payout config for payable gigs with artistProfiles
@@ -635,11 +846,14 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
   }
 
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
+  // Close logic: today nonPayable + Ticketed close on the first acceptance.
+  // With maxApplicants > 1 we keep them open until the slot list fills up.
+  const shouldCloseOnAccept = (nonPayableGig || gigData?.kind === "Ticketed Gig") && willHitMax;
   const gigUpdate = {
     applicants: updatedApplicants,
     agreedFee: `${agreedFee}`,
     paid: !!nonPayableGig,
-    status: nonPayableGig || gigData?.kind === "Ticketed Gig" ? "closed" : "open",
+    status: shouldCloseOnAccept ? "closed" : "open",
   };
   
   // Add payoutConfig if computed
@@ -648,6 +862,7 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
   }
   
   await gigRef.update(gigUpdate);
+  await declineArtistOnOtherSetsInGroup(gigData.gigId, musicianProfileId);
 
   if (nonPayableGig) {
     // For legacy musician profiles, confirmed gigs were stored on musicianProfiles.
@@ -711,6 +926,24 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
     }
   }
 
+  if (role === "musician" && gigData?.gigId) {
+    const gigRefFreshOm = db.doc(`gigs/${gigData.gigId}`);
+    const gigFreshSnapOm = await gigRefFreshOm.get();
+    if (!gigFreshSnapOm.exists) {
+      return res.status(404).json({ error: "NOT_FOUND", message: "gig not found" });
+    }
+    const gigFreshOm = gigFreshSnapOm.data() || {};
+    if (
+      isListingClosedToNewApplicants(gigFreshOm) &&
+      !musicianOccupiesBookedSlotOnListing(gigFreshOm, musicianProfileId)
+    ) {
+      return res.status(409).json({
+        error: "GIG_SLOT_FILLED",
+        message: "This set is fully booked.",
+      });
+    }
+  }
+
   const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
   const isInApplicants = applicants.some(a => a?.id === musicianProfileId);
   
@@ -751,9 +984,22 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
     }
   }
   
+  // Open Mic listings have always stayed open after each acceptance — they're
+  // multi-artist by nature and the venue closes them manually when the night
+  // is full. We only auto-close now when `maxApplicants` was explicitly set
+  // by the venue (via the wizard), preserving today's "stays open" default
+  // for existing OM gigs that don't carry the field.
+  const rawMaxApplicantsOM = Number(gigData?.maxApplicants);
+  const maxApplicantsOM = Number.isFinite(rawMaxApplicantsOM) && rawMaxApplicantsOM >= 1
+    ? Math.max(1, Math.min(50, Math.floor(rawMaxApplicantsOM)))
+    : null;
+  const confirmedBeforeOM = applicantsToProcess.filter((a) => a?.status === "confirmed").length;
   const updatedApplicants = applicantsToProcess.map((a) => a.id === musicianProfileId ? { ...a, status: "confirmed" } : { ...a });
+  const confirmedAfterOM = confirmedBeforeOM + 1;
+  const omShouldClose = maxApplicantsOM != null && confirmedAfterOM >= maxApplicantsOM;
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
-  await gigRef.update({ applicants: updatedApplicants, paid: true, status: "open" });
+  await gigRef.update({ applicants: updatedApplicants, paid: true, status: omShouldClose ? "closed" : "open" });
+  await declineArtistOnOtherSetsInGroup(gigData.gigId, musicianProfileId);
   const musicianRef = db.doc(`musicianProfiles/${musicianProfileId}`);
   const musicianSnap = await musicianRef.get();
   if (musicianSnap.exists) {

@@ -2217,8 +2217,8 @@ export const AdditionalInfoSection = ({ type, onClose, profileData, profileId, c
                 <h5 className="tech-rider-can-bring-title">Band equipment</h5>
                 <p className="tech-rider-can-bring-copy">Where will PA and mixing desk come from?</p>
                 {[
-                  { key: 'paSource', label: 'PA', options: [{ value: 'venue', label: 'Use venue PA' }, { value: 'own', label: 'Bring our own PA' }, { value: 'either', label: 'Either works' }] },
-                  { key: 'mixingDeskSource', label: 'Mixing desk', options: [{ value: 'venue', label: 'Use venue mixer' }, { value: 'own', label: 'Bring our own mixer' }, { value: 'either', label: 'Either works' }] },
+                  { key: 'paSource', label: 'PA', options: [{ value: 'venue', label: 'Use venue PA' }, { value: 'own', label: 'Bring own PA' }, { value: 'either', label: 'Either works' }] },
+                  { key: 'mixingDeskSource', label: 'Mixing desk', options: [{ value: 'venue', label: 'Use venue mixer' }, { value: 'own', label: 'Bring own mixer' }, { value: 'either', label: 'Either works' }] },
                 ].map(({ key, options }) => (
                   <div key={key} className="tech-rider-band-source-field">
                     <div className="tech-rider-source-options">

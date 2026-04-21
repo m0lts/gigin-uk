@@ -98,3 +98,81 @@ export function buildVenueHireGigDetailsTimingDisplayRows(rawGig, accessFrom, cu
     };
   });
 }
+
+/** End HH:MM from start + duration (minutes); same-day wrap at 24h as elsewhere in the app. */
+function endTimeFromStartAndDurationMinutes(startTime, durationMinutes) {
+  if (!startTime || !String(startTime).trim() || !(Number(durationMinutes) > 0)) return '';
+  const [h, m] = String(startTime).trim().split(':').map(Number);
+  if (!Number.isFinite(h)) return '';
+  const totalMins = h * 60 + (Number.isFinite(m) ? m : 0) + Number(durationMinutes);
+  const eh = Math.floor(totalMins / 60) % 24;
+  const em = totalMins % 60;
+  return formatVenueHireTimeDisplay(`${eh}:${em}`);
+}
+
+/**
+ * One continuous timeline for a multi-set artist booking: shared access/soundcheck from
+ * `rawGig.eventTimings`, then each set’s slot window, then night-level music stop / vacate.
+ * @param {object} rawGig Primary slot gig (carries shared `eventTimings`).
+ * @param {object[]} sortedSlotGigs All slot docs, sorted by startTime.
+ * @returns {{ key: string, label: string, displayTime: string }[]}
+ */
+export function buildArtistBookingMergedTimingDisplayRows(rawGig, sortedSlotGigs, accessFrom, curfew) {
+  const rows = [];
+  const et = rawGig?.eventTimings;
+  const hasEt = et && typeof et === 'object' && !Array.isArray(et);
+
+  let accessRaw = '';
+  if (hasEt && et.accessFrom != null) accessRaw = String(et.accessFrom).trim();
+  if (!accessRaw && accessFrom != null && accessFrom !== '') accessRaw = String(accessFrom).trim();
+  if (accessRaw) {
+    rows.push({
+      key: 'accessFrom',
+      label: 'Access / load-in',
+      displayTime: formatVenueHireTimeDisplay(accessRaw),
+    });
+  }
+
+  if (hasEt && et.soundcheck != null && String(et.soundcheck).trim()) {
+    rows.push({
+      key: 'soundcheck',
+      label: 'Soundcheck',
+      displayTime: formatVenueHireTimeDisplay(et.soundcheck),
+    });
+  }
+
+  const slots = Array.isArray(sortedSlotGigs) ? sortedSlotGigs.filter(Boolean) : [];
+  slots.forEach((slot, idx) => {
+    const st = slot?.startTime;
+    const dur = slot?.duration;
+    const startDisp = st ? formatVenueHireTimeDisplay(st) : '—';
+    const endDisp = endTimeFromStartAndDurationMinutes(st, dur);
+    const timeDisp = endDisp && st ? `${startDisp}–${endDisp}` : startDisp;
+    rows.push({
+      key: `set-${idx + 1}`,
+      label: `Set ${idx + 1}`,
+      displayTime: timeDisp,
+    });
+  });
+
+  let musicStopRaw = '';
+  if (hasEt && et.musicStop != null) musicStopRaw = String(et.musicStop).trim();
+  if (!musicStopRaw && curfew != null && curfew !== '') musicStopRaw = String(curfew).trim();
+  if (musicStopRaw) {
+    rows.push({
+      key: 'musicStop',
+      label: 'Music stop',
+      displayTime: formatVenueHireTimeDisplay(musicStopRaw),
+    });
+  }
+
+  if (hasEt && et.mustVacate != null && String(et.mustVacate).trim()) {
+    rows.push({
+      key: 'mustVacate',
+      label: 'Must vacate',
+      displayTime: formatVenueHireTimeDisplay(et.mustVacate),
+    });
+  }
+
+  return rows;
+}

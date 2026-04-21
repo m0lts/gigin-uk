@@ -202,6 +202,9 @@ export const ArtistProfileGigs = () => {
         return { icon: <ClockIcon />, text: 'Pending' };
       }
       if (status === 'declined') {
+        if (applicant?.declinedForOtherSet) {
+          return { icon: <TickIcon />, text: 'Confirmed (other set)' };
+        }
         return { icon: <RejectedIcon />, text: 'Declined' };
       }
       if (status === 'withdrawn') {

@@ -28,6 +28,11 @@ export function deleteVenueData({ venueId, confirm = true }) {
   return post('/venues/deleteVenueData', { body: { venueId, confirm } });
 }
 
+export async function fetchGigTemplates({ venueIds }) {
+  const data = await post('/venues/fetchGigTemplates', { body: { venueIds: venueIds || [] } });
+  return Array.isArray(data) ? data : [];
+}
+
 export async function saveGigTemplate({ templateData }) {
   const data = await post('/venues/saveGigTemplate', { body: { templateData } });
   return data?.templateId;

@@ -1279,7 +1279,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                     )}
                                     {!activeContentTab && hasHireOpportunities && (
                                         <div className="venue-gigs-section">
-                                            <VenueGigsList title={'Hire Opportunities'} hireOpportunities={venueHireOpportunities || []} groupedGigs={[]} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                                            <VenueGigsList title={'Hire This Venue'} hireOpportunities={venueHireOpportunities || []} groupedGigs={[]} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
                                         </div>
                                     )}
                                 </div>
@@ -1334,7 +1334,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                 )}
                                 {hasHireOpportunities && (
                                     <div className="section venue-page-gigs">
-                                        <VenueGigsList title={'Hire Opportunities'} hireOpportunities={venueHireOpportunities || []} groupedGigs={[]} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
+                                        <VenueGigsList title={'Hire This Venue'} hireOpportunities={venueHireOpportunities || []} groupedGigs={[]} isVenue={venueViewing} musicianId={musicianId} venueId={venueId} />
                                     </div>
                                 )}
                                 {venueData?.description && (

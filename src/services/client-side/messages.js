@@ -128,8 +128,10 @@ export const listenToMessages = (conversationId, onUpdate) => {
  * Fetches the most recent message of a given type from a conversation.
  */
 export const getMostRecentMessage = async (conversationId, type) => {
+  const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+  const mapDoc = (docSnap) => ({ id: docSnap.id, ...docSnap.data() });
+
   try {
-    const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
     const messageQuery = query(
       messagesRef,
       where('type', '==', type),
@@ -139,12 +141,24 @@ export const getMostRecentMessage = async (conversationId, type) => {
     const snapshot = await getDocs(messageQuery);
 
     if (!snapshot.empty) {
-      const docSnap = snapshot.docs[0];
-      return { id: docSnap.id, ...docSnap.data() };
+      return mapDoc(snapshot.docs[0]);
     }
     return null;
   } catch (error) {
-    console.error('[Firestore Error] getMostRecentMessage:', error);
-    return null;
+    // Fallback when composite index (type + timestamp) is missing or query fails: scan recent messages.
+    try {
+      const fallbackQuery = query(messagesRef, orderBy('timestamp', 'desc'), limit(100));
+      const snapshot = await getDocs(fallbackQuery);
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+        if (data?.type === type) {
+          return mapDoc(docSnap);
+        }
+      }
+      return null;
+    } catch (fallbackError) {
+      console.error('[Firestore Error] getMostRecentMessage:', error, fallbackError);
+      return null;
+    }
   }
 };

@@ -1,34 +1,27 @@
 import React from 'react';
-import { ArtistBookingOpenPanel } from './ArtistBookingOpenPanel';
 import { PlaceholderPanel } from './PlaceholderPanel';
-import { VenueHireDetailsPanel } from './VenueHireDetailsPanel';
+import { GigDetailsPanel } from './GigDetailsPanel';
 
 /**
  * Resolves the main panel component for a normalised gig based on bookingMode + status.
  * Event type (kind) is display-only and does NOT drive which panel is shown.
- * Venue hire (confirmed or unconfirmed) uses the same VenueHireDetailsPanel.
+ *
+ * Venue hire (any state) and artist bookings in 'open' or 'confirmed' status all use
+ * the unified GigDetailsPanel, which branches internally on bookingMode + status.
+ * Completed / cancelled artist bookings still fall through to the placeholder until
+ * those views are designed.
  */
 export function getMainPanelComponent(normalisedGig) {
   if (!normalisedGig) return () => <PlaceholderPanel message="Loading…" />;
 
   const { bookingMode, status } = normalisedGig;
 
-  if (bookingMode === 'artist_booking' && status === 'open') {
-    return ArtistBookingOpenPanel;
-  }
-
-  if (bookingMode === 'artist_booking' && status === 'confirmed') {
-    return (props) => (
-      <PlaceholderPanel
-        {...props}
-        title="Confirmed artist booking"
-        subtitle="This view is coming next."
-      />
-    );
+  if (bookingMode === 'artist_booking' && (status === 'open' || status === 'confirmed')) {
+    return GigDetailsPanel;
   }
 
   if (bookingMode === 'venue_hire') {
-    return VenueHireDetailsPanel;
+    return GigDetailsPanel;
   }
 
   return (props) => (
@@ -36,7 +29,7 @@ export function getMainPanelComponent(normalisedGig) {
   );
 }
 
-export { ArtistBookingOpenPanel } from './ArtistBookingOpenPanel';
 export { PlaceholderPanel } from './PlaceholderPanel';
-export { VenueHireDetailsPanel } from './VenueHireDetailsPanel';
+export { GigDetailsPanel } from './GigDetailsPanel';
+export { VenueHireDetailsPanel } from './VenueHireConfirmedPanel';
 export { VenueHireConfirmedPanel } from './VenueHireConfirmedPanel';

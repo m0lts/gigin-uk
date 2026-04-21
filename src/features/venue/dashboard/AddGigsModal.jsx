@@ -7,9 +7,16 @@ import { BookNewEventListingPreview } from './BookNewEventListingPreview';
 import { CalendarIconSolid, CoinsIcon, CoinsIconSolid, TicketIcon, TicketIconLight, NoPaymentIcon, DeleteGigIcon, MoreInformationIcon, ClockIcon, LocationPinIcon, SolidCalendarRotateFullIcon } from '../../shared/ui/extras/Icons';
 import { createArtistCRMEntry, getArtistCRMEntries } from '@services/client-side/artistCRM';
 import { createVenueHireOpportunitiesBatch, updateVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
-import { postMultipleGigs, updateGigDocument } from '@services/api/gigs';
+import { postMultipleGigs, updateGigDocument, inviteToGig } from '@services/api/gigs';
 import { saveGigTemplate } from '@services/api/venues';
 import { hasVenuePerm } from '@services/utils/permissions';
+import { createGigInvite } from '@services/api/gigInvites';
+import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
+import { getOrCreateConversation } from '@services/api/conversations';
+import { sendGigInvitationMessage } from '@services/client-side/messages';
+import { removeVenueRequest, removePreferredDateFromRequest } from '@services/client-side/venues';
+import { formatDate } from '@services/utils/dates';
+import { InviteMethodsModal } from './InviteMethodsModal';
 import { uploadFileWithFallback } from '@services/storage';
 import { CopyIcon, TickIcon, DownChevronIcon, UpChevronIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
@@ -50,6 +57,42 @@ const GIG_KIND_OPTIONS = ['Live Music', 'Background Music', 'Wedding', 'Open Mic
 
 const MUSICIAN_TYPE_OPTIONS = ['Musician/Band', 'DJ'];
 
+/**
+ * Resolve the canonical gig `kind` at save time.
+ *
+ * The user now picks `kind` directly from the "Event kind" select in the
+ * wizard's More Options (Live Music or Open Mic). Payment + ticketing are
+ * independent and no longer override the label. Legacy non-behavioural
+ * labels (Wedding, Background Music, Ticketed Gig) are preserved as-is so
+ * older gigs don't silently re-badge. Venue-rental flows
+ * (`paymentModel === 'artist_pays_venue'`) skip this entirely — those store
+ * `kind: 'Venue Rental'` elsewhere.
+ */
+// eslint-disable-next-line no-unused-vars
+function inferBookNewKind(paymentModel, ticketingModel, storedKind) {
+  if (storedKind && storedKind !== 'Venue Rental') return storedKind;
+  return 'Live Music';
+}
+
+/**
+ * Resolve `maxApplicants` for a gig at save time. Only honoured for
+ * non-paid bookNew listings — the server's paid acceptance pipeline still
+ * auto-declines other applicants on first acceptance, so paid gigs are
+ * forced back to 1 to keep behaviour consistent. Open Mic listings are
+ * intentionally treated as "unlimited" (return null) to preserve their
+ * historical "stays open until venue closes" behaviour. Ticketed Gig and
+ * free Live Music carry the venue's chosen value. Always clamps into
+ * [1, 10] when a numeric value is returned.
+ */
+function computeMaxApplicantsForSave(gig, kind) {
+  if (kind === 'Open Mic') return null;
+  const isNonPaidArtistFlow = (gig?.paymentModel === 'no_fee' || kind === 'Ticketed Gig');
+  if (!isNonPaidArtistFlow) return 1;
+  const raw = Number(gig?.maxApplicants);
+  if (!Number.isFinite(raw) || raw < 1) return 1;
+  return Math.max(1, Math.min(10, Math.floor(raw)));
+}
+
 function formatPoundsInput(raw) {
   const digits = String(raw || '').replace(/[^\d]/g, '');
   return `£${digits}`;
@@ -85,6 +128,11 @@ const defaultGigForDate = () => ({
   artistNames: [''],
   artistFromCrm: [false],
   extraSlots: [],
+  // How many artists can be confirmed for this listing before it auto-closes.
+  // Defaults to 1 (today's behaviour). Only applied to non-paid bookNew listings
+  // because the paid acceptance pipeline auto-declines other applicants on the
+  // server. When > 1 the gig stays open after each acceptance until it fills.
+  maxApplicants: 1,
   loadInTime: '',
   soundCheckTime: '',
   gigName: '',
@@ -137,6 +185,16 @@ const defaultGigForDate = () => ({
   showOnVenueProfile: true,
   moreDetailsSectionOpen: false,
   listingDocEntries: null,
+  // --- "auto from venue" tracking for the More details section ---
+  // When true, the field should be kept in sync with the currently selected venue.
+  // The wizard flips these to false as soon as the user edits the corresponding field,
+  // so user customisations are never overwritten by a later venue switch.
+  _gigNameAutoFromVenue: true,
+  _rentalCapacityAutoFromVenue: true,
+  // venueId whose listingDocEntries currently populate this gig. When the selected
+  // venue's id differs, the docs are rebuilt from the new venue (preserving per-key
+  // `included` toggles the user set).
+  _listingDocsVenueId: null,
 });
 
 function defaultBookNewGigNameFromVenue(venue) {
@@ -162,6 +220,30 @@ function diffMinutesEndAfterStart(start, end) {
 
 function validateBookNewTimings(gig) {
   const g = gig || {};
+  // Multi-slot: the wizard hides music start/stop and drives the timing
+  // envelope from slot 0's start + the final slot's duration. Accept that
+  // shape instead of demanding the top-level music fields.
+  const isMultiSlot = Array.isArray(g.extraSlots) && g.extraSlots.length > 0;
+  if (isMultiSlot) {
+    const slot0Start = String(g.startTime || '').trim();
+    const hasSlot0 = !!slot0Start && Number(g.duration) > 0;
+    if (!hasSlot0) {
+      return {
+        ok: false,
+        message: 'Each set needs a start time and a duration.',
+      };
+    }
+    const missingExtra = (g.extraSlots || []).findIndex(
+      (s) => !String(s?.startTime || '').trim() || !(Number(s?.duration) > 0),
+    );
+    if (missingExtra >= 0) {
+      return {
+        ok: false,
+        message: `Set ${missingExtra + 2} is missing a start time or duration.`,
+      };
+    }
+    return { ok: true };
+  }
   const hasStart = [g.timingAccessTime, g.timingSoundcheckTime, g.timingMusicStartTime].some((t) => String(t || '').trim());
   const hasEnd = [g.timingMusicStopTime, g.timingVacateTime].some((t) => String(t || '').trim());
   if (!hasStart || !hasEnd) {
@@ -253,7 +335,19 @@ function isBookNewGigComplete(gig) {
   const t = validateBookNewTimings(g);
   if (!t.ok) return false;
   if (!g.paymentModel) return false;
-  if (g.paymentModel !== 'no_fee' && !hasPositiveBudgetValue(g.unifiedFeeAmount)) return false;
+  if (g.paymentModel !== 'no_fee') {
+    // Multi-slot + venue_pays_artist: every slot must have a positive fee.
+    const isMultiSlot = Array.isArray(g.extraSlots) && g.extraSlots.length > 0;
+    if (isMultiSlot) {
+      const slotCount = 1 + g.extraSlots.length;
+      const budgets = Array.isArray(g.slotBudgets) ? g.slotBudgets : [];
+      for (let i = 0; i < slotCount; i += 1) {
+        if (!hasPositiveBudgetValue(budgets[i])) return false;
+      }
+    } else if (!hasPositiveBudgetValue(g.unifiedFeeAmount)) {
+      return false;
+    }
+  }
   if (!g.ticketingModel) return false;
   return true;
 }
@@ -262,7 +356,11 @@ function isBookNewGigComplete(gig) {
 function isAddExistingArtistWizardComplete(gig) {
   const g = gig || {};
   if (!isBookNewGigComplete(g)) return false;
-  return String(getArtistNamesForSlots(g, 1)[0] ?? '').trim().length > 0;
+  // addExisting = venue already knows who's booked, so every set needs a name.
+  const slotCount = 1 + (Array.isArray(g.extraSlots) ? g.extraSlots.length : 0);
+  const names = getArtistNamesForSlots(g, slotCount);
+  if (names.length < slotCount) return false;
+  return names.every((n) => String(n ?? '').trim().length > 0);
 }
 
 /** Get dateIso string from an API gig (for edit mode). */
@@ -315,6 +413,180 @@ function apiRentalGigToFormGig(apiGig) {
       technicalNotes: (apiGig?.techSetup?.technicalNotes ?? '').toString().trim() || '',
       technicalStatus: (apiGig?.techSetup?.technicalStatus ?? '').toString().trim() || '',
     },
+    // In edit mode we treat any persisted title/capacity as explicit user input.
+    _gigNameAutoFromVenue: !((apiGig?.gigName ?? '').toString().trim()),
+    _rentalCapacityAutoFromVenue:
+      !((apiGig?.rentalCapacity ?? '').toString().trim()) &&
+      !((apiGig?.capacity ?? '').toString().trim()),
+    _listingDocsVenueId: null,
+  };
+}
+
+/**
+ * Normalise one raw fee value (number, string like "£100", or "Free") into the
+ * `£NNN` / `£0` / `£` input format that the wizard's fee fields expect.
+ */
+function rawFeeToFormFeeAmount(raw) {
+  if (raw == null) return '£';
+  if (raw === 0) return '£0';
+  const s = String(raw).trim();
+  if (!s || s === '£') return '£';
+  if (s.toLowerCase() === 'free') return '£0';
+  const digits = s.replace(/[^\d]/g, '');
+  if (!digits) return '£';
+  const n = parseInt(digits, 10);
+  if (!Number.isFinite(n)) return '£';
+  return n === 0 ? '£0' : `£${n}`;
+}
+
+/**
+ * Convert an API artist-booking gig (from Firestore) to form gig shape for the
+ * Book-an-Event wizard.
+ *
+ * Accepts both single-slot gigs and multi-slot groups (as packaged by
+ * `Gigs.jsx`/`GigApplications.jsx` with `extraSlots` + `slotBudgets` +
+ * `existingGigIds`). For multi-slot input, the returned form gig preserves
+ * per-slot timings and budgets so the wizard can render the multi-slot UI,
+ * and keeps `existingGigIds` for the update path to re-target each doc.
+ */
+function apiArtistBookingGigToFormGig(apiGig) {
+  const def = defaultGigForDate();
+
+  const hasExtraSlots = Array.isArray(apiGig?.extraSlots) && apiGig.extraSlots.length > 0;
+  const existingGigIds = Array.isArray(apiGig?.existingGigIds) ? apiGig.existingGigIds : null;
+  const slotCount = 1 + (hasExtraSlots ? apiGig.extraSlots.length : 0);
+
+  // Fee: prefer numeric budgetValue, then slotBudgets[0], then budget string.
+  const rawSlotBudget = Array.isArray(apiGig?.slotBudgets) ? apiGig.slotBudgets[0] : null;
+  const feeCandidate = apiGig?.budget ?? rawSlotBudget ?? apiGig?.budgetValue;
+  const feeRaw = feeCandidate == null ? '' : String(feeCandidate).trim();
+  const feeDigits = feeRaw.replace(/[^\d]/g, '');
+  const feeNum = feeDigits ? parseInt(feeDigits, 10) : NaN;
+  const feeIsZero = feeRaw.toLowerCase() === 'free' || feeDigits === '0' || feeCandidate === 0;
+  const unifiedFeeAmount = feeIsZero
+    ? '£0'
+    : Number.isFinite(feeNum) && feeNum > 0
+      ? `£${feeNum}`
+      : (feeRaw && feeRaw !== '£' ? feeRaw : '£');
+
+  // Payment model: prefer explicit paymentModel; else infer from kind + fee.
+  const kind = apiGig?.kind || 'Live Music';
+  let paymentModel = apiGig?.paymentModel;
+  if (!paymentModel) {
+    if (kind === 'Open Mic' || kind === 'Ticketed Gig' || feeIsZero) paymentModel = 'no_fee';
+    else paymentModel = 'venue_pays_artist';
+  }
+
+  // Ticketing model: prefer explicit ticketingModel; else infer from kind.
+  let ticketingModel = apiGig?.ticketingModel;
+  if (!ticketingModel) {
+    if (kind === 'Ticketed Gig') ticketingModel = 'artist';
+    else if (kind === 'Open Mic') ticketingModel = 'free_entry';
+    else ticketingModel = 'venue';
+  }
+
+  // Event timings: prefer persisted eventTimings object, else derive from startDateTime + duration.
+  const et = apiGig?.eventTimings || {};
+  const timingAccessTime = String(et.accessFrom || apiGig?.loadInTime || '').trim();
+  const timingSoundcheckTime = String(et.soundcheck || apiGig?.soundCheckTime || '').trim();
+  let timingMusicStartTime = String(et.musicStart || '').trim();
+  let timingMusicStopTime = String(et.musicStop || '').trim();
+  const timingVacateTime = String(et.mustVacate || '').trim();
+  if (!timingMusicStartTime) {
+    const sdt = apiGig?.startDateTime;
+    const startDateObj = sdt ? (typeof sdt?.toDate === 'function' ? sdt.toDate() : new Date(sdt)) : null;
+    if (startDateObj && !isNaN(startDateObj.getTime())) {
+      const hh = String(startDateObj.getHours()).padStart(2, '0');
+      const mm = String(startDateObj.getMinutes()).padStart(2, '0');
+      timingMusicStartTime = `${hh}:${mm}`;
+      const dur = Number(apiGig?.duration);
+      if (Number.isFinite(dur) && dur > 0 && !timingMusicStopTime) {
+        const endDate = new Date(startDateObj.getTime() + dur * 60000);
+        const eh = String(endDate.getHours()).padStart(2, '0');
+        const em = String(endDate.getMinutes()).padStart(2, '0');
+        timingMusicStopTime = `${eh}:${em}`;
+      }
+    }
+  }
+
+  const listingDocEntries = Array.isArray(apiGig?.listingDocEntries) ? apiGig.listingDocEntries : null;
+  const extraInformation = String(apiGig?.extraInformation ?? apiGig?.description ?? '').trim();
+
+  // Multi-slot: slot 0 uses the primary gig's startTime/duration. Slot budgets
+  // are normalised into the form's `£N` string format. Slot names collapse to
+  // the shared set of names passed in on the converted gig.
+  const primarySlotStart = String(apiGig?.startTime ?? '').trim() || timingMusicStartTime;
+  const primarySlotDurationNum = Number(apiGig?.duration);
+  const primarySlotDuration = Number.isFinite(primarySlotDurationNum) && primarySlotDurationNum > 0
+    ? primarySlotDurationNum
+    : (timingMusicStartTime && timingMusicStopTime
+      ? diffMinutesEndAfterStart(timingMusicStartTime, timingMusicStopTime)
+      : 60);
+  const normalisedExtraSlots = hasExtraSlots
+    ? apiGig.extraSlots.map((s) => ({
+      startTime: String(s?.startTime ?? '').trim(),
+      duration: Number.isFinite(Number(s?.duration)) && Number(s.duration) > 0 ? Number(s.duration) : 60,
+    }))
+    : [];
+  const rawSlotBudgets = Array.isArray(apiGig?.slotBudgets) ? apiGig.slotBudgets : null;
+  const normalisedSlotBudgets = rawSlotBudgets && rawSlotBudgets.length >= slotCount
+    ? rawSlotBudgets.slice(0, slotCount).map(rawFeeToFormFeeAmount)
+    : Array.from({ length: slotCount }, () => unifiedFeeAmount);
+
+  return {
+    ...def,
+    bookingMode: 'artist',
+    kind,
+    gigType: apiGig?.gigType || def.gigType,
+    gigName: (apiGig?.gigName ?? '').toString().trim(),
+    extraInformation,
+    paymentModel,
+    unifiedFeeAmount,
+    ticketingModel,
+    timingAccessTime,
+    timingSoundcheckTime,
+    timingMusicStartTime,
+    timingMusicStopTime,
+    timingVacateTime,
+    showOnVenueProfile: apiGig?.private == null ? true : !apiGig.private,
+    rentalCapacity: (apiGig?.capacity ?? apiGig?.rentalCapacity ?? '').toString().trim(),
+    artistName: (apiGig?.artistName ?? '').toString(),
+    artistNames: (() => {
+      if (Array.isArray(apiGig?.artistNames)) return apiGig.artistNames.slice(0, slotCount);
+      // Fall back to the confirmed applicant on the primary doc so
+      // single-slot addExisting edits prefill the per-set Artist input.
+      const confirmedFromApplicants = (() => {
+        const apps = Array.isArray(apiGig?.applicants) ? apiGig.applicants : [];
+        const confirmed = apps.find((a) => a?.status === 'confirmed' && (a?.name ?? '').toString().trim());
+        return confirmed?.name ?? '';
+      })();
+      const fallback = apiGig?.artistName ?? confirmedFromApplicants ?? '';
+      return Array.from({ length: slotCount }, () => fallback);
+    })(),
+    soundManager: (apiGig?.soundManager ?? '').toString().trim(),
+    techSetup: {
+      venueEquipmentSelected: Array.isArray(apiGig?.techSetup?.venueEquipmentSelected) ? apiGig.techSetup.venueEquipmentSelected : [],
+      hiredFromVenue: Array.isArray(apiGig?.techSetup?.hiredFromVenue) ? apiGig.techSetup.hiredFromVenue : [],
+      bandSetupNotes: (apiGig?.techSetup?.bandSetupNotes ?? '').toString().trim(),
+      technicalNotes: (apiGig?.techSetup?.technicalNotes ?? '').toString().trim(),
+      technicalStatus: (apiGig?.techSetup?.technicalStatus ?? '').toString().trim(),
+    },
+    listingDocEntries,
+    maxApplicants: (() => {
+      const raw = Number(apiGig?.maxApplicants);
+      return Number.isFinite(raw) && raw >= 1 ? Math.min(10, Math.floor(raw)) : 1;
+    })(),
+    // Multi-slot data — re-used by the wizard's per-slot UI and by the update
+    // path to target each existing gig doc by id.
+    startTime: primarySlotStart,
+    duration: primarySlotDuration,
+    extraSlots: normalisedExtraSlots,
+    slotBudgets: normalisedSlotBudgets,
+    existingGigIds: existingGigIds || (apiGig?.gigId ? [apiGig.gigId] : null),
+    // In edit mode, treat persisted values as user-set to prevent venue-switch clobber.
+    _gigNameAutoFromVenue: !((apiGig?.gigName ?? '').toString().trim()),
+    _rentalCapacityAutoFromVenue: !((apiGig?.capacity ?? apiGig?.rentalCapacity ?? '').toString().trim()),
+    _listingDocsVenueId: listingDocEntries ? (apiGig?.venueId ?? null) : null,
   };
 }
 
@@ -516,24 +788,51 @@ export function AddGigsModal({
   refreshTemplates,
   bookNewTemplateToApply = null,
   onBookNewTemplateConsumed,
+  buildingForMusician = false,
+  buildingForMusicianData = null,
+  setBuildingForMusician,
+  setBuildingForMusicianData,
+  requestId = null,
+  setRequestId,
+  setRequests,
+  preferredDate = null,
+  setPreferredDate,
 }) {
-  const isEditMode = !!(
+  // A gig is in edit mode when we have editGigData with a known shape. We
+  // accept venue-hire (rental) and both single- and multi-slot artist-booking
+  // gigs. Multi-slot edits rely on `existingGigIds` being set on editGigData
+  // (packaged by Gigs.jsx / GigApplications.jsx) so the update path can
+  // retarget each Firestore doc.
+  const isVenueHireEdit = !!(
     editGigData &&
     (editGigData.kind === 'Venue Rental' ||
       editGigData.bookingMode === 'rental' ||
       editGigData.bookingMode === 'venue_hire' ||
       editGigData.itemType === 'venue_hire')
   );
+  const isArtistBookingEdit = !!(
+    editGigData &&
+    editGigData.gigId &&
+    !isVenueHireEdit
+  );
+  const isEditMode = isVenueHireEdit || isArtistBookingEdit;
   const editDateIso = isEditMode ? getDateIsoFromGig(editGigData) : null;
-  const initialIso = editDateIso || initialDateIso;
+  // When building a gig for a specific musician, a preferredDate coming from
+  // the originating screen (message / request / profile) is pre-selected and
+  // the musician's venue (if attached to the request) becomes the default.
+  const buildForMusicianActive = !!(buildingForMusician && buildingForMusicianData);
+  const buildForMusicianIso = (() => {
+    if (!buildForMusicianActive || !preferredDate) return null;
+    try {
+      const d = preferredDate instanceof Date ? preferredDate : new Date(preferredDate);
+      if (isNaN(d.getTime())) return null;
+      return format(d, 'yyyy-MM-dd');
+    } catch { return null; }
+  })();
+  const initialIso = editDateIso || initialDateIso || buildForMusicianIso;
   /** When editing an already confirmed venue hire (manually confirmed), show only from "Venue access & timings" down. */
   const effectiveRentalStatus =
     editGigData?.rentalStatus ?? (editGigData?.status === 'confirmed' ? 'confirmed_renter' : 'available');
-  const isVenueHireEdit =
-    isEditMode &&
-    (editGigData?.itemType === 'venue_hire' ||
-      editGigData?.bookingMode === 'venue_hire' ||
-      editGigData?.bookingMode === 'rental');
   const hasRenterName = !!((editGigData?.renterName ?? editGigData?.hirerName ?? '').toString().trim());
   const isEditManuallyConfirmed =
     isVenueHireEdit && (effectiveRentalStatus === 'confirmed_renter' || hasRenterName);
@@ -550,13 +849,39 @@ export function AddGigsModal({
   const [selectedDates, setSelectedDates] = useState(() => (initialIso ? [initialIso] : []));
   const [gigsByDate, setGigsByDate] = useState(() => {
     if (isEditMode && editDateIso && editGigData) {
-      return { [editDateIso]: apiRentalGigToFormGig(editGigData) };
+      const mapped = isVenueHireEdit
+        ? apiRentalGigToFormGig(editGigData)
+        : apiArtistBookingGigToFormGig(editGigData);
+      return { [editDateIso]: mapped };
     }
-    return initialIso ? { [initialIso]: defaultGigForDate() } : {};
+    if (initialIso) {
+      const base = defaultGigForDate();
+      if (buildForMusicianActive) {
+        // Gig is being built for a specific artist: default to a private
+        // invite-only listing, seed the musician type, and carry their genres
+        // through for downstream discovery, even though the wizard itself
+        // doesn't expose a genre input.
+        return {
+          [initialIso]: {
+            ...base,
+            gigType: buildingForMusicianData?.type || base.gigType,
+            genre: Array.isArray(buildingForMusicianData?.genres) ? buildingForMusicianData.genres : [],
+            showOnVenueProfile: false,
+            private: true,
+          },
+        };
+      }
+      return { [initialIso]: base };
+    }
+    return {};
   });
   const [activeTab, setActiveTab] = useState(initialIso || null);
   const [venueId, setVenueId] = useState(() => {
     if (isEditMode && editGigData?.venueId) return editGigData.venueId;
+    if (buildForMusicianActive) {
+      const bfmVid = buildingForMusicianData?.venueId;
+      if (bfmVid && venues.some((v) => v.venueId === bfmVid)) return bfmVid;
+    }
     const tplVid = bookNewTemplateToApply?.venueId;
     if (tplVid && venues.some((v) => v.venueId === tplVid)) return tplVid;
     return venues[0]?.venueId || '';
@@ -570,7 +895,18 @@ export function AddGigsModal({
   const [myArtists, setMyArtists] = useState([]);
   const [openArtistDropdownForSlot, setOpenArtistDropdownForSlot] = useState(null);
   const [expandedSlotsByDate, setExpandedSlotsByDate] = useState({});
-  const [artistSlotCountByDate, setArtistSlotCountByDate] = useState({});
+  const [artistSlotCountByDate, setArtistSlotCountByDate] = useState(() => {
+    // Multi-slot edits: seed the per-date slot count from the packaged
+    // existingGigIds / extraSlots so the wizard's slot controls and the
+    // per-slot update loop agree on how many slots there are on first render.
+    if (isEditMode && isArtistBookingEdit && editDateIso && editGigData) {
+      const ids = Array.isArray(editGigData.existingGigIds) ? editGigData.existingGigIds : [];
+      const extras = Array.isArray(editGigData.extraSlots) ? editGigData.extraSlots : [];
+      const count = Math.max(ids.length, 1 + extras.length, 1);
+      return { [editDateIso]: count };
+    }
+    return {};
+  });
   const [modalHasScroll, setModalHasScroll] = useState(false);
   const [hasCopiedRentalLink, setHasCopiedRentalLink] = useState(false);
   const [showSaveBookNewTemplateModal, setShowSaveBookNewTemplateModal] = useState(false);
@@ -582,6 +918,12 @@ export function AddGigsModal({
   const [showBookNewListingPreview, setShowBookNewListingPreview] = useState(false);
   /** After a template is applied in this modal session, show success styling on the CTA (modal remount resets). */
   const [bookNewTemplateAppliedInSession, setBookNewTemplateAppliedInSession] = useState(false);
+  /**
+   * When building for a musician without a Gigin profile, we open the
+   * InviteMethodsModal inline. Keeping the state local avoids coupling to
+   * Dashboard-level invite state.
+   */
+  const [inlineInviteMethods, setInlineInviteMethods] = useState(null);
   const artistDropdownRef = useRef(null);
 
   const modalBodyRef = useRef(null);
@@ -815,28 +1157,71 @@ export function AddGigsModal({
     setStep('details');
   };
 
+  // Unified venue-change effect for the More-details section.
+  // While on the details step (bookNew or addExisting), whenever the selected venue
+  // changes we refresh the three auto-from-venue fields on every pending gig:
+  //   - gigName           (bookNew only; only while _gigNameAutoFromVenue === true)
+  //   - rentalCapacity    (cleared while _rentalCapacityAutoFromVenue === true, so
+  //                        the display/submit fallback uses the new venue's capacity)
+  //   - listingDocEntries (rebuilt from the new venue whenever _listingDocsVenueId
+  //                        differs, preserving the user's per-doc `included` toggles
+  //                        by matching on doc `key`)
+  // Fields the user has typed into (flag flipped to false) are left untouched.
   useEffect(() => {
-    if (step !== 'details' || !activeTab) return;
-    const gig = gigsByDate[activeTab];
-    const needsVenueListingDocs =
-      addGigsMode === 'bookNew' || addGigsMode === 'addExisting';
-    if (!needsVenueListingDocs) return;
-    if (gig?.listingDocEntries && Array.isArray(gig.listingDocEntries)) return;
-    updateGig(activeTab, { listingDocEntries: buildListingDocEntriesFromVenue(selectedVenue) });
-  }, [addGigsMode, activeTab, step, selectedVenue?.venueId]);
+    if (step !== 'details') return;
+    const needsVenueAutoFields = addGigsMode === 'bookNew' || addGigsMode === 'addExisting';
+    if (!needsVenueAutoFields) return;
+    const venue = selectedVenue;
+    if (!venue) return;
+    const venueId = venue.venueId ?? null;
+    const autoGigName = addGigsMode === 'bookNew' ? defaultBookNewGigNameFromVenue(venue) : '';
 
-  useEffect(() => {
-    if (addGigsMode !== 'bookNew' || step !== 'details') return;
-    const auto = defaultBookNewGigNameFromVenue(selectedVenue);
-    if (!auto) return;
     setGigsByDate((prev) => {
       let changed = false;
       const next = { ...prev };
       for (const iso of Object.keys(next)) {
         const gig = next[iso];
-        if (!gig || String(gig.gigName ?? '').trim()) continue;
-        next[iso] = { ...gig, gigName: auto };
-        changed = true;
+        if (!gig) continue;
+        let patched = gig;
+
+        if (
+          addGigsMode === 'bookNew' &&
+          gig._gigNameAutoFromVenue === true &&
+          autoGigName &&
+          String(gig.gigName ?? '') !== autoGigName
+        ) {
+          patched = { ...patched, gigName: autoGigName };
+        }
+
+        if (
+          gig._rentalCapacityAutoFromVenue === true &&
+          String(gig.rentalCapacity ?? '').trim() !== ''
+        ) {
+          patched = { ...patched, rentalCapacity: '' };
+        }
+
+        if (gig._listingDocsVenueId !== venueId || !Array.isArray(gig.listingDocEntries)) {
+          const fresh = buildListingDocEntriesFromVenue(venue);
+          const prevByKey = new Map();
+          if (Array.isArray(gig.listingDocEntries)) {
+            for (const d of gig.listingDocEntries) {
+              if (d && d.key) prevByKey.set(d.key, d);
+            }
+          }
+          const merged = fresh.map((d) => {
+            const prevEntry = prevByKey.get(d.key);
+            if (prevEntry && typeof prevEntry.included === 'boolean') {
+              return { ...d, included: prevEntry.included };
+            }
+            return d;
+          });
+          patched = { ...patched, listingDocEntries: merged, _listingDocsVenueId: venueId };
+        }
+
+        if (patched !== gig) {
+          next[iso] = patched;
+          changed = true;
+        }
       }
       return changed ? next : prev;
     });
@@ -1220,9 +1605,18 @@ export function AddGigsModal({
             toast.error('Select who handles ticketing.');
             return;
           }
-          if (!String(getArtistNamesForSlots(gig, 1)[0] ?? '').trim()) {
-            toast.error('Enter who you have booked.');
-            return;
+          {
+            const slotCountForValidation = 1 + (Array.isArray(gig.extraSlots) ? gig.extraSlots.length : 0);
+            const names = getArtistNamesForSlots(gig, slotCountForValidation);
+            const missingIdx = names.findIndex((n) => !String(n ?? '').trim());
+            if (missingIdx >= 0) {
+              toast.error(
+                slotCountForValidation > 1
+                  ? `Enter the artist for Set ${missingIdx + 1}.`
+                  : 'Enter who you have booked.'
+              );
+              return;
+            }
           }
           return;
         }
@@ -1235,7 +1629,7 @@ export function AddGigsModal({
         if (isSlotOrderInvalid) {
           const n = missing.slotStartOrder;
           toast.error(
-            `Artist slot ${n + 1} must start at or after slot ${n} ends. Adjust the start times so sets don't overlap.`
+            `Set ${n + 1} must start at or after set ${n} ends. Adjust the start times so sets don't overlap.`
           );
         } else if (firstInvalidIso === activeTab) {
           const isPaymentMissing = missing && typeof missing === 'object' && missing.payment !== undefined;
@@ -1249,6 +1643,159 @@ export function AddGigsModal({
     handleAddGigs();
   };
 
+  /**
+   * After a gig is created while "building for a musician", run the full
+   * invite + request-cleanup pipeline against the first gig doc. Returns
+   * `{ inviteMethodsOpened }` so the caller can decide whether to keep the
+   * modal mounted until InviteMethodsModal finishes.
+   *
+   * Create an invite record, attach the musician to the applicants array, and
+   * either
+   * dispatch an in-app invite (Gigin profile) or open InviteMethodsModal for
+   * off-platform contact methods. Finally, prune the date off the originating
+   * request (or remove the request entirely).
+   */
+  const runBuildForMusicianFollowup = async (firstGigDoc) => {
+    if (!buildForMusicianActive || !firstGigDoc) return { inviteMethodsOpened: false };
+    const musicianData = buildingForMusicianData || {};
+    const venueToSend = venues.find((v) => (v.id || v.venueId) === venueId);
+    if (!hasVenuePerm(venues, venueId, 'gigs.invite')) {
+      toast.error('You do not have permission to invite musicians to gigs at this venue.');
+      return { inviteMethodsOpened: false };
+    }
+
+    let createdInvite = null;
+    const isPrivateListing = firstGigDoc.private === true;
+    if (isPrivateListing && musicianData.id) {
+      try {
+        createdInvite = await createGigInvite({
+          gigId: firstGigDoc.gigId,
+          expiresAt: null,
+          artistId: musicianData.crmEntryId ? null : musicianData.id,
+          crmEntryId: musicianData.crmEntryId || null,
+          artistName: musicianData.name || null,
+        });
+      } catch (error) {
+        console.error('Error creating invite document:', error);
+        toast.error('Failed to create invite document. The gig was created but you may need to create the invite manually.');
+      }
+    }
+
+    if (musicianData.id) {
+      try {
+        const now = new Date();
+        const applicant = {
+          id: musicianData.id,
+          timestamp: now,
+          fee: firstGigDoc.budget || '£0',
+          status: 'pending',
+          invited: true,
+          viewed: false,
+          ...(createdInvite?.inviteId ? { inviteId: createdInvite.inviteId } : {}),
+          ...(createdInvite?.expiresAt ? { inviteExpiresAt: createdInvite.expiresAt } : {}),
+        };
+        const currentApplicants = Array.isArray(firstGigDoc.applicants) ? firstGigDoc.applicants : [];
+        const alreadyIncluded = currentApplicants.some((a) => a?.id === musicianData.id);
+        if (!alreadyIncluded) {
+          await updateGigDocument({
+            gigId: firstGigDoc.gigId,
+            action: 'gigs.update',
+            updates: { applicants: [...currentApplicants, applicant] },
+          });
+        }
+      } catch (error) {
+        console.error('Error adding applicant to gig:', error);
+      }
+    }
+
+    let musicianProfile = null;
+    let hasGiginProfile = false;
+    if (musicianData.id) {
+      try {
+        musicianProfile = await getMusicianProfileByMusicianId(musicianData.id);
+        hasGiginProfile = !!(musicianProfile && musicianProfile.userId);
+      } catch (error) {
+        console.error('Error fetching musician profile:', error);
+      }
+    }
+
+    let inviteMethodsOpened = false;
+    if (hasGiginProfile && musicianProfile) {
+      if (!musicianProfile.musicianId) musicianProfile.musicianId = musicianProfile.id || musicianData.id;
+      try {
+        const res = await inviteToGig({ gigId: firstGigDoc.gigId, musicianProfile });
+        if (!res?.success) {
+          if (res?.code === 'permission-denied') toast.error('You don\u2019t have permission to invite musicians for this venue.');
+          else if (res?.code === 'failed-precondition') toast.error('This gig is missing required venue info.');
+          else toast.error('Error inviting musician. Do you have permission to invite musicians to gigs at this venue?');
+        } else {
+          const { conversationId } = await getOrCreateConversation({
+            musicianProfile,
+            gigData: firstGigDoc,
+            venueProfile: venueToSend,
+            type: 'invitation',
+          });
+          const isTicketedOrOpenMic = firstGigDoc.kind === 'Ticketed Gig' || firstGigDoc.kind === 'Open Mic';
+          const venueName = venueToSend?.name || firstGigDoc?.venue?.venueName || '';
+          const accountName = venueToSend?.accountName || user?.name || '';
+          const dateLabel = firstGigDoc.date ? formatDate(firstGigDoc.date, 'long') : '';
+          const feeSuffix = isTicketedOrOpenMic ? '' : ` for ${firstGigDoc.budget || '£0'}`;
+          await sendGigInvitationMessage(conversationId, {
+            senderId: user?.uid,
+            text: `${accountName} has invited ${musicianProfile.name} to play at their gig at ${venueName}${dateLabel ? ` on the ${dateLabel}` : ''}${feeSuffix}.`,
+          });
+        }
+      } catch (error) {
+        console.error('inviteToGig pipeline failed:', error);
+      }
+    } else {
+      const artistData = {
+        name: musicianData.name,
+        email: musicianData.email || null,
+        phone: musicianData.phone || null,
+        instagram: musicianData.instagram || null,
+        facebook: musicianData.facebook || null,
+        other: musicianData.other || null,
+      };
+      setInlineInviteMethods({ gig: firstGigDoc, artist: artistData, venue: venueToSend });
+      inviteMethodsOpened = true;
+    }
+
+    if (requestId) {
+      try {
+        if (preferredDate) {
+          const targetDate = preferredDate instanceof Date ? preferredDate : new Date(preferredDate);
+          if (setRequests) {
+            setRequests((prev = []) =>
+              prev.map((req) => {
+                if (req.id !== requestId) return req;
+                const preferredDates = req.preferredDates || [];
+                if (!Array.isArray(preferredDates) || preferredDates.length === 0) return req;
+                const updatedDates = preferredDates.filter((dateItem) => {
+                  try {
+                    const d = dateItem?.toDate?.() || (dateItem?._seconds || dateItem?.seconds
+                      ? new Date(((dateItem?._seconds || dateItem?.seconds) * 1000) + ((dateItem?._nanoseconds || dateItem?.nanoseconds || 0) / 1e6))
+                      : new Date(dateItem));
+                    return !(d instanceof Date) || isNaN(d.getTime()) || d.getTime() !== targetDate.getTime();
+                  } catch { return true; }
+                });
+                return { ...req, preferredDates: updatedDates.length > 0 ? updatedDates : null };
+              }),
+            );
+          }
+          await removePreferredDateFromRequest(requestId, preferredDate);
+        } else {
+          await removeVenueRequest(requestId);
+          if (setRequests) setRequests((prev = []) => prev.map((req) => (req.id === requestId ? { ...req, removed: true } : req)));
+        }
+      } catch (error) {
+        console.error('Failed to update originating request:', error);
+      }
+    }
+
+    return { inviteMethodsOpened };
+  };
+
   const handleAddGigs = async () => {
     const getBudgetValue = (b) => {
       const n = parseInt(String(b ?? '').replace(/[^\d]/g, ''), 10);
@@ -1259,6 +1806,158 @@ export function AddGigsModal({
     if (isEditMode && editGigData?.gigId && sortedDates.length === 1) {
       const dateIso = sortedDates[0];
       const gig = gigsByDate[dateIso] || defaultGigForDate();
+
+      // Artist-booking edit — persist via updateGigDocument. Handles both
+      // single-slot gigs and multi-slot groups. Each existing Firestore doc
+      // is updated in place: shared fields (kind, title, payment model,
+      // ticketing, description, visibility, capacity, documents, tech setup)
+      // get the same values across all slots; per-slot fields (startTime,
+      // duration, startDateTime, budget) pick up the slot-specific value and
+      // the gigName gains a "(Set N)" suffix for slots after the first when
+      // more than one slot is present. Slot count is locked in edit mode
+      // today — adding / removing slots belongs to a future change because
+      // the API surface for that is doc-level create/delete.
+      if (gig.bookingMode === 'artist') {
+        setSubmitting(true);
+        try {
+          const timingsCheck = validateBookNewTimings(gig);
+          if (!timingsCheck.ok) {
+            setBookNewTimingError(timingsCheck.message);
+            toast.error(timingsCheck.message);
+            setSubmitting(false);
+            return;
+          }
+          const slotsForValidation = allSlotsFor(dateIso) || [];
+          const multiSlotEdit = slotsForValidation.length > 1;
+          // Multi-slot: override musicStart/musicStop in eventTimings to span
+          // the first slot's start to the last slot's end. The wizard hides
+          // those inputs and drives the envelope from per-slot timings.
+          const eventTimings = (() => {
+            const base = buildEventTimingsForStorage(gig) || {};
+            if (multiSlotEdit) {
+              const firstStart = (slotsForValidation[0]?.startTime ?? '').toString();
+              const lastSlot = slotsForValidation[slotsForValidation.length - 1];
+              const lastStart = (lastSlot?.startTime ?? '').toString();
+              const lastDuration = Number(lastSlot?.duration) || 0;
+              const lastEnd = lastStart ? addMinutesToTime(lastStart, lastDuration) : '';
+              if (firstStart) base.musicStart = firstStart;
+              if (lastEnd) base.musicStop = lastEnd;
+            }
+            return Object.keys(base).length ? base : undefined;
+          })();
+          const privateListing = !gig.showOnVenueProfile;
+          const capacityFromForm = parseInt(String(gig.rentalCapacity ?? '').replace(/[^\d]/g, ''), 10);
+          const capacityToSave = Number.isFinite(capacityFromForm) && capacityFromForm > 0 ? capacityFromForm : null;
+          const listingDocs = normalizeListingDocumentsForApi(gig.listingDocEntries);
+          const inferredKind = inferBookNewKind(gig.paymentModel, gig.ticketingModel, gig.kind);
+          const techSetupPayload = buildTechSetupPayload(gig.techSetup);
+          const soundManagerVal = String(gig.soundManager ?? '').trim();
+          const baseGigName = String(gig.gigName ?? '').trim();
+
+          const existingIds = Array.isArray(editGigData?.existingGigIds) && editGigData.existingGigIds.length > 0
+            ? editGigData.existingGigIds
+            : [editGigData.gigId];
+          const slotsRow = allSlotsFor(dateIso) || [];
+          // If the wizard was used single-slot, fall back to top-level music
+          // start/stop for slot 0 since `startTime`/`duration` may be empty.
+          const fallbackStart = pickArtistPerformanceStart(gig);
+          const fallbackEnd = pickRentalEnd(gig);
+          const fallbackDuration = fallbackStart && fallbackEnd
+            ? diffMinutesEndAfterStart(fallbackStart, fallbackEnd)
+            : undefined;
+          const slotCount = Math.max(existingIds.length, slotsRow.length, 1);
+          const slotBudgetsArr = getSlotBudgetsFor(gig, slotCount);
+          const slotArtistNamesArr = getArtistNamesForSlots(gig, slotCount);
+
+          // Detect addExisting-origin records: private + confirmed manual
+          // applicant (no id/artistId). For those, re-write the applicants
+          // array per slot from the form's edited artist names so renaming a
+          // set's booked artist actually persists. Public-listing gigs don't
+          // get their applicants rewritten here to avoid nuking real
+          // applications from musicians.
+          const firstApplicants = Array.isArray(editGigData?.applicants) ? editGigData.applicants : [];
+          const isAddExistingEdit = editGigData?.private === true
+            && firstApplicants.some((a) => a?.status === 'confirmed' && !a?.id && !a?.artistId);
+
+          const isMultiSlotSave = slotCount > 1;
+          // Update each existing doc. If slot count has drifted (shouldn't
+          // today because the UI locks it in edit mode), we skip orphaned
+          // entries with a warning rather than silently losing data.
+          const updatePromises = existingIds.map((gigId, slotIndex) => {
+            const slot = slotsRow[slotIndex];
+            const slotStart = (slot?.startTime ?? '').toString().trim() || (slotIndex === 0 ? fallbackStart : '');
+            const slotDurNum = Number(slot?.duration);
+            const slotDuration = Number.isFinite(slotDurNum) && slotDurNum > 0
+              ? slotDurNum
+              : (slotIndex === 0 && fallbackDuration ? fallbackDuration : undefined);
+            const startDateTime = slotStart ? getStartDateTime(dateIso, slotStart) : undefined;
+            // Single-slot edits write to unifiedFeeAmount (not slotBudgets),
+            // so fall back to it when the slot budget is the '£' placeholder.
+            const rawSlotBudget = slotBudgetsArr[slotIndex];
+            const isPlaceholder = rawSlotBudget == null || rawSlotBudget === '' || rawSlotBudget === '£';
+            const slotBudgetRaw = isPlaceholder && !isMultiSlotSave
+              ? (gig.unifiedFeeAmount ?? '£')
+              : rawSlotBudget ?? '£';
+            const feeValue = gig.paymentModel === 'no_fee' ? 0 : getBudgetValue(slotBudgetRaw);
+            const feeText = gig.paymentModel === 'no_fee' ? '£' : formatPounds(feeValue);
+            const suffixedName = baseGigName
+              ? (slotCount > 1 ? `${baseGigName} (Set ${slotIndex + 1})` : baseGigName)
+              : undefined;
+
+            const serializedSlotBudgets = slotBudgetsArr.map((b, i) => {
+              if (gig.paymentModel === 'no_fee') return '£';
+              const placeholder = b == null || b === '' || b === '£';
+              const effective = placeholder && !isMultiSlotSave && i === 0 ? gig.unifiedFeeAmount : b;
+              return formatPounds(getBudgetValue(effective));
+            });
+            const slotArtistName = String(slotArtistNamesArr[slotIndex] ?? '').trim();
+            const slotApplicantsUpdate = isAddExistingEdit
+              ? (slotArtistName ? [{ status: 'confirmed', name: slotArtistName }] : [])
+              : undefined;
+            const updates = {
+              gigName: suffixedName,
+              kind: inferredKind,
+              gigType: gig.gigType || undefined,
+              paymentModel: gig.paymentModel || undefined,
+              ticketingModel: gig.ticketingModel || undefined,
+              budget: feeText,
+              budgetValue: feeValue,
+              slotBudgets: serializedSlotBudgets,
+              // addExisting records stay private; public-listing edits honour
+              // the wizard's "Show on venue profile" toggle via privateListing.
+              private: isAddExistingEdit ? true : privateListing,
+              extraInformation: String(gig.extraInformation ?? '').trim(),
+              eventTimings: eventTimings ?? null,
+              ...(startDateTime && { startDateTime }),
+              ...(slotDuration && { duration: slotDuration }),
+              ...(slotStart && { startTime: slotStart }),
+              capacity: capacityToSave,
+              listingDocEntries: listingDocs,
+              ...(soundManagerVal && { soundManager: soundManagerVal }),
+              ...(techSetupPayload && { techSetup: techSetupPayload }),
+              ...(slotApplicantsUpdate !== undefined && { applicants: slotApplicantsUpdate }),
+              maxApplicants: computeMaxApplicantsForSave(gig, inferredKind),
+            };
+            return updateGigDocument({
+              gigId,
+              action: 'gigs.update',
+              updates,
+            });
+          });
+
+          await Promise.all(updatePromises);
+          toast.success(slotCount > 1 ? 'Gig sets updated.' : 'Gig updated.');
+          refreshGigs?.();
+          onClose();
+        } catch (err) {
+          console.error(err);
+          toast.error(err?.message || 'Failed to update gig.');
+        } finally {
+          setSubmitting(false);
+        }
+        return;
+      }
+
       if (gig.bookingMode !== 'rental') return;
       setSubmitting(true);
       try {
@@ -1359,7 +2058,26 @@ export function AddGigsModal({
         if (addGigsMode === 'bookNew') {
           const venue = selectedVenue;
           const extraInformation = String(gig.extraInformation ?? '').trim() || undefined;
-          const eventTimings = buildEventTimingsForStorage(gig);
+          // When artist-booking multi-slot, override musicStart/musicStop in
+          // eventTimings to span the first slot's start to the last slot's
+          // end — the wizard hides those inputs and drives the envelope from
+          // per-slot timings instead.
+          const eventTimings = (() => {
+            const base = buildEventTimingsForStorage(gig) || {};
+            if (gig.paymentModel !== 'artist_pays_venue') {
+              const slotsRow = allSlotsFor(dateIso) || [];
+              if (slotsRow.length > 1) {
+                const firstStart = (slotsRow[0]?.startTime ?? '').toString();
+                const lastSlot = slotsRow[slotsRow.length - 1];
+                const lastStart = (lastSlot?.startTime ?? '').toString();
+                const lastDuration = Number(lastSlot?.duration) || 0;
+                const lastEnd = lastStart ? addMinutesToTime(lastStart, lastDuration) : '';
+                if (firstStart) base.musicStart = firstStart;
+                if (lastEnd) base.musicStop = lastEnd;
+              }
+            }
+            return Object.keys(base).length ? base : undefined;
+          })();
           const listingDocs = normalizeListingDocumentsForApi(gig.listingDocEntries);
           const ticketingResponsibility = gig.ticketingModel;
           const privateListing = !gig.showOnVenueProfile;
@@ -1368,8 +2086,13 @@ export function AddGigsModal({
           const capacityNumBn = Number.isFinite(capacityFromFormBn) && capacityFromFormBn > 0
             ? capacityFromFormBn
             : (Number.isFinite(capacityFromVenueBn) && capacityFromVenueBn > 0 ? capacityFromVenueBn : undefined);
-          const kindBn = gig.kind || 'Live Music';
           const gigTypeBn = gig.gigType || 'Musician/Band';
+          // For artist-booking rows, reverse-infer kind from payment+ticketing so
+          // Open Mic / Ticketed Gig are labelled correctly without an explicit
+          // picker. Venue-rental rows keep Live Music-ish `kind` as display-only.
+          const kindBn = gig.paymentModel === 'artist_pays_venue'
+            ? (gig.kind || 'Live Music')
+            : inferBookNewKind(gig.paymentModel, gig.ticketingModel, gig.kind);
 
           if (gig.paymentModel === 'artist_pays_venue') {
             const rentalStart = pickRentalStart(gig);
@@ -1407,51 +2130,81 @@ export function AddGigsModal({
               extraInformation,
             });
           } else {
-            const startTimeBn = pickArtistPerformanceStart(gig);
-            const endTimeBn = pickArtistPerformanceEnd(gig);
-            const durationBn = diffMinutesEndAfterStart(startTimeBn, endTimeBn);
-            const slotGigId = uuidv4();
-            const slotPayTypeBn = gig.paymentModel === 'no_fee' ? 'no_payment' : 'flat_fee';
-            const feeValueBn = slotPayTypeBn === 'flat_fee' ? getBudgetValue(gig.unifiedFeeAmount ?? '£') : 0;
-            const slotBudgetTextBn = formatPounds(feeValueBn);
-            const startDateTimeBn = getStartDateTime(dateIso, startTimeBn);
+            // Artist-booking bookNew create — supports 1..N slots. Each slot
+            // becomes its own gig doc; when slotCount > 1 the gigName gets a
+            // "(Set N)" suffix and slot-specific start/duration/budget pick up
+            // the per-slot values from the wizard (`extraSlots` + slotBudgets).
+            const slotsRow = allSlotsFor(dateIso) || [];
+            const multiSlot = slotsRow.length > 1;
+            const effectiveSlots = multiSlot
+              ? slotsRow
+              : [{
+                startTime: pickArtistPerformanceStart(gig),
+                duration: diffMinutesEndAfterStart(
+                  pickArtistPerformanceStart(gig),
+                  pickArtistPerformanceEnd(gig),
+                ),
+              }];
+            const slotCountForFees = Math.max(effectiveSlots.length, 1);
+            const slotBudgetsArr = getSlotBudgetsFor(gig, slotCountForFees);
+            const slotPayType = gig.paymentModel === 'no_fee' ? 'no_payment' : 'flat_fee';
             const loadInBn = String(gig.timingAccessTime || '').trim()
               ? gig.timingAccessTime.trim()
               : undefined;
             const soundCheckBn = String(gig.timingSoundcheckTime || '').trim()
               ? gig.timingSoundcheckTime.trim()
               : undefined;
-            const artistTitle = String(gig.gigName ?? '').trim() || (venue ? `Gig at ${venue.name}` : 'Gig');
-            gigDocuments.push({
-              gigId: slotGigId,
-              venueId,
-              date: startDateTimeBn,
-              startDateTime: startDateTimeBn,
-              startTime: startTimeBn,
-              duration: durationBn,
-              bookingMode: 'artist',
-              ...(geopoint && { geopoint }),
-              ...(loadInBn && { loadInTime: loadInBn }),
-              ...(soundCheckBn && { soundCheckTime: soundCheckBn }),
-              ...(extraInformation && { extraInformation }),
-              private: privateListing,
-              createdAt: new Date(),
-              status: 'open',
-              complete: true,
-              gigName: artistTitle,
-              kind: kindBn,
-              gigType: gigTypeBn,
-              genre: '',
-              technicalInformation: extraInformation || '',
-              createdBy: user?.uid ?? '',
-              accountName: user?.name ?? '',
-              budget: slotBudgetTextBn,
-              budgetValue: feeValueBn,
-              applicants: [],
-              ticketingResponsibility,
-              eventTimings,
-              listingDocuments: listingDocs,
-              ...(capacityNumBn != null && { capacity: capacityNumBn }),
+            const baseArtistTitle = String(gig.gigName ?? '').trim() || (venue ? `Gig at ${venue.name}` : 'Gig');
+
+            effectiveSlots.forEach((slot, slotIndex) => {
+              const startTimeBn = (slot?.startTime ?? '').toString().trim();
+              const durationBn = Number.isFinite(Number(slot?.duration)) && Number(slot.duration) > 0
+                ? Number(slot.duration)
+                : 60;
+              const slotGigId = uuidv4();
+              // In single-slot mode the wizard only writes to `unifiedFeeAmount`,
+              // not `slotBudgets`, so fall back to it when the slot entry is
+              // the default '£' placeholder.
+              const rawSlotBudget = slotBudgetsArr[slotIndex];
+              const isPlaceholder = rawSlotBudget == null || rawSlotBudget === '' || rawSlotBudget === '£';
+              const slotBudgetRaw = isPlaceholder && !multiSlot
+                ? (gig.unifiedFeeAmount ?? '£')
+                : rawSlotBudget ?? '£';
+              const feeValueBn = slotPayType === 'flat_fee' ? getBudgetValue(slotBudgetRaw) : 0;
+              const slotBudgetTextBn = formatPounds(feeValueBn);
+              const startDateTimeBn = startTimeBn ? getStartDateTime(dateIso, startTimeBn) : undefined;
+              const artistTitle = multiSlot ? `${baseArtistTitle} (Set ${slotIndex + 1})` : baseArtistTitle;
+              gigDocuments.push({
+                gigId: slotGigId,
+                venueId,
+                ...(startDateTimeBn && { date: startDateTimeBn, startDateTime: startDateTimeBn }),
+                ...(startTimeBn && { startTime: startTimeBn }),
+                duration: durationBn,
+                bookingMode: 'artist',
+                ...(geopoint && { geopoint }),
+                ...(loadInBn && { loadInTime: loadInBn }),
+                ...(soundCheckBn && { soundCheckTime: soundCheckBn }),
+                ...(extraInformation && { extraInformation }),
+                private: privateListing,
+                createdAt: new Date(),
+                status: 'open',
+                complete: true,
+                gigName: artistTitle,
+                kind: kindBn,
+                gigType: gigTypeBn,
+                genre: Array.isArray(gig.genre) ? gig.genre : (gig.genre || ''),
+                technicalInformation: extraInformation || '',
+                createdBy: user?.uid ?? '',
+                accountName: user?.name ?? '',
+                budget: slotBudgetTextBn,
+                budgetValue: feeValueBn,
+                applicants: [],
+                ticketingResponsibility,
+                eventTimings,
+                listingDocuments: listingDocs,
+                ...(capacityNumBn != null && { capacity: capacityNumBn }),
+                maxApplicants: computeMaxApplicantsForSave(gig, kindBn),
+              });
             });
           }
           continue;
@@ -1469,8 +2222,10 @@ export function AddGigsModal({
           const capacityNumBn = Number.isFinite(capacityFromFormBn) && capacityFromFormBn > 0
             ? capacityFromFormBn
             : (Number.isFinite(capacityFromVenueBn) && capacityFromVenueBn > 0 ? capacityFromVenueBn : undefined);
-          const kindBn = gig.kind || 'Live Music';
           const gigTypeBn = gig.gigType || 'Musician/Band';
+          const kindBn = gig.paymentModel === 'artist_pays_venue'
+            ? (gig.kind || 'Live Music')
+            : inferBookNewKind(gig.paymentModel, gig.ticketingModel, gig.kind);
 
           if (gig.paymentModel === 'artist_pays_venue') {
             const rentalStart = pickRentalStart(gig);
@@ -1508,53 +2263,102 @@ export function AddGigsModal({
               extraInformation,
             });
           } else {
-            const startTimeBn = pickArtistPerformanceStart(gig);
-            const endTimeBn = pickArtistPerformanceEnd(gig);
-            const durationBn = diffMinutesEndAfterStart(startTimeBn, endTimeBn);
-            const slotGigId = uuidv4();
-            const slotPayTypeBn = gig.paymentModel === 'no_fee' ? 'no_payment' : 'flat_fee';
-            const feeValueBn = slotPayTypeBn === 'flat_fee' ? getBudgetValue(gig.unifiedFeeAmount ?? '£') : 0;
-            const slotBudgetTextBn = formatPounds(feeValueBn);
-            const startDateTimeBn = getStartDateTime(dateIso, startTimeBn);
+            // Artist-booking addExisting — supports single and multi-set.
+            // Each set becomes its own private Firestore gig doc with the
+            // per-set artist pre-seeded as a confirmed applicant. Single-set
+            // inputs fall back to the top-level music timings via
+            // pickArtistPerformance{Start,End} so wizards that only wrote
+            // timingMusic* still persist cleanly.
+            const slots = [
+              { startTime: gig.startTime ?? '', duration: gig.duration },
+              ...(gig.extraSlots || []).map((s) => ({ startTime: s?.startTime ?? '', duration: s?.duration })),
+            ];
+            const slotCount = slots.length;
+            const isMultiSlot = slotCount > 1;
+            const artistNamesArr = getArtistNamesForSlots(gig, slotCount);
+            const slotBudgetsArr = getSlotBudgetsFor(gig, slotCount);
+            const fallbackStart = pickArtistPerformanceStart(gig);
+            const fallbackEnd = pickArtistPerformanceEnd(gig);
+            const fallbackDuration = fallbackStart && fallbackEnd
+              ? diffMinutesEndAfterStart(fallbackStart, fallbackEnd)
+              : undefined;
             const loadInBn = String(gig.timingAccessTime || '').trim()
               ? gig.timingAccessTime.trim()
               : undefined;
             const soundCheckBn = String(gig.timingSoundcheckTime || '').trim()
               ? gig.timingSoundcheckTime.trim()
               : undefined;
-            const artistTitle = String(gig.gigName ?? '').trim() || (venue ? `Gig at ${venue.name}` : 'Gig');
-            const applicantsBn = bookedName ? [{ status: 'confirmed', name: bookedName }] : [];
-            gigDocuments.push({
-              gigId: slotGigId,
-              venueId,
-              date: startDateTimeBn,
-              startDateTime: startDateTimeBn,
-              startTime: startTimeBn,
-              duration: durationBn,
-              bookingMode: 'artist',
-              ...(geopoint && { geopoint }),
-              ...(loadInBn && { loadInTime: loadInBn }),
-              ...(soundCheckBn && { soundCheckTime: soundCheckBn }),
-              ...(extraInformation && { extraInformation }),
-              private: true,
-              createdAt: new Date(),
-              status: 'open',
-              complete: true,
-              gigName: artistTitle,
-              kind: kindBn,
-              gigType: gigTypeBn,
-              genre: '',
-              technicalInformation: extraInformation || '',
-              createdBy: user?.uid ?? '',
-              accountName: user?.name ?? '',
-              budget: slotBudgetTextBn,
-              budgetValue: feeValueBn,
-              applicants: applicantsBn,
-              ticketingResponsibility,
-              eventTimings,
-              listingDocuments: listingDocs,
-              ...(capacityNumBn != null && { capacity: capacityNumBn }),
-            });
+            const baseTitle = String(gig.gigName ?? '').trim() || (venue ? `Gig at ${venue.name}` : 'Gig');
+
+            const validIndices = [];
+            for (let i = 0; i < slots.length; i++) {
+              const st = String(slots[i]?.startTime ?? '').trim();
+              const du = Number(slots[i]?.duration);
+              const hasTiming = st && du > 0;
+              const hasFallback = i === 0 && fallbackStart && fallbackDuration && fallbackDuration > 0;
+              if (hasTiming || hasFallback) validIndices.push(i);
+            }
+            const groupIds = validIndices.map(() => uuidv4());
+
+            let groupIdx = 0;
+            for (let slotIndex = 0; slotIndex < slots.length; slotIndex++) {
+              let startTime = String(slots[slotIndex]?.startTime ?? '').trim();
+              let duration = Number(slots[slotIndex]?.duration);
+              if ((!startTime || !(duration > 0)) && slotIndex === 0 && fallbackStart && fallbackDuration) {
+                startTime = fallbackStart;
+                duration = fallbackDuration;
+              }
+              if (!startTime || !(duration > 0)) continue;
+              const slotGigId = groupIds[groupIdx];
+              const gigSlotsForThis = groupIds.length > 1 ? groupIds.filter((id) => id !== slotGigId) : undefined;
+              const artistName = isMultiSlot
+                ? (artistNamesArr[slotIndex] ?? '').trim()
+                : (artistNamesArr[slotIndex] ?? bookedName ?? '').toString().trim();
+              const applicantsBn = artistName ? [{ status: 'confirmed', name: artistName }] : [];
+              const startDateTimeBn = getStartDateTime(dateIso, startTime);
+              const gigName = slotIndex === 0 ? baseTitle : `${baseTitle} (Set ${slotIndex + 1})`;
+              const slotPayTypeBn = gig.paymentModel === 'no_fee' ? 'no_payment' : 'flat_fee';
+              const rawSlotBudget = slotBudgetsArr[slotIndex];
+              const isPlaceholder = rawSlotBudget == null || rawSlotBudget === '' || rawSlotBudget === '£';
+              const slotBudgetRaw = isPlaceholder && !isMultiSlot
+                ? (gig.unifiedFeeAmount ?? '£')
+                : (rawSlotBudget ?? '£');
+              const feeValueBn = slotPayTypeBn === 'flat_fee' ? getBudgetValue(slotBudgetRaw) : 0;
+              const slotBudgetTextBn = formatPounds(feeValueBn);
+              gigDocuments.push({
+                gigId: slotGigId,
+                ...(gigSlotsForThis != null && { gigSlots: gigSlotsForThis }),
+                venueId,
+                date: startDateTimeBn,
+                startDateTime: startDateTimeBn,
+                startTime,
+                duration,
+                bookingMode: 'artist',
+                ...(geopoint && { geopoint }),
+                ...(loadInBn && { loadInTime: loadInBn }),
+                ...(soundCheckBn && { soundCheckTime: soundCheckBn }),
+                ...(extraInformation && { extraInformation }),
+                private: true,
+                createdAt: new Date(),
+                status: 'open',
+                complete: true,
+                gigName,
+                kind: kindBn,
+                gigType: gigTypeBn,
+                genre: Array.isArray(gig.genre) ? gig.genre : (gig.genre || ''),
+                technicalInformation: extraInformation || '',
+                createdBy: user?.uid ?? '',
+                accountName: user?.name ?? '',
+                budget: slotBudgetTextBn,
+                budgetValue: feeValueBn,
+                applicants: applicantsBn,
+                ticketingResponsibility,
+                eventTimings,
+                listingDocuments: listingDocs,
+                ...(capacityNumBn != null && { capacity: capacityNumBn }),
+              });
+              groupIdx++;
+            }
           }
           continue;
         }
@@ -1703,7 +2507,7 @@ export function AddGigsModal({
             gigName,
             kind: slotKind,
             gigType,
-            genre: '',
+                genre: Array.isArray(gig.genre) ? gig.genre : (gig.genre || ''),
             technicalInformation: extraInformation || '',
               createdBy: user?.uid ?? '',
               accountName: user?.name ?? '',
@@ -1741,9 +2545,19 @@ export function AddGigsModal({
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
           await postMultipleGigs({ venueId, gigDocuments });
+          // For "build for musician" flows we run the invite pipeline against
+          // the first created gig doc. If no Gigin profile is found the helper
+          // opens InviteMethodsModal inline; in that case we keep the outer
+          // modal mounted so the inline one has a host and only close when the
+          // user finishes the invite-methods step.
+          let keepOpenForInviteMethods = false;
+          if (buildForMusicianActive && gigDocuments.length > 0) {
+            const followup = await runBuildForMusicianFollowup(gigDocuments[0]);
+            keepOpenForInviteMethods = !!followup?.inviteMethodsOpened;
+          }
           toast.success(`Added ${gigDocuments.length} gig${gigDocuments.length === 1 ? '' : 's'}.`);
           refreshGigs?.();
-          onClose();
+          if (!keepOpenForInviteMethods) onClose();
           setSubmitting(false);
           return;
         } catch (err) {
@@ -1887,6 +2701,7 @@ export function AddGigsModal({
 
   const submitButtonLabel = useMemo(() => {
     if (addGigsMode === 'bookNew') {
+      if (isEditMode) return 'Update event';
       return isMultipleGigs ? 'Create events' : 'Create event';
     }
     if (!activeTab) return isMultipleGigs ? 'Add/Book Gigs' : 'Add/Book a Gig';
@@ -1906,7 +2721,7 @@ export function AddGigsModal({
   }, [activeTab, gigsByDate, isMultipleGigs, currentBookingMode, canSubmit, isEditMode, addGigsMode]);
 
   const submitButtonBusyLabel = useMemo(() => {
-    if (addGigsMode === 'bookNew') return 'Creating…';
+    if (addGigsMode === 'bookNew') return isEditMode ? 'Updating…' : 'Creating…';
     if (!activeTab) return 'Adding…';
     if (addGigsMode === 'addExisting') return 'Adding…';
     if (currentBookingMode === 'rental') return isEditMode ? 'Updating…' : (addGigsMode === 'addExisting' ? 'Adding…' : 'Listing…');
@@ -1991,6 +2806,30 @@ export function AddGigsModal({
 
   return (
     <Portal>
+      {inlineInviteMethods && (
+        <InviteMethodsModal
+          artist={inlineInviteMethods.artist}
+          gigData={inlineInviteMethods.gig}
+          venue={inlineInviteMethods.venue}
+          user={user}
+          onClose={() => {
+            setInlineInviteMethods(null);
+            if (setBuildingForMusician) setBuildingForMusician(false);
+            if (setBuildingForMusicianData) setBuildingForMusicianData(null);
+            if (setRequestId) setRequestId(null);
+            if (setPreferredDate) setPreferredDate(null);
+            onClose();
+          }}
+          onEmailSent={() => {
+            setInlineInviteMethods(null);
+            if (setBuildingForMusician) setBuildingForMusician(false);
+            if (setBuildingForMusicianData) setBuildingForMusicianData(null);
+            if (setRequestId) setRequestId(null);
+            if (setPreferredDate) setPreferredDate(null);
+            onClose();
+          }}
+        />
+      )}
       <div
         className={`modal add-gigs-modal${previewOpen ? ' add-gigs-modal--with-listing-preview' : ''}`}
         onClick={onClose}
@@ -2007,8 +2846,19 @@ export function AddGigsModal({
             <div className="add-gigs-modal-header-top">
               <div className="add-gigs-modal-title-wrap">
                 <h2 id="add-gigs-title" className="add-gigs-modal-title">
-                  {isEditMode ? 'Edit Event' : isMultipleGigs ? 'Create Events' : 'Create event'}
+                  {isEditMode
+                    ? 'Edit Event'
+                    : buildForMusicianActive
+                      ? `Build event for ${buildingForMusicianData?.name || 'artist'}`
+                      : isMultipleGigs
+                        ? 'Create Events'
+                        : 'Create event'}
                 </h2>
+                {buildForMusicianActive && !isEditMode && (
+                  <p className="add-gigs-modal-subtitle">
+                    This listing will be private — only {buildingForMusicianData?.name || 'the invited artist'} can apply.
+                  </p>
+                )}
               </div>
               <button type="button" className="btn close tertiary" onClick={onClose}>
                 Close <span aria-hidden="true">×</span>
@@ -2199,6 +3049,18 @@ export function AddGigsModal({
                       }}
                       listingPreviewOpen={showBookNewListingPreview}
                       onToggleListingPreview={() => setShowBookNewListingPreview((v) => !v)}
+                      isEditMode={isEditMode}
+                      allSlotsForActive={activeTab ? allSlotsFor(activeTab) : []}
+                      slotBudgetsForActive={activeTab ? getSlotBudgetsFor(
+                        gigsByDate[activeTab] || defaultGigForDate(),
+                        (allSlotsFor(activeTab) || []).length || 1,
+                      ) : []}
+                      onSlotCountChange={(count) => activeTab && setArtistSlotCount(activeTab, count)}
+                      onSlotStartChange={(index, value) => activeTab && handleSlotStartTimeChange(activeTab, index, value)}
+                      onSlotDurationChange={(index, value) => activeTab && handleSlotDurationChange(activeTab, index, value)}
+                      onSlotBudgetChange={(index, value) => activeTab && setSlotBudget(activeTab, index, value)}
+                      onRemoveExtraSlot={(extraIndex) => activeTab && removeGigSlot(activeTab, extraIndex)}
+                      onAddSlot={() => activeTab && addGigSlot(activeTab)}
                     />
                   )}
                   {addGigsMode !== 'bookNew' && (
@@ -2234,13 +3096,30 @@ export function AddGigsModal({
                       patchGig={(updates) => updateGig(activeTab, updates)}
                       bookNewTimingError={bookNewTimingError}
                       onClearTimingError={() => setBookNewTimingError(null)}
+                      isEditMode={isEditMode}
+                      allSlotsForActive={activeTab ? allSlotsFor(activeTab) : []}
+                      slotBudgetsForActive={activeTab ? getSlotBudgetsFor(
+                        gigsByDate[activeTab] || defaultGigForDate(),
+                        (allSlotsFor(activeTab) || []).length || 1,
+                      ) : []}
+                      slotArtistNamesForActive={activeTab ? getArtistNamesForSlots(
+                        gigsByDate[activeTab] || defaultGigForDate(),
+                        (allSlotsFor(activeTab) || []).length || 1,
+                      ) : []}
+                      onSlotCountChange={(count) => activeTab && setArtistSlotCount(activeTab, count)}
+                      onSlotStartChange={(index, value) => activeTab && handleSlotStartTimeChange(activeTab, index, value)}
+                      onSlotDurationChange={(index, value) => activeTab && handleSlotDurationChange(activeTab, index, value)}
+                      onSlotBudgetChange={(index, value) => activeTab && setSlotBudget(activeTab, index, value)}
+                      onSlotArtistNameChange={(index, value) => activeTab && setSlotArtistName(activeTab, index, value)}
+                      onRemoveExtraSlot={(extraIndex) => activeTab && removeGigSlot(activeTab, extraIndex)}
+                      onAddSlot={() => activeTab && addGigSlot(activeTab)}
                     />
                   )}
                   {currentBookingMode === 'artist' && addGigsMode !== 'addExisting' && (
                     <>
                   <div className="add-gigs-field add-gigs-artist-count">
-                    <label className="label add-gigs-section-heading">Number of artist slots</label>
-                    <div className="add-gigs-artist-count-pills" role="tablist" aria-label="Number of artist slots">
+                    <label className="label add-gigs-section-heading">Number of sets</label>
+                    <div className="add-gigs-artist-count-pills" role="tablist" aria-label="Number of sets">
                       {[1, 2, 3].map((count) => (
                         <button
                           key={count}
@@ -2283,7 +3162,7 @@ export function AddGigsModal({
                       <div key={index} className="add-gigs-gig-slot">
                         <div className="add-gigs-slot-header">
                           <div className="add-gigs-slot-header-main">
-                            <h4 className="add-gigs-slot-title">{`Artist Slot ${index + 1}`}</h4>
+                            <h4 className="add-gigs-slot-title">{`Set ${index + 1}`}</h4>
                           </div>
                           <div className="add-gigs-slot-header-actions">
                             {index !== 0 && (
@@ -2553,7 +3432,7 @@ export function AddGigsModal({
                       className="btn tertiary add-gigs-add-slot-btn"
                       onClick={() => activeTab && setArtistSlotCount(activeTab, Number(currentArtistSlotCount || 1) + 1)}
                     >
-                      + Add Another Artist Slot
+                      + Add Another Set
                     </button>
                   </div>
                   </div>
@@ -2757,7 +3636,7 @@ export function AddGigsModal({
                           {currentBookingMode === 'artist' && (
                             <>
                               <div className="add-gigs-field">
-                                <label className="label add-gigs-more-details-field-label" htmlFor={`add-gigs-musician-type-${activeTab}`}>Type of musician</label>
+                                <label className="label add-gigs-more-details-field-label" htmlFor={`add-gigs-musician-type-${activeTab}`}>Type of Artist</label>
                                 <select
                                   id={`add-gigs-musician-type-${activeTab}`}
                                   className="select add-gigs-filter-select add-gigs-select-no-border"

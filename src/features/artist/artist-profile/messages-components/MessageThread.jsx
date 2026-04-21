@@ -239,7 +239,19 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                 nonPayableGig,
             });
             if (gigData.kind === 'Ticketed Gig') {
-                await notifyOtherApplicantsGigConfirmed({ gigData, acceptedMusicianId: musicianProfileId });
+                // Respect maxApplicants: hold off notifying others until the
+                // gig has actually filled.
+                const rawMax = Number(gigData?.maxApplicants);
+                const maxApplicants = Number.isFinite(rawMax) && rawMax >= 1
+                  ? Math.max(1, Math.floor(rawMax))
+                  : 1;
+                const apps = Array.isArray(gigData.applicants) ? gigData.applicants : [];
+                const wasAlreadyConfirmed = apps.some((a) => a?.id === musicianProfileId && a?.status === 'confirmed');
+                const baseConfirmed = apps.filter((a) => a?.status === 'confirmed').length;
+                const confirmedCount = wasAlreadyConfirmed ? baseConfirmed : baseConfirmed + 1;
+                if (confirmedCount >= maxApplicants) {
+                    await notifyOtherApplicantsGigConfirmed({ gigData, acceptedMusicianId: musicianProfileId });
+                }
             }
         } catch (error) {
             console.error('Error updating gig document:', error);
@@ -564,10 +576,15 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <div className='status-box'>
                                             <div className='status rejected'>
                                                 <RejectedIcon />
-                                                Declined
+                                                {message.declineDetail === 'accepted_other_set' ? 'Booked for another set' : 'Declined'}
                                             </div>
+                                            {message.declineDetail === 'accepted_other_set' ? (
+                                                <p style={{ fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.35 }}>
+                                                    This application was closed because you were confirmed on a different set at the same event.
+                                                </p>
+                                            ) : null}
                                         </div>
-                                        {message.status !== 'countered'  && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && !confirmedMusicianId && (
+                                        {message.status !== 'countered' && message.declineDetail !== 'accepted_other_set' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic') && message.status !== 'apps-closed' && !confirmedMusicianId && (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                 {eventLoading ? (
                                                     <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
@@ -623,10 +640,15 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                         <div className='status-box'>
                                             <div className='status rejected'>
                                                 <RejectedIcon />
-                                                Declined
+                                                {message.declineDetail === 'accepted_other_set' ? 'Booked for another set' : 'Declined'}
                                             </div>
+                                            {message.declineDetail === 'accepted_other_set' ? (
+                                                <p style={{ fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.35 }}>
+                                                    This application was closed because you were confirmed on a different set at the same event.
+                                                </p>
+                                            ) : null}
                                         </div>
-                                        {message.status !== 'countered' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic')  && message?.status !== 'apps-closed' && !confirmedMusicianId && (
+                                        {message.status !== 'countered' && message.declineDetail !== 'accepted_other_set' && (gigData?.kind !== 'Ticketed Gig' && gigData?.kind !== 'Open Mic')  && message?.status !== 'apps-closed' && !confirmedMusicianId && (
                                             <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                 {eventLoading ? (
                                                     <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />
@@ -707,8 +729,13 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             <div className='status-box'>
                                                 <div className='status rejected'>
                                                     <RejectedIcon />
-                                                    Declined
+                                                    {message.declineDetail === 'accepted_other_set' ? 'Booked for another set' : 'Declined'}
                                                 </div>
+                                                {message.declineDetail === 'accepted_other_set' ? (
+                                                    <p style={{ fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.35 }}>
+                                                        This application was closed because you were confirmed on a different set at the same event.
+                                                    </p>
+                                                ) : null}
                                             </div>
                                         </>
                                     ) : message.status === 'withdrawn' && (
@@ -739,10 +766,15 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
                                             <div className='status-box'>
                                                 <div className='status rejected'>
                                                     <RejectedIcon />
-                                                    Declined
+                                                    {message.declineDetail === 'accepted_other_set' ? 'Booked for another set' : 'Declined'}
                                                 </div>
+                                                {message.declineDetail === 'accepted_other_set' ? (
+                                                    <p style={{ fontSize: '0.85rem', marginTop: '0.5rem', lineHeight: 1.35 }}>
+                                                        This application was closed because you were confirmed on a different set at the same event.
+                                                    </p>
+                                                ) : null}
                                             </div>
-                                            {message.status !== 'countered'  && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && !confirmedMusicianId && canBookCurrentArtistProfile && (
+                                            {message.status !== 'countered' && message.declineDetail !== 'accepted_other_set' && (gigData.kind !== 'Ticketed Gig' && gigData.kind !== 'Open Mic') && message.status !== 'apps-closed' && !confirmedMusicianId && canBookCurrentArtistProfile && (
                                                 <div className={`counter-offer ${isSameGroup ? 'sent' : 'received'}`}>
                                                         {eventLoading ? (
                                                             <LoadingSpinner width={15} height={15} marginTop={5} marginBottom={5} />

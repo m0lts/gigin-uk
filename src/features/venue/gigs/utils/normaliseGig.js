@@ -44,6 +44,7 @@ export function normaliseGig(rawGig, options = {}) {
   const bookedBy = buildBookedBySummary(rawGig);
   const performers = buildPerformersSummary(rawGig);
   const links = buildLinks(rawGig);
+  const perSlotSummaries = buildPerSlotSummaries(sortedSlots);
 
   return {
     id: rawGig.gigId || rawGig.id || '',
@@ -53,6 +54,7 @@ export function normaliseGig(rawGig, options = {}) {
     status,
     dateLabel,
     timeRangeLabel,
+    perSlotSummaries,
     fee,
     depositAmount: depositAmount != null ? depositAmount : null,
     depositStatus: depositStatus || null,
@@ -74,6 +76,7 @@ function getDefaultNormalisedGig() {
     status: 'open',
     dateLabel: '—',
     timeRangeLabel: '—',
+    perSlotSummaries: null,
     fee: null,
     depositAmount: null,
     depositStatus: null,
@@ -93,11 +96,16 @@ function inferBookingMode(gig) {
 }
 
 function inferStatus(gig) {
-  if (gig.status === 'cancelled' || gig.status === 'closed') return 'cancelled';
+  if (gig.status === 'cancelled') return 'cancelled';
   if (gig.status === 'past') return 'completed';
   const applicants = gig.applicants || [];
   const hasConfirmed = applicants.some((a) => a?.status === 'confirmed' || a?.status === 'paid');
+  // Raw `closed` after a successful fill (single or multi-applicant via
+  // maxApplicants) should still surface as "confirmed" so the lineup stays
+  // visible. Only treat `closed` as cancelled when there's nothing
+  // confirmed on the gig (e.g. venue manually cancelled an empty listing).
   if (hasConfirmed) return 'confirmed';
+  if (gig.status === 'closed') return 'cancelled';
   if (gig.renterName && String(gig.renterName).trim()) return 'confirmed'; // venue hire with renter
   return 'open';
 }
@@ -172,6 +180,26 @@ function buildFeeLabel(gig) {
   return budget || null;
 }
 
+/** Per-slot display rows for venue/artist gig pages when `gigSlots` links multiple docs. */
+function buildPerSlotSummaries(sortedSlots) {
+  if (!sortedSlots || sortedSlots.length <= 1) return null;
+  return sortedSlots.map((slot, idx) => {
+    const end =
+      slot.startTime && slot.duration != null
+        ? calculateEndTime(slot.startTime, slot.duration)
+        : null;
+    const timeRangeLabel =
+      end && slot.startTime ? `${slot.startTime}–${end}` : slot.startTime || '—';
+    const title =
+      (slot.gigName && String(slot.gigName).trim()) ||
+      (slot.title && String(slot.title).trim()) ||
+      `Set ${idx + 1}`;
+    const feeLabel = buildFeeLabel(slot);
+    const gigId = slot.gigId || slot.id || null;
+    return { slotIndex: idx + 1, title, timeRangeLabel, feeLabel, gigId };
+  });
+}
+
 function buildBookedBySummary(gig) {
   const name = (gig.renterName && String(gig.renterName).trim()) || (gig.hirerName && String(gig.hirerName).trim()) || null;
   if (name) {
@@ -200,6 +228,7 @@ function normalisePerformersList(gig) {
       const source = p.source === 'gigin' || hasGiginLink ? 'gigin' : 'manual';
       return {
         source,
+        origin: 'performer',
         displayName: p.displayName || '',
         userId: p.userId,
         artistId: p.artistId,
@@ -210,13 +239,57 @@ function normalisePerformersList(gig) {
   // Backwards compatibility: migrate from legacy bookedPerformerIds + bookedPerformerNames (all manual/CRM)
   const ids = gig.bookedPerformerIds || [];
   const names = gig.bookedPerformerNames || [];
-  const fromIds = ids.map((id) => ({ source: 'manual', displayName: '', contactId: id }));
-  const fromNames = names.map((displayName) => ({ source: 'manual', displayName, contactId: undefined }));
+  const fromIds = ids.map((id) => ({ source: 'manual', origin: 'performer', displayName: '', contactId: id }));
+  const fromNames = names.map((displayName) => ({ source: 'manual', origin: 'performer', displayName, contactId: undefined }));
   return [...fromIds, ...fromNames];
 }
 
+/**
+ * Normalised performer refs derived from confirmed applicants on an artist-booking gig.
+ * Applicant statuses 'confirmed' | 'accepted' | 'paid' count as performers; 'declined' /
+ * 'withdrawn' / 'pending' do not.
+ * Manually-added applicants (created via "Confirm manually" in the invite tile) have
+ * `manual: true` and no userId/artistId; they normalise as manual performers.
+ */
+function normaliseConfirmedApplicants(gig) {
+  const applicants = Array.isArray(gig?.applicants) ? gig.applicants : [];
+  const CONFIRMED = new Set(['confirmed', 'accepted', 'paid']);
+  return applicants
+    .filter((a) => a && CONFIRMED.has(a.status))
+    .map((a) => {
+      const hasGiginLink = !a.manual && !!a.id;
+      return {
+        source: hasGiginLink ? 'gigin' : 'manual',
+        origin: 'applicant',
+        applicantId: a.id,
+        displayName: a.name || a.artistName || '',
+        userId: hasGiginLink ? a.userId || a.id : undefined,
+        artistId: hasGiginLink ? a.id : undefined,
+        contactId: undefined,
+      };
+    });
+}
+
 function buildPerformersSummary(gig) {
-  const items = normalisePerformersList(gig);
+  const manualItems = normalisePerformersList(gig);
+  const isArtistBooking = inferBookingMode(gig) === 'artist_booking';
+  const confirmedApplicantItems = isArtistBooking ? normaliseConfirmedApplicants(gig) : [];
+
+  // Merge manual + confirmed applicants, de-duplicating on (userId | artistId | name).
+  const seen = new Set();
+  const keyFor = (p) => {
+    const id = p.userId || p.artistId;
+    if (id) return `id:${id}`;
+    const name = (p.displayName || '').trim().toLowerCase();
+    return name ? `name:${name}` : `anon:${Math.random()}`;
+  };
+  const items = [];
+  for (const p of [...manualItems, ...confirmedApplicantItems]) {
+    const k = keyFor(p);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    items.push(p);
+  }
   const previewNames = items.map((p) => p.displayName).filter(Boolean);
   return {
     count: items.length,

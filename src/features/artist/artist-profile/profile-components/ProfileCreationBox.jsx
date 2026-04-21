@@ -47,6 +47,36 @@ const INSTRUMENT_TYPES = [
   'Playback'
 ];
 
+/** Tech rider: instrument chip icon (creation subtitle + TechRiderStep). */
+function getInstrumentIcon(instrument) {
+  switch (instrument) {
+    case 'Vocals':
+      return <VocalsIcon />;
+    case 'Drums':
+      return <DrumsIcon />;
+    case 'Keys':
+      return <KeysIcon />;
+    case 'Guitar':
+      return <GuitarsIcon />;
+    case 'Bass':
+      return <BassIcon />;
+    case 'Tenor Sax':
+    case 'Alto Sax':
+    case 'Soprano Sax':
+      return <SaxIcon />;
+    case 'Trumpet':
+      return <TrumpetIcon />;
+    case 'Trombone':
+      return <TromboneIcon />;
+    case 'Playback':
+      return <PlaybackIcon />;
+    case 'Other':
+      return <MusicianIconSolid />;
+    default:
+      return <PlaybackIcon />;
+  }
+}
+
 // Instrument-specific question configurations
 const INSTRUMENT_QUESTIONS = {
   'Vocals': [
@@ -2654,35 +2684,6 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
     handleUpdatePerformer(performerIndex, { instruments: currentInstruments });
   };
 
-  const getInstrumentIcon = (instrument) => {
-    switch (instrument) {
-      case 'Vocals':
-        return <VocalsIcon />;
-      case 'Drums':
-        return <DrumsIcon />;
-      case 'Keys':
-        return <KeysIcon />;
-      case 'Guitar':
-        return <GuitarsIcon />;
-      case 'Bass':
-        return <BassIcon />;
-      case 'Tenor Sax':
-      case 'Alto Sax':
-      case 'Soprano Sax':
-        return <SaxIcon />;
-      case 'Trumpet':
-        return <TrumpetIcon />;
-      case 'Trombone':
-        return <TromboneIcon />;
-      case 'Playback':
-        return <PlaybackIcon />;
-      case 'Other':
-        return <MusicianIconSolid />;
-      default:
-        return <PlaybackIcon />;
-    }
-  };
-
   const handleStageDrop = (e) => {
     e.preventDefault();
     const lineupIndex = parseInt(e.dataTransfer.getData('lineupIndex'));
@@ -3318,8 +3319,8 @@ function TechRiderStep({ techRiderStage, onTechRiderStageChange, onBackToTracks,
               <h5 className="tech-rider-can-bring-title">Band equipment</h5>
               <p className="tech-rider-can-bring-copy">Where will PA and mixing desk come from?</p>
               {[
-                { key: 'paSource', label: 'PA', options: [{ value: 'venue', label: 'Use venue PA' }, { value: 'own', label: 'Bring our own PA' }, { value: 'either', label: 'Either works' }] },
-                { key: 'mixingDeskSource', label: 'Mixing desk', options: [{ value: 'venue', label: 'Use venue mixer' }, { value: 'own', label: 'Bring our own mixer' }, { value: 'either', label: 'Either works' }] },
+                { key: 'paSource', label: 'PA', options: [{ value: 'venue', label: 'Use venue PA' }, { value: 'own', label: 'Bring own PA' }, { value: 'either', label: 'Either works' }] },
+                { key: 'mixingDeskSource', label: 'Mixing desk', options: [{ value: 'venue', label: 'Use venue mixer' }, { value: 'own', label: 'Bring own mixer' }, { value: 'either', label: 'Either works' }] },
               ].map(({ key, options }) => (
                 <div key={key} className="tech-rider-band-source-field">
                   <div className="tech-rider-source-options">

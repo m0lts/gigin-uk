@@ -183,7 +183,8 @@ export const MusicianProfile = ({ musicianProfile: musicianProfileProp, viewingO
                 other: null,
             },
             buildingForMusician: true,
-            showGigPostModal: true,
+            showAddGigsModal: true,
+            addGigsMode: 'bookNew',
         }})
     }
 

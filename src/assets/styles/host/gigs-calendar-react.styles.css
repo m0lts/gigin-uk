@@ -663,7 +663,8 @@
   top: 100%;
   right: 0;
   margin-top: 0.25rem;
-  min-width: 10rem;
+  min-width: 11.75rem;
+  max-width: calc(100vw - 2rem);
   padding: 0.35rem 0;
   background: var(--gn-white, #fff);
   border: 1px solid var(--gn-grey-200, #eee);

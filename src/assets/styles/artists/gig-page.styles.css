@@ -234,6 +234,105 @@
     height: fit-content;
 }
 
+/* Multi-set gigs: carousel in apply / price box */
+.gig-page-body .gig-page-slot-carousel {
+    margin: -0.25rem -0.25rem 1rem;
+    padding: 0.65rem 0.25rem 0.6rem;
+    border-bottom: 1px solid var(--gn-grey-300, #e5e5e5);
+    background: linear-gradient(to bottom, var(--gn-grey-50, #f9fafb), transparent);
+    border-radius: 8px 8px 0 0;
+}
+
+.gig-page-body .gig-page-slot-carousel__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+}
+
+.gig-page-body .gig-page-slot-carousel__chev-btn {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 1px solid var(--gn-grey-300, #e5e5e5);
+    border-radius: 50%;
+    background: var(--gn-white, #fff);
+    color: var(--gn-grey-900, #171717);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.gig-page-body .gig-page-slot-carousel__chev-btn:hover:not(:disabled) {
+    background: var(--gn-grey-100, #f3f4f6);
+    border-color: var(--gn-grey-400, #d4d4d4);
+}
+
+.gig-page-body .gig-page-slot-carousel__chev-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.gig-page-body .gig-page-slot-carousel__center {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    padding: 0 0.25rem;
+}
+
+.gig-page-body .gig-page-slot-carousel__set-label {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--gn-grey-900, #171717);
+}
+
+.gig-page-body .gig-page-slot-carousel__meta {
+    margin: 0.2rem 0 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--gn-grey-700, #64748b);
+    line-height: 1.35;
+}
+
+.gig-page-body .gig-page-slot-carousel__dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.65rem;
+    padding: 0;
+}
+
+.gig-page-body .gig-page-slot-carousel__dot {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--gn-grey-300, #d4d4d4);
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.gig-page-body .gig-page-slot-carousel__dot:hover:not(:disabled) {
+    background: var(--gn-grey-500, #a3a3a3);
+}
+
+.gig-page-body .gig-page-slot-carousel__dot--active {
+    background: var(--gn-grey-900, #171717);
+    transform: scale(1.2);
+}
+
+.gig-page-body .gig-page-slot-carousel__dot:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 .gig-page-body .action-box-info {
     display: flex;
     justify-content: space-between;

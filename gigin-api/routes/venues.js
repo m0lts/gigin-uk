@@ -502,6 +502,37 @@ function normalizeTemplateName(s) {
   return String(s || "").trim().toLowerCase();
 }
 
+// POST /api/venues/fetchGigTemplates (auth)
+// Client Firestore reads on `templates` are often rules-blocked; saves use this API too.
+router.post("/fetchGigTemplates", requireAuth, asyncHandler(async (req, res) => {
+  const uid = req.auth.uid;
+  const rawIds = (req.body || {}).venueIds;
+  if (!Array.isArray(rawIds) || rawIds.length === 0) {
+    return res.json({ data: [] });
+  }
+
+  const allowedVenueIds = [];
+  for (const id of rawIds) {
+    const venueId = String(id || "").trim();
+    if (!venueId) continue;
+    const perm = await assertVenueGigTemplateAccess(uid, venueId);
+    if (perm.ok) allowedVenueIds.push(venueId);
+  }
+  if (allowedVenueIds.length === 0) {
+    return res.json({ data: [] });
+  }
+
+  const results = [];
+  for (let i = 0; i < allowedVenueIds.length; i += 10) {
+    const chunk = allowedVenueIds.slice(i, i + 10);
+    const snap = await db.collection("templates").where("venueId", "in", chunk).get();
+    snap.docs.forEach((doc) => {
+      results.push({ id: doc.id, ...doc.data() });
+    });
+  }
+  return res.json({ data: results });
+}));
+
 // POST /api/venues/saveGigTemplate (auth)
 router.post("/saveGigTemplate", requireAuth, asyncHandler(async (req, res) => {
   const uid = req.auth.uid;

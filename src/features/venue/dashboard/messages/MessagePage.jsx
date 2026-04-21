@@ -58,7 +58,7 @@ function getVenueIdFromConversation(conv) {
     return sender && sender === myUid;
   }
 
-export const MessagePage = ({ user, conversations = [], setConversations, venueGigs, venueProfiles, customerDetails, refreshStripe, requests = [], setRequests, setGigPostModal, setBuildingForMusician, setBuildingForMusicianData, setRequestId, setPreferredDate, refreshGigs }) => {
+export const MessagePage = ({ user, conversations = [], setConversations, venueGigs, venueProfiles, customerDetails, refreshStripe, requests = [], setRequests, setShowAddGigsModal, setAddGigsMode, setBuildingForMusician, setBuildingForMusicianData, setRequestId, setPreferredDate, refreshGigs }) => {
     const navigate = useNavigate();
     const {isSmUp, isMdUp, isLgUp} = useBreakpoint();
     const [gigData, setGigData] = useState();
@@ -107,7 +107,8 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
         });
         setRequestId(request.id);
         setPreferredDate(null);
-        setGigPostModal(true);
+        setAddGigsMode?.('bookNew');
+        setShowAddGigsModal?.(true);
     };
 
     const openBuildGigModalWithDate = (request, date) => {
@@ -128,7 +129,8 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
         });
         setRequestId(request.id);
         setPreferredDate(date);
-        setGigPostModal(true);
+        setAddGigsMode?.('bookNew');
+        setShowAddGigsModal?.(true);
     };
 
 

@@ -1,20 +1,28 @@
 /* Venue Gig Page Shell – page header + two-column layout */
 
-.venue-gig-page {
-  min-height: 100%;
-  padding: 0 1rem 2rem;
-  box-sizing: border-box;
-  background-color: #ffffff;
+/* Page background (cool off-white; fills main column + header strip) */
+.dashboard .window.venues:has(.venue-gig-page) {
+  background-color: #f6f7f9;
 }
 
-/* Stretch gig page to fill dashboard main column so the grey fills the viewport */
+.venue-gig-page {
+  /* One rhythm for horizontal page gutter, column gap, and vertical gaps between tiles */
+  --venue-gig-tile-gap: 24px;
+  min-height: 100%;
+  padding: 0 var(--venue-gig-tile-gap) 2rem;
+  box-sizing: border-box;
+  /* Align with dashboard breadcrumb strip (.dashboard .window .breadcrumbs) */
+  background-color: #f6f7f9;
+}
+
+/* Stretch gig page to fill dashboard main column so the background fills the viewport */
 .dashboard .window.venues > .output > .venue-gig-page {
   flex: 1 1 auto;
   min-height: 0;
 }
 
 .venue-gig-page__container {
-  max-width: 1080px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -22,6 +30,16 @@
 .venue-gig-page__header {
   padding-top: 24px;
   padding-bottom: 16px;
+}
+
+/* Full-bleed band behind title row (matches page background) */
+.venue-gig-page__header--surface {
+  margin-left: calc(-1 * var(--venue-gig-tile-gap));
+  margin-right: calc(-1 * var(--venue-gig-tile-gap));
+  padding-left: var(--venue-gig-tile-gap);
+  padding-right: var(--venue-gig-tile-gap);
+  padding-bottom: var(--venue-gig-tile-gap);
+  background: #f6f7f9;
 }
 
 .venue-gig-page__back {
@@ -55,9 +73,9 @@
 }
 
 .venue-gig-page__title {
-  font-size: clamp(1.75rem, 2.75vw, 2rem);
+  font-size: clamp(2rem, 3.5vw, 2.5rem);
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
   margin: 0;
   letter-spacing: -0.02em;
 }
@@ -66,26 +84,46 @@
   margin: 0;
 }
 
-.venue-gig-page__venue-name {
-  margin: 0 0 0.35rem;
-  font-size: 1.125rem;
-  font-weight: 500;
-  color: var(--gn-off-black, #1a1a1a);
-  line-height: 1.4;
-}
-
 .venue-gig-page__datetime-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 0.75rem;
+  gap: 0.35rem 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.venue-gig-page__datetime-row > .icon {
+  font-size: 0.95rem;
+  color: var(--gn-grey-600, #555);
+  flex-shrink: 0;
 }
 
 .venue-gig-page__datetime {
-  font-size: 1.125rem;
+  font-size: 1.0625rem;
   font-weight: 500;
-  color: var(--gn-off-black, #1a1a1a);
+  color: var(--gn-grey-700, #404040);
   margin: 0;
+  line-height: 1.4;
+}
+
+.venue-gig-page__venue-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.venue-gig-page__venue-row > .icon {
+  font-size: 0.95rem;
+  color: var(--gn-grey-600, #555);
+  flex-shrink: 0;
+}
+
+.venue-gig-page__venue-name {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  color: var(--gn-grey-700, #404040);
   line-height: 1.4;
 }
 
@@ -154,6 +192,17 @@
 
 .venue-gig-page__header-row--actions {
   margin-top: 2px;
+}
+
+/* Match gig-page Apply: gradient orange CTA from shared .btn.artist-profile */
+.venue-gig-page__header-row--actions .btn.artist-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.venue-gig-page__header-row--actions .btn.artist-profile .icon {
+  color: inherit;
 }
 
 .venue-gig-page__status-pill {
@@ -284,10 +333,10 @@
   background: var(--gn-grey-100, #f0f0f0);
 }
 
-/* Divider under header */
+/* Divider under header — slightly darker than page bg so it stays visible */
 .venue-gig-page__divider {
   height: 1px;
-  background: var(--gn-grey-300, #d4d4d4);
+  background: var(--gn-grey-400, #bdbdbd);
   margin: 0;
 }
 
@@ -295,18 +344,20 @@
 .venue-gig-page__layout {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 24px;
-  padding-top: 24px;
+  gap: var(--venue-gig-tile-gap);
+  padding-top: var(--venue-gig-tile-gap);
 }
 
 @media (min-width: 900px) {
+  /* Wider main column; slightly narrower capped sidebar so Applications / tech / docs use more width */
   .venue-gig-page__layout {
-    grid-template-columns: 1fr minmax(300px, 450px);
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
   }
 }
 
 .venue-gig-page__main {
   min-width: 0;
+  width: 100%;
 }
 
 /* Main content card (wraps panel content) */
@@ -322,13 +373,335 @@
 .venue-hire-confirmed-panel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--venue-gig-tile-gap);
+  width: 100%;
+  min-width: 0;
+}
+
+/* Gig details main column: tile stacks (borderless white tiles on grey page bg) */
+.gig-details-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--venue-gig-tile-gap);
+  width: 100%;
+  min-width: 0;
+}
+
+/* Tech setup alone on a row — full main-column width (was half-width beside Documents) */
+.gig-details-tile-row--tech-span {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: var(--venue-gig-tile-gap);
+  width: 100%;
+  min-width: 0;
+}
+
+.gig-details-tile-row--tech-span > .gig-details-tile--tech-wide {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 899px) {
+  .gig-details-tile-row--tech-span {
+    flex-direction: column;
+  }
+}
+
+/* Documents + Notes (or Documents + Tech historically): half width each on wide viewports */
+.gig-details-tile-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: var(--venue-gig-tile-gap);
+  width: 100%;
+  min-width: 0;
+}
+
+.gig-details-tile-row > .gig-details-tile--half {
+  flex: 1 1 calc(50% - var(--venue-gig-tile-gap) / 2);
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+}
+
+.gig-details-tile-row > .gig-details-tile--half:only-child {
+  flex: 1 1 100%;
+}
+
+@media (max-width: 899px) {
+  .gig-details-tile-row {
+    flex-direction: column;
+  }
+
+  .gig-details-tile-row > .gig-details-tile--half {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+}
+
+.gig-details-tile {
+  background: var(--gn-white, #fff);
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gig-details-tile__title {
+  margin: 0 0 14px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--gn-off-black, #1a1a1a);
+}
+
+/* Notes tile: icon + title row (same spacing as Documents) */
+.gig-details-tile--internal-notes .fill-this-slot__header--invite-promoter {
+  margin-bottom: 14px;
+}
+
+/* Documents tile: same title row as Tech setup (fill-this-slot invite-promoter header + icon) */
+.gig-details-tile--documents .fill-this-slot__header--invite-promoter {
+  margin-bottom: 14px;
+}
+
+.gig-details-tile__empty {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--gn-grey-600, #525252);
+}
+
+.gig-details-tile__hint {
+  margin: 12px 0 0;
+  font-size: 0.8125rem;
+  color: var(--gn-grey-600, #525252);
+  line-height: 1.4;
+}
+
+.gig-details-doc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gig-details-doc-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gig-details-doc-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gig-details-doc-row__title {
+  font-weight: 600;
+  color: var(--gn-off-black, #1a1a1a);
+  font-size: 0.9375rem;
+}
+
+.gig-details-doc-row__signed {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.gig-details-doc-row__signed--yes {
+  color: var(--gn-green-800, #166534);
+}
+
+.gig-details-doc-row__signed--pending {
+  color: var(--gn-grey-600, #525252);
+}
+
+.gig-details-doc-row__download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.5rem;
+  line-height: 1;
+  color: var(--gn-grey-600, #525252);
+}
+
+.gig-details-doc-row__download:visited {
+  color: var(--gn-grey-600, #525252);
+}
+
+.gig-details-doc-row__download:hover,
+.gig-details-doc-row__download:focus-visible {
+  color: var(--gn-grey-800, #262626);
+}
+
+.gig-details-doc-row__download .icon {
+  font-size: 1rem;
+  color: inherit;
+}
+
+.gig-details-tile__notes-input {
+  width: 100%;
+  min-height: 96px;
+  box-sizing: border-box;
+}
+
+.gig-details-tile__notes-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.gig-details-tile__notes-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 2px;
+}
+
+.gig-details-tile__notes-add .icon {
+  font-size: 0.9rem;
+}
+
+.gig-details-tile__edited {
+  font-size: 0.8125rem;
+  color: var(--gn-grey-600, #525252);
+  margin: 8px 0 0;
+}
+
+.gig-details-tile__readonly {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--gn-grey-700, #404040);
+}
+
+/* Outer wrapper: no padding — inner .venue-gig-page-sidebar__card already matches .gig-details-tile
+   padding (18px). Avoid double padding so the header lines up with the Documents tile beside it. */
+.gig-details-tile.gig-details-tile--tech-wide {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Tech setup card uses sidebar card styles; outer tile is borderless — drop inner border */
+.gig-details-tile--tech-wide .venue-hire-main-column__tech-setup {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border: none;
+  box-shadow: none;
 }
 
 /* Tech setup moved from sidebar: same card styles, full main-column width */
 .venue-hire-main-column__tech-setup {
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Collapsed: title + chevron vertically centred; taller strip without body margin below header */
+.venue-gig-page-sidebar__card.venue-hire-main-column__tech-setup--collapsed {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  box-sizing: border-box;
+  min-height: 4.25rem;
+  padding: 14px 20px;
+}
+
+.venue-gig-page-sidebar__card.venue-hire-main-column__tech-setup--collapsed > .venue-hire-main-column__tech-setup-expand-trigger.fill-this-slot__header--invite-promoter {
+  margin-bottom: 0;
+}
+
+.venue-hire-main-column__tech-setup-expand-trigger .fill-this-slot__title--invite-promoter {
+  margin-block: 0;
+  line-height: 1.25;
+}
+
+/* Expand/collapse control — full-width button, keyboard focusable */
+.venue-hire-main-column__tech-setup-expand-trigger {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
+}
+
+/* Title row + chevron vertically centred (overrides .fill-this-slot__header align-items: flex-start) */
+.venue-hire-main-column__tech-setup-expand-trigger.fill-this-slot__header {
+  align-items: center;
+}
+
+.venue-hire-main-column__tech-setup-expand-trigger:focus-visible {
+  outline: 2px solid var(--gn-navy, #1e293b);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.venue-hire-main-column__tech-setup-expand-chevron {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  color: var(--gn-grey-600, #525252);
+}
+
+.venue-hire-main-column__tech-setup-expand-chevron .icon {
+  font-size: 1.05rem;
+}
+
+/* Venue tech spec: full width of tile under sound engineer; list-style layout (no side column) */
+.venue-hire-main-column__tech-setup-venue-spec {
+  width: 100%;
+  min-width: 0;
+}
+
+.venue-hire-main-column__tech-setup-venue-spec .tech-rider-grid {
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  gap: 0.75rem;
+}
+
+.venue-hire-main-column__tech-setup-venue-spec .tech-spec-venue-blocks-row {
+  grid-template-columns: 1fr;
+}
+
+.venue-hire-main-column__tech-setup-gig-block {
+  width: 100%;
+  min-width: 0;
+}
+
+.venue-hire-main-column__tech-setup-gig-placeholder {
+  margin: 0;
+  line-height: 1.45;
 }
 
 /* Booked by: first tile (card); Performers is second tile below */
@@ -356,11 +729,16 @@
   border-bottom: none;
 }
 
-/* Applications tile header uses same markup/classes as Invite artist / promoter (fill-this-slot__header--invite-promoter). */
+/* Applications tile header uses same markup/classes as Invite artist or promoter (fill-this-slot__header--invite-promoter). */
 
 /* Applications tile: flat (no card border), visibility toggle top-right like Book new event */
 .venue-hire-confirmed-panel__applications.venue-hire-confirmed-card {
   border: none;
+}
+
+/* In-card tabs + list hidden when collapsed; GigApplications stays mounted so booked tiles can portal to the strip. */
+.venue-hire-confirmed-panel__applications-expandable[hidden] {
+  display: none !important;
 }
 
 .venue-hire-confirmed-panel__applications-top {
@@ -513,6 +891,99 @@
   transform: translateX(12px);
 }
 
+/* Visible on venue profile — layout matches other tiles; background left transparent */
+.gig-details-venue-profile-visibility-tile {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0;
+  background: transparent;
+}
+
+.gig-details-venue-profile-visibility-tile__left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.gig-details-venue-profile-visibility-tile__icon-wrap {
+  flex-shrink: 0;
+  color: var(--gn-orange, #ff6c4b);
+  font-size: 1.125rem;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.gig-details-venue-profile-visibility-tile__icon-wrap .icon {
+  color: inherit;
+}
+
+.gig-details-venue-profile-visibility-tile__description {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--gn-grey-600, #525252);
+  line-height: 1.45;
+}
+
+.gig-details-venue-profile-visibility-tile__switch {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.gig-details-venue-profile-visibility-tile .gigs-toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 26px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.gig-details-venue-profile-visibility-tile .gigs-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.gig-details-venue-profile-visibility-tile .gigs-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--gn-grey-500, #737373);
+  transition: 0.2s;
+  border-radius: 999px;
+}
+
+.gig-details-venue-profile-visibility-tile .gigs-toggle-slider:before {
+  position: absolute;
+  content: '';
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--gn-white, #fff);
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+.gig-details-venue-profile-visibility-tile .gigs-toggle-switch input:checked + .gigs-toggle-slider {
+  background-color: var(--gn-orange, #ff6c4b);
+}
+
+.gig-details-venue-profile-visibility-tile .gigs-toggle-switch input:checked + .gigs-toggle-slider:before {
+  transform: translateX(18px);
+}
+
 /* Applications card: clickable header (title + chevron together, not pushed to right) */
 .venue-hire-confirmed-panel__applications-header {
   display: flex;
@@ -553,6 +1024,162 @@
 
 .venue-hire-confirmed-panel__applications-body {
   margin-top: 14px;
+}
+
+.venue-gig-applications-empty {
+  text-align: center;
+  max-width: 28rem;
+  margin-left: auto;
+  margin-right: auto;
+  min-height: 11rem;
+  padding: 2rem 1.25rem 2.25rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.venue-gig-applications-empty__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--gn-off-black, #1a1a1a);
+  line-height: 1.3;
+}
+
+.venue-gig-applications-empty__body {
+  margin: 0 0 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--gn-grey-600, #525252);
+}
+
+.venue-gig-applications-empty__actions {
+  margin-top: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem 1.25rem;
+}
+
+.venue-gig-applications-empty__invite {
+  flex-shrink: 0;
+}
+
+.venue-gig-applications-empty__manual-link {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--gn-orange, #ff6c4b);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.venue-gig-applications-empty__manual-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.venue-gig-confirm-manual-modal.modal-content {
+  max-width: 480px;
+  width: min(96vw, 480px);
+}
+
+.venue-gig-confirm-manual-modal__intro {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--gn-grey-700, #525252);
+}
+
+.venue-gig-confirm-manual-modal__field {
+  margin-bottom: 1rem;
+}
+
+.venue-gig-confirm-manual-modal__name-wrap {
+  position: relative;
+  margin-top: 6px;
+}
+
+.venue-gig-confirm-manual-modal__dropdown {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--gn-grey-300, #e6e6e6);
+  border-radius: 8px;
+  background: var(--gn-white, #fff);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.venue-gig-confirm-manual-modal__dropdown li {
+  margin: 0;
+  border-bottom: 1px solid var(--gn-grey-200, #f0f0f0);
+}
+
+.venue-gig-confirm-manual-modal__dropdown li:last-child {
+  border-bottom: none;
+}
+
+.venue-gig-confirm-manual-modal__dropdown-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.venue-gig-confirm-manual-modal__dropdown-btn:hover {
+  background: var(--gn-grey-100, #f5f5f5);
+}
+
+.venue-gig-confirm-manual-modal__dropdown-name {
+  font-weight: 600;
+  color: var(--gn-grey-900, #171717);
+}
+
+.venue-gig-confirm-manual-modal__dropdown-sub {
+  font-size: 0.8125rem;
+  color: var(--gn-grey-600, #525252);
+}
+
+.venue-gig-confirm-manual-modal__checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.venue-gig-confirm-manual-modal__checkbox input {
+  margin-top: 3px;
+}
+
+.venue-gig-confirm-manual-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .venue-hire-confirmed-panel__applications-booking-limit {
@@ -996,7 +1623,7 @@
   overflow-y: auto;
 }
 
-/* Invite artist / promoter — same grey as Options (btn tertiary: gn-grey-300), no border / shadow */
+/* Invite artist or promoter — same grey as Options (btn tertiary: gn-grey-300), no border / shadow */
 .venue-hire-confirmed-panel__booked-by--invite-promoter,
 .venue-gig-page__main-card--invite-promoter {
   background: var(--gn-grey-300);
@@ -1459,10 +2086,359 @@
   gap: 8px;
 }
 
+.venue-hire-application-tile__identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 .venue-hire-application-tile__name {
   font-size: 1rem;
   font-weight: 600;
   color: var(--gn-off-black, #111);
+}
+
+/* Multi-set applications: segmented strip (same pattern as My Gigs list status filters) */
+.venue-gig-page__applications-set-tabs-row {
+  width: 100%;
+  margin: 0;
+}
+
+/* Strip rendered inside the Applications tile, directly under the title row */
+.venue-gig-page__applications-set-tabs-row--in-card {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+.venue-gig-applications-set-tabs {
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 2px;
+  background-color: var(--gn-grey-300);
+  padding: 3px;
+  border-radius: 0.5rem;
+  box-sizing: border-box;
+}
+
+.venue-gig-applications-set-tabs--segmented {
+  /* alias: same as base; used where the gig-details panel renders the strip */
+}
+
+@media (max-width: 520px) {
+  .venue-gig-applications-set-tabs {
+    flex-wrap: wrap;
+  }
+}
+
+.venue-gig-applications-set-tab {
+  flex: 1 1 0;
+  min-width: 5.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 9px 12px;
+  margin: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--gn-grey-700);
+  font: inherit;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: none;
+}
+
+.venue-gig-applications-set-tab:focus-visible {
+  outline: 2px solid var(--gn-orange, #ff6c4b);
+  outline-offset: 2px;
+}
+
+.venue-gig-applications-set-tab--active {
+  background-color: var(--gn-white);
+  box-shadow: 0 0 5px var(--gn-grey-400);
+}
+
+.venue-gig-applications-set-tab__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.venue-gig-applications-set-tab__notify {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--gn-orange, #ff6c4b);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+}
+
+.venue-gig-applications-set-tab__status-pill {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.18);
+  color: rgb(21, 128, 61);
+  line-height: 1.2;
+}
+
+/* Portal host for booked tiles: above applications card (artist booking). Set tabs live in-card. */
+.venue-gig-page__booked-strip:empty {
+  display: none;
+}
+
+/* Single booked tile (stack has its own bottom margin). */
+.venue-gig-page__booked-strip > .venue-gig-booked-section {
+  margin-bottom: 1rem;
+}
+
+.venue-gig-booked-tiles-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.venue-gig-booked-tile {
+  border: 1px solid var(--gn-grey-300, #e5e5e5);
+  border-radius: 0.5rem;
+  background: var(--gn-white, #fff);
+  /* overflow visible so the options dropdown (absolute) is not clipped */
+  overflow: visible;
+}
+
+.venue-gig-booked-tile__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(10.5rem, 40%);
+  align-items: stretch;
+  min-height: 7.75rem;
+  gap: 0;
+}
+
+.venue-gig-booked-tile__photo {
+  position: relative;
+  min-height: 7.75rem;
+  overflow: hidden;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: var(--gn-grey-200, #e5e5e5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gn-grey-500, #737373);
+}
+
+/* Soft fade from white (left) into the hero so it blends with the text column */
+.venue-gig-booked-tile__photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    var(--gn-white, #fff) 0%,
+    rgba(255, 255, 255, 0.92) 12%,
+    rgba(255, 255, 255, 0.35) 38%,
+    rgba(255, 255, 255, 0) 62%
+  );
+}
+
+.venue-gig-booked-tile__photo:not(:has(img))::after {
+  display: none;
+}
+
+.venue-gig-booked-tile__photo svg {
+  position: relative;
+  z-index: 0;
+  width: 36px;
+  height: 36px;
+  opacity: 0.65;
+}
+
+.venue-gig-booked-tile__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+}
+
+.venue-gig-booked-tile__main {
+  min-width: 0;
+  padding: 1rem 0.25rem 1rem 1.125rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.venue-gig-booked-tile__identity {
+  margin: 0;
+}
+
+.venue-gig-booked-tile__name {
+  display: block;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--gn-off-black, #111);
+  line-height: 1.25;
+}
+
+.venue-gig-booked-tile__set-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+  color: var(--gn-grey-600, #525252);
+  line-height: 1.4;
+}
+
+.venue-gig-booked-tile__booked-pill {
+  flex-shrink: 0;
+}
+
+.venue-gig-booked-tile__set-label {
+  font-weight: 600;
+  color: var(--gn-grey-700, #404040);
+}
+
+.venue-gig-booked-tile__time-range {
+  font-weight: 500;
+  color: var(--gn-grey-600, #525252);
+}
+
+.venue-gig-booked-tile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.venue-gig-booked-tile__btn {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.venue-gig-booked-tile__options-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.venue-gig-booked-tile__options-btn.active,
+.venue-gig-booked-tile__options-btn:hover {
+  background-color: var(--gn-grey-350, #ddd);
+}
+
+.venue-gig-booked-tile__options-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--gn-white, #fff);
+  border: 1px solid var(--gn-grey-300, #d4d4d4);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  padding: 6px;
+  min-width: 180px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.venue-gig-booked-tile__options-dropdown button {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  color: var(--gn-off-black, #111);
+}
+
+.venue-gig-booked-tile__options-dropdown button:hover {
+  background: var(--gn-grey-100, #f0f0f0);
+}
+
+.venue-gig-booked-tile__options-dropdown button.danger {
+  color: var(--gn-red);
+}
+
+@media (max-width: 520px) {
+  .venue-gig-booked-tile__body {
+    grid-template-columns: minmax(0, 1fr) minmax(8rem, 34%);
+    min-height: 6.75rem;
+  }
+
+  .venue-gig-booked-tile__photo {
+    min-height: 6.75rem;
+  }
+
+  .venue-gig-booked-tile__main {
+    padding: 0.875rem 0.125rem 0.875rem 0.875rem;
+  }
+
+  .venue-gig-booked-tile__name {
+    font-size: 1.0625rem;
+  }
+}
+
+.venue-gig-applications-set-tab--active .venue-gig-applications-set-tab__title {
+  color: var(--gn-orange, #ff6c4b);
+}
+
+.venue-gig-applications-set-tab__time {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--gn-grey-600);
+}
+
+.venue-gig-applications-set-tab--active .venue-gig-applications-set-tab__time {
+  color: var(--gn-orange, #ff6c4b);
+}
+
+.venue-hire-confirmed-panel__applications-body .venue-gig-applications-set-tabs {
+  margin: 0 0 1rem;
+}
+
+.venue-gig-applications-set-empty {
+  margin: 0.5rem 0 0;
+}
+
+.venue-hire-application-tile__message {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--gn-grey-600, #525252);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
 }
 
 .venue-hire-application-tile__actions {
@@ -1588,6 +2564,9 @@
 /* ----- Sidebar ----- */
 .venue-gig-page-sidebar {
   min-width: 0;
+  width: 100%;
+  /* Sidebar tiles span full sidebar column (same edge alignment as main-column tiles) */
+  --venue-gig-sidebar-tile-width: 100%;
 }
 
 @media (min-width: 900px) {
@@ -1601,7 +2580,14 @@
 .venue-gig-page-sidebar__cards {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--venue-gig-tile-gap);
+  align-items: stretch;
+}
+
+/* Portal target when applications column is swapped — keep full row width, not the narrow tile span */
+.venue-gig-page-sidebar__cards .venue-hire-applications-portal-mount {
+  width: 100%;
+  align-self: stretch;
 }
 
 .venue-gig-page-sidebar__card {
@@ -1610,6 +2596,678 @@
   border-radius: 12px;
   padding: 18px 20px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Bordered sidebar cards (e.g. Key details): same width as surface tiles */
+.venue-gig-page-sidebar .venue-gig-page-sidebar__card {
+  width: var(--venue-gig-sidebar-tile-width);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Sidebar surface tiles (light, borderless): timeline, fee & ticketing, ticket sales preview */
+.venue-gig-page-sidebar__surface-tile {
+  background: var(--gn-white, #fff);
+  border: none;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: none;
+  width: var(--venue-gig-sidebar-tile-width);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.venue-gig-page-sidebar__surface-tile-title {
+  margin: 0 0 14px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--gn-off-black, #1a1a1a);
+  line-height: 1.2;
+}
+
+/* Timeline (and heading slot): match Applications / Gig summary title — navy 1.25rem from .fill-this-slot__title--invite-promoter */
+.venue-gig-page-sidebar__surface-tile--timeline .venue-gig-page-sidebar__timeline-tile-heading {
+  margin: 0 0 14px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.venue-gig-page-sidebar__surface-tile--booking-summary {
+  background: var(--gn-white, #fff);
+  border: 1px solid var(--gn-grey-300, #e6e6e6);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Same title treatment as Applications tile (.fill-this-slot__title--invite-promoter): navy, 1.25rem semibold */
+.venue-gig-page-sidebar__surface-tile--booking-summary .venue-gig-page-sidebar__booking-summary-heading {
+  margin: 0 0 14px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.venue-gig-page-sidebar__booking-summary-term {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.venue-gig-page-sidebar__booking-summary-term__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--gn-grey-600, #64748b);
+  opacity: 0.95;
+}
+
+.venue-gig-page-sidebar__booking-summary-term__icon .icon {
+  font-size: 0.88rem;
+}
+
+.venue-gig-page-sidebar__booking-summary-term__text {
+  line-height: 1.35;
+}
+
+.venue-gig-page-sidebar__booking-summary-dl {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.venue-gig-page-sidebar__booking-summary-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.venue-gig-page-sidebar__booking-summary-row dt {
+  margin: 0;
+  flex: 0 1 auto;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gn-grey-700, #64748b);
+  line-height: 1.35;
+}
+
+.venue-gig-page-sidebar__booking-summary-row dd {
+  margin: 0;
+  flex: 0 1 auto;
+  max-width: 60%;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--gn-grey-900, #171717);
+  text-align: right;
+  line-height: 1.35;
+}
+
+.venue-gig-page-sidebar__booking-summary-row--multi-slot {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.venue-gig-page-sidebar__booking-summary-row--multi-slot dt {
+  flex: none;
+}
+
+.venue-gig-page-sidebar__booking-summary-row--multi-slot dd {
+  max-width: none;
+  text-align: right;
+  flex: none;
+  align-self: stretch;
+}
+
+.venue-gig-page-sidebar__booking-summary-sets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.venue-gig-page-sidebar__booking-summary-set-line {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0.5rem 0.65rem;
+  background: var(--gn-grey-50, #f9fafb);
+  border-radius: 6px;
+  border: 1px solid var(--gn-grey-200, #e5e5e5);
+}
+
+.venue-gig-page-sidebar__booking-summary-set-one-line {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gn-grey-900, #171717);
+  text-align: right;
+  line-height: 1.35;
+}
+
+.venue-gig-page-sidebar__booking-summary-row--per-set-payments {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.venue-gig-page-sidebar__booking-summary-row--per-set-payments dt {
+  flex: none;
+}
+
+.venue-gig-page-sidebar__booking-summary-row--per-set-payments dd {
+  max-width: none;
+  text-align: right;
+  flex: none;
+  align-self: stretch;
+}
+
+.venue-gig-page-sidebar__booking-summary-payments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.venue-gig-page-sidebar__booking-summary-payment-line {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  background: var(--gn-grey-50, #f9fafb);
+  border-radius: 6px;
+  border: 1px solid var(--gn-grey-200, #e5e5e5);
+}
+
+.venue-gig-page-sidebar__booking-summary-payment-set {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--gn-grey-800, #1e293b);
+}
+
+.venue-gig-page-sidebar__booking-summary-payment-amount {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--gn-off-black, #111);
+  white-space: nowrap;
+}
+
+.venue-gig-page-sidebar__booking-summary-payment-line--with-actions {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+.venue-gig-page-sidebar__booking-summary-payment-top {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.venue-gig-page-sidebar__booking-summary-payment-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem 0.5rem;
+}
+
+.venue-gig-page-sidebar__booking-summary-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gn-grey-200, #e5e5e5);
+}
+
+.venue-gig-page-sidebar__booking-summary-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  justify-content: center;
+}
+
+/* Gig summary redesign: EVENT / PROGRAMME / FINANCIALS */
+.venue-gig-page-sidebar__gig-summary-v2 {
+  padding: 20px 20px 18px;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__section {
+  margin: 0;
+  padding: 0 0 16px;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__section--ruled {
+  padding-top: 16px;
+  border-top: 1px solid var(--gn-grey-200, #e5e5e5);
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__kicker {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gn-grey-500, #737373);
+  line-height: 1.2;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__event-title {
+  margin: 0 0 10px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gn-off-black, #111);
+  line-height: 1.25;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__meta {
+  margin: 0 0 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gn-grey-800, #262626);
+  line-height: 1.45;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__meta:last-child {
+  margin-bottom: 0;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__programme {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__programme-row {
+  display: grid;
+  grid-template-columns: minmax(3.25rem, auto) auto minmax(0, 1fr) auto;
+  gap: 8px 10px;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__programme-set {
+  font-weight: 600;
+  color: var(--gn-off-black, #111);
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__programme-time {
+  font-weight: 500;
+  color: var(--gn-grey-700, #404040);
+  white-space: nowrap;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__programme-artist {
+  font-weight: 600;
+  color: var(--gn-off-black, #111);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__programme-open {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--gn-grey-500, #737373);
+  min-width: 0;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__programme-badge-cell {
+  justify-self: end;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__pill--apps {
+  background: var(--gn-grey-100, #f5f5f5);
+  color: var(--gn-grey-700, #404040);
+  border: 1px solid var(--gn-grey-200, #e5e5e5);
+  text-transform: none;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: normal;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 0.875rem;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-row--set-fee {
+  align-items: flex-start;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-set-block + .venue-gig-page-sidebar__gig-summary-v2__fin-set-block {
+  margin-top: 10px;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-set-fee-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 10px;
+  max-width: 58%;
+  text-align: right;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-paid-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 8px;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-paid-actions .venue-gig-page-sidebar__mark-btn {
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.65rem;
+  white-space: nowrap;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-label {
+  font-weight: 500;
+  color: var(--gn-grey-700, #404040);
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-value {
+  font-weight: 600;
+  color: var(--gn-off-black, #111);
+  text-align: right;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-value--strong {
+  font-weight: 700;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-value--muted {
+  font-weight: 500;
+  color: var(--gn-grey-500, #737373);
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-note {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  color: var(--gn-grey-600, #525252);
+  line-height: 1.4;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__fin-divider {
+  height: 0;
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--gn-grey-200, #e5e5e5);
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__footer {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gn-grey-200, #e5e5e5);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__footer-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.venue-gig-page-sidebar__gig-summary-v2__edit-gig {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--gn-grey-300, #d4d4d4);
+  background: var(--gn-white, #fff);
+}
+
+@media (max-width: 400px) {
+  .venue-gig-page-sidebar__gig-summary-v2__programme-row {
+    grid-template-columns: auto 1fr;
+    row-gap: 6px;
+  }
+
+  .venue-gig-page-sidebar__gig-summary-v2__programme-time {
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .venue-gig-page-sidebar__gig-summary-v2__programme-open,
+  .venue-gig-page-sidebar__gig-summary-v2__programme-artist {
+    grid-column: 1 / -1;
+  }
+
+  .venue-gig-page-sidebar__gig-summary-v2__programme-badge-cell {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+.venue-gig-page-sidebar__surface-tile--timeline {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Timeline — explicit rail column: dot + flex-grown connector (reliable vs pseudo-elements + z-index) */
+.venue-gig-page-sidebar__timeline-wrap {
+  position: relative;
+}
+
+.venue-gig-page-sidebar__timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.venue-gig-page-sidebar__timeline-item {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12px;
+}
+
+/* Space between steps lives on the body, not the <li>, so the flex row’s cross-size
+   includes that gap and the rail connector can stretch through it to the next dot. */
+.venue-gig-page-sidebar__timeline-item:not(:last-child) .venue-gig-page-sidebar__timeline-body {
+  padding-bottom: 18px;
+}
+
+.venue-gig-page-sidebar__timeline-axis {
+  width: 22px;
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+}
+
+.venue-gig-page-sidebar__timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+  background: var(--gn-orange, #ff6c4b);
+  box-shadow: 0 0 0 3px var(--gn-white, #fff);
+  position: relative;
+  z-index: 1;
+}
+
+/* Fills space below dot to bottom of row (incl. body padding) so the line reaches the next step */
+.venue-gig-page-sidebar__timeline-connector {
+  width: 3px;
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 4px;
+  background: var(--gn-grey-350, #d4d4d4);
+  border-radius: 2px;
+  align-self: center;
+}
+
+.venue-gig-page-sidebar__timeline-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.venue-gig-page-sidebar__timeline-time {
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  color: var(--gn-orange, #ff6c4b);
+}
+
+.venue-gig-page-sidebar__timeline-label {
+  margin-top: 2px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--gn-off-black, #1a1a1a);
+}
+
+.venue-gig-page-sidebar__fee-highlight {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.venue-gig-page-sidebar__fee-highlight--ticketing {
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gn-grey-200, #e5e5e5);
+}
+
+.venue-gig-page-sidebar__fee-highlight-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  margin-top: 0.1rem;
+  font-size: 1.125rem;
+  color: var(--gn-orange, #ff6c4b);
+}
+
+.venue-gig-page-sidebar__fee-highlight-icon .icon {
+  width: 1.2em;
+  height: 1.2em;
+  color: inherit;
+}
+
+.venue-gig-page-sidebar__fee-highlight-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.venue-gig-page-sidebar__fee-highlight-value {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--gn-off-black, #1a1a1a);
+  line-height: 1.4;
+}
+
+.venue-gig-page-sidebar__surface-tile .venue-gig-page-sidebar__gig-details-inline-text {
+  color: var(--gn-grey-700, #404040);
+}
+
+.venue-gig-page-sidebar__surface-tile .venue-gig-page-sidebar__gig-details-hire-fee-row {
+  margin-top: 0.35rem;
+}
+
+.venue-gig-page-sidebar__surface-tile-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gn-grey-600, #525252);
+}
+
+.venue-gig-page-sidebar__target-sales-heading {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.venue-gig-page-sidebar__target-sales-heading .venue-gig-page-sidebar__surface-tile-title {
+  margin: 0;
+}
+
+.venue-gig-page-sidebar__coming-soon-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--gn-grey-200, #e5e5e5);
+  color: var(--gn-grey-700, #404040);
+}
+
+.venue-gig-page-sidebar__target-sales-copy {
+  margin: 0 0 14px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--gn-grey-600, #525252);
+}
+
+.venue-gig-page-sidebar__target-sales-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--gn-off-black, #1a1a1a);
+  margin-bottom: 10px;
+}
+
+.venue-gig-page-sidebar__target-sales-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--gn-grey-200, #e5e5e5);
+  overflow: hidden;
+}
+
+.venue-gig-page-sidebar__target-sales-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gn-orange, #ff6c4b) 0%, var(--gn-orange-400, #ff9a7a) 100%);
+  min-width: 0;
 }
 
 /*
@@ -1851,11 +3509,62 @@
   margin-bottom: 0;
 }
 
+.venue-gig-page-sidebar__tech-setup-sound-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.venue-gig-page-sidebar__tech-setup-tile .venue-gig-page-sidebar__tech-setup-sound-title {
+  margin: 0;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.venue-gig-page-sidebar__tech-setup-sound-field {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
 /* No divider lines under headings in Tech setup tile */
 .venue-gig-page-sidebar__tech-setup-tile .venue-gig-page-sidebar__section-title--primary,
 .venue-gig-page-sidebar__tech-setup-tile .venue-gig-page-sidebar__section-title--secondary {
   border-bottom: none;
   padding-bottom: 0;
+}
+
+/* Modal header row (reused by invite-artist + venue tech spec modals on gig page) */
+.venue-gig-page__invite-artist-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.venue-gig-page__invite-artist-modal-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.venue-gig-page__invite-artist-modal-close {
+  flex-shrink: 0;
+}
+
+.venue-gig-page__venue-tech-spec-modal.modal-content {
+  max-width: 720px;
+  width: min(96vw, 720px);
+}
+
+.venue-gig-page__venue-tech-spec-modal-body {
+  max-height: min(70vh, 620px);
+  overflow-y: auto;
+  padding: 0 4px 12px 0;
+  margin-top: 4px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .venue-gig-page-sidebar__tech-setup-input {

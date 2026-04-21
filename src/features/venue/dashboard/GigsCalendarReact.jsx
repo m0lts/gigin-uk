@@ -838,7 +838,16 @@ export function GigsCalendarReact({
         const gigLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/gig/${primaryGig.gigId}`;
         const openFullScreen = () => {
           setSelectedGigDetail(null);
-          navigate('/venues/dashboard/gigs/gig-applications', { state: { gig: primaryGig } });
+          const linkedGigIds =
+            Array.isArray(allGigs) && allGigs.length > 1
+              ? [...new Set(allGigs.map((g) => g?.gigId).filter(Boolean))]
+              : null;
+          navigate('/venues/dashboard/gigs/gig-applications', {
+            state: {
+              gig: primaryGig,
+              ...(linkedGigIds?.length > 1 ? { linkedGigIds } : {}),
+            },
+          });
         };
         const endTime = primaryGig.rentalHardCurfew || (primaryGig.startTime && primaryGig.duration != null
             ? (() => {
@@ -1098,7 +1107,16 @@ export function GigsCalendarReact({
               localStorage.setItem(`${ARTIST_GIG_PENDING_SEEN_KEY}-${artistGroupKey}`, String(totalPending));
             }
             setSelectedGigDetail(null);
-            navigate('/venues/dashboard/gigs/gig-applications', { state: { gig: primaryGig } });
+            const linkedGigIds =
+              Array.isArray(allGigs) && allGigs.length > 1
+                ? [...new Set(allGigs.map((g) => g?.gigId).filter(Boolean))]
+                : null;
+            navigate('/venues/dashboard/gigs/gig-applications', {
+              state: {
+                gig: primaryGig,
+                ...(linkedGigIds?.length > 1 ? { linkedGigIds } : {}),
+              },
+            });
           };
 
           return (

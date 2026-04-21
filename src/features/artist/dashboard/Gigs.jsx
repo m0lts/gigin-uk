@@ -91,6 +91,9 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
               return { icon: <ClockIcon />, text: 'Awaiting Venue Response' };
             }
             if (status === 'declined') {
+              if (applicant?.declinedForOtherSet) {
+                return { icon: <TickIcon />, text: 'Confirmed (other set)' };
+              }
               return { icon: <RejectedIcon />, text: 'Declined' };
             }
             if (status === 'withdrawn') {

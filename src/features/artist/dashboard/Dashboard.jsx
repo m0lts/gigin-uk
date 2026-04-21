@@ -55,9 +55,6 @@ export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalCl
 
   useEffect(() => {
     if (location.state?.newUser) setShowWelcomeModal(true);
-    if (location.state?.showGigPostModal) setGigPostModal(true);
-    if (location.state?.buildingForMusician) setBuildingForMusician(true);
-    if (location.state?.musicianData) setBuildingForMusicianData(location.state?.musicianData);
   }, [location]);
 
   useEffect(() => {

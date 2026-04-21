@@ -18,7 +18,7 @@ import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loadin
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { submitReview } from '@services/api/reviews';
 
-export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gigsToReview, setGigsToReview, requests }) => {
+export const Overview = ({ gigs, loadingGigs, venues, setShowAddGigsModal, setAddGigsMode, user, gigsToReview, setGigsToReview, requests }) => {
 
     const navigate = useNavigate();
     const [showSocialsModal, setShowSocialsModal] = useState(false);
@@ -185,7 +185,13 @@ export const Overview = ({ gigs, loadingGigs, venues, setGigPostModal, user, gig
                     </div>
                 )}
                 <div className="quick-buttons">
-                    <div className="quick-button" onClick={() => setGigPostModal(true)}>
+                    <div
+                      className="quick-button"
+                      onClick={() => {
+                        setAddGigsMode?.('bookNew');
+                        setShowAddGigsModal?.(true);
+                      }}
+                    >
                         <GigIcon />
                         <span className='quick-button-text'>Post a Gig</span>
                     </div>

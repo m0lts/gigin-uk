@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import Portal from '@features/shared/components/Portal';
@@ -13,6 +13,7 @@ import { getMostRecentMessage, sendGigInvitationMessage } from '@services/client
 import { sendGigDeclinedEmail, sendGigInviteEmail } from '@services/client-side/emails';
 import { updateDeclinedApplicationMessage } from '@services/api/messages';
 import { hasVenuePerm } from '@services/utils/permissions';
+import { getLocalGigDateTime } from '@services/utils/filtering';
 import { formatDate } from '@services/utils/dates';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
@@ -23,8 +24,14 @@ import { ContactDetailsModal } from '@features/venue/components/ContactDetailsMo
 import { ApplicantTechSetupModal } from '@features/venue/components/ApplicantTechSetupModal';
 import { InviteArtistPromoterTile } from '@features/venue/components/InviteArtistPromoterTile';
 import { VenueHireTechSetupMainCard } from '@features/venue/gigs/components/VenueHireTechSetupMainCard';
+import { GigApplications } from '@features/venue/dashboard/GigApplications';
 import { computeCompatibility } from '@services/utils/techRiderCompatibility';
-import { CloseIcon, DownChevronIcon, MessageIcon, MicrophoneIcon, NewTabIcon, TechRiderIcon, TickIcon, UpChevronIcon } from '@features/shared/ui/extras/Icons';
+import {
+  gigSlotHasUnviewedApplicants,
+  gigSlotHasConfirmedArtist,
+  isArtistBookingNightFullyBooked,
+} from '@features/venue/gigs/utils/multiSlotGigGroup';
+import { CloseIcon, DocumentsIcon, DownChevronIcon, DownloadIcon, EyeIcon, MessageIcon, MicrophoneIcon, NewTabIcon, PencilIcon, PlusIcon, TechRiderIcon, TickIcon, UpChevronIcon } from '@features/shared/ui/extras/Icons';
 import '@styles/host/invite-and-share-modal.styles.css';
 import '@styles/host/venue-gig-page.styles.css';
 
@@ -34,18 +41,48 @@ function normalizeCloseBookingAfterAcceptedCount(value) {
   return Math.min(99, Math.floor(n));
 }
 
+function slotTimeRangeLabel(slotGig) {
+  if (!slotGig?.startTime) return '—';
+  const start = slotGig.startTime;
+  const dur = slotGig.duration;
+  if (dur == null || dur === '' || Number(dur) <= 0) return start;
+  const [hours, minutes] = start.split(':').map(Number);
+  const totalMins = (hours || 0) * 60 + (minutes || 0) + Number(dur);
+  const eh = Math.floor(totalMins / 60) % 24;
+  const em = totalMins % 60;
+  const end = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+  return `${start} – ${end}`;
+}
+
 /**
- * Shared venue hire full-page panel: Booked by + Performers cards.
- * Supports hireState: 'available' (no hirer), 'pending' (hirer set, not confirmed), 'confirmed'.
+ * Unified gig details panel for both venue-hire and artist-booking gigs.
+ *
+ * Venue hire: Booked by + Performers + Applications + Tech setup cards. hireState one of
+ * 'available' (no hirer), 'pending' (hirer set, not confirmed), or 'confirmed'.
+ *
+ * Artist booking (open): reuses the same card chrome — an Invite/Fill-this-slot tile, a
+ * Performers card (manual + confirmed performers), and the legacy GigApplications
+ * rendered inside the card layout. The tech setup card is hidden in this pass; we'll
+ * bring it back once we decide what it should look like for artist bookings.
+ *
  * Performers: only show "On Gigin" when performer is actually linked to a Gigin profile.
  */
-export function VenueHireDetailsPanel({
+export function GigDetailsPanel({
   normalisedGig,
   rawGig,
   setGigInfo,
+  gigs,
   venues,
   venueProfile,
   refreshGigs,
+  setShowAddGigsModal,
+  setAddGigsEditData,
+  setAddGigsMode,
+  refreshStripe,
+  customerDetails,
+  copyToClipboard,
+  showInvitesModal,
+  setShowInvitesModal,
   addPerformersTrigger,
   onAddPerformersOpened,
   onInviteHirer,
@@ -56,6 +93,11 @@ export function VenueHireDetailsPanel({
   venueHireSwapApplicationsAndGigDetails = false,
   venueHireApplicationsPortalContainer,
   onVenueHireGigDetailsPortalMount,
+  onInviteArtist,
+  /** Sum of applicants across all slots (multi-set artist bookings). */
+  artistBookingApplicantsTotalCount,
+  /** Merged slot docs for multi-set artist bookings (same order as sidebar / normalised gig). */
+  artistBookingSlotGigs,
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -82,6 +124,37 @@ export function VenueHireDetailsPanel({
   const [contactModalEntryId, setContactModalEntryId] = useState(null);
   /** For confirmed venue hires: whether the booker applications tile is expanded. */
   const [showApplicationsTile, setShowApplicationsTile] = useState(false);
+  /** Multi-set applications: active tab (strip is inside the Applications tile under the title). */
+  const [artistBookingSetTabIndex, setArtistBookingSetTabIndex] = useState(0);
+  /** DOM node for booked-artist tiles above set tabs + applications card (artist booking). */
+  const [artistBookingBookedStripEl, setArtistBookingBookedStripEl] = useState(null);
+
+  const sortedArtistBookingSlotGigs = useMemo(() => {
+    if (!Array.isArray(artistBookingSlotGigs) || artistBookingSlotGigs.length < 2) return [];
+    return [...artistBookingSlotGigs].sort((a, b) => {
+      if (!a?.startTime || !b?.startTime) return 0;
+      const [aH, aM] = a.startTime.split(':').map(Number);
+      const [bH, bM] = b.startTime.split(':').map(Number);
+      return (aH * 60 + (aM || 0)) - (bH * 60 + (bM || 0));
+    });
+  }, [artistBookingSlotGigs]);
+
+  /** Every set in the night has a booked act (multi-set uses sibling docs; anchor status can stay "open"). */
+  const isArtistBookingFullyBooked = useMemo(
+    () =>
+      isArtistBookingNightFullyBooked({
+        normalisedGig,
+        rawGig,
+        artistBookingSlotGigs,
+        gigs,
+      }),
+    [normalisedGig, rawGig, artistBookingSlotGigs, gigs]
+  );
+
+  useEffect(() => {
+    setArtistBookingSetTabIndex(0);
+  }, [rawGig?.gigId, sortedArtistBookingSlotGigs.length]);
+
   /** Invite from Contacts: which contact we're currently inviting; and which we've already invited. */
   const [invitingContactId, setInvitingContactId] = useState(null);
   const [invitedContactIds, setInvitedContactIds] = useState(new Set());
@@ -100,6 +173,8 @@ export function VenueHireDetailsPanel({
   const [declinedApplicationConvIds, setDeclinedApplicationConvIds] = useState(() => new Set());
   /** Applications: artist profile (name, picture) per conversation id, from getArtistProfileById. */
   const [applicationProfiles, setApplicationProfiles] = useState({});
+  /** Applications: most recent application message body per conversation id (for tile preview). */
+  const [applicationMessagePreviews, setApplicationMessagePreviews] = useState({});
   const closeBookingAfterAcceptedCount = React.useMemo(
     () => normalizeCloseBookingAfterAcceptedCount(rawGig?.closeBookingAfterAcceptedCount),
     [rawGig?.closeBookingAfterAcceptedCount]
@@ -107,6 +182,17 @@ export function VenueHireDetailsPanel({
   const [draftCloseCount, setDraftCloseCount] = useState(closeBookingAfterAcceptedCount);
   const [bookingLimitSaving, setBookingLimitSaving] = useState(false);
   const [bookingLimitEditing, setBookingLimitEditing] = useState(false);
+  /** Internal notes draft for main-column tile (artist booking); null = use rawGig. */
+  const [gigPageInternalNotesDraft, setGigPageInternalNotesDraft] = useState(null);
+  const [gigPageInternalNotesSaving, setGigPageInternalNotesSaving] = useState(false);
+  /** When true, notes tile shows textarea + Save / Discard (add or edit flow). */
+  const [gigPageInternalNotesComposing, setGigPageInternalNotesComposing] = useState(false);
+  const [showConfirmManualModal, setShowConfirmManualModal] = useState(false);
+  const [confirmManualName, setConfirmManualName] = useState('');
+  const [confirmManualAddToContacts, setConfirmManualAddToContacts] = useState(false);
+  const [confirmManualPickedCrmId, setConfirmManualPickedCrmId] = useState(null);
+  const [confirmManualSaving, setConfirmManualSaving] = useState(false);
+  const [confirmManualDropdownOpen, setConfirmManualDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (!bookingLimitEditing) {
@@ -121,7 +207,112 @@ export function VenueHireDetailsPanel({
     }
   }, [addPerformersTrigger, onAddPerformersOpened]);
 
+  useEffect(() => {
+    setGigPageInternalNotesComposing(false);
+    setGigPageInternalNotesDraft(null);
+  }, [rawGig?.gigId]);
+
   const canUpdate = rawGig?.venueId && hasVenuePerm(venues, rawGig.venueId, 'gigs.update');
+
+  const hasAnyConfirmedApplicants = React.useMemo(
+    () =>
+      Array.isArray(rawGig?.applicants) &&
+      rawGig.applicants.some((a) => ['confirmed', 'paid'].includes(a?.status)),
+    [rawGig?.applicants]
+  );
+
+  const gigDateTimeForEdit = rawGig ? getLocalGigDateTime(rawGig) : null;
+
+  const showConfirmGigManuallyLink = React.useMemo(() => {
+    if (normalisedGig?.bookingMode !== 'artist_booking') return false;
+    if (!['open', 'confirmed'].includes(normalisedGig?.status || '')) return false;
+    if (rawGig?.status === 'closed') return false;
+    if (!rawGig?.venueId) return false;
+    if (!hasVenuePerm(venues, rawGig.venueId, 'gigs.update')) return false;
+    if (!hasVenuePerm(venues, rawGig.venueId, 'gigs.applications.manage')) return false;
+    if (!gigDateTimeForEdit || gigDateTimeForEdit.getTime() <= Date.now()) return false;
+    if (hasAnyConfirmedApplicants) return false;
+    return true;
+  }, [normalisedGig?.bookingMode, normalisedGig?.status, rawGig, venues, hasAnyConfirmedApplicants, gigDateTimeForEdit]);
+
+  const filteredConfirmManualCrm = React.useMemo(() => {
+    const q = (confirmManualName || '').trim().toLowerCase();
+    if (q.length < 1) return [];
+    return (crmEntries || []).filter((e) => (e.name || '').toLowerCase().includes(q)).slice(0, 8);
+  }, [confirmManualName, crmEntries]);
+
+  const openConfirmManualModal = useCallback(() => {
+    setConfirmManualName('');
+    setConfirmManualAddToContacts(false);
+    setConfirmManualPickedCrmId(null);
+    setConfirmManualDropdownOpen(false);
+    setShowConfirmManualModal(true);
+  }, []);
+
+  const handleConfirmManualSave = useCallback(async () => {
+    const name = (confirmManualName || '').trim();
+    if (!name) {
+      toast.error('Enter a name.');
+      return;
+    }
+    if (!rawGig?.gigId || !hasVenuePerm(venues, rawGig.venueId, 'gigs.applications.manage')) {
+      toast.error('You do not have permission to manage applications.');
+      return;
+    }
+    setConfirmManualSaving(true);
+    try {
+      const existingApplicants = Array.isArray(rawGig?.applicants) ? rawGig.applicants : [];
+      const updatedApplicants = existingApplicants.map((app) =>
+        ['confirmed', 'accepted', 'paid'].includes(app?.status) ? { ...app, status: 'declined' } : app
+      );
+      updatedApplicants.push({
+        id: `manual-${Date.now()}`,
+        name,
+        artistName: name,
+        status: 'confirmed',
+        sentBy: 'venue',
+        manual: true,
+      });
+      await updateGigDocument({
+        gigId: rawGig.gigId,
+        action: 'gigs.update',
+        updates: { applicants: updatedApplicants },
+      });
+      toast.success('Gig confirmed manually.');
+      if (confirmManualAddToContacts && !confirmManualPickedCrmId && user?.uid) {
+        try {
+          await createArtistCRMEntry(user.uid, { name });
+          const entries = await getArtistCRMEntries(user.uid);
+          setCrmEntries(entries);
+          toast.success('Added to My Artists.');
+        } catch (e) {
+          console.error(e);
+          toast.error('Could not add to contacts.');
+        }
+      }
+      setGigInfo?.((prev) => (prev ? { ...prev, applicants: updatedApplicants } : null));
+      refreshGigs?.();
+      setShowConfirmManualModal(false);
+      setConfirmManualName('');
+      setConfirmManualAddToContacts(false);
+      setConfirmManualPickedCrmId(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to confirm gig.');
+    } finally {
+      setConfirmManualSaving(false);
+    }
+  }, [
+    confirmManualName,
+    confirmManualAddToContacts,
+    confirmManualPickedCrmId,
+    rawGig,
+    venues,
+    user?.uid,
+    setGigInfo,
+    refreshGigs,
+  ]);
+
   const bookedBy = normalisedGig?.bookedBy || {};
   const bookerName = bookedBy.name || (rawGig?.renterName && String(rawGig.renterName).trim()) || (rawGig?.hirerName && String(rawGig.hirerName).trim()) || null;
   const isBookerGigin = bookedBy.type === 'gigin';
@@ -132,55 +323,48 @@ export function VenueHireDetailsPanel({
   /** 'available' = no hirer yet; 'confirmed' = has booker (manual or confirmed rental). Manually entered bookers always show as Confirmed. */
   const hireState = !bookerName ? 'available' : (isConfirmedRental || !isBookerGigin) ? 'confirmed' : 'pending';
 
+  useEffect(() => {
+    if (normalisedGig?.bookingMode === 'artist_booking' && isArtistBookingFullyBooked) {
+      setShowApplicationsTile(false);
+    }
+    if (rawGig?.itemType === 'venue_hire' && hireState === 'confirmed') {
+      setShowApplicationsTile(false);
+    }
+  }, [rawGig?.gigId, normalisedGig?.bookingMode, rawGig?.itemType, hireState, isArtistBookingFullyBooked]);
+
   const showApplicationsVisibility =
     canUpdate && applicationsInviteOnly != null && onApplicationsVisibilityChange;
-  const applicationsVisibilityControl = showApplicationsVisibility ? (
-    <div className="venue-hire-confirmed-panel__applications-visibility">
-      <label className="gigs-toggle-switch">
-        <input
-          type="checkbox"
-          checked={!applicationsInviteOnly}
-          onChange={(e) => onApplicationsVisibilityChange(!e.target.checked)}
-        />
-        <span className="gigs-toggle-slider" />
-      </label>
-      <span className="venue-hire-confirmed-panel__applications-visibility-label">
-        {applicationsInviteOnly ? (
-          <>
-            Hiding this available gig from{' '}
-            {rawGig?.venueId ? (
-              <button
-                type="button"
-                className="venue-hire-confirmed-panel__venue-profile-inline-link"
-                aria-label="Open your venue profile in a new tab"
-                onClick={(e) => openInNewTab(`/venues/${rawGig.venueId}`, e)}
-              >
-                my venue profile
-              </button>
-            ) : (
-              'my venue profile'
-            )}
-          </>
-        ) : (
-          <>
-            Showing gig as available on{' '}
-            {rawGig?.venueId ? (
-              <button
-                type="button"
-                className="venue-hire-confirmed-panel__venue-profile-inline-link"
-                aria-label="Open your venue profile in a new tab"
-                onClick={(e) => openInNewTab(`/venues/${rawGig.venueId}`, e)}
-              >
-                my venue profile
-              </button>
-            ) : (
-              'my venue profile'
-            )}
-          </>
-        )}
-      </span>
-    </div>
-  ) : null;
+
+  const renderVenueProfileVisibilityTile = () => {
+    if (!showApplicationsVisibility) return null;
+    if (normalisedGig?.bookingMode === 'artist_booking' && isArtistBookingFullyBooked) return null;
+    if (rawGig?.itemType === 'venue_hire' && hireState === 'confirmed') return null;
+    const visibleOnProfile = !applicationsInviteOnly;
+    return (
+      <div className="gig-details-tile gig-details-venue-profile-visibility-tile">
+        <div className="gig-details-venue-profile-visibility-tile__left">
+          <span className="gig-details-venue-profile-visibility-tile__icon-wrap" aria-hidden>
+            <EyeIcon />
+          </span>
+          <div className="gig-details-venue-profile-visibility-tile__copy">
+            <h3 className="gig-details-tile__title">Visible on venue profile</h3>
+            <p className="gig-details-venue-profile-visibility-tile__description">
+              When on, artists and promoters can find this gig on your venue profile to apply
+            </p>
+          </div>
+        </div>
+        <label className="gig-details-venue-profile-visibility-tile__switch gigs-toggle-switch">
+          <input
+            type="checkbox"
+            checked={visibleOnProfile}
+            onChange={(e) => onApplicationsVisibilityChange(!e.target.checked)}
+            aria-label="Visible on venue profile"
+          />
+          <span className="gigs-toggle-slider" />
+        </label>
+      </div>
+    );
+  };
 
   /** For confirmed Gigin booker: the conversation with them (for Message button). */
   const bookerConversation = React.useMemo(() => {
@@ -222,6 +406,151 @@ export function VenueHireDetailsPanel({
   const isVenueHire = rawGig?.itemType === 'venue_hire';
   const hireId = rawGig?.id ?? rawGig?.gigId;
   const venueForHire = venues?.find((v) => v.venueId === rawGig?.venueId);
+
+  const saveGigPageInternalNotes = useCallback(async (value) => {
+    if (!canUpdate) return;
+    setGigPageInternalNotesSaving(true);
+    try {
+      const now = new Date().toISOString();
+      if (isVenueHire && hireId) {
+        await updateVenueHireOpportunity(hireId, { notesInternal: value || '', internalNotesLastEdited: now });
+        setGigInfo?.((prev) => (prev
+          ? { ...prev, notesInternal: value || '', internalNotes: value || null, internalNotesLastEdited: now }
+          : null));
+      } else if (rawGig?.gigId) {
+        await updateGigDocument({
+          gigId: rawGig.gigId,
+          action: 'gigs.update',
+          updates: { internalNotes: value || null, internalNotesLastEdited: now },
+        });
+        setGigInfo?.((prev) => (prev ? { ...prev, internalNotes: value || null, internalNotesLastEdited: now } : null));
+      } else {
+        return;
+      }
+      refreshGigs?.();
+      setGigPageInternalNotesDraft(null);
+      setGigPageInternalNotesComposing(false);
+      toast.success('Notes saved.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save notes.');
+    } finally {
+      setGigPageInternalNotesSaving(false);
+    }
+  }, [isVenueHire, hireId, rawGig?.gigId, canUpdate, setGigInfo, refreshGigs]);
+
+  const renderGigPageInternalNotesTileBody = () => {
+    const savedRaw = rawGig?.internalNotes ?? rawGig?.notesInternal ?? '';
+    const savedStr = savedRaw != null ? String(savedRaw) : '';
+    const hasSavedNote = savedStr.trim().length > 0;
+
+    if (!canUpdate) {
+      return <p className="gig-details-tile__readonly">{savedStr || '—'}</p>;
+    }
+
+    const discardCompose = () => {
+      setGigPageInternalNotesDraft(null);
+      setGigPageInternalNotesComposing(false);
+    };
+
+    const startAdd = () => {
+      setGigPageInternalNotesDraft('');
+      setGigPageInternalNotesComposing(true);
+    };
+
+    const startEdit = () => {
+      setGigPageInternalNotesDraft(savedStr);
+      setGigPageInternalNotesComposing(true);
+    };
+
+    const discardSavedNote = () => {
+      if (!window.confirm('Remove this note?')) return;
+      void saveGigPageInternalNotes('');
+    };
+
+    if (gigPageInternalNotesComposing) {
+      const textareaVal = gigPageInternalNotesDraft !== null ? gigPageInternalNotesDraft : '';
+      return (
+        <>
+          <textarea
+            className="input gig-details-tile__notes-input"
+            value={textareaVal}
+            onChange={(e) => setGigPageInternalNotesDraft(e.target.value)}
+            placeholder="Write any notes for you and your team about this gig"
+            rows={4}
+            disabled={gigPageInternalNotesSaving}
+            autoFocus
+          />
+          <div className="gig-details-tile__notes-actions">
+            <button
+              type="button"
+              className="btn tertiary"
+              onClick={discardCompose}
+              disabled={gigPageInternalNotesSaving}
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => {
+                const v = gigPageInternalNotesDraft !== null ? gigPageInternalNotesDraft : '';
+                void saveGigPageInternalNotes(v.trim() || '');
+              }}
+              disabled={gigPageInternalNotesSaving}
+            >
+              {gigPageInternalNotesSaving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </>
+      );
+    }
+
+    if (!hasSavedNote) {
+      return (
+        <button type="button" className="btn secondary gig-details-tile__notes-add" onClick={startAdd}>
+          <PlusIcon />
+          Add note
+        </button>
+      );
+    }
+
+    return (
+      <>
+        <p className="gig-details-tile__readonly">{savedStr}</p>
+        {rawGig?.internalNotesLastEdited ? (
+          <p className="gig-details-tile__edited">
+            Last edited {formatDate(rawGig.internalNotesLastEdited, 'short')}
+          </p>
+        ) : null}
+        <div className="gig-details-tile__notes-actions">
+          <button type="button" className="btn tertiary" onClick={discardSavedNote}>
+            Discard
+          </button>
+          <button type="button" className="btn secondary" onClick={startEdit}>
+            Edit
+          </button>
+        </div>
+      </>
+    );
+  };
+
+  /** Listing docs from the wizard; venue-hire legacy `documents` URLs map into the same row shape. */
+  const combinedListingDocuments = React.useMemo(() => {
+    if (Array.isArray(rawGig?.listingDocuments) && rawGig.listingDocuments.length > 0) {
+      return rawGig.listingDocuments;
+    }
+    if (Array.isArray(rawGig?.documents) && rawGig.documents.length > 0) {
+      return rawGig.documents.map((d, i) => ({
+        key: d.url || `doc-${i}`,
+        title: d.name || 'Document',
+        sourceUrl: d.url,
+        signed: d.signed,
+      }));
+    }
+    return [];
+  }, [rawGig?.listingDocuments, rawGig?.documents]);
+
   const venueDisplayName = venueForHire?.accountName || venueForHire?.name || rawGig?.venue?.venueName || 'this venue';
 
   const saveCloseBookingAfterAcceptedCount = useCallback(
@@ -685,6 +1014,35 @@ export function VenueHireDetailsPanel({
     return () => { cancelled = true; };
   }, [hireApplications]);
 
+  useEffect(() => {
+    const list = hireApplications ?? [];
+    if (!list.length) {
+      setApplicationMessagePreviews({});
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      list.map(async (conv) => {
+        const msg = await getMostRecentMessage(conv.id, 'application');
+        const text =
+          msg?.text != null && String(msg.text).trim() !== ''
+            ? String(msg.text).trim()
+            : null;
+        return { convId: conv.id, text };
+      })
+    ).then((results) => {
+      if (cancelled) return;
+      const next = {};
+      results.forEach(({ convId, text }) => {
+        next[convId] = text;
+      });
+      setApplicationMessagePreviews(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hireApplications]);
+
   const handleAcceptApplication = useCallback(
     async (conv) => {
       if (!hireId || !canUpdate) return;
@@ -958,103 +1316,111 @@ export function VenueHireDetailsPanel({
     );
   };
 
-  const renderVenueHireApplications = () => {
-    const applicationsVisibilityRow = hireState !== 'available' ? applicationsVisibilityControl : null;
-
+  /** Confirmed venue hire: collapsible applications (sidebar when layout swap; else below Documents/Notes). */
+  const renderVenueHireConfirmedApplicationsCard = () => {
+    if (!(isVenueHire && hireId && hireState === 'confirmed')) return null;
     return (
-      <>
-        {/* Applications: for confirmed hires, one card with title + toggle; content expands below */}
-        {isVenueHire && hireId && hireState === 'confirmed' && (
-          <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications">
-            <div className="venue-hire-confirmed-panel__applications-top">
-              <button
-                type="button"
-                className="venue-hire-confirmed-panel__applications-header"
-                onClick={() => setShowApplicationsTile((v) => !v)}
-                aria-expanded={showApplicationsTile}
-              >
-                <span className="venue-hire-confirmed-panel__applications-header-inner">
-                  <span className="fill-this-slot__header fill-this-slot__header--invite-promoter">
-                    <MessageIcon />
-                    <span className="fill-this-slot__title fill-this-slot__title--invite-promoter venue-hire-confirmed-panel__applications-title">
-                      Applications ({hireApplicationsLoading ? '…' : hireApplications.length})
-                    </span>
-                  </span>
-                  {showApplicationsTile ? <UpChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden /> : <DownChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden />}
+      <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications gig-details-tile">
+        <div className="venue-hire-confirmed-panel__applications-top">
+          <button
+            type="button"
+            className="venue-hire-confirmed-panel__applications-header"
+            onClick={() => setShowApplicationsTile((v) => !v)}
+            aria-expanded={showApplicationsTile}
+          >
+            <span className="venue-hire-confirmed-panel__applications-header-inner">
+              <span className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+                <MessageIcon />
+                <span className="fill-this-slot__title fill-this-slot__title--invite-promoter venue-hire-confirmed-panel__applications-title">
+                  Applications ({hireApplicationsLoading ? '…' : hireApplications.length})
                 </span>
-              </button>
-              {applicationsVisibilityRow}
-            </div>
-            {showApplicationsTile && (
-              <div className="venue-hire-confirmed-panel__applications-body">
-                {renderApplicationsBookingLimitBlock()}
-                {hireApplicationsLoading ? (
-                  <p className="venue-hire-confirmed-card__empty-text">Loading…</p>
-                ) : hireApplications.length === 0 ? null : (
-                  <div className="venue-hire-application-tiles">
-                    {hireApplications.map((conv) => {
-                      const applicant = getApplicantFromConversation(conv);
-                      const profileData = applicationProfiles[conv.id];
-                      const name = (profileData?.name || applicant?.accountName || conv?.artistName || 'Artist').trim() || 'Artist';
-                      const photoUrl = profileData?.picture || applicant?.musicianImg || applicant?.accountImg;
-                      const participantId = applicant?.participantId;
-                      const isBooker = participantId && rawGig?.hirerUserId && participantId === rawGig.hirerUserId;
-                      const isDeclinedOther = !isBooker;
-                      return (
-                        <div key={conv.id} className="venue-hire-application-tile">
-                          <div className="venue-hire-application-tile__photo">
-                            {photoUrl ? (
-                              <img src={photoUrl} alt="" className="venue-hire-application-tile__img" />
-                            ) : (
-                              <MicrophoneIcon />
-                            )}
-                          </div>
-                          <div className="venue-hire-application-tile__main">
-                            <span className="venue-hire-application-tile__name">{name}</span>
-                            <div className="venue-hire-application-tile__actions">
-                              {participantId && (
-                                <button
-                                  type="button"
-                                  className="btn tertiary venue-hire-application-tile__btn"
-                                  onClick={() => openTechRiderForApplication(participantId)}
-                                  disabled={applicationsTechRiderLoading}
-                                >
-                                  <TechRiderIcon /> Tech setup
-                                </button>
-                              )}
-                              {participantId && (
-                                <button
-                                  type="button"
-                                  className="btn tertiary venue-hire-application-tile__btn"
-                                  onClick={(e) => openInNewTab(`/artist/${participantId}`, e)}
-                                >
-                                  <NewTabIcon /> View profile
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                className="btn secondary venue-hire-application-tile__btn"
-                                onClick={() => navigate(`/venues/dashboard/messages?conversationId=${conv.id}`)}
-                              >
-                                Message
-                              </button>
-                              {isBooker && (
-                                <span className="venue-gig-page__hire-booking-pill venue-gig-page__hire-booking-pill--confirmed">Confirmed</span>
-                              )}
-                              {isDeclinedOther && (
-                                <span className="venue-hire-application-tile__status venue-hire-application-tile__status--declined">Declined</span>
-                              )}
-                            </div>
-                          </div>
+              </span>
+              {showApplicationsTile ? <UpChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden /> : <DownChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden />}
+            </span>
+          </button>
+        </div>
+        {showApplicationsTile && (
+          <div className="venue-hire-confirmed-panel__applications-body">
+            {renderApplicationsBookingLimitBlock()}
+            {hireApplicationsLoading ? (
+              <p className="venue-hire-confirmed-card__empty-text">Loading…</p>
+            ) : hireApplications.length === 0 ? null : (
+              <div className="venue-hire-application-tiles">
+                {hireApplications.map((conv) => {
+                  const applicant = getApplicantFromConversation(conv);
+                  const profileData = applicationProfiles[conv.id];
+                  const name = (profileData?.name || applicant?.accountName || conv?.artistName || 'Artist').trim() || 'Artist';
+                  const photoUrl = profileData?.picture || applicant?.musicianImg || applicant?.accountImg;
+                  const participantId = applicant?.participantId;
+                  const isBooker = participantId && rawGig?.hirerUserId && participantId === rawGig.hirerUserId;
+                  const isDeclinedOther = !isBooker;
+                  return (
+                    <div key={conv.id} className="venue-hire-application-tile">
+                      <div className="venue-hire-application-tile__photo">
+                        {photoUrl ? (
+                          <img src={photoUrl} alt="" className="venue-hire-application-tile__img" />
+                        ) : (
+                          <MicrophoneIcon />
+                        )}
+                      </div>
+                      <div className="venue-hire-application-tile__main">
+                        <div className="venue-hire-application-tile__identity">
+                          <span className="venue-hire-application-tile__name">{name}</span>
+                          {applicationMessagePreviews[conv.id] ? (
+                            <p className="venue-hire-application-tile__message">{applicationMessagePreviews[conv.id]}</p>
+                          ) : null}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        <div className="venue-hire-application-tile__actions">
+                          {participantId && (
+                            <button
+                              type="button"
+                              className="btn tertiary venue-hire-application-tile__btn"
+                              onClick={() => openTechRiderForApplication(participantId)}
+                              disabled={applicationsTechRiderLoading}
+                            >
+                              <TechRiderIcon /> Tech setup
+                            </button>
+                          )}
+                          {participantId && (
+                            <button
+                              type="button"
+                              className="btn tertiary venue-hire-application-tile__btn"
+                              onClick={(e) => openInNewTab(`/artist/${participantId}`, e)}
+                            >
+                              <NewTabIcon /> View profile
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn secondary venue-hire-application-tile__btn"
+                            onClick={() => navigate(`/venues/dashboard/messages?conversationId=${conv.id}`)}
+                          >
+                            Message
+                          </button>
+                          {isBooker && (
+                            <span className="venue-gig-page__hire-booking-pill venue-gig-page__hire-booking-pill--confirmed">Confirmed</span>
+                          )}
+                          {isDeclinedOther && (
+                            <span className="venue-hire-application-tile__status venue-hire-application-tile__status--declined">Declined</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
         )}
+      </div>
+    );
+  };
+
+  const renderVenueHireApplications = () => (
+      <>
+        {venueHireSwapApplicationsAndGigDetails && isVenueHire && hireId && hireState === 'confirmed'
+          ? renderVenueHireConfirmedApplicationsCard()
+          : null}
         {isVenueHire && hireId && hireState !== 'confirmed' && (
           <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications">
             <div className="venue-hire-confirmed-panel__applications-top">
@@ -1075,7 +1441,6 @@ export function VenueHireDetailsPanel({
                   </button>
                 ) : null}
               </div>
-              {applicationsVisibilityRow}
             </div>
             {renderApplicationsBookingLimitBlock()}
             {hireApplicationsLoading ? (
@@ -1099,7 +1464,12 @@ export function VenueHireDetailsPanel({
                         )}
                       </div>
                       <div className="venue-hire-application-tile__main">
-                        <span className="venue-hire-application-tile__name">{name}</span>
+                        <div className="venue-hire-application-tile__identity">
+                          <span className="venue-hire-application-tile__name">{name}</span>
+                          {applicationMessagePreviews[conv.id] ? (
+                            <p className="venue-hire-application-tile__message">{applicationMessagePreviews[conv.id]}</p>
+                          ) : null}
+                        </div>
                         <div className="venue-hire-application-tile__actions">
                           {participantId && (
                             <button
@@ -1164,9 +1534,355 @@ export function VenueHireDetailsPanel({
             )}
           </div>
         )}
+        {renderVenueProfileVisibilityTile()}
+      </>
+  );
+
+  // Artist-booking gigs (both open and confirmed) render a slimmed-down variant of
+  // the hire panel: no "Booked by" card (the venue is the booker), an invite tile on
+  // top when the gig is still open, a Performers card once anyone's confirmed/added,
+  // the Applications card (collapsible when confirmed, like venue-hire confirmed), and
+  // the same Tech Setup card used for hires.
+  const bookingMode = normalisedGig?.bookingMode;
+  const status = normalisedGig?.status;
+  const isArtistBooking = bookingMode === 'artist_booking' && (status === 'open' || status === 'confirmed');
+  if (isArtistBooking) {
+    const isMultiSlotArtistGig =
+      Array.isArray(normalisedGig?.perSlotSummaries) && normalisedGig.perSlotSummaries.length > 1;
+    const applicantsCount =
+      isMultiSlotArtistGig && typeof artistBookingApplicantsTotalCount === 'number'
+        ? artistBookingApplicantsTotalCount
+        : Array.isArray(rawGig?.applicants)
+          ? rawGig.applicants.length
+          : 0;
+    const showArtistBookingSetTabs =
+      isMultiSlotArtistGig && sortedArtistBookingSlotGigs.length > 1;
+
+    const applicationsBody = (
+      <div className="venue-hire-confirmed-panel__applications-body">
+        <GigApplications
+          rawGig={rawGig}
+          setGigInfo={setGigInfo}
+          skipHeader
+          useCardLayout
+          showInvitesModalFromParent={showInvitesModal}
+          setShowInvitesModalFromParent={setShowInvitesModal}
+          gigs={gigs}
+          venues={venues}
+          refreshGigs={refreshGigs}
+          setShowAddGigsModal={setShowAddGigsModal}
+          setAddGigsEditData={setAddGigsEditData}
+          setAddGigsMode={setAddGigsMode}
+          refreshStripe={refreshStripe}
+          customerDetails={customerDetails}
+          copyToClipboard={copyToClipboard}
+          onInviteArtist={!isArtistBookingFullyBooked ? onInviteArtist : undefined}
+          onOpenConfirmGigManually={showConfirmGigManuallyLink ? openConfirmManualModal : undefined}
+          hideMultiSlotTabStrip={showArtistBookingSetTabs}
+          multiSlotActiveTabIndex={showArtistBookingSetTabs ? artistBookingSetTabIndex : undefined}
+          onMultiSlotActiveTabIndexChange={
+            showArtistBookingSetTabs ? setArtistBookingSetTabIndex : undefined
+          }
+          bookedTilesPortalContainer={artistBookingBookedStripEl}
+        />
+      </div>
+    );
+
+    const artistBookingSetTabsStrip = showArtistBookingSetTabs ? (
+      <div
+        className="venue-gig-page__applications-set-tabs-row venue-gig-page__applications-set-tabs-row--in-card"
+        role="tablist"
+        aria-label="Sets on this gig"
+      >
+        <div className="venue-gig-applications-set-tabs venue-gig-applications-set-tabs--segmented">
+          {sortedArtistBookingSlotGigs.map((slotGig, idx) => {
+            const fresh =
+              Array.isArray(gigs) && slotGig?.gigId
+                ? gigs.find((g) => g.gigId === slotGig.gigId)
+                : null;
+            const slotForNotify = fresh ? { ...slotGig, ...fresh } : slotGig;
+            return (
+              <button
+                key={slotGig.gigId}
+                type="button"
+                role="tab"
+                aria-selected={idx === artistBookingSetTabIndex}
+                className={`venue-gig-applications-set-tab${
+                  idx === artistBookingSetTabIndex ? ' venue-gig-applications-set-tab--active' : ''
+                }`}
+                onClick={() => {
+                  setArtistBookingSetTabIndex(idx);
+                }}
+              >
+                <span className="venue-gig-applications-set-tab__title">
+                  Set {idx + 1}
+                  {gigSlotHasConfirmedArtist(slotForNotify) ? (
+                    <span className="venue-gig-applications-set-tab__status-pill">Booked</span>
+                  ) : null}
+                  {gigSlotHasUnviewedApplicants(slotForNotify) ? (
+                    <span
+                      className="venue-gig-applications-set-tab__notify"
+                      aria-label="New application"
+                    />
+                  ) : null}
+                </span>
+                <span className="venue-gig-applications-set-tab__time">
+                  {slotTimeRangeLabel(slotGig)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    ) : null;
+
+    const artistBookingApplicationsCard = (
+      <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications gig-details-tile">
+        {isArtistBookingFullyBooked ? (
+          <>
+            <div className="venue-hire-confirmed-panel__applications-top">
+              <button
+                type="button"
+                className="venue-hire-confirmed-panel__applications-header"
+                onClick={() => setShowApplicationsTile((v) => !v)}
+                aria-expanded={showApplicationsTile}
+              >
+                <span className="venue-hire-confirmed-panel__applications-header-inner">
+                  <span className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+                    <MessageIcon />
+                    <span className="fill-this-slot__title fill-this-slot__title--invite-promoter venue-hire-confirmed-panel__applications-title">
+                      Applications ({applicantsCount})
+                    </span>
+                  </span>
+                  {showApplicationsTile
+                    ? <UpChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden />
+                    : <DownChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden />}
+                </span>
+              </button>
+            </div>
+            {/*
+              Keep GigApplications mounted while collapsed so booked tiles can portal to
+              venue-gig-page__booked-strip. `hidden` only hides this subtree in the card;
+              portaled nodes are not descendants, so they stay visible at the top.
+            */}
+            <div
+              className="venue-hire-confirmed-panel__applications-expandable"
+              hidden={!showApplicationsTile}
+            >
+              {artistBookingSetTabsStrip}
+              {applicationsBody}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="venue-hire-confirmed-panel__applications-top">
+              <div className="venue-hire-confirmed-panel__applications-title-row">
+                <div className="venue-hire-confirmed-panel__applications-title-block fill-this-slot__header fill-this-slot__header--invite-promoter">
+                  <MessageIcon />
+                  <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">
+                    Applications ({applicantsCount})
+                  </h3>
+                </div>
+              </div>
+            </div>
+            {artistBookingSetTabsStrip}
+            {applicationsBody}
+          </>
+        )}
+      </div>
+    );
+
+    return (
+      <>
+        <div className="venue-hire-confirmed-panel gig-details-main">
+          <div ref={setArtistBookingBookedStripEl} className="venue-gig-page__booked-strip" />
+          {!isArtistBookingFullyBooked ? artistBookingApplicationsCard : null}
+          {renderVenueProfileVisibilityTile()}
+
+          {hireId ? (
+            <div className="gig-details-tile-row gig-details-tile-row--tech-span">
+              <div className="gig-details-tile gig-details-tile--tech-wide">
+                <VenueHireTechSetupMainCard
+                  rawGig={rawGig}
+                  normalisedGig={normalisedGig}
+                  setGigInfo={setGigInfo}
+                  refreshGigs={refreshGigs}
+                  venues={venues}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          <div className="gig-details-tile-row">
+            <div className="gig-details-tile gig-details-tile--documents gig-details-tile--half">
+              <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+                <DocumentsIcon />
+                <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Documents</h3>
+              </div>
+              {combinedListingDocuments.length === 0 ? (
+                <p className="gig-details-tile__empty">No documents attached to this listing.</p>
+              ) : (
+                <ul className="gig-details-doc-list">
+                  {combinedListingDocuments.map((doc, i) => (
+                    <li key={doc.key || `doc-${i}`} className="gig-details-doc-row">
+                      <div className="gig-details-doc-row__main">
+                        <span className="gig-details-doc-row__title">{doc.title || 'Document'}</span>
+                        <span
+                          className={`gig-details-doc-row__signed gig-details-doc-row__signed--${doc.signed === true ? 'yes' : 'pending'}`}
+                          title={doc.signed === true ? 'Signed' : 'Signature tracking coming soon'}
+                        >
+                          {doc.signed === true ? 'Signed' : 'Not signed yet'}
+                        </span>
+                      </div>
+                      {doc.sourceUrl ? (
+                        <a
+                          href={doc.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn tertiary gig-details-doc-row__download"
+                          download
+                          aria-label={`Download ${doc.title || 'document'}`}
+                          title="Download"
+                        >
+                          <DownloadIcon />
+                        </a>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="gig-details-tile__hint">Document signing will be tracked here in a future update.</p>
+            </div>
+            <div className="gig-details-tile gig-details-tile--internal-notes gig-details-tile--half">
+              <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+                <PencilIcon />
+                <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Notes</h3>
+              </div>
+              {renderGigPageInternalNotesTileBody()}
+            </div>
+          </div>
+          {isArtistBookingFullyBooked ? artistBookingApplicationsCard : null}
+        </div>
+
+        {applicationsTechRiderProfile && (
+          <ApplicantTechSetupModal
+            techRider={applicationsTechRiderProfile.techRider}
+            artistName={applicationsTechRiderProfile.name}
+            venueTechRider={venueForHire?.techRider || null}
+            application={isArtistBookingFullyBooked && rawGig?.techSetup ? { techSetup: rawGig.techSetup } : null}
+            onClose={() => setApplicationsTechRiderProfile(null)}
+          />
+        )}
+
+        {showConfirmManualModal && (
+          <Portal>
+            <div
+              className="modal cancel-gig venue-gig-confirm-manual-modal-overlay"
+              onClick={() => !confirmManualSaving && setShowConfirmManualModal(false)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="venue-gig-confirm-manual-title"
+            >
+              <div
+                className="modal-content venue-gig-confirm-manual-modal"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="venue-gig-page__invite-artist-modal-head">
+                  <h3 id="venue-gig-confirm-manual-title" className="venue-gig-page__invite-artist-modal-title">
+                    Confirm gig manually
+                  </h3>
+                  <button
+                    type="button"
+                    className="btn tertiary venue-gig-page__invite-artist-modal-close"
+                    onClick={() => !confirmManualSaving && setShowConfirmManualModal(false)}
+                    aria-label="Close"
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
+                <p className="venue-gig-confirm-manual-modal__intro">
+                  Add the artist or promoter who booked this gig outside Gigin. You can pick from My Artists or type a new name.
+                </p>
+                <div className="venue-gig-confirm-manual-modal__field">
+                  <label className="label" htmlFor="venue-gig-confirm-manual-name">
+                    Artist or promoter name
+                  </label>
+                  <div className="venue-gig-confirm-manual-modal__name-wrap">
+                    <input
+                      id="venue-gig-confirm-manual-name"
+                      type="text"
+                      className="input"
+                      value={confirmManualName}
+                      onChange={(e) => {
+                        setConfirmManualName(e.target.value);
+                        setConfirmManualPickedCrmId(null);
+                        setConfirmManualDropdownOpen(true);
+                      }}
+                      onFocus={() => setConfirmManualDropdownOpen(true)}
+                      placeholder="Search contacts or type a name"
+                      autoComplete="off"
+                      disabled={confirmManualSaving}
+                    />
+                    {confirmManualDropdownOpen && filteredConfirmManualCrm.length > 0 && (
+                      <ul className="venue-gig-confirm-manual-modal__dropdown" role="listbox">
+                        {filteredConfirmManualCrm.map((entry) => (
+                          <li key={entry.id} role="option">
+                            <button
+                              type="button"
+                              className="venue-gig-confirm-manual-modal__dropdown-btn"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setConfirmManualName(entry.name || '');
+                                setConfirmManualPickedCrmId(entry.id);
+                                setConfirmManualDropdownOpen(false);
+                              }}
+                            >
+                              <span className="venue-gig-confirm-manual-modal__dropdown-name">{entry.name || 'Unknown'}</span>
+                              {entry.email ? (
+                                <span className="venue-gig-confirm-manual-modal__dropdown-sub">{entry.email}</span>
+                              ) : null}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+                {!confirmManualPickedCrmId ? (
+                  <label className="venue-gig-confirm-manual-modal__checkbox label">
+                    <input
+                      type="checkbox"
+                      checked={confirmManualAddToContacts}
+                      onChange={(e) => setConfirmManualAddToContacts(e.target.checked)}
+                      disabled={confirmManualSaving}
+                    />
+                    <span>Add to My Artists (contacts)</span>
+                  </label>
+                ) : null}
+                <div className="venue-gig-confirm-manual-modal__actions">
+                  <button
+                    type="button"
+                    className="btn tertiary"
+                    onClick={() => !confirmManualSaving && setShowConfirmManualModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={handleConfirmManualSave}
+                    disabled={confirmManualSaving || !(confirmManualName || '').trim()}
+                  >
+                    {confirmManualSaving ? 'Saving…' : 'Confirm'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Portal>
+        )}
       </>
     );
-  };
+  }
 
   return (
     <>
@@ -1180,7 +1896,6 @@ export function VenueHireDetailsPanel({
               onCopyLink={onCopyBookingLink ?? copyBookingLink}
               linkCopied={linkCopied}
               showManualOption={false}
-              footerStart={applicationsVisibilityControl}
               contactsBody={(
                 <div className="invite-and-share-modal__list fill-this-slot__contacts-list">
                   {crmLoading ? (
@@ -1415,13 +2130,71 @@ export function VenueHireDetailsPanel({
             ? renderVenueHireApplications()
             : null}
         {isVenueHire && hireId ? (
-          <VenueHireTechSetupMainCard
-            rawGig={rawGig}
-            normalisedGig={normalisedGig}
-            setGigInfo={setGigInfo}
-            refreshGigs={refreshGigs}
-            venues={venues}
-          />
+          <>
+            <div className="gig-details-tile-row gig-details-tile-row--tech-span">
+              <div className="gig-details-tile gig-details-tile--tech-wide">
+                <VenueHireTechSetupMainCard
+                  rawGig={rawGig}
+                  normalisedGig={normalisedGig}
+                  setGigInfo={setGigInfo}
+                  refreshGigs={refreshGigs}
+                  venues={venues}
+                />
+              </div>
+            </div>
+
+            <div className="gig-details-main">
+              <div className="gig-details-tile-row">
+                <div className="gig-details-tile gig-details-tile--documents gig-details-tile--half">
+                  <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+                    <DocumentsIcon />
+                    <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Documents</h3>
+                  </div>
+                  {combinedListingDocuments.length === 0 ? (
+                    <p className="gig-details-tile__empty">No documents attached to this listing.</p>
+                  ) : (
+                    <ul className="gig-details-doc-list">
+                      {combinedListingDocuments.map((doc, i) => (
+                        <li key={doc.key || `doc-${i}`} className="gig-details-doc-row">
+                          <div className="gig-details-doc-row__main">
+                            <span className="gig-details-doc-row__title">{doc.title || 'Document'}</span>
+                            <span
+                              className={`gig-details-doc-row__signed gig-details-doc-row__signed--${doc.signed === true ? 'yes' : 'pending'}`}
+                              title={doc.signed === true ? 'Signed' : 'Signature tracking coming soon'}
+                            >
+                              {doc.signed === true ? 'Signed' : 'Not signed yet'}
+                            </span>
+                          </div>
+                          {doc.sourceUrl ? (
+                            <a
+                              href={doc.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn tertiary gig-details-doc-row__download"
+                              download
+                              aria-label={`Download ${doc.title || 'document'}`}
+                              title="Download"
+                            >
+                              <DownloadIcon />
+                            </a>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="gig-details-tile__hint">Document signing will be tracked here in a future update.</p>
+                </div>
+                <div className="gig-details-tile gig-details-tile--internal-notes gig-details-tile--half">
+                  <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+                    <PencilIcon />
+                    <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Notes</h3>
+                  </div>
+                  {renderGigPageInternalNotesTileBody()}
+                </div>
+              </div>
+              {!venueHireSwapApplicationsAndGigDetails ? renderVenueHireConfirmedApplicationsCard() : null}
+            </div>
+          </>
         ) : null}
       </div>
 

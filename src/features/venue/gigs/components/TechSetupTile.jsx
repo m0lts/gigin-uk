@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { getTechRiderForDisplay } from '@features/venue/builder/techRiderConfig';
+import { useState, useMemo } from 'react';
 import { getEquipmentIconForLabel } from '@features/venue/utils/techSetupIcons';
+import { VenueTechSpecDisplay } from './VenueTechSpecDisplay';
 
 /**
  * Normalize hired-from-venue items to { label, feeDisplay } and optional numeric fee for total.
@@ -34,7 +34,7 @@ function parseFee(str) {
  * STATE 2: Applicants, no act booked – same + compatibility hint.
  * STATE 3: Act booked – gig-specific setup (equipment in use from application, hired items, technical status).
  */
-export function TechSetupTile({ rawGig, normalisedGig, venueProfile, canUpdate, onSaveSoundEngineer, soundEngineerSaving, hireFeePaid, onMarkHireFeePaid, equipmentHireFeesPaid, onMarkEquipmentHireFeesPaid, equipmentHireFeesUpdating, missingEquipmentSortedUpdating, missingEquipmentSorted, onMarkMissingEquipmentSorted, bookerVenueEquipmentInUse }) {
+export function TechSetupTile({ rawGig, normalisedGig, venueTechRider, canUpdate, onSaveSoundEngineer, soundEngineerSaving, equipmentHireFeesPaid, onMarkEquipmentHireFeesPaid, equipmentHireFeesUpdating, missingEquipmentSortedUpdating, missingEquipmentSorted, onMarkMissingEquipmentSorted, bookerVenueEquipmentInUse }) {
   const [soundEngineerLocal, setSoundEngineerLocal] = useState(null);
   const displaySoundEngineer = soundEngineerLocal !== null ? soundEngineerLocal : (rawGig?.soundManager ?? '');
   const isVenueHire = normalisedGig?.bookingMode === 'venue_hire';
@@ -54,20 +54,12 @@ export function TechSetupTile({ rawGig, normalisedGig, venueProfile, canUpdate, 
     ? String(displaySoundEngineer).trim()
     : null;
 
-  const { equipmentForDisplay } = venueProfile?.techRider
-    ? getTechRiderForDisplay(venueProfile.techRider)
-    : { equipmentForDisplay: [] };
-  const headlineEquipment = equipmentForDisplay
-    .filter((item) => item.available)
-    .map((item) => item.label)
-    .slice(0, 10);
-
   const techSetup = rawGig?.techSetup || {};
   const technicalStatus = techSetup.technicalStatus != null && String(techSetup.technicalStatus).trim()
     ? String(techSetup.technicalStatus).trim()
     : null;
 
-  const { usingVenueEquipment, hiredItems, hireFeeTotal, missingEquipmentList } = useMemo(() => {
+  const { usingVenueEquipment, hiredItems, missingEquipmentList } = useMemo(() => {
     const isBookedArtist = hasBooker && isArtistBooking;
     const confirmedApplicant = isBookedArtist && Array.isArray(rawGig?.applicants)
       ? rawGig.applicants.find((a) => a?.status === 'confirmed' || a?.status === 'accepted' || a?.status === 'paid')
@@ -104,8 +96,7 @@ export function TechSetupTile({ rawGig, normalisedGig, venueProfile, canUpdate, 
     } else if (hired.length === 0 && Array.isArray(techSetup.hiredFromVenue) && techSetup.hiredFromVenue.length > 0) {
       hired = normalizeHiredItems(techSetup.hiredFromVenue);
     }
-    const total = hired.reduce((sum, i) => sum + (i.feeValue || 0), 0);
-    return { usingVenueEquipment: using, hiredItems: hired, hireFeeTotal: total, missingEquipmentList: missing };
+    return { usingVenueEquipment: using, hiredItems: hired, missingEquipmentList: missing };
   }, [rawGig?.applicants, rawGig?.techSetup, hasBooker, isArtistBooking]);
 
   const equipmentHireFeesPaidProp = rawGig?.equipmentHireFeesPaid === true;
@@ -114,199 +105,176 @@ export function TechSetupTile({ rawGig, normalisedGig, venueProfile, canUpdate, 
 
   return (
     <div className="venue-gig-page-sidebar__tech-setup-tile">
-      {/* 1. Sound engineer – first in all states; editable text box when canUpdate */}
-      <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section">
-        <h4 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">
+      <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section venue-gig-page-sidebar__tech-setup-sound-row">
+        <h4 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary venue-gig-page-sidebar__tech-setup-sound-title">
           Sound engineer
         </h4>
-        {canUpdate && onSaveSoundEngineer ? (
-          <input
-            type="text"
-            className="venue-gig-page-sidebar__tech-setup-input"
-            placeholder="Type name"
-            value={displaySoundEngineer}
-            onChange={(e) => setSoundEngineerLocal(e.target.value)}
-            onBlur={() => {
-              const value = soundEngineerLocal !== null ? soundEngineerLocal : (rawGig?.soundManager ?? '');
-              const current = rawGig?.soundManager ?? '';
-              if (String(value).trim() !== (current || '').trim()) {
-                onSaveSoundEngineer(value);
-              }
-              setSoundEngineerLocal(null);
-            }}
-            disabled={soundEngineerSaving}
-          />
-        ) : (
-          <p className={soundEngineerTrimmed ? 'venue-gig-page-sidebar__tech-setup-value' : 'venue-gig-page-sidebar__tech-setup-muted venue-gig-page-sidebar__tech-setup-unassigned'}>
-            {soundEngineerTrimmed || 'Not assigned'}
-          </p>
-        )}
+        <div className="venue-gig-page-sidebar__tech-setup-sound-field">
+          {canUpdate && onSaveSoundEngineer ? (
+            <input
+              type="text"
+              className="venue-gig-page-sidebar__tech-setup-input"
+              placeholder="Type name"
+              value={displaySoundEngineer}
+              onChange={(e) => setSoundEngineerLocal(e.target.value)}
+              onBlur={() => {
+                const value = soundEngineerLocal !== null ? soundEngineerLocal : (rawGig?.soundManager ?? '');
+                const current = rawGig?.soundManager ?? '';
+                if (String(value).trim() !== (current || '').trim()) {
+                  onSaveSoundEngineer(value);
+                }
+                setSoundEngineerLocal(null);
+              }}
+              disabled={soundEngineerSaving}
+            />
+          ) : (
+            <p className={soundEngineerTrimmed ? 'venue-gig-page-sidebar__tech-setup-value' : 'venue-gig-page-sidebar__tech-setup-muted venue-gig-page-sidebar__tech-setup-unassigned'}>
+              {soundEngineerTrimmed || 'Not assigned'}
+            </p>
+          )}
+        </div>
       </section>
 
-      {state === 'unbooked' && (
-        <>
-          <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section">
-            <h4 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">
-              Venue equipment available
-            </h4>
-            {headlineEquipment.length > 0 ? (
-              <p className="venue-gig-page-sidebar__tech-setup-value">
-                {headlineEquipment.join(', ')}
-              </p>
-            ) : (
-              <p className="venue-gig-page-sidebar__tech-setup-muted">
-                No venue tech setup added yet
-              </p>
-            )}
-          </section>
-        </>
-      )}
+      <section
+        className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section venue-hire-main-column__tech-setup-venue-spec"
+        aria-label="Venue tech specification"
+      >
+        <VenueTechSpecDisplay techRider={venueTechRider} hideNotes />
+      </section>
 
-      {state === 'applicants' && (
-        <>
-          <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section">
-            <h4 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">
-              Venue equipment available
-            </h4>
-            {headlineEquipment.length > 0 ? (
-              <p className="venue-gig-page-sidebar__tech-setup-value">
-                {headlineEquipment.join(', ')}
-              </p>
-            ) : (
-              <p className="venue-gig-page-sidebar__tech-setup-muted">
-                No venue tech setup added yet
-              </p>
-            )}
-          </section>
-        </>
-      )}
-
-      {state === 'booked' && (
-        <>
-          <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section">
-            <h4 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">
-              Venue equipment in use
-            </h4>
-            {(() => {
-              // Prefer tech setup saved when gig was confirmed; only use live booker data when no saved snapshot.
-              const venueEquipmentList = (isVenueHire && usingVenueEquipment.length === 0 && Array.isArray(bookerVenueEquipmentInUse) && bookerVenueEquipmentInUse.length > 0)
-                ? bookerVenueEquipmentInUse
-                : usingVenueEquipment;
-              return venueEquipmentList.length > 0 ? (
-              <div className="venue-gig-page-sidebar__tech-setup-equipment-tiles">
-                {venueEquipmentList.map((label, i) => {
-                  const Icon = getEquipmentIconForLabel(label);
-                  return (
-                    <span key={i} className="venue-gig-page-sidebar__tech-setup-equipment-tile">
-                      {Icon && <Icon className="venue-gig-page-sidebar__tech-setup-equipment-tile-icon" aria-hidden />}
-                      <span>{label}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="venue-gig-page-sidebar__tech-setup-muted">
-                No venue equipment selected yet
-              </p>
-            );
-          })()}
-          </section>
-
-          {hiredItems.length > 0 && (
+      <div className="venue-hire-main-column__tech-setup-gig-block">
+        {state === 'booked' && (
+          <>
             <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section">
               <h4 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">
-                Hired from venue
+                Venue equipment in use
               </h4>
-              <div className="venue-gig-page-sidebar__tech-setup-equipment-tiles">
-                {hiredItems.map((item, i) => {
-                  const Icon = getEquipmentIconForLabel(item.label);
-                  return (
-                    <span key={i} className="venue-gig-page-sidebar__tech-setup-equipment-tile">
-                      {Icon && <Icon className="venue-gig-page-sidebar__tech-setup-equipment-tile-icon" aria-hidden />}
-                      <span>{item.label}{item.feeDisplay ? ` — ${item.feeDisplay}` : ''}</span>
-                    </span>
-                  );
-                })}
-              </div>
-              {hasHiredWithFees && (
+              {(() => {
+                const venueEquipmentList = (isVenueHire && usingVenueEquipment.length === 0 && Array.isArray(bookerVenueEquipmentInUse) && bookerVenueEquipmentInUse.length > 0)
+                  ? bookerVenueEquipmentInUse
+                  : usingVenueEquipment;
+                return venueEquipmentList.length > 0 ? (
+                  <div className="venue-gig-page-sidebar__tech-setup-equipment-tiles">
+                    {venueEquipmentList.map((label, i) => {
+                      const Icon = getEquipmentIconForLabel(label);
+                      return (
+                        <span key={i} className="venue-gig-page-sidebar__tech-setup-equipment-tile">
+                          {Icon && <Icon className="venue-gig-page-sidebar__tech-setup-equipment-tile-icon" aria-hidden />}
+                          <span>{label}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="venue-gig-page-sidebar__tech-setup-muted">
+                    No venue equipment selected yet
+                  </p>
+                );
+              })()}
+            </section>
+
+            {hiredItems.length > 0 && (
+              <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section">
+                <h4 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">
+                  Hired from venue
+                </h4>
+                <div className="venue-gig-page-sidebar__tech-setup-equipment-tiles">
+                  {hiredItems.map((item, i) => {
+                    const Icon = getEquipmentIconForLabel(item.label);
+                    return (
+                      <span key={i} className="venue-gig-page-sidebar__tech-setup-equipment-tile">
+                        {Icon && <Icon className="venue-gig-page-sidebar__tech-setup-equipment-tile-icon" aria-hidden />}
+                        <span>{item.label}{item.feeDisplay ? ` — ${item.feeDisplay}` : ''}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+                {hasHiredWithFees && (
+                  <div className="venue-gig-page-sidebar__tech-setup-hire-fees-actions">
+                    {equipmentHireFeesPaidState ? (
+                      <span className="venue-gig-page-sidebar__badge venue-gig-page-sidebar__badge--paid">Paid</span>
+                    ) : (
+                      <>
+                        {canUpdate && onMarkEquipmentHireFeesPaid && (
+                          <button
+                            type="button"
+                            className="btn tertiary venue-gig-page-sidebar__mark-btn"
+                            onClick={() => onMarkEquipmentHireFeesPaid(true)}
+                            disabled={equipmentHireFeesUpdating}
+                          >
+                            Mark as paid
+                          </button>
+                        )}
+                      </>
+                    )}
+                    {equipmentHireFeesPaidState && canUpdate && onMarkEquipmentHireFeesPaid && (
+                      <button
+                        type="button"
+                        className="btn tertiary venue-gig-page-sidebar__mark-btn"
+                        onClick={() => onMarkEquipmentHireFeesPaid(false)}
+                        disabled={equipmentHireFeesUpdating}
+                      >
+                        Mark as unpaid
+                      </button>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {missingEquipmentList.length > 0 && (
+              <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section">
+                <h4 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">
+                  Missing required equipment
+                </h4>
+                <div className="venue-gig-page-sidebar__tech-setup-equipment-tiles">
+                  {missingEquipmentList.map((label, i) => {
+                    const Icon = getEquipmentIconForLabel(label);
+                    return (
+                      <span key={i} className="venue-gig-page-sidebar__tech-setup-equipment-tile venue-gig-page-sidebar__tech-setup-equipment-tile--missing">
+                        {Icon && <Icon className="venue-gig-page-sidebar__tech-setup-equipment-tile-icon" aria-hidden />}
+                        <span>{label}</span>
+                      </span>
+                    );
+                  })}
+                </div>
                 <div className="venue-gig-page-sidebar__tech-setup-hire-fees-actions">
-                  {equipmentHireFeesPaidState ? (
-                    <span className="venue-gig-page-sidebar__badge venue-gig-page-sidebar__badge--paid">Paid</span>
-                  ) : (
-                    <>
-                      {canUpdate && onMarkEquipmentHireFeesPaid && (
-                        <button
-                          type="button"
-                          className="btn tertiary venue-gig-page-sidebar__mark-btn"
-                          onClick={() => onMarkEquipmentHireFeesPaid(true)}
-                          disabled={equipmentHireFeesUpdating}
-                        >
-                          Mark as paid
-                        </button>
-                      )}
-                    </>
-                  )}
-                  {equipmentHireFeesPaidState && canUpdate && onMarkEquipmentHireFeesPaid && (
+                  {missingEquipmentSorted ? (
+                    <span className="venue-gig-page-sidebar__badge venue-gig-page-sidebar__badge--paid">Sorted</span>
+                  ) : null}
+                  {canUpdate && onMarkMissingEquipmentSorted && (
                     <button
                       type="button"
                       className="btn tertiary venue-gig-page-sidebar__mark-btn"
-                      onClick={() => onMarkEquipmentHireFeesPaid(false)}
-                      disabled={equipmentHireFeesUpdating}
+                      onClick={() => onMarkMissingEquipmentSorted(!missingEquipmentSorted)}
+                      disabled={missingEquipmentSortedUpdating}
                     >
-                      Mark as unpaid
+                      {missingEquipmentSorted ? 'Mark as not sorted' : 'Mark as sorted'}
                     </button>
                   )}
                 </div>
-              )}
-            </section>
-          )}
+              </section>
+            )}
 
-          {missingEquipmentList.length > 0 && (
-            <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section">
-              <h4 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">
-                Missing required equipment
-              </h4>
-              <div className="venue-gig-page-sidebar__tech-setup-equipment-tiles">
-                {missingEquipmentList.map((label, i) => {
-                  const Icon = getEquipmentIconForLabel(label);
-                  return (
-                    <span key={i} className="venue-gig-page-sidebar__tech-setup-equipment-tile venue-gig-page-sidebar__tech-setup-equipment-tile--missing">
-                      {Icon && <Icon className="venue-gig-page-sidebar__tech-setup-equipment-tile-icon" aria-hidden />}
-                      <span>{label}</span>
-                    </span>
-                  );
-                })}
-              </div>
-              <div className="venue-gig-page-sidebar__tech-setup-hire-fees-actions">
-                {missingEquipmentSorted ? (
-                  <span className="venue-gig-page-sidebar__badge venue-gig-page-sidebar__badge--paid">Sorted</span>
-                ) : null}
-                {canUpdate && onMarkMissingEquipmentSorted && (
-                  <button
-                    type="button"
-                    className="btn tertiary venue-gig-page-sidebar__mark-btn"
-                    onClick={() => onMarkMissingEquipmentSorted(!missingEquipmentSorted)}
-                    disabled={missingEquipmentSortedUpdating}
-                  >
-                    {missingEquipmentSorted ? 'Mark as not sorted' : 'Mark as sorted'}
-                  </button>
-                )}
-              </div>
-            </section>
-          )}
+            {technicalStatus && (
+              <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section">
+                <h4 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">
+                  Technical status
+                </h4>
+                <p className="venue-gig-page-sidebar__tech-setup-value">
+                  {technicalStatus}
+                </p>
+              </section>
+            )}
+          </>
+        )}
 
-          {technicalStatus && (
-            <section className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section">
-              <h4 className="venue-gig-page-sidebar__section-title venue-gig-page-sidebar__section-title--primary">
-                Technical status
-              </h4>
-              <p className="venue-gig-page-sidebar__tech-setup-value">
-                {technicalStatus}
-              </p>
-            </section>
-          )}
-        </>
-      )}
+        {state !== 'booked' && (
+          <p className="venue-gig-page-sidebar__tech-setup-muted venue-hire-main-column__tech-setup-gig-placeholder">
+            Gig-specific equipment and hire details appear when a booking is confirmed.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
