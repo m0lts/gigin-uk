@@ -20,6 +20,7 @@ import { MusicianDashboardLayout } from '@layouts/MusicianDashboardLayout';
 import { VenueDashboard } from '@features/venue/dashboard/Dashboard';
 import { GigFinder } from '@features/gig-discovery/GigFinder';
 import { GigPage } from '@features/gig-discovery/GigPage';
+import { GigMediaSharePage } from '@features/gig-discovery/GigMediaSharePage';
 import { ManageGuestApplication } from '@features/gig-discovery/guest/ManageGuestApplication';
 import { linkGuestApplication } from '@services/client-side/guestApplications';
 import { MusicianDashboard } from '@features/artist/dashboard/Dashboard';
@@ -187,6 +188,7 @@ export default function App() {
 
         {/* OTHER ROUTES */}
         <Route path='/messages' element={FEATURES.chat ? <MessagesLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><MessagePage /></MessagesLayout> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
+        <Route path='/share/gig-media/:token' element={<GigMediaSharePage />} />
         <Route path='/gig/:gigId/application/:token' element={<ManageGuestApplication />} />
         <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setInitialEmail={setInitialEmail} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  />} />
         <Route path='/hire/:hireId' element={FEATURES.venueHire ? <GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />

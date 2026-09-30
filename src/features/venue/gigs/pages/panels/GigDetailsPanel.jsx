@@ -27,7 +27,8 @@ import { InviteArtistPromoterTile } from '@features/venue/components/InviteArtis
 import { SendGigDetailsTile } from '@features/venue/components/SendGigDetailsTile';
 import { VenueHireTechSetupMainCard } from '@features/venue/gigs/components/VenueHireTechSetupMainCard';
 import { GigApplications } from '@features/venue/dashboard/GigApplications';
-import { computeCompatibility } from '@services/utils/techRiderCompatibility';
+import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
+import { GigMediaPanel } from '@features/venue/gigs/components/GigMediaPanel';
 import {
   isArtistBookingNightFullyBooked,
 } from '@features/venue/gigs/utils/multiSlotGigGroup';
@@ -2127,6 +2128,56 @@ export function GigDetailsPanel({
   // top when the gig is still open, a Performers card once anyone's confirmed/added,
   // the Applications card (collapsible when confirmed, like venue-hire confirmed), and
   // the same Tech Setup card used for hires.
+  const renderConfirmedActRequirements = () => {
+    const slots = sortedArtistBookingSlotGigs.length
+      ? sortedArtistBookingSlotGigs
+      : (artistBookingSlotGigs?.length ? artistBookingSlotGigs : [rawGig].filter(Boolean));
+    const booked = ['confirmed', 'accepted', 'paid', 'payment processing'];
+    const acts = [];
+    slots.forEach((slot) => {
+      (slot?.applicants || []).forEach((applicant) => {
+        if (!booked.includes(applicant?.status)) return;
+        acts.push({ slot, applicant });
+      });
+    });
+    if (!acts.length) return null;
+    return (
+      <section className="gig-details-tile">
+        <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+          <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Who is playing</h3>
+        </div>
+        {acts.map(({ slot, applicant }) => {
+          const guest = applicant?.type === 'guest' || applicant?.guest === true;
+          const name = applicant.name || applicant.artistName || 'Act';
+          const compat = guest
+            ? computeCompatibility(buildGuestTechRider(applicant), venueForHire?.techRider)
+            : null;
+          const discussion = (compat?.needsDiscussion || []).map((item) => item.label).filter(Boolean);
+          return (
+            <div key={`${slot?.gigId || 'slot'}-${applicant.id}`} style={{ padding: '12px 0', borderTop: '1px solid #E5E7EB' }}>
+              <strong>{name}</strong>
+              <span> · {slotTimeRangeLabel(slot)}</span>
+              {guest ? (
+                <>
+                  <p>Needs from the venue: {(applicant.needs || []).join(', ') || 'None listed'}</p>
+                  <p>Bringing: {(applicant.bringOwn || []).join(', ') || 'Nothing listed'}</p>
+                  {applicant.note ? <p>Note: {applicant.note}</p> : null}
+                  <p>{discussion.length ? `Needs a conversation: ${discussion.join(', ')}` : 'Compatible with the venue kit'}</p>
+                </>
+              ) : (
+                <p>
+                  {applicant.techSetup?.compatibilityStatus
+                    ? `Tech: ${String(applicant.techSetup.compatibilityStatus).split('_').join(' ')}`
+                    : 'No tech rider on this application.'}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </section>
+    );
+  };
+
   const bookingMode = normalisedGig?.bookingMode;
   const status = normalisedGig?.status;
   const isArtistBooking = bookingMode === 'artist_booking' && (status === 'open' || status === 'confirmed');
@@ -2145,6 +2196,8 @@ export function GigDetailsPanel({
             gigs={gigs}
             onSlotBodyMount={setRunningOrderSlotEl}
           />
+          {renderConfirmedActRequirements()}
+          <GigMediaPanel gigId={rawGig?.gigId} media={rawGig?.media} hasShareLink={Boolean(rawGig?.mediaShareTokenHash)} canUpdate={canUpdate} />
           <GigApplications
             rawGig={rawGig}
             setGigInfo={setGigInfo}
