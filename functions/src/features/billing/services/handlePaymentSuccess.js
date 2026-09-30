@@ -1,3 +1,4 @@
+// not guest-safe, hidden by feature flag
 /* eslint-disable */
 // src/features/billing/services/handlePaymentSuccess.js
 import { admin, FieldValue, Timestamp } from "../../../lib/admin.js";

@@ -44,7 +44,20 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
           if (!confirmedApplicants?.length) return;
       
           const profiles = await Promise.all(
-            confirmedApplicants.map(app => getMusicianProfileByMusicianId(app.id))
+            confirmedApplicants.map((app) => {
+              if (app?.guest === true || app?.type === 'guest') {
+                return {
+                  id: app.id,
+                  musicianId: app.id,
+                  name: app.name || app.artistName || 'Guest',
+                  email: app.email || null,
+                  picture: app.photoUrl || app.photo?.url || '',
+                  guest: true,
+                  type: 'guest',
+                };
+              }
+              return getMusicianProfileByMusicianId(app.id);
+            })
           );
 
           setOpenMicMusicians(profiles.filter(Boolean));
@@ -118,7 +131,13 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                 const cancellingParty = 'venue';
                 await logGigCancellation({ gigId, musicianId: musician.musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
               };
-            await handleMusicianCancellation(musicianProfile);
+            const bookedIsGuest = musicianProfile?.guest === true || musicianProfile?.type === 'guest';
+            if (bookedIsGuest) {
+                await revertGigAfterCancellationVenue({ gigData: nextGig, musicianId: musicianProfile.id, cancellationReason });
+                await logGigCancellation({ gigId, musicianId: musicianProfile.id, reason: cancellationReason, cancellingParty: 'venue', venueId: venueProfile.venueId });
+            } else {
+                await handleMusicianCancellation(musicianProfile);
+            }
             
             setLoading(false);
             setNextGigModal(false);
@@ -215,7 +234,10 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                                             <div
                                                 className='musician-item'
                                                 key={musician.musicianId}
-                                                onClick={(e) => openInNewTab(`/${musician.musicianId}`, e)}
+                                                onClick={(e) => {
+                                                    if (musician.guest || musician.type === 'guest') return;
+                                                    openInNewTab(`/${musician.musicianId}`, e);
+                                                }}
                                             >
                                                 <div className='venue-info'>
                                                 <figure className='venue-img-cont'>
@@ -232,7 +254,10 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
                                 </div>
                             </>
                         ) : (
-                            <div className='head' onClick={(e) => openInNewTab(`/${musicianProfile.musicianId}`, e)}>
+                            <div className='head' onClick={(e) => {
+                                if (musicianProfile?.guest || musicianProfile?.type === 'guest') return;
+                                openInNewTab(`/${musicianProfile.musicianId}`, e);
+                            }}>
                                 <div className='venue-info'>
                                     <figure className='venue-img-cont'>
                                         <img src={musicianProfile.picture} alt={musicianProfile.name} className='venue-img' />

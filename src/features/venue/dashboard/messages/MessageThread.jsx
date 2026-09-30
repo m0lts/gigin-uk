@@ -1,3 +1,4 @@
+// not guest-safe, hidden by feature flag
 import React, { useState, useEffect, useRef } from 'react';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { 

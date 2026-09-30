@@ -1,3 +1,4 @@
+// not guest-safe, hidden by feature flag
 /* eslint-disable */
 import express from "express";
 import { requireAuth } from "../middleware/auth.js";

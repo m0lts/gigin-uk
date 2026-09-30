@@ -10,6 +10,23 @@ import {
     Legend,
 } from 'chart.js';
 import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
+
+function isGuestApplicant(applicant) {
+    return applicant?.guest === true || applicant?.type === 'guest';
+}
+
+function guestAsMusician(applicant) {
+    return {
+        id: applicant.id,
+        musicianId: applicant.id,
+        name: applicant.name || applicant.artistName || 'Guest',
+        email: applicant.email || null,
+        phone: applicant.phone || null,
+        picture: applicant.photoUrl || applicant.photo?.url || '',
+        guest: true,
+        type: 'guest',
+    };
+}
 import { AllGigsIcon, CalendarIconSolid, ExclamationIcon, GigIcon, MailboxFullIcon, NextGigIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { NextGig } from '../components/NextGig';
 import { FeedbackSection } from './FeedbackSection';
@@ -68,6 +85,10 @@ export const Overview = ({ gigs, loadingGigs, venues, setShowAddGigsModal, setAd
             if (!nextGig?.applicants) return;
             const confirmedApplicant = nextGig.applicants.find(applicant => applicant.status === 'confirmed');
             if (!confirmedApplicant) return;
+            if (isGuestApplicant(confirmedApplicant)) {
+                setNextGigMusician(guestAsMusician(confirmedApplicant));
+                return;
+            }
             try {
                 const profile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
                 setNextGigMusician(profile);
@@ -82,7 +103,9 @@ export const Overview = ({ gigs, loadingGigs, venues, setShowAddGigsModal, setAd
                 gigsToReview.map(async (gig) => {
                   const confirmedApplicant = gig.applicants.find((app) => app.status === 'confirmed');
                   if (!confirmedApplicant) return null;
-                  const musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
+                  const musicianProfile = isGuestApplicant(confirmedApplicant)
+                    ? guestAsMusician(confirmedApplicant)
+                    : await getMusicianProfileByMusicianId(confirmedApplicant.id);
                   return {
                     ...gig,
                     musicianProfile,

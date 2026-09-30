@@ -1,3 +1,4 @@
+// not guest-safe, hidden by feature flag
 /* eslint-disable */
 // src/features/billing/http/clearPendingFee.js
 import { httpRaw } from "../../../lib/https.js";

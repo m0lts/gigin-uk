@@ -89,7 +89,8 @@ export const expireUnbookedGigs = schedule(
             : null;
 
           for (const applicant of pendingApplicants) {
-            const email = await getArtistEmail(applicant.id);
+            const applicantIsGuest = applicant?.guest === true || applicant?.type === "guest";
+            const email = applicantIsGuest ? (applicant.email || null) : await getArtistEmail(applicant.id);
             if (!email) continue;
             await sendExpiryEmail({
               recipientEmail: email,
@@ -149,7 +150,8 @@ export const expireUnbookedGigs = schedule(
             : null;
 
           for (const applicant of pendingApplicants) {
-            const email = await getArtistEmail(applicant.id);
+            const applicantIsGuest = applicant?.guest === true || applicant?.type === "guest";
+            const email = applicantIsGuest ? (applicant.email || null) : await getArtistEmail(applicant.id);
             if (!email) continue;
             await sendExpiryEmail({
               recipientEmail: email,

@@ -258,6 +258,18 @@ function normaliseConfirmedApplicants(gig) {
   return applicants
     .filter((a) => a && CONFIRMED.has(a.status))
     .map((a) => {
+      const isGuest = a.guest === true || a.type === 'guest';
+      if (isGuest) {
+        return {
+          source: a.userId ? 'gigin' : 'manual',
+          origin: 'applicant',
+          applicantId: a.id,
+          displayName: a.name || a.artistName || '',
+          userId: a.userId || undefined,
+          artistId: undefined,
+          contactId: undefined,
+        };
+      }
       const hasGiginLink = !a.manual && !!a.id;
       return {
         source: hasGiginLink ? 'gigin' : 'manual',

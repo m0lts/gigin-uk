@@ -42,7 +42,12 @@ router.post("/cancelCloudTask", requireAuth, asyncHandler(async (req, res) => {
     
     if (acceptedApplicant) {
       const applicantId = acceptedApplicant.id;
-      
+      const applicantIsGuest = acceptedApplicant.guest === true || acceptedApplicant.type === "guest";
+      if (applicantIsGuest) {
+        if (acceptedApplicant.userId && acceptedApplicant.userId === caller) {
+          isAcceptedApplicant = true;
+        }
+      } else {
       // Check if this is an artist profile and if caller has permission
       const artistRef = db.doc(`artistProfiles/${applicantId}`);
       const artistSnap = await artistRef.get();
@@ -65,6 +70,7 @@ router.post("/cancelCloudTask", requireAuth, asyncHandler(async (req, res) => {
             isAcceptedApplicant = true;
           }
         }
+      }
       }
     }
   }

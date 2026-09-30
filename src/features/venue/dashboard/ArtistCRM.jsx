@@ -860,10 +860,23 @@ export const ArtistCRM = ({ user, venues }) => {
 
         const uniqueArtistIds = new Set();
         const artistIdToMusicianId = new Map();
+        const guestBooked = [];
 
         confirmedGigs.forEach((gig) => {
           const confirmedApplicants = gig.applicants?.filter((a) => a.status === 'confirmed') || [];
           confirmedApplicants.forEach((applicant) => {
+            if (applicant?.guest === true || applicant?.type === 'guest') {
+              if (!applicant.id || guestBooked.some((entry) => entry.id === applicant.id)) return;
+              guestBooked.push({
+                id: applicant.id,
+                name: applicant.name || applicant.artistName || 'Guest',
+                email: applicant.email || '',
+                phone: applicant.phone || '',
+                photoUrl: applicant.photoUrl || applicant.photo?.url || '',
+                guest: true,
+              });
+              return;
+            }
             const artistId = applicant.id || applicant.musicianId;
             if (artistId) {
               uniqueArtistIds.add(artistId);
@@ -903,7 +916,7 @@ export const ArtistCRM = ({ user, venues }) => {
           }
         });
 
-        setPreviouslyBookedArtists(bookedArtists);
+        setPreviouslyBookedArtists([...bookedArtists, ...guestBooked]);
         setPreviouslyBookedProfiles(profileMap);
       } catch (error) {
         console.error('Error fetching previously booked artists:', error);
@@ -1152,6 +1165,18 @@ export const ArtistCRM = ({ user, venues }) => {
             ) : (
               <div className="contacts-card-list">
                 {filteredPreviouslyBooked.map((artist) => (
+                  artist.guest ? (
+                    <div key={artist.id} className="contacts-card">
+                      <div className="contacts-card-main contacts-card-main--centered">
+                        <div className="contacts-card-name-row">
+                          <span className="contacts-card-name">{artist.name}</span>
+                          <span className="ga-guest-tag">Guest</span>
+                        </div>
+                        {artist.email ? <p>{artist.email}</p> : null}
+                        {artist.phone ? <p>{artist.phone}</p> : null}
+                      </div>
+                    </div>
+                  ) : (
                   <PreviouslyBookedContactCard
                     key={artist.id}
                     artist={artist}
@@ -1169,6 +1194,7 @@ export const ArtistCRM = ({ user, venues }) => {
                     }}
                     onSave={() => handleSavePreviouslyBookedArtist(artist)}
                   />
+                  )
                 ))}
               </div>
             )}

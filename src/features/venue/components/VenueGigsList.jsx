@@ -30,14 +30,22 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], hireOpportunities
       let cancelled = false;
       async function fetchConfirmedProfiles() {
         if (title !== "Upcoming" || !displayed?.length) return;
-        const ids = displayed.flatMap(gig =>
-          (gig?.applicants ?? [])
-            .filter(a => a?.status === "confirmed" && a?.id)
-            .map(a => a.id)
+        const confirmed = displayed.flatMap(gig =>
+          (gig?.applicants ?? []).filter(a => a?.status === "confirmed" && a?.id)
         );
-        if (!ids.length) return;
-        const uniqueToFetch = [...new Set(ids)].filter(id => !profilesById[id]);
-        if (!uniqueToFetch.length) return;
+        if (!confirmed.length) return;
+        const guestProfiles = confirmed
+          .filter(a => (a.guest === true || a.type === 'guest') && !profilesById[a.id])
+          .map(a => [a.id, {
+            name: a.name || a.artistName || 'Guest',
+            picture: a.photoUrl || a.photo?.url || a.img || '',
+            email: a.email || null,
+            guest: true,
+          }]);
+        const uniqueToFetch = [...new Set(
+          confirmed.filter(a => !(a.guest === true || a.type === 'guest')).map(a => a.id)
+        )].filter(id => !profilesById[id]);
+        if (!uniqueToFetch.length && guestProfiles.length === 0) return;
         setLoadingProfiles(true);
         try {
           const results = await Promise.all(
@@ -50,6 +58,7 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], hireOpportunities
               }
             })
           );
+          results.push(...guestProfiles);
           if (!cancelled) {
             setProfilesById(prev => {
               const next = { ...prev };

@@ -1,3 +1,4 @@
+// not guest-safe, hidden by feature flag
 import React, { useState, useEffect, useMemo } from 'react';
 import { CardForm } from '@features/shared/components/CardDetails'
 import '@assets/styles/host/payment-modal.styles.css'

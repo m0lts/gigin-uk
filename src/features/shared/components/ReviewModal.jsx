@@ -1,3 +1,4 @@
+// not guest-safe, hidden by feature flag
 import React, { useState, useEffect } from 'react';
 import '@styles/shared/review-modal.styles.css';
 import { getVenueProfileById } from '@services/client-side/venues';

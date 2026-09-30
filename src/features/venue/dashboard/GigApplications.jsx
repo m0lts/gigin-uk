@@ -64,6 +64,33 @@ const stripePromise = FEATURES.payments
 
 const BOOKED_APPLICANT_STATUSES = ['confirmed', 'accepted', 'paid', 'payment processing'];
 
+function isGuestApplicant(applicant) {
+    return applicant?.guest === true || applicant?.type === 'guest';
+}
+
+function guestViewFromApplicant(app) {
+    const photoUrl = app?.photoUrl || app?.photo?.url || null;
+    return {
+        ...app,
+        id: app.id,
+        guest: true,
+        type: 'guest',
+        name: app.name || app.artistName || 'Guest',
+        email: app.email || null,
+        phone: app.phone || null,
+        contactName: app.contactName || '',
+        heroMedia: photoUrl ? { url: photoUrl } : null,
+        links: app.links || {},
+        note: app.note || app.applicationMessage || '',
+        applicationMessage: app.applicationMessage || app.note || '',
+        needs: app.needs || [],
+        bringOwn: app.bringOwn || [],
+        setLabel: app.setLabel || '',
+        userId: app.userId || null,
+        fee: app.fee ?? app.proposedFee ?? null,
+    };
+}
+
 /** True if tech setup object has anything worth showing in ApplicantTechSetupModal (applicant or gig-level shape). */
 function techSetupPayloadHasContent(ts) {
     if (!ts || typeof ts !== 'object') return false;
@@ -575,8 +602,10 @@ export const GigApplications = ({
             });
           });
           
-          // Get unique profile IDs first
-          const uniqueProfileIds = [...new Set(allApplicants.map(app => app.id))];
+          const profileApplicants = allApplicants.filter((app) => !isGuestApplicant(app));
+          const guestApplicants = allApplicants.filter((app) => isGuestApplicant(app));
+          // Get unique profile IDs first. Guests stay on the entry and are not looked up.
+          const uniqueProfileIds = [...new Set(profileApplicants.map(app => app.id))];
           
           // Fetch all profiles in parallel (but only once per unique ID)
           const profilePromises = uniqueProfileIds.map(id => getProfileById(id));
@@ -596,7 +625,7 @@ export const GigApplications = ({
           });
           
           // Add applications to each profile (spread full app so techSetup and other fields are preserved)
-          for (const app of allApplicants) {
+          for (const app of profileApplicants) {
             const profileEntry = profilesMap.get(app.id);
             if (profileEntry) {
               profileEntry.applications.push({
@@ -619,6 +648,14 @@ export const GigApplications = ({
                 applicationSlotGigName: app.slotGigName,
                 applicationSlotStartTime: app.slotStartTime,
               });
+            });
+          });
+          guestApplicants.forEach((app) => {
+            profiles.push({
+              ...guestViewFromApplicant(app),
+              applicationSlotGigId: app.slotGigId,
+              applicationSlotGigName: app.slotGigName,
+              applicationSlotStartTime: app.slotStartTime,
             });
           });
           
@@ -1374,14 +1411,20 @@ export const GigApplications = ({
                 await logGigCancellation({ gigId, musicianId, reason: cancellationReason, cancellingParty, venueId: venueProfile.venueId });
               };
           
+              const cancelBookedApplicant = async (applicant) => {
+                if (isGuestApplicant(applicant)) {
+                  await revertGigAfterCancellationVenue({ gigData: nextGig, musicianId: applicant.id, cancellationReason });
+                  await logGigCancellation({ gigId, musicianId: applicant.id, reason: cancellationReason, cancellingParty: 'venue', venueId: venueProfile.venueId });
+                  return;
+                }
+                const musicianProfile = await getProfileById(applicant.id);
+                await handleMusicianCancellation(musicianProfile);
+              };
               if (isOpenMic) {
-                const bandOrMusicianProfiles = await Promise.all(
-                  nextGig.applicants
-                    .filter(app => ['confirmed', 'accepted', 'paid'].includes(app?.status))
-                    .map(app => getProfileById(app.id))
-                );
-                for (const musician of bandOrMusicianProfiles.filter(Boolean)) {
-                  await handleMusicianCancellation(musician);
+                const booked = nextGig.applicants
+                  .filter(app => ['confirmed', 'accepted', 'paid'].includes(app?.status));
+                for (const applicant of booked) {
+                  await cancelBookedApplicant(applicant);
                 }
             } else {
               const confirmedApplicant = nextGig.applicants.find(app => ['confirmed', 'accepted', 'paid'].includes(app?.status));
@@ -1389,8 +1432,7 @@ export const GigApplications = ({
                 console.error("No confirmed applicant found");
                 return;
               }
-              const musicianProfile = await getProfileById(confirmedApplicant.id);
-              await handleMusicianCancellation(musicianProfile);
+              await cancelBookedApplicant(confirmedApplicant);
             }
             setCancellationReason({
                 reason: '',
@@ -1588,8 +1630,12 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                             <img src={profile.heroMedia.url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
                                         )}
                                         <div>
-                                            <button type="button" className="btn text" style={{ padding: 0, fontWeight: 600 }} onClick={(e) => openInNewTab(`/artist/${profile.id}`, e)}>
+                                            <button type="button" className="btn text" style={{ padding: 0, fontWeight: 600 }} onClick={(e) => {
+                                                if (isGuestApplicant(profile)) { e.stopPropagation(); setGuestDetail(profile); return; }
+                                                openInNewTab(`/artist/${profile.id}`, e);
+                                            }}>
                                                 {profile.name}
+                                                {isGuestApplicant(profile) && <span className="ga-guest-tag">Guest</span>}
                                             </button>
                                             {appliedToSlotText && <div style={{ fontSize: '0.8rem', color: 'var(--gn-grey-600)' }}>{appliedToSlotText}</div>}
                                         </div>
@@ -2140,9 +2186,22 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                             </div>
                             <div className="venue-hire-application-tile__main">
                                 <div className="venue-hire-application-tile__identity">
-                                    <span className="venue-hire-application-tile__name">{profile.name}</span>
+                                    <span className="venue-hire-application-tile__name">
+                                        {profile.name}
+                                        {isGuestApplicant(profile) && <span className="ga-guest-tag">Guest</span>}
+                                    </span>
                                 </div>
                                 <div className="venue-hire-application-tile__actions">
+                                    {isGuestApplicant(profile) ? (
+                                        <button
+                                            type="button"
+                                            className="btn secondary venue-hire-application-tile__btn"
+                                            onClick={() => setGuestDetail(applicant || profile)}
+                                        >
+                                            Contact
+                                        </button>
+                                    ) : (
+                                    <>
                                     <button
                                         type="button"
                                         className="btn tertiary venue-hire-application-tile__btn"
@@ -2159,12 +2218,14 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                             Message
                                         </button>
                                     ) : null}
+                                    </>
+                                    )}
                                     {renderSlotApplicationTileSecondaryActions(profile, slotGig, slotGigId)}
                                 </div>
                                 <ApplicantSubmittedNotesSection
                                     gigId={slotGigId}
-                                    participantUserId={profile.userId}
-                                    participantProfileId={profile.id}
+                                    participantUserId={isGuestApplicant(profile) ? null : profile.userId}
+                                    participantProfileId={isGuestApplicant(profile) ? null : profile.id}
                                     applicant={applicant}
                                 />
                             </div>
@@ -2205,8 +2266,12 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                             <img src={profile.heroMedia.url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
                                         )}
                                         <div>
-                                            <button type="button" className="btn text" style={{ padding: 0, fontWeight: 600 }} onClick={(e) => openInNewTab(`/artist/${profile.id}`, e)}>
+                                            <button type="button" className="btn text" style={{ padding: 0, fontWeight: 600 }} onClick={(e) => {
+                                                if (isGuestApplicant(profile)) { e.stopPropagation(); setGuestDetail(applicant || profile); return; }
+                                                openInNewTab(`/artist/${profile.id}`, e);
+                                            }}>
                                                 {profile.name}
+                                                {isGuestApplicant(profile) && <span className="ga-guest-tag">Guest</span>}
                                             </button>
                                         </div>
                                     </div>
@@ -2452,8 +2517,8 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                             </span>
                             <RunningOrderQuote
                                 gigId={slotGig.gigId}
-                                participantUserId={profile.userId}
-                                participantProfileId={profile.id}
+                                participantUserId={isGuestApplicant(profile) ? null : profile.userId}
+                                participantProfileId={isGuestApplicant(profile) ? null : profile.id}
                                 stored={applicant?.applicationMessage}
                             />
                             <span className="venue-gig-running__ask">{fee}</span>
@@ -3219,7 +3284,10 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                                 <button
                                                                     className='btn tertiary'
-                                                                    onClick={(e) => openInNewTab(`/artist/${confirmedArtist.id}`, e)}
+                                                                    onClick={(e) => {
+                                                                        if (isGuestApplicant(confirmedArtist)) { setGuestDetail(confirmedArtist); return; }
+                                                                        openInNewTab(`/artist/${confirmedArtist.id}`, e);
+                                                                    }}
                                                                 >
                                                                     Profile
                                                                 </button>
@@ -3324,7 +3392,10 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                         <button
                                                             className='btn tertiary'
-                                                            onClick={(e) => openInNewTab(`/artist/${confirmedArtist.id}`, e)}
+                                                            onClick={(e) => {
+                                                                if (isGuestApplicant(confirmedArtist)) { setGuestDetail(confirmedArtist); return; }
+                                                                openInNewTab(`/artist/${confirmedArtist.id}`, e);
+                                                            }}
                                                         >
                                                             Profile
                                                         </button>
@@ -3393,13 +3464,17 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                         : null;
                                     
                                     return (
-                                        <tr key={`${profile.id}-${slotGigId}-${index}`} className='applicant' onClick={(e) => openInNewTab(`/artist/${profile.id}`, e)} onMouseEnter={() => setHoveredRowId(profile.id)}
+                                        <tr key={`${profile.id}-${slotGigId}-${index}`} className='applicant' onClick={(e) => {
+                                            if (isGuestApplicant(profile)) { setGuestDetail(applicant || profile); return; }
+                                            openInNewTab(`/artist/${profile.id}`, e);
+                                        }} onMouseEnter={() => setHoveredRowId(profile.id)}
                                         onMouseLeave={() => setHoveredRowId(null)}>
                                             <td className='musician-name'>
-                                                {hoveredRowId === profile.id && (
+                                                {hoveredRowId === profile.id && !isGuestApplicant(profile) && (
                                                     <NewTabIcon />
                                                 )}
                                                 {profile.name}
+                                                {isGuestApplicant(profile) && <span className="ga-guest-tag">Guest</span>}
                                             </td>
                                             <td>{profile?.videos && profile?.videos.length > 0 ? (
                                                 <button className='btn tertiary' onClick={(e) => {e.stopPropagation(); setVideoToPlay(profile.videos[0]);}} onMouseEnter={() => setHoveredRowId(null)} onMouseLeave={() => setHoveredRowId(profile.id)}>
@@ -3882,6 +3957,7 @@ function GuestApplicantPanel({ applicant, onClose }) {
         <p>{applicant.contactName}</p>
         {contacts.map((line) => <p key={line.key}>{line.key === 'phone' ? 'Phone · ' : line.key === 'email' ? 'Email · ' : 'Instagram · '}{line.node}</p>)}
         {links.map(([key, value]) => <p key={key}><a href={value} target="_blank" rel="noreferrer">{key}</a></p>)}
+        {applicant.setLabel && <p>{applicant.setLabel}</p>}
         {applicant.note && <p>{applicant.note}</p>}
         {!!applicant.needs?.length && <p>Needs {applicant.needs.length} items from the bar.</p>}
         {!!applicant.bringOwn?.length && <p>Bringing {applicant.bringOwn.join(', ')}.</p>}

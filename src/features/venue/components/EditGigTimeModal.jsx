@@ -4,6 +4,7 @@ import { updateGigDocument } from '@services/api/gigs';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { sendMessage } from '@services/api/messages';
 import { getArtistProfileById, getMusicianProfileByMusicianId } from '@services/client-side/artists';
+import { sendEmail } from '@services/client-side/emails';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { formatDate } from '@services/utils/dates';
 import { toast } from 'sonner';
@@ -113,6 +114,44 @@ export const EditGigTimeModal = ({ gig, allSlots, onClose, refreshGigs, user, ed
         if (!confirmedApplicant) return null;
         
         try {
+            const formatTime = (time) => {
+                if (!time) return 'N/A';
+                return time;
+            };
+            const formatDuration = (duration) => {
+                if (!duration) return 'N/A';
+                const hours = Math.floor(duration / 60);
+                const minutes = duration % 60;
+                if (hours === 0) return `${minutes} minutes`;
+                if (minutes === 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+                return `${hours} hour${hours > 1 ? 's' : ''} ${minutes} minutes`;
+            };
+            const timeChanged = oldStartTime !== newStartTime;
+            const durationChanged = oldDuration !== newDuration;
+            const buildMessage = (name) => {
+                let messageText = `Hi ${name}, we've updated the gig timings for ${slotGig.gigName?.replace(/\s*\(Set\s+\d+\)\s*$/, '') || 'the gig'} at ${slotGig.venue?.venueName || 'the venue'} on ${formatDate(slotGig.date, 'short')}.`;
+                if (timeChanged && durationChanged) {
+                    messageText += ` The start time has changed from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}, and the duration has changed from ${formatDuration(oldDuration)} to ${formatDuration(newDuration)}.`;
+                } else if (timeChanged) {
+                    messageText += ` The start time has changed from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}.`;
+                } else if (durationChanged) {
+                    messageText += ` The duration has changed from ${formatDuration(oldDuration)} to ${formatDuration(newDuration)}.`;
+                }
+                messageText += ' Please let us know if this causes any issues.';
+                return messageText;
+            };
+            if (confirmedApplicant.guest === true || confirmedApplicant.type === 'guest') {
+                const name = confirmedApplicant.name || confirmedApplicant.artistName || 'there';
+                const messageText = buildMessage(name);
+                if (confirmedApplicant.email) {
+                    await sendEmail({
+                        to: confirmedApplicant.email,
+                        subject: `Updated timings for ${slotGig.gigName || 'your gig'}`,
+                        text: messageText,
+                    });
+                }
+                return messageText;
+            }
             // Get profile (artist or musician) by ID
             let musicianProfile = await getArtistProfileById(confirmedApplicant.id);
             const isArtistProfile = !!musicianProfile;
@@ -137,35 +176,7 @@ export const EditGigTimeModal = ({ gig, allSlots, onClose, refreshGigs, user, ed
                 venueProfile,
                 type: 'message'
             });
-            
-            const formatTime = (time) => {
-                if (!time) return 'N/A';
-                return time;
-            };
-            
-            const formatDuration = (duration) => {
-                if (!duration) return 'N/A';
-                const hours = Math.floor(duration / 60);
-                const minutes = duration % 60;
-                if (hours === 0) return `${minutes} minutes`;
-                if (minutes === 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
-                return `${hours} hour${hours > 1 ? 's' : ''} ${minutes} minutes`;
-            };
-            
-            const timeChanged = oldStartTime !== newStartTime;
-            const durationChanged = oldDuration !== newDuration;
-            
-            let messageText = `Hi ${musicianProfile.name}, we've updated the gig timings for ${slotGig.gigName?.replace(/\s*\(Set\s+\d+\)\s*$/, '') || 'the gig'} at ${slotGig.venue?.venueName || 'the venue'} on ${formatDate(slotGig.date, 'short')}.`;
-            
-            if (timeChanged && durationChanged) {
-                messageText += ` The start time has changed from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}, and the duration has changed from ${formatDuration(oldDuration)} to ${formatDuration(newDuration)}.`;
-            } else if (timeChanged) {
-                messageText += ` The start time has changed from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}.`;
-            } else if (durationChanged) {
-                messageText += ` The duration has changed from ${formatDuration(oldDuration)} to ${formatDuration(newDuration)}.`;
-            }
-            
-            messageText += ' Please let us know if this causes any issues.';
+            const messageText = buildMessage(musicianProfile.name);
             
             await sendMessage({
                 conversationId,
