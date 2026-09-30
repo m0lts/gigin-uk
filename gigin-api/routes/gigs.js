@@ -192,6 +192,23 @@ function shouldAutoDeclineApplicantOnSiblingSlot(applicant) {
 const OTHER_SET_DECLINE_LAST_MESSAGE =
   "Application declined — you were confirmed for another set at this event.";
 
+function applicantIsGuest(applicant) {
+  return applicant?.type === "guest" || applicant?.guest === true;
+}
+
+async function emailGuest(applicant, { subject, text }) {
+  const to = applicant?.email;
+  if (!to) return;
+  await db.collection("mail").add({
+    to,
+    message: {
+      subject,
+      text,
+      html: `<p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.5;color:#0F1115;">${text}</p>`,
+    },
+  });
+}
+
 async function markApplicationThreadDeclinedForOtherSet(gigId, musicianProfileId) {
   const convQ = await db
     .collection("conversations")
@@ -817,9 +834,12 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
     return { ...applicant };
   });
 
+  const acceptedApplicant = applicantsToProcess.find((applicant) => applicant?.id === musicianProfileId);
+  const guestAccept = applicantIsGuest(acceptedApplicant);
+
   // Compute payout config for payable gigs with artistProfiles
   let payoutConfig = null;
-  if (!nonPayableGig && agreedFee != null) {
+  if (!guestAccept && !nonPayableGig && agreedFee != null) {
     // Check if this is an artistProfile (new model)
     const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
     const artistSnap = await artistRef.get();
@@ -881,9 +901,14 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
   }
   
   await gigRef.update(gigUpdate);
-  await declineArtistOnOtherSetsInGroup(gigData.gigId, musicianProfileId);
+  if (!guestAccept) await declineArtistOnOtherSetsInGroup(gigData.gigId, musicianProfileId);
 
-  if (nonPayableGig) {
+  if (guestAccept) {
+    await emailGuest(acceptedApplicant, {
+      subject: `You're booked to play ${gigData.gigName || "the gig"}`,
+      text: `Your application to play at ${gigData.venue?.venueName || "the venue"} has been accepted. We'll only email you about this.`,
+    });
+  } else if (nonPayableGig) {
     // For legacy musician profiles, confirmed gigs were stored on musicianProfiles.
     // For the new artistProfiles-based flow, use artistProfiles instead.
     const musicianRef = db.doc(`musicianProfiles/${musicianProfileId}`);
@@ -1030,16 +1055,24 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
   const omShouldClose = maxApplicantsOM != null && confirmedAfterOM >= maxApplicantsOM;
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
   await gigRef.update({ applicants: updatedApplicants, paid: true, status: omShouldClose ? "closed" : "open" });
-  await declineArtistOnOtherSetsInGroup(gigData.gigId, musicianProfileId);
-  const musicianRef = db.doc(`musicianProfiles/${musicianProfileId}`);
-  const musicianSnap = await musicianRef.get();
-  if (musicianSnap.exists) {
-    await musicianRef.update({ confirmedGigs: FieldValue.arrayUnion(gigData.gigId) });
+  const acceptedApplicant = applicantsToProcess.find((applicant) => applicant?.id === musicianProfileId);
+  if (applicantIsGuest(acceptedApplicant)) {
+    await emailGuest(acceptedApplicant, {
+      subject: `You're booked to play ${gigData.gigName || "the gig"}`,
+      text: `Your application to play at ${gigData.venue?.venueName || "the venue"} has been accepted. We'll only email you about this.`,
+    });
   } else {
-    const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
-    const artistSnap = await artistRef.get();
-    if (artistSnap.exists) {
-      await artistRef.update({ confirmedGigs: FieldValue.arrayUnion(gigData.gigId) });
+    await declineArtistOnOtherSetsInGroup(gigData.gigId, musicianProfileId);
+    const musicianRef = db.doc(`musicianProfiles/${musicianProfileId}`);
+    const musicianSnap = await musicianRef.get();
+    if (musicianSnap.exists) {
+      await musicianRef.update({ confirmedGigs: FieldValue.arrayUnion(gigData.gigId) });
+    } else {
+      const artistRef = db.doc(`artistProfiles/${musicianProfileId}`);
+      const artistSnap = await artistRef.get();
+      if (artistSnap.exists) {
+        await artistRef.update({ confirmedGigs: FieldValue.arrayUnion(gigData.gigId) });
+      }
     }
   }
   return res.json({ data: { updatedApplicants } });
@@ -1090,9 +1123,16 @@ router.post("/declineGigApplication", requireAuth, asyncHandler(async (req, res)
   }
 
   const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
+  const declinedApplicant = applicants.find((applicant) => applicant?.id === musicianProfileId);
   const updatedApplicants = applicants.map((a) => a.id === musicianProfileId ? { ...a, status: "declined" } : { ...a });
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
   await gigRef.update({ applicants: updatedApplicants });
+  if (applicantIsGuest(declinedApplicant)) {
+    await emailGuest(declinedApplicant, {
+      subject: `Update on your application for ${gigData.gigName || "the gig"}`,
+      text: `The venue won't be booking you for this gig. We'll only email you about this.`,
+    });
+  }
   return res.json({ data: { updatedApplicants } });
 }));
 
@@ -1373,6 +1413,7 @@ router.post("/revertGigAfterCancellationVenue", requireAuth, asyncHandler(async 
   );
   
   for (const applicant of acceptedApplicants) {
+    if (applicantIsGuest(applicant)) continue;
     const applicantId = applicant.id;
     const artistRef = db.doc(`artistProfiles/${applicantId}`);
     const musicianRef = db.doc(`musicianProfiles/${applicantId}`);
@@ -1491,6 +1532,7 @@ router.post("/deleteGigAndInformation", requireAuth, asyncHandler(async (req, re
     }
   }
   for (const applicant of applicants) {
+    if (applicantIsGuest(applicant)) continue;
     const musicianId = applicant?.id; if (!musicianId) continue;
     const musicianRef = db.doc(`musicianProfiles/${musicianId}`);
     const musicianSnap = await musicianRef.get();
