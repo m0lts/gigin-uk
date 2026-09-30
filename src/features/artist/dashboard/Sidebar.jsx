@@ -90,9 +90,6 @@ export const Sidebar = ({ user, newMessages, unseenInvites, bandProfiles, musici
         <div className='sidebar musician'>
           <div className='logo'>
             <TextLogoMed />
-            <div className="beta-box">
-              <p>BETA</p>
-            </div>
           </div>
           <ul className="menu">
             {menuItems.map(({ path, label, icon, iconActive, exact, notification }) => {

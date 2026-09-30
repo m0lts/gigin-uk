@@ -1190,7 +1190,19 @@ textarea.ng-input { height: auto; padding: 10px; }
 .ng-modal__foot > div { display: flex; gap: 8px; }
 .ng-ready__title, .ng-ready__row, .ng-summary > div { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; font-size: 13.5px; }
 .ng-ready__title { grid-template-columns: 1fr auto; font-weight: 600; margin: 18px 0 8px; }
-.ng-ready em { font-style: normal; color: #B5462C; font-size: 12px; }
+.ng-ready__row { padding: 6px 0; }
+.ng-ready em {
+  justify-self: end;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 11.5px;
+  line-height: 1;
+  color: #B5462C;
+  background: rgba(181, 70, 44, 0.1);
+  border-radius: 999px;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
 .ng-listing { border: 1px solid #E5E7EB; border-radius: 12px; overflow: hidden; }
 .ng-listing__photo { height: 120px; background: #F3F4F6 center/cover; }
 .ng-listing h3, .ng-listing p, .ng-listing__sets { margin: 0; padding: 0 14px; }

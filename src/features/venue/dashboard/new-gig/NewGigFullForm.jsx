@@ -188,7 +188,7 @@ export function NewGigFullForm({
                 <div key={row.id} className="ng-ready__row">
                   <span className={`ng-tick${row.ok ? ' is-on' : ''}`}>{row.ok ? '✓' : ''}</span>
                   <span>{row.label}</span>
-                  <em>{row.tone}</em>
+                  {!row.ok ? <em>{row.tone}</em> : null}
                 </div>
               ))}
             </div>

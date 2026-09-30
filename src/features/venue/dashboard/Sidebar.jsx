@@ -14,14 +14,29 @@ import {
   CoinsIcon,
   CoinsIconSolid,
   DotIcon,
-  LeftChevronIcon,
-  RightChevronIcon,
 } from '@features/shared/ui/extras/Icons';
 import { useAuth } from '@hooks/useAuth';
 import { useVenueDashboard } from '@context/VenueDashboardContext';
 import '@assets/fonts/fonts.css';
 import { toast } from 'sonner';
 import { FEATURES } from '../../../config/features';
+
+function SidebarPanelIcon() {
+  return (
+    <svg
+      className="sidebar__collapse-icon"
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <rect x="1.2" y="1.7" width="13.6" height="12.6" rx="2" stroke="currentColor" strokeWidth="1.35" />
+      <path d="M6.15 1.7v12.6" stroke="currentColor" strokeWidth="1.35" />
+      <path d="M2.55 4.05c0-.75.55-1.35 1.25-1.35h1.7v10.6h-1.7c-.7 0-1.25-.6-1.25-1.35V4.05z" fill="currentColor" />
+    </svg>
+  );
+}
 
 function nameInitials(name) {
   if (!name || typeof name !== 'string') return '?';
@@ -134,17 +149,25 @@ export const Sidebar = ({ user, newMessages }) => {
   return (
     <div className={`sidebar sidebar--console${sidebarCollapsed ? ' sidebar--collapsed' : ''}`}>
       <div className="sidebar__logo-row">
-        <Link to="/venues/dashboard/gigs" className="sidebar__wordmark" aria-label="Gigin">
-          {sidebarCollapsed ? (
-            <>g<span className="sidebar__wordmark-dot">.</span></>
-          ) : (
-            <>gigin<span className="sidebar__wordmark-dot">.</span></>
-          )}
+        <Link to="/venues/dashboard/gigs" className="sidebar__wordmark" aria-label="Gigin" aria-hidden={sidebarCollapsed || undefined} tabIndex={sidebarCollapsed ? -1 : undefined}>
+          gigin<span className="sidebar__wordmark-dot">.</span>
         </Link>
-        {!sidebarCollapsed && <span className="sidebar__beta">BETA</span>}
+        <button
+          type="button"
+          className="sidebar__collapse"
+          onClick={() => {
+            setVenueMenuOpen(false);
+            setShowDropdown(false);
+            setSidebarCollapsed((collapsed) => !collapsed);
+          }}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <SidebarPanelIcon />
+        </button>
       </div>
 
-      {!sidebarCollapsed && venues.length > 0 && (
+      {venues.length > 0 && (
         <div className="sidebar__venue-wrap" ref={venueMenuRef}>
           {canSwitchVenue ? (
             <button
@@ -152,14 +175,13 @@ export const Sidebar = ({ user, newMessages }) => {
               className="sidebar__venue"
               aria-expanded={venueMenuOpen}
               aria-haspopup="listbox"
+              aria-label={displayedVenue?.name || 'All venues'}
+              title={sidebarCollapsed ? (displayedVenue?.name || 'All venues') : undefined}
               onClick={() => {
                 setShowDropdown(false);
                 setVenueMenuOpen((open) => !open);
               }}
             >
-              <span className="sidebar__venue-mark">
-                {displayedVenue ? nameInitials(displayedVenue.name) : nameInitials('All venues')}
-              </span>
               <span className="sidebar__venue-copy">
                 <span className="sidebar__venue-name">{displayedVenue?.name || 'All venues'}</span>
                 <span className="sidebar__venue-meta">{venueCountLabel}</span>
@@ -167,12 +189,12 @@ export const Sidebar = ({ user, newMessages }) => {
               <span className="sidebar__chevron" aria-hidden="true"><DownChevronIcon /></span>
             </button>
           ) : (
-            <div className="sidebar__venue">
-              <span className="sidebar__venue-mark">{nameInitials(venues[0].name)}</span>
+            <div className="sidebar__venue" title={sidebarCollapsed ? venues[0].name : undefined}>
               <span className="sidebar__venue-copy">
                 <span className="sidebar__venue-name">{venues[0].name}</span>
                 <span className="sidebar__venue-meta">{venueCountLabel}</span>
               </span>
+              <span className="sidebar__chevron sidebar__chevron--when-collapsed" aria-hidden="true"><DownChevronIcon /></span>
             </div>
           )}
           {venueMenuOpen && (
@@ -199,7 +221,7 @@ export const Sidebar = ({ user, newMessages }) => {
         </div>
       )}
 
-      {!sidebarCollapsed && <span className="sidebar__section">Manage</span>}
+      <span className="sidebar__section" aria-hidden={sidebarCollapsed || undefined}>Manage</span>
 
       <ul className="menu">
         {menuItems.map(({ path, label, icon, iconActive, exact, notification }) => {
@@ -213,7 +235,7 @@ export const Sidebar = ({ user, newMessages }) => {
             >
               <span className="body">
                 <span className="sidebar__nav-icon">{isActive ? iconActive : icon}</span>
-                {!sidebarCollapsed && label}
+                <span className="sidebar__nav-label">{label}</span>
               </span>
               {notification && !sidebarCollapsed ? (
                 <span className="notification"><DotIcon /></span>
@@ -226,23 +248,6 @@ export const Sidebar = ({ user, newMessages }) => {
       </ul>
 
       <div className="sidebar__spacer" aria-hidden="true" />
-
-      <button
-        type="button"
-        className="sidebar__collapse"
-        onClick={() => {
-          setVenueMenuOpen(false);
-          setShowDropdown(false);
-          setSidebarCollapsed((collapsed) => !collapsed);
-        }}
-        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Close sidebar'}
-        title={sidebarCollapsed ? 'Expand sidebar' : undefined}
-      >
-        <span className="sidebar__collapse-icon">
-          {sidebarCollapsed ? <RightChevronIcon /> : <LeftChevronIcon />}
-        </span>
-        {!sidebarCollapsed && 'Close sidebar'}
-      </button>
 
       <div className="sidebar__account-wrap" ref={accountMenuRef}>
         <button
@@ -262,15 +267,11 @@ export const Sidebar = ({ user, newMessages }) => {
           }}
         >
           <span className="sidebar__avatar">{nameInitials(user?.name)}</span>
-          {!sidebarCollapsed && (
-            <>
-              <span className="sidebar__account-copy">
-                <span className="sidebar__account-name">{user?.name}</span>
-                <span className="sidebar__account-email">{user?.email}</span>
-              </span>
-              <span className="sidebar__chevron" aria-hidden="true"><DownChevronIcon /></span>
-            </>
-          )}
+          <span className="sidebar__account-copy">
+            <span className="sidebar__account-name">{user?.name}</span>
+            <span className="sidebar__account-email">{user?.email}</span>
+          </span>
+          <span className="sidebar__chevron" aria-hidden="true"><DownChevronIcon /></span>
         </button>
         {showDropdown && !sidebarCollapsed && (
           <div className="sidebar__popover sidebar__account-menu" role="menu">

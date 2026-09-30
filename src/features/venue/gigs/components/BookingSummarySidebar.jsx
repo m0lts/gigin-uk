@@ -1019,7 +1019,7 @@ function ArtistBookingConsoleRail({
             ))}
           </div>
           <div className="venue-gig-rail__share">
-            <span className="venue-gig-rail__label">Share the listing</span>
+            <span className="venue-gig-rail__label">Offer the gig to artist</span>
             <div className="venue-gig-rail__link">
               <span className="venue-gig-rail__url">{gigLinkUrl || (rawGig?.gigId ? `${window.location.origin}/gig/${rawGig.gigId}` : '')}</span>
               <button type="button" className="venue-gig-rail__copy" onClick={copyLink}>
@@ -1029,7 +1029,7 @@ function ArtistBookingConsoleRail({
             {typeof onInviteFromContacts === 'function' ? (
               <button type="button" className="venue-gig-rail__primary" onClick={onInviteFromContacts}>
                 <AddressBookIcon />
-                Invite from My Contacts
+                Offer gig to a saved Contact
               </button>
             ) : null}
           </div>

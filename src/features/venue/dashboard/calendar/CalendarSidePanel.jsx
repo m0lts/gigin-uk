@@ -217,7 +217,7 @@ function SelectedGig({
               </div>
             )}
             <button type="button" className="gigs-cal__invite" disabled={!canInvite} onClick={onInvite}>
-              <FontAwesomeIcon icon={faEnvelope} /> Invite artists
+              <FontAwesomeIcon icon={faEnvelope} /> Offer gig to artist
             </button>
           </div>
         )}
