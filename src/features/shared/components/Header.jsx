@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import Portal from './Portal';
 import { LoadingSpinner } from '../ui/loading/Loading';
 import { NoTextLogoLink, NoTextMusicianLogoLink, NoTextVenueLogoLink } from '../ui/logos/Logos';
+import { FEATURES } from '../../../config/features';
 
 export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoProfileModal, noProfileModalClosable = false, setNoProfileModalClosable }) => {
   const navigate = useNavigate();
@@ -94,16 +95,20 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                         <>
                             <div className='left'>
                                 { getLocation() }
+                                {FEATURES.discovery && (
                                 <Link className='link' to={'/find-a-gig'}>
                                     <button className={`btn secondary-alt ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
                                         Find a Gig
                                     </button>
                                 </Link>
+                                )}
+                                {FEATURES.discovery && (
                                 <Link className='link' to={'/find-venues'}>
                                     <button className={`btn secondary-alt ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
                                         Find a Venue
                                     </button>
                                 </Link>
+                                )}
                             </div>
                             {user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? (
                                 <div className="right">
@@ -145,16 +150,20 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                         <>
                             <div className='left'>
                                 { getLocation() }
+                                {FEATURES.discovery && (
                                 <Link className='link' to={'/find-a-gig'}>
                                     <button className={`btn secondary-alt ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
                                         Find a Gig
                                     </button>
                                 </Link>
+                                )}
+                                {FEATURES.discovery && (
                                 <Link className='link' to={'/find-venues'}>
                                     <button className={`btn secondary-alt ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
                                         Find a Venue
                                     </button>
                                 </Link>
+                                )}
                             </div>
                             <nav className='nav-list right'>
                                 <Link className='link' to={'/venues/add-venue'}>

@@ -7,10 +7,10 @@ import { updateGigDocument } from '@services/api/gigs';
 import { updateVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
 import { getArtistProfileById, getMusicianProfileByMusicianId } from '@services/client-side/artists';
-import { CoinsIcon, EditIcon, InviteIconSolid, MicrophoneIcon, TicketIcon } from '@features/shared/ui/extras/Icons';
+import { AddressBookIcon, CoinsIcon, EditIcon, InviteIcon, InviteIconSolid, MicrophoneIcon, TickIcon, TicketIcon } from '@features/shared/ui/extras/Icons';
+import { getLocalGigDateTime } from '@services/utils/filtering';
 import { gigSlotHasConfirmedArtist } from '../utils/multiSlotGigGroup';
 import {
-  buildArtistBookingMergedTimingDisplayRows,
   buildVenueHireGigDetailsTimingDisplayRows,
   buildVenueHireGigSummaryProgrammeTimeLabel,
 } from '../utils/venueHireGigDetailsTimings';
@@ -874,6 +874,300 @@ function renderTargetSalesPreviewMarkup(capacity) {
   );
 }
 
+function listingDocumentsForGig(rawGig) {
+  if (Array.isArray(rawGig?.listingDocuments) && rawGig.listingDocuments.length > 0) {
+    return rawGig.listingDocuments;
+  }
+  if (Array.isArray(rawGig?.documents) && rawGig.documents.length > 0) {
+    return rawGig.documents.map((doc, index) => ({
+      key: doc.url || `doc-${index}`,
+      title: doc.name || 'Document',
+      sourceUrl: doc.url,
+      signed: doc.signed,
+    }));
+  }
+  return [];
+}
+
+function slotCountsAsBooked(slot) {
+  return (slot?.applicants || []).some((applicant) => applicant?.status === 'confirmed' || applicant?.status === 'paid');
+}
+
+function ArtistBookingConsoleRail({
+  rawGig,
+  slots,
+  canUpdate,
+  setGigInfo,
+  refreshGigs,
+  gigLinkUrl,
+  onInviteFromContacts,
+}) {
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [notesEditing, setNotesEditing] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [toggleSaving, setToggleSaving] = useState(false);
+  const nightSlots = Array.isArray(slots) && slots.length ? slots : (rawGig ? [rawGig] : []);
+  const bookedCount = nightSlots.filter(slotCountsAsBooked).length;
+  const gigDate = rawGig ? getLocalGigDateTime(rawGig) : null;
+  const isPast = Boolean(gigDate && gigDate < new Date());
+  const isCancelled = rawGig?.status === 'cancelled';
+  const fullyBooked = nightSlots.length > 0 && bookedCount === nightSlots.length;
+  const showFill = !fullyBooked && !isPast && !isCancelled;
+  const accepting = nightSlots.some((slot) => slot?.status === 'open' || slot?.status === 'upcoming');
+  const notes = String(rawGig?.internalNotes ?? rawGig?.notesInternal ?? rawGig?.notes ?? '');
+  const documents = listingDocumentsForGig(rawGig);
+  const daysUntil = gigDate ? Math.ceil((gigDate.getTime() - Date.now()) / 86400000) : null;
+  const daysLabel = daysUntil == null
+    ? ''
+    : daysUntil > 1
+      ? `${daysUntil} days to go`
+      : daysUntil === 1
+        ? '1 day to go'
+        : daysUntil === 0
+          ? 'Today'
+          : 'Played';
+  const unsignedDocs = documents.filter((doc) => doc.signed === false);
+  const thingsLeft = unsignedDocs.length;
+  const subline = [daysLabel, thingsLeft > 0 ? `${thingsLeft} thing${thingsLeft === 1 ? '' : 's'} left to do` : 'All done']
+    .filter(Boolean)
+    .join(' · ');
+
+  const copyLink = async () => {
+    const link = gigLinkUrl || (rawGig?.gigId ? `${window.location.origin}/gig/${rawGig.gigId}` : '');
+    if (!link) return;
+    const done = () => {
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 1400);
+    };
+    try {
+      await navigator.clipboard.writeText(link);
+      done();
+      return;
+    } catch {
+      const input = document.createElement('textarea');
+      input.value = link;
+      input.setAttribute('readonly', '');
+      input.style.position = 'fixed';
+      input.style.left = '-9999px';
+      document.body.appendChild(input);
+      input.select();
+      const ok = document.execCommand('copy');
+      input.remove();
+      if (ok) done();
+    }
+  };
+
+  const updateSlots = async (updates, successMessage, action = 'gigs.update') => {
+    const ids = nightSlots.map((slot) => slot?.gigId).filter(Boolean);
+    if (!ids.length) return;
+    setToggleSaving(true);
+    try {
+      await Promise.all(ids.map((gigId) => updateGigDocument({
+        gigId,
+        action,
+        updates,
+      })));
+      setGigInfo?.((prev) => (prev ? { ...prev, ...updates } : prev));
+      refreshGigs?.();
+      if (successMessage) toast.success(successMessage);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update.');
+    } finally {
+      setToggleSaving(false);
+    }
+  };
+
+  const saveNotes = async () => {
+    if (!canUpdate || !rawGig?.gigId) return;
+    setNotesSaving(true);
+    try {
+      const value = notesDraft.trim();
+      const now = new Date().toISOString();
+      await updateGigDocument({
+        gigId: rawGig.gigId,
+        action: 'gigs.update',
+        updates: { internalNotes: value || null, internalNotesLastEdited: now },
+      });
+      setGigInfo?.((prev) => (prev ? { ...prev, internalNotes: value || null, internalNotesLastEdited: now } : prev));
+      refreshGigs?.();
+      setNotesEditing(false);
+      toast.success('Notes saved.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save notes.');
+    } finally {
+      setNotesSaving(false);
+    }
+  };
+
+  return (
+    <>
+      {showFill ? (
+        <section className="venue-gig-rail__card">
+          <div className="venue-gig-rail__title-row">
+            <h3 className="venue-gig-rail__title">Fill the night</h3>
+            <span className="venue-gig-rail__count">{bookedCount} of {nightSlots.length} sets booked</span>
+          </div>
+          <div className="venue-gig-rail__bars" aria-hidden="true">
+            {nightSlots.map((slot, index) => (
+              <span
+                key={slot?.gigId || index}
+                className={`venue-gig-rail__bar${slotCountsAsBooked(slot) ? ' is-booked' : ''}`}
+              />
+            ))}
+          </div>
+          <div className="venue-gig-rail__share">
+            <span className="venue-gig-rail__label">Share the listing</span>
+            <div className="venue-gig-rail__link">
+              <span className="venue-gig-rail__url">{gigLinkUrl || (rawGig?.gigId ? `${window.location.origin}/gig/${rawGig.gigId}` : '')}</span>
+              <button type="button" className="venue-gig-rail__copy" onClick={copyLink}>
+                {linkCopied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            {typeof onInviteFromContacts === 'function' ? (
+              <button type="button" className="venue-gig-rail__primary" onClick={onInviteFromContacts}>
+                <AddressBookIcon />
+                Invite from My Contacts
+              </button>
+            ) : null}
+          </div>
+          {canUpdate ? (
+            <div className="venue-gig-rail__toggles">
+              <button
+                type="button"
+                className="venue-gig-rail__toggle"
+                disabled={toggleSaving}
+                onClick={() => updateSlots(
+                  { private: !rawGig?.private },
+                  rawGig?.private ? 'Listing visible on your venue profile.' : 'Listing hidden from your venue profile.'
+                )}
+              >
+                <span>
+                  <span className="venue-gig-rail__toggle-label">Show on venue profile</span>
+                  <span className="venue-gig-rail__toggle-sub">Anyone can find and apply</span>
+                </span>
+                <span className={`venue-gig-rail__switch${!rawGig?.private ? ' is-on' : ''}`} aria-hidden="true">
+                  <span className="venue-gig-rail__knob" />
+                </span>
+              </button>
+              <button
+                type="button"
+                className="venue-gig-rail__toggle"
+                disabled={toggleSaving}
+                onClick={() => updateSlots(
+                  { status: accepting ? 'closed' : 'open' },
+                  accepting ? 'Applications closed.' : 'Applications open.',
+                  'gigs.applications.manage'
+                )}
+              >
+                <span>
+                  <span className="venue-gig-rail__toggle-label">Accepting applications</span>
+                  <span className="venue-gig-rail__toggle-sub">Turn off to close the listing</span>
+                </span>
+                <span className={`venue-gig-rail__switch${accepting ? ' is-on' : ''}`} aria-hidden="true">
+                  <span className="venue-gig-rail__knob" />
+                </span>
+              </button>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {fullyBooked ? (
+        <section className="venue-gig-rail__card">
+          <div className="venue-gig-rail__booked-head">
+            <span className="venue-gig-rail__check" aria-hidden="true"><TickIcon /></span>
+            <span>
+              <span className="venue-gig-rail__title">Fully booked</span>
+              <span className="venue-gig-rail__sub">{subline}</span>
+            </span>
+          </div>
+          <ul className="venue-gig-rail__checks">
+            <li>
+              <span><span className="venue-gig-rail__mark is-ok">✓</span>Payments</span>
+              <span className="venue-gig-rail__check-val">{bookedCount}/{nightSlots.length} paid</span>
+            </li>
+            {documents.some((doc) => doc.signed === true || doc.signed === false) ? (
+              <li>
+                <span>
+                  <span className={`venue-gig-rail__mark${unsignedDocs.length ? ' is-wait' : ' is-ok'}`}>{unsignedDocs.length ? '!' : '✓'}</span>
+                  Agreements
+                </span>
+                <span className="venue-gig-rail__check-val">
+                  {documents.filter((doc) => doc.signed === true).length}/{documents.filter((doc) => doc.signed === true || doc.signed === false).length} signed
+                </span>
+              </li>
+            ) : null}
+          </ul>
+          {!isPast && unsignedDocs[0]?.sourceUrl ? (
+            <a className="venue-gig-rail__primary venue-gig-rail__primary-link" href={unsignedDocs[0].sourceUrl} target="_blank" rel="noopener noreferrer">
+              Review unsigned agreement
+            </a>
+          ) : null}
+        </section>
+      ) : null}
+
+      <section className="venue-gig-rail__card">
+        <h3 className="venue-gig-rail__title">Documents</h3>
+        {documents.length === 0 ? (
+          <p className="venue-gig-rail__muted">No documents attached to this listing.</p>
+        ) : (
+          <ul className="venue-gig-rail__docs">
+            {documents.map((doc, index) => {
+              const row = (
+                <>
+                  <span className="venue-gig-rail__doc-title">{doc.title || 'Document'}</span>
+                  {doc.signed === true ? <span className="venue-gig-rail__tag is-signed">Signed</span> : null}
+                  {doc.signed === false ? <span className="venue-gig-rail__tag is-unsigned">Unsigned</span> : null}
+                </>
+              );
+              return (
+                <li key={doc.key || `doc-${index}`}>
+                  {doc.sourceUrl ? (
+                    <a className="venue-gig-rail__doc" href={doc.sourceUrl} target="_blank" rel="noopener noreferrer">{row}</a>
+                  ) : (
+                    <span className="venue-gig-rail__doc">{row}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="venue-gig-rail__card">
+        <h3 className="venue-gig-rail__title">Notes</h3>
+        {notesEditing ? (
+          <textarea
+            className="venue-gig-rail__notes-input"
+            value={notesDraft}
+            onChange={(event) => setNotesDraft(event.target.value)}
+            onBlur={() => { if (!notesSaving) saveNotes(); }}
+            rows={4}
+            autoFocus
+            disabled={notesSaving}
+          />
+        ) : (
+          <button
+            type="button"
+            className="venue-gig-rail__notes"
+            onClick={() => {
+              if (!canUpdate) return;
+              setNotesDraft(notes);
+              setNotesEditing(true);
+            }}
+            disabled={!canUpdate}
+          >
+            {notes.trim() ? notes : 'Add a note'}
+          </button>
+        )}
+      </section>
+    </>
+  );
+}
+
 /**
  * Sidebar: For venue hire / artist booking, booking summary, timeline, ticket sales preview.
  * For other gig types: "Key details" summary.
@@ -893,6 +1187,8 @@ export function BookingSummarySidebar({
   mergedTimelineSlots = null,
   setGigInfo = null,
   refreshGigs = null,
+  gigLinkUrl = '',
+  onInviteFromContacts = null,
 }) {
   const { user } = useAuth();
   const hireIdForVenueHire = rawGig?.id ?? rawGig?.gigId;
@@ -1071,59 +1367,18 @@ export function BookingSummarySidebar({
     );
   }
 
-  // Artist booking: booking summary, timeline, ticket sales. Tech setup lives in the main panel.
   if (isArtistBooking) {
-    const paymentModelKey = inferArtistBookingPaymentModelKey(rawGig);
-    const slotSummaries = normalisedGig?.perSlotSummaries;
-    const hasMultiSlot = Array.isArray(slotSummaries) && slotSummaries.length > 1;
-    const ticketingLabel = resolveTicketingLabel(rawGig);
-    const slotsForTimeline =
-      Array.isArray(mergedTimelineSlots) && mergedTimelineSlots.length > 1
-        ? mergedTimelineSlots
-        : null;
-    const timingDisplayRows =
-      slotsForTimeline && slotsForTimeline.length > 1
-        ? buildArtistBookingMergedTimingDisplayRows(rawGig, slotsForTimeline, accessFrom, curfew)
-        : buildVenueHireGigDetailsTimingDisplayRows(rawGig, accessFrom, curfew);
-    const capacitySummary =
-      capacity != null && capacity !== '' ? String(capacity) : '—';
-
-    const showTicketSalesTile = ticketingLabel !== 'Not ticketed';
-    const showPerSetPayments = paymentModelKey === 'venue_pays_artist';
-
     return (
-      <aside className="venue-gig-page-sidebar" aria-label="Gig summary">
-        <div className="venue-gig-page-sidebar__cards">
-          {renderBookingSummaryTile({
-            variant: 'artist_booking',
-            normalisedGig,
-            rawGig,
-            paymentModelKey,
-            capacityDisplay: capacitySummary,
-            ticketingTypeLabel: ticketingLabel,
-            onEditGig: bookingSummaryOnEditGig,
-            slotSummaries: hasMultiSlot ? slotSummaries : null,
-            showPerSetPayments,
-            perSetArtistFeePaidInteractive:
-              showPerSetPayments && normalisedGig?.status === 'confirmed' && canUpdate,
-            mergedTimelineSlots,
-            refreshGigs,
-            setGigInfo,
-            canUpdate,
-          })}
-          {renderTimelineTile(timingDisplayRows, {
-            canUpdate,
-            editingTimingKey,
-            editingTimingValue,
-            timelineSaving,
-            onStartAddTime: startAddTimelineTime,
-            onChangeAddTime: setEditingTimingValue,
-            onCancelAddTime: cancelAddTimelineTime,
-            onSaveAddTime: saveAddTimelineTime,
-          })}
-
-          {showTicketSalesTile ? renderTargetSalesPreviewMarkup(capacity) : null}
-        </div>
+      <aside className="venue-gig-page-sidebar venue-gig-rail" aria-label="Gig details">
+        <ArtistBookingConsoleRail
+          rawGig={rawGig}
+          slots={Array.isArray(mergedTimelineSlots) && mergedTimelineSlots.length ? mergedTimelineSlots : [rawGig]}
+          canUpdate={canUpdate}
+          setGigInfo={setGigInfo}
+          refreshGigs={refreshGigs}
+          gigLinkUrl={gigLinkUrl}
+          onInviteFromContacts={onInviteFromContacts}
+        />
       </aside>
     );
   }

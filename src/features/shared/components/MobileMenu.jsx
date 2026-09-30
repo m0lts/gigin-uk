@@ -4,6 +4,7 @@ import { useBreakpoint } from "../../../hooks/useBreakpoint";
 import Portal from "./Portal";
 import { useState } from "react";
 import { toast } from "sonner";
+import { FEATURES } from "../../../config/features";
 
 export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, handleLogout, newMessages, isMobile, menuStyle, setNoProfileModal, setNoProfileModalClosable, noProfileModal, noProfileModalClosable, setShowFeedbackModal, showFeedbackModal, feedback, setFeedback }) => {
   const navigate = useNavigate();
@@ -18,14 +19,18 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             I'm a Venue
                             <VenueIconLight />
                         </Link>
+                        {FEATURES.discovery && (
                         <Link className='link item no-margin' to={'/find-a-gig'}>
                             Find a Gig
                             <MapIcon />
                         </Link>
+                        )}
+                        {FEATURES.discovery && (
                         <Link className='link item' to={'/find-venues'}>
                             Find a Venue
                             <TelescopeIcon />
                         </Link>
+                        )}
                         <div className="two-buttons">
                             <button className='btn secondary' onClick={() => {showAuthModal(true); setAuthType('login')}}>
                                 Log In
@@ -77,7 +82,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             Dashboard
                             <DashboardIconLight />
                         </Link>
-                        {newMessages ? (
+                        {FEATURES.chat && (newMessages ? (
                             <Link className='link item no-margin message' to={'/venues/dashboard/messages'}>
                                 <div>
                                     Messages
@@ -90,7 +95,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                 Messages
                                 <MailboxEmptyIcon />
                             </Link>
-                        )}
+                        ))}
                         {!isMobile && (
                             <Link className='link item no-margin' to={'/venues/add-venue'}>
                                 Add Venue
@@ -107,10 +112,12 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                     Artists
                                     <MusicianIconLight />
                                 </Link>
+                                {FEATURES.finances && (
                                 <Link className='link item no-margin' to={'/venues/dashboard/finances'}>
                                     Finances
                                     <CoinsIcon />
                                 </Link>
+                                )}
                             </>
                         )}
                         <div className='break' />
@@ -227,13 +234,13 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                 </button>
                             </>
                         )}
-                        {!isLgUp && (
+                        {FEATURES.discovery && !isLgUp && (
                             <Link className='link item no-margin' to={'/find-a-gig'}>
                                 Find a Gig
                                 <MapIcon />
                             </Link>
                         )}
-                        {!isXlUp && (
+                        {FEATURES.discovery && !isXlUp && (
                             <Link className='link item no-margin' to={'/find-venues'}>
                                 Find a Venue
                                 <TelescopeIcon />
@@ -268,14 +275,18 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                         Gigs
                                         <AllGigsIcon />
                                     </Link>
+                                    {FEATURES.chat && (
                                     <Link className='link item no-margin' to={`${basePath}/messages`}>
                                         Messages
                                         {newMessages ? <MailboxFullIcon /> : <MailboxEmptyIcon />}
                                     </Link>
+                                    )}
+                                    {FEATURES.finances && (
                                     <Link className='link item no-margin' to={`${basePath}/finances`}>
                                         Finances
                                         <CoinsIcon />
                                     </Link>
+                                    )}
                                 </>
                             );
                         })()}
@@ -298,6 +309,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             };
                             const activeProfileId = getActiveProfileId();
                             const messagesPath = activeProfileId ? `/artist-profile/${activeProfileId}/messages` : '/artist-profile/messages';
+                            if (!FEATURES.chat) return null;
                             return newMessages ? (
                                 <Link className='link item no-margin message' to={messagesPath}>
                                     <div>

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import { FEATURES } from '../../../config/features';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -683,7 +684,7 @@ const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
                   </span>
                 </button>
 
-                {artist?.artistId ? (
+                {FEATURES.chat && artist?.artistId ? (
                   <button
                     type="button"
                     className={`offer-gig-modal__method-card${offerSendMethod === 'gigin' ? ' offer-gig-modal__method-card--selected' : ''}`}
@@ -1064,9 +1065,11 @@ export const ArtistCRM = ({ user, venues }) => {
           <p className="contacts-page-subtitle">{subtitle}</p>
         </div>
         <div className="contacts-page-head-actions">
+          {FEATURES.discovery && (
           <button className="btn secondary" type="button" onClick={() => navigate('/venues/dashboard/artists/find')}>
             Find Artists
           </button>
+          )}
           <button type="button" className="btn primary contacts-head-add-btn" onClick={() => setShowAddModal(true)}>
             <PlusIcon />
             Add contact

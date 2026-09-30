@@ -8,9 +8,11 @@ import { Elements } from '@stripe/react-stripe-js';
 import { Toaster } from 'sonner';
 import { ErrorBoundary } from './features/shared/components/ErrorBoundary.jsx'
 import { AppCrashFallback } from './features/shared/components/AppCrashFallback.jsx'
+import { FEATURES } from './config/features';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-
+const stripePromise = FEATURES.payments
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary Fallback={AppCrashFallback}>

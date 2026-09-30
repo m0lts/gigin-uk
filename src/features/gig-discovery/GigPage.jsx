@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo, Fragment } from 'react';
+import { FEATURES } from '../../config/features';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
@@ -57,6 +58,8 @@ import { NoTextLogo } from '../shared/ui/logos/Logos';
 import { updateCRMEntryWithArtistId } from '../../services/api/users';
 import { computeCompatibility } from '../../services/utils/techRiderCompatibility';
 import { findSlotSiblingsFromFlatGigs } from '../venue/gigs/utils/multiSlotGigGroup';
+import { GuestGigPage } from './guest/GuestGigPage';
+import { isGuestApplyGig } from './guest/guestFormat';
 
 const TECH_SPEC_SOUND_KEYS = new Set(['pa', 'mixingConsole', 'soundEngineer', 'microphones', 'micStands', 'diBoxes', 'stageMonitors']);
 const TECH_SPEC_BACKLINE_KEYS = new Set(['drumKit', 'bassAmp', 'guitarAmp', 'keyboard', 'keyboardStand', 'stageLighting', 'djDecks']);
@@ -145,13 +148,13 @@ function getVenueApplicantDocuments(venue) {
   };
 }
 
-export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
+export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noProfileModal, setNoProfileModal, setNoProfileModalClosable }) => {
     const { gigId, hireId } = useParams();
     const navigate = useNavigate();
     const {isSmUp, isMdUp, isLgUp} = useBreakpoint();
     const [searchParams] = useSearchParams();
     const inviteToken = searchParams.get('token'); 
-    const inviteId = searchParams.get('inviteId');
+    const inviteId = searchParams.get('inviteId') || searchParams.get('invite');
     const venueVisiting = searchParams.get('venue');
     const appliedProfile = searchParams.get('appliedAs');
 
@@ -2363,6 +2366,23 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
         );
     };
 
+    if (!loading && gigData && !user && isGuestApplyGig(gigData, venueProfile)) {
+        return (
+            <GuestGigPage
+                gig={gigData}
+                slots={allSlots.length ? allSlots : [gigData]}
+                venue={venueProfile}
+                inviteId={inviteId}
+                coordinates={mapCoordinates}
+                onCreateAccount={(email) => {
+                    setInitialEmail?.(email || '');
+                    setAuthType?.('signup');
+                    setAuthModal?.(true);
+                }}
+            />
+        );
+    }
+
     return (
         <div className='gig-page'>
             {!user ? (
@@ -2885,7 +2905,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                     ) : (
                                                         <>
                                                         <div className='two-buttons'>
-                                                            {showMessage && (
+                                                            {FEATURES.chat && showMessage && (
                                                                 <button className='btn secondary' onClick={handleMessage}>Message</button>
                                                             )}
                                                         </div>
@@ -3406,7 +3426,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                     ) : (
                                                         <>
                                                             <div className='two-buttons'>
-                                                                {showMessage && (
+                                                                {FEATURES.chat && showMessage && (
                                                                     <button className='btn secondary' onClick={handleMessage}>Message</button>
                                                                 )}
                                                             </div>

@@ -13,6 +13,7 @@ import { getArtistProfileMembers } from '../../../../services/client-side/artist
 import { sanitizeArtistPermissions } from '../../../../services/utils/permissions';
 import Portal from '../../../shared/components/Portal';
 import { GigHandbook } from '../../../artist/components/GigHandbook';
+import { FEATURES } from '../../../../config/features';
 import {
   ClockIcon,
   PreviousIcon,
@@ -513,9 +514,11 @@ export const ArtistProfileGigs = () => {
           ) : (
             <div className='invites-empty'>
               <p>No invitations at the moment.</p>
+              {FEATURES.discovery && (
               <button className='btn primary' onClick={() => navigate('/find-venues')}>
                 Find Venues
               </button>
+              )}
             </div>
           )}
         </>
@@ -736,6 +739,7 @@ export const ArtistProfileGigs = () => {
                   >
                     View Venue Page <NewTabIcon />
                   </button>
+                  {FEATURES.chat && (
                   <button
                     onClick={() => {
                       closeOptionsMenu();
@@ -744,6 +748,7 @@ export const ArtistProfileGigs = () => {
                   >
                     Contact Venue <MailboxFullIcon />
                   </button>
+                  )}
                   {canBookCurrentArtistProfile &&
                     (isConfirmed ? (
                     <button

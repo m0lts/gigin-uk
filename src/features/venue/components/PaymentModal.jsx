@@ -13,7 +13,10 @@ import { loadStripe } from '@stripe/stripe-js';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { ensureVenueStripeCustomerId } from '../../../services/client-side/venues';
 import { hasVenuePerm } from '../../../services/utils/permissions';
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+import { FEATURES } from '../../../config/features';
+const stripePromise = FEATURES.payments
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 export const PaymentModal = ({
     savedCards,

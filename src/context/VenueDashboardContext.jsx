@@ -1,13 +1,13 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { getGigsByVenueIds } from '@services/client-side/gigs';
-import { fetchGigTemplates } from '@services/api/venues';
 import { subscribeToUpcomingOrRecentGigs } from '@services/client-side/gigs';
 import {
   getVenueHireOpportunitiesByVenueIds,
   subscribeToVenueHireOpportunities,
 } from '@services/client-side/venueHireOpportunities';
-import { fetchMyVenueMembership, getVenueRequestsByVenueIds } from '../services/client-side/venues';
+import { fetchMyVenueMembership, getVenueRequestsByVenueIds, getTemplatesByVenueIds } from '../services/client-side/venues';
 import { fetchCustomerData } from '@services/api/payments';
+import { FEATURES } from '../config/features';
 
 const VenueDashboardContext = createContext();
 
@@ -84,18 +84,12 @@ export const VenueDashboardProvider = ({ user, children }) => {
         getGigsByVenueIds(venueIds),
         getVenueRequestsByVenueIds(venueIds),
       ]);
-      let templatesRes = [];
-      try {
-        templatesRes = await fetchGigTemplates({ venueIds });
-      } catch (templatesErr) {
-        console.error('Venue dashboard: could not load gig templates (API).', templatesErr);
-      }
+      const templatesRes = await getTemplatesByVenueIds(venueIds);
       applyGigs(gigsRes);
       setTemplates(Array.isArray(templatesRes) ? templatesRes : []);
       const visibleRequests = requestsRes.filter(req => !req.removed);
       setRequests(visibleRequests);
 
-      const customerIds = [null, ...financeCustomerIds];
       const delay = (ms) => new Promise((r) => setTimeout(r, ms));
       const fetchWithRetry = async (id, retries = 1) => {
         for (let attempt = 0; attempt <= retries; attempt++) {
@@ -114,6 +108,12 @@ export const VenueDashboardProvider = ({ user, children }) => {
 
       let stripeRes = { customerDetails: null, savedCards: [], receipts: [] };
       try {
+        if (!FEATURES.payments) {
+          setStripe(stripeRes);
+          loadedOnce.current = true;
+          return;
+        }
+        const customerIds = [null, ...financeCustomerIds];
         const bundles = [];
         for (const id of customerIds) {
           const bundle = await fetchWithRetry(id);
@@ -183,7 +183,7 @@ export const VenueDashboardProvider = ({ user, children }) => {
   const refreshTemplates = async () => {
     try {
       const venueIds = venueProfiles.map(v => v.venueId);
-      const templatesRes = await fetchGigTemplates({ venueIds });
+      const templatesRes = await getTemplatesByVenueIds(venueIds);
       setTemplates(Array.isArray(templatesRes) ? templatesRes : []);
     } catch (err) {
       console.error('Error refreshing templates:', err);
@@ -191,6 +191,7 @@ export const VenueDashboardProvider = ({ user, children }) => {
   };
   
 const refreshStripe = async () => {
+  if (!FEATURES.payments) return;
   try {
     const readVenues   = venueProfiles.filter(v => canReadFinances(v, user.uid));
     const updateVenues = venueProfiles.filter(v => canUpdateFinances(v, user.uid));

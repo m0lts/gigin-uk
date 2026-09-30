@@ -5,6 +5,7 @@ import { getGigsByIds } from '@services/client-side/gigs';
 import { getBandMembers } from '@services/client-side/bands';
 import { getBandDataOnly } from '../services/client-side/bands';
 import { getMusicianProfileByMusicianId } from '../services/client-side/artists';
+import { FEATURES } from '../config/features';
 
 export const ArtistDashboardContext = createContext();
 
@@ -306,6 +307,7 @@ export const ArtistDashboardProvider = ({ user, children, activeProfileId: propA
   }, [artistProfilesState, artistRefreshNonce, hasArtistProfiles, activeProfileId, activeArtistProfile]);
 
   const checkGigsForReview = (gigs, musicianIds = []) => {
+    if (!FEATURES.reviews) return;
     const now = new Date();
     const eligible = gigs.filter((gig) => {
       const gigDate = gig.startDateTime?.toDate?.() || new Date(gig.startDateTime);

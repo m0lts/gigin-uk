@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
+import { FEATURES } from '../../../config/features';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
@@ -649,7 +650,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
 
     // Fetch reviews when venue info tab is active
     useEffect(() => {
-        if (activeContentTab === 'venue-info' && venueId && !venueReviews.length && !loadingReviews) {
+        if (FEATURES.reviews && activeContentTab === 'venue-info' && venueId && !venueReviews.length && !loadingReviews) {
             const fetchReviews = async () => {
                 setLoadingReviews(true);
                 try {
@@ -1029,6 +1030,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                                 )}
 
                                                 {/* Reviews */}
+                                                {FEATURES.reviews && (
                                                 <div className="venue-info-item">
                                                     <h6>Reviews</h6>
                                                     {venueData?.avgReviews?.totalReviews > 0 ? (
@@ -1061,6 +1063,7 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                                                         <p className="venue-info-value">No reviews yet</p>
                                                     )}
                                                 </div>
+                                                )}
 
                                                 {/* Extra Information */}
                                                 {venueData?.extraInformation && (

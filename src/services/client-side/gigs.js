@@ -35,6 +35,20 @@ import { getVenueProfileById } from './venues';
  * @param {string} inviteId - The invite document ID
  * @returns {Promise<Object|null>} - The invite document or null if not found
  */
+/**
+ * Marks a gig invite as claimed by a submitted guest application.
+ * The guest-applications create endpoint does this as well; this is the
+ * explicit call used when a claim needs to be recorded on its own.
+ */
+export const claimInvite = async (inviteId, applicationId) => {
+  if (!inviteId || !applicationId) return null;
+  const { httpClient } = await import('../http/client');
+  return httpClient.post('/guest-applications/claim', {
+    auth: false,
+    body: { inviteId, applicationId },
+  });
+};
+
 export const getGigInviteById = async (inviteId) => {
   if (!inviteId) return null;
   try {

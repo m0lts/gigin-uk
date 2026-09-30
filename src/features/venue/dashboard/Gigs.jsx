@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -32,6 +32,7 @@ import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/api/gigs';
 import { GigInvitesModal } from '../components/GigInvitesModal';
 import { GigsCalendarReact } from './GigsCalendarReact';
+import { GigsConsole } from './GigsConsole';
 import { getCalendarFeedUrl } from '@services/api/calendar';
 import {
   filterBookNewEventTemplatesForVenue,
@@ -50,6 +51,26 @@ function getLocalHireDateTime(hire) {
   return null;
 }
 
+function consolePillKey(group, statusDisplay) {
+  const gig = group.primaryGig;
+  if (gig.status === 'in dispute' || gig.disputeLogged) return 'dispute';
+  if (statusDisplay.statusClass === 'expired') return 'expired';
+  if (statusDisplay.statusClass === 'past') return 'played';
+  if (statusDisplay.statusClass === 'confirmed') return 'confirmed';
+  if (statusDisplay.statusClass === 'awaiting payment') return 'awaiting';
+  if (statusDisplay.text === 'Negotiating') return 'negotiating';
+  const isOpen = group.allGigs.some((slot) => slot.status === 'upcoming' || slot.status === 'open');
+  return isOpen ? 'open' : 'closed';
+}
+
+function confirmedArtistNames(group) {
+  return group.allGigs.map((slot) => {
+    const apps = Array.isArray(slot.applicants) ? slot.applicants : [];
+    const confirmed = apps.find((applicant) => applicant?.status === 'confirmed');
+    return confirmed?.name || confirmed?.artistName || slot.artistName || '';
+  }).filter(Boolean);
+}
+
 export const Gigs = ({
   gigs,
   venueHireOpportunities = [],
@@ -58,6 +79,8 @@ export const Gigs = ({
   setAddGigsEditData,
   setAddGigsInitialDateIso,
   setAddGigsMode,
+  setNewGigRoute,
+  setNewGigEntry,
   requests,
   setRequests,
   user,
@@ -78,6 +101,17 @@ export const Gigs = ({
     const [confirmType, setConfirmType] = useState('');
     const [openOptionsGigId, setOpenOptionsGigId] = useState(null);
     const [gigsView, setGigsView] = useState('react'); // 'table' | 'react' (react = calendar view)
+    const [showPast, setShowPast] = useState(() => {
+      try { return localStorage.getItem('gigs.showPast') === 'true'; } catch { return false; }
+    });
+    const [copiedGigId, setCopiedGigId] = useState(null);
+    const [venueMenuOpen, setVenueMenuOpen] = useState(false);
+    const [newGigMenuOpen, setNewGigMenuOpen] = useState(false);
+    const [optionsMenuPos, setOptionsMenuPos] = useState(null);
+    const searchInputRef = useRef(null);
+    const copiedTimerRef = useRef(null);
+    const venueMenuRef = useRef(null);
+    const newGigMenuRef = useRef(null);
     const [cancellationReason, setCancellationReason] = useState({
       reason: '',
       extraDetails: '',
@@ -161,8 +195,12 @@ export const Gigs = ({
       }
     };
 
-    const toggleOptionsMenu = (gigId) => {
+    const toggleOptionsMenu = (gigId, anchor) => {
         setOpenOptionsGigId(prev => (prev === gigId ? null : gigId));
+        if (anchor?.getBoundingClientRect) {
+          const rect = anchor.getBoundingClientRect();
+          setOptionsMenuPos({ top: rect.bottom + 4, left: rect.right });
+        }
     };
 
     const closeOptionsMenu = () => {
@@ -181,13 +219,34 @@ export const Gigs = ({
 
     useEffect(() => {
       const handleClickOutside = (e) => {
-        if (!e.target.closest('.options-cell')) {
+        if (!e.target.closest('.options-cell') && !e.target.closest('.gigs-console__options')) {
           setOpenOptionsGigId(null);
         }
+        if (venueMenuRef.current && !venueMenuRef.current.contains(e.target)) setVenueMenuOpen(false);
+        if (newGigMenuRef.current && !newGigMenuRef.current.contains(e.target)) setNewGigMenuOpen(false);
       };
       window.addEventListener('click', handleClickOutside);
       return () => window.removeEventListener('click', handleClickOutside);
     }, []);
+
+    useEffect(() => {
+      try { localStorage.setItem('gigs.showPast', showPast ? 'true' : 'false'); } catch { /* ignore */ }
+    }, [showPast]);
+
+    useEffect(() => {
+      if (!isMdUp) return undefined;
+      const onKeyDown = (event) => {
+        if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return;
+        const tag = document.activeElement?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable) return;
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      };
+      window.addEventListener('keydown', onKeyDown);
+      return () => window.removeEventListener('keydown', onKeyDown);
+    }, [isMdUp]);
+
+    useEffect(() => () => clearTimeout(copiedTimerRef.current), []);
   
     const [searchParams] = useSearchParams();
     const selectedVenue = searchParams.get('venue') || '';
@@ -469,16 +528,19 @@ export const Gigs = ({
     }, [normalizedGigs, normalizedHireOpportunities]);
 
     const filteredGigs = useMemo(() => {
+      const query = searchQuery.trim().toLowerCase();
+      const legacyStatuses = ['confirmed', 'upcoming', 'past'];
       return groupedGigs.filter(group => {
         const gig = group.primaryGig;
-        const matchesSearch = searchQuery === '' || gig.gigName.toLowerCase().includes(searchQuery.toLowerCase());
+        const gigName = (gig.gigName || '').toLowerCase();
+        const artistHit = confirmedArtistNames(group).some((name) => name.toLowerCase().includes(query));
+        const matchesSearch = query === '' || gigName.includes(query) || artistHit;
         const matchesVenue = selectedVenue === '' || gig.venueId === selectedVenue;
-        const matchesDate = selectedDate === '' || gig.dateIso === selectedDate;
-        const matchesStatus = selectedStatus === 'all' || gig.status === selectedStatus;
-  
+        const matchesDate = isMdUp || selectedDate === '' || gig.dateIso === selectedDate;
+        const matchesStatus = isMdUp || selectedStatus === 'all' || !legacyStatuses.includes(selectedStatus) || gig.status === selectedStatus;
         return matchesSearch && matchesVenue && matchesDate && matchesStatus;
       });
-    }, [groupedGigs, searchQuery, selectedVenue, selectedDate, selectedStatus]);
+    }, [groupedGigs, searchQuery, selectedVenue, selectedDate, selectedStatus, isMdUp]);
   
     const sortedGigs = useMemo(() => {
       return filteredGigs.slice().sort((a, b) => {
@@ -900,6 +962,206 @@ export const Gigs = ({
       return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
     };
 
+    const groupTimeLabel = (group) => {
+      const slots = group.isGroup && group.allGigs.length > 1
+        ? group.allGigs.filter((slot) => slot.startTime && slot.duration)
+        : [];
+      if (slots.length > 0) {
+        const sortedSlots = [...slots].sort((a, b) => {
+          const [aH, aM] = a.startTime.split(':').map(Number);
+          const [bH, bM] = b.startTime.split(':').map(Number);
+          return (aH * 60 + aM) - (bH * 60 + bM);
+        });
+        const last = sortedSlots[sortedSlots.length - 1];
+        return `${sortedSlots[0].startTime}–${calculateEndTime(last.startTime, last.duration)}`;
+      }
+      const gig = group.primaryGig;
+      if (gig.startTime && gig.duration) return `${gig.startTime}–${calculateEndTime(gig.startTime, gig.duration)}`;
+      return '—';
+    };
+
+    const markLinkCopied = (gigId) => {
+      setCopiedGigId(gigId);
+      clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => {
+        setCopiedGigId((current) => (current === gigId ? null : current));
+      }, 1400);
+    };
+
+    const copyGigLinkQuiet = (gig) => {
+      const link = `${window.location.origin}/gig/${gig.gigId}`;
+      navigator.clipboard.writeText(link).then(() => {
+        markLinkCopied(gig.gigId);
+      }).catch((err) => {
+        toast.error('Failed to copy link. Please try again.');
+        console.error('Failed to copy link: ', err);
+      });
+    };
+
+    const toggleGroupSelection = (group) => {
+      const ids = group.gigIds;
+      setSelectedGigs((prev) => {
+        const allIn = ids.every((id) => prev.includes(id));
+        if (allIn) return prev.filter((id) => !ids.includes(id));
+        return [...new Set([...prev, ...ids])];
+      });
+    };
+
+    const groupIsSelected = (group) => group.gigIds.every((id) => selectedGigs.includes(id));
+
+    const consoleStatusKey = ['attention', 'awaiting', 'confirmed'].includes(selectedStatus) ? selectedStatus : 'all';
+
+    const consoleRows = useMemo(() => {
+      if (!isMdUp) return null;
+      const rows = filteredGigs.map((group) => {
+        const statusDisplay = getStatusDisplay(group.primaryGig, group);
+        const slots = group.allGigs;
+        const totalApplicants = slots.reduce((sum, slot) => sum + ((slot.applicants || []).length), 0);
+        const newApplicants = slots.reduce((sum, slot) => (
+          sum + (slot.applicants || []).filter((applicant) => !applicant.viewed && applicant.invited !== true).length
+        ), 0);
+        const slotsBooked = slots.map((slot) => (slot.applicants || []).some((applicant) => applicant.status === 'confirmed'));
+        const isFuture = !!(group.primaryGig.dateTime && group.primaryGig.dateTime > now);
+        const needsAction = isFuture && (
+          newApplicants > 0
+          || statusDisplay.statusClass === 'awaiting payment'
+          || statusDisplay.text === 'Negotiating'
+        );
+        return {
+          group,
+          statusDisplay,
+          totalApplicants,
+          newApplicants,
+          slotsBooked,
+          isFuture,
+          needsAction,
+          pill: consolePillKey(group, statusDisplay),
+        };
+      });
+      const futureAll = rows
+        .filter((row) => row.isFuture)
+        .sort((a, b) => (a.group.primaryGig.dateTime || 0) - (b.group.primaryGig.dateTime || 0));
+      const past = rows
+        .filter((row) => !row.isFuture)
+        .sort((a, b) => (b.group.primaryGig.dateTime || 0) - (a.group.primaryGig.dateTime || 0));
+      const future = futureAll.filter((row) => {
+        if (consoleStatusKey === 'attention') return row.needsAction;
+        if (consoleStatusKey === 'awaiting') return row.statusDisplay.statusClass === 'awaiting payment';
+        if (consoleStatusKey === 'confirmed') return row.statusDisplay.statusClass === 'confirmed';
+        return true;
+      });
+      return {
+        future,
+        past,
+        counts: {
+          all: futureAll.length,
+          attention: futureAll.filter((row) => row.needsAction).length,
+          awaiting: futureAll.filter((row) => row.statusDisplay.statusClass === 'awaiting payment').length,
+          confirmed: futureAll.filter((row) => row.statusDisplay.statusClass === 'confirmed').length,
+        },
+      };
+    }, [filteredGigs, isMdUp, now, consoleStatusKey]);
+
+    const futureSelectableIds = consoleRows?.future.flatMap((row) => row.group.gigIds) || [];
+    const allFutureSelected = futureSelectableIds.length > 0 && futureSelectableIds.every((id) => selectedGigs.includes(id));
+
+    const toggleSelectAllFuture = () => {
+      setSelectedGigs((prev) => {
+        if (allFutureSelected) return prev.filter((id) => !futureSelectableIds.includes(id));
+        return [...new Set([...prev, ...futureSelectableIds])];
+      });
+    };
+
+    const setGroupVisibility = async (group, nextPrivate) => {
+      const venueId = group.primaryGig.venueId;
+      if (!hasVenuePerm(venues, venueId, 'gigs.update')) {
+        toast.error('You do not have permission to update this gig.');
+        return;
+      }
+      try {
+        await Promise.all(group.gigIds.map((id) => updateGigDocument({
+          gigId: id,
+          action: 'gigs.update',
+          updates: { private: nextPrivate },
+        })));
+        toast.success(`Gig changed to ${nextPrivate ? 'Invite Only' : 'Public'}`);
+        refreshGigs();
+      } catch (error) {
+        console.error('Error updating invite only status:', error);
+        toast.error('Failed to update gig. Please try again.');
+      }
+    };
+
+    const handleBulkInviteOnly = async () => {
+      const ids = selectedGigs.filter((id) => {
+        const gig = gigs.find((item) => item.gigId === id);
+        return gig && hasVenuePerm(venues, gig.venueId, 'gigs.update');
+      });
+      if (!ids.length) {
+        toast.error('You do not have permission to update these gigs.');
+        return;
+      }
+      try {
+        await Promise.all(ids.map((id) => updateGigDocument({
+          gigId: id,
+          action: 'gigs.update',
+          updates: { private: true },
+        })));
+        toast.success(ids.length > 1 ? 'Gigs set to invite only' : 'Gig set to invite only');
+        refreshGigs();
+        clearSelection();
+      } catch (error) {
+        console.error('Failed to set invite only:', error);
+        toast.error('Failed to update gigs. Please try again.');
+      }
+    };
+
+    const handleBulkMakeTemplate = async () => {
+      const groups = [];
+      const seen = new Set();
+      selectedGigs.forEach((id) => {
+        const group = groupedGigs.find((item) => item.gigIds.includes(id));
+        if (group && !seen.has(group.primaryGig.gigId)) {
+          seen.add(group.primaryGig.gigId);
+          groups.push(group);
+        }
+      });
+      for (const group of groups) {
+        if (hasVenuePerm(venues, group.primaryGig.venueId, 'gigs.create')) {
+          await handleCloneAsTemplate(group.primaryGig);
+        }
+      }
+    };
+
+    const openSoundEditor = (group, anchor) => {
+      const rect = anchor?.getBoundingClientRect?.();
+      setSoundManagerPosition(rect ? { top: rect.bottom + 8, left: Math.max(16, rect.right - 280) } : { top: 120, left: 120 });
+      setEditingSoundManager(group.primaryGig.gigId);
+      setSoundManagerValue(group.primaryGig.soundManager || '');
+      closeOptionsMenu();
+    };
+
+    const openNotesEditor = (group, anchor) => {
+      const rect = anchor?.getBoundingClientRect?.();
+      setNotesPosition(rect ? { top: rect.bottom + 8, left: Math.max(16, rect.right - 280) } : { top: 120, left: 120 });
+      setEditingNotes(group.primaryGig.gigId);
+      setNotesValue(group.primaryGig.notes || '');
+      closeOptionsMenu();
+    };
+
+    const openNewGig = ({ route = 'full', entry = 'menu', dateIso = null, kind = 'bookNew', legacy = false } = {}) => {
+      setNewGigMenuOpen(false);
+      setAddGigsEditData(null);
+      setAddGigsInitialDateIso(dateIso);
+      setAddGigsMode?.(kind);
+      setNewGigRoute?.(legacy ? 'legacy' : route);
+      setNewGigEntry?.(entry);
+      setShowAddGigsModal(true);
+    };
+
+    const selectedVenueRecord = venues.find((venue) => venue.venueId === selectedVenue) || null;
+    const venueSwitcherLabel = selectedVenueRecord?.name || 'All venues';
+
     const handleSaveSoundManager = async (gigId, venueId) => {
       if (!hasVenuePerm(venues, venueId, 'gigs.update')) {
         toast.error('You do not have permission to update this gig.');
@@ -978,8 +1240,144 @@ export const Gigs = ({
       }
     };
   
+    const selectedCount = consoleRows?.future.filter((row) => groupIsSelected(row.group)).length || 0;
+
+    const navigateToGig = (group) => {
+      navigate('/venues/dashboard/gigs/gig-applications', {
+        state: {
+          gig: group.primaryGig,
+          ...(group.isGroup && group.gigIds?.length > 1 ? { linkedGigIds: group.gigIds } : {}),
+        },
+      });
+    };
+
     return (
       <>
+        {isMdUp && (
+          <GigsConsole
+            gigsView={gigsView}
+            setGigsView={setGigsView}
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+            searchInputRef={searchInputRef}
+            venues={venues}
+            selectedVenue={selectedVenue}
+            venueSwitcherLabel={venueSwitcherLabel}
+            updateUrlParams={updateUrlParams}
+            venueMenuOpen={venueMenuOpen}
+            setVenueMenuOpen={setVenueMenuOpen}
+            venueMenuRef={venueMenuRef}
+            newGigMenuOpen={newGigMenuOpen}
+            setNewGigMenuOpen={setNewGigMenuOpen}
+            newGigMenuRef={newGigMenuRef}
+            openNewGig={openNewGig}
+            openManageTemplatesModal={openManageTemplatesModal}
+            canShowTemplatesButton={canShowTemplatesButton}
+            consoleRows={consoleRows}
+            consoleStatusKey={consoleStatusKey}
+            selectedCount={selectedCount}
+            allFutureSelected={allFutureSelected}
+            toggleSelectAllFuture={toggleSelectAllFuture}
+            toggleGroupSelection={toggleGroupSelection}
+            groupIsSelected={groupIsSelected}
+            clearSelection={clearSelection}
+            groupTimeLabel={groupTimeLabel}
+            copiedGigId={copiedGigId}
+            copyGigLinkQuiet={copyGigLinkQuiet}
+            navigateToGig={navigateToGig}
+            showPast={showPast}
+            setShowPast={setShowPast}
+            openOptionsGigId={openOptionsGigId}
+            toggleOptionsMenu={toggleOptionsMenu}
+            closeOptionsMenu={closeOptionsMenu}
+            optionsMenuPos={optionsMenuPos}
+            setGroupVisibility={setGroupVisibility}
+            openSoundEditor={openSoundEditor}
+            openNotesEditor={openNotesEditor}
+            openEditGigModal={openEditGigModal}
+            setSelectedGigs={setSelectedGigs}
+            setConfirmType={setConfirmType}
+            setConfirmModal={setConfirmModal}
+            setConfirmMessage={setConfirmMessage}
+            handleCloneAsTemplate={handleCloneAsTemplate}
+            refreshGigs={refreshGigs}
+            handleDuplicateSelected={handleDuplicateSelected}
+            handleBulkMakeTemplate={handleBulkMakeTemplate}
+            handleBulkInviteOnly={handleBulkInviteOnly}
+            setShowInvitesModal={setShowInvitesModal}
+            setSelectedGigForInvites={setSelectedGigForInvites}
+            now={now}
+            calendarView={gigsView === 'react' ? (
+              <div className='body gigs gigs-calendar-body gigs-calendar-react-body'>
+                <GigsCalendarReact
+                  gigs={filteredGigs}
+                  venues={venues}
+                  user={user}
+                  refreshGigs={refreshGigs}
+                  copyToClipboard={copyToClipboard}
+                  setAddGigsEditData={setAddGigsEditData}
+                  setShowAddGigsModal={setShowAddGigsModal}
+                  setShowInvitesModal={setShowInvitesModal}
+                  setSelectedGigForInvites={setSelectedGigForInvites}
+                  onAddGigForDate={(dateIso) => openNewGig({ route: 'quick', entry: 'calendar_day', dateIso, kind: 'bookNew' })}
+                  onEditGig={openEditGigModal}
+                  onRequestConfirm={(type, gigIds) => {
+                    setSelectedGigs(gigIds || []);
+                    setConfirmType(type);
+                    setConfirmModal(true);
+                    setConfirmMessage(type === 'cancel'
+                      ? 'Are you sure you want to cancel this gig?'
+                      : type === 'duplicate'
+                        ? 'Duplicate this gig?'
+                        : 'Are you sure you want to delete this gig? This action cannot be undone.');
+                  }}
+                  onDeleteGigs={async (gigIds) => {
+                    if (!gigIds?.length) return;
+                    try {
+                      await deleteGigsBatch(Array.from(gigIds));
+                      toast.success('Gig deleted.');
+                      refreshGigs();
+                    } catch (err) {
+                      console.error('Failed to delete gig:', err);
+                      toast.error('Failed to delete gig. Please try again.');
+                    }
+                  }}
+                  onDeleteHireOpportunities={async (hireIds) => {
+                    if (!hireIds?.length) return;
+                    try {
+                      for (const id of hireIds) await deleteVenueHireOpportunity(id);
+                      toast.success('Venue hire opportunity removed.');
+                      refreshGigs();
+                    } catch (err) {
+                      console.error('Failed to delete venue hire:', err);
+                      toast.error('Failed to remove. Please try again.');
+                    }
+                  }}
+                >
+                  <div className="gigs-calendar-react-subscribe-row">
+                    <button type="button" className="btn tertiary" onClick={handleSubscribeClick}>
+                      <FontAwesomeIcon icon={faWifi} className="icon" style={{ marginRight: '0.35rem' }} />
+                      Subscribe to calendar
+                    </button>
+                  </div>
+                </GigsCalendarReact>
+              </div>
+            ) : null}
+            editingSoundManager={editingSoundManager}
+            soundManagerValue={soundManagerValue}
+            setSoundManagerValue={setSoundManagerValue}
+            soundManagerPosition={soundManagerPosition}
+            handleSaveSoundManager={handleSaveSoundManager}
+            setEditingSoundManager={setEditingSoundManager}
+            editingNotes={editingNotes}
+            notesValue={notesValue}
+            setNotesValue={setNotesValue}
+            notesPosition={notesPosition}
+            handleSaveNotes={handleSaveNotes}
+            setEditingNotes={setEditingNotes}
+          />
+        )}
+        {!isMdUp && (
         <div className='head gigs'>
           <div className="title requests title-container">
             <div className='title-and-view-switcher'>
@@ -1012,7 +1410,7 @@ export const Gigs = ({
                     <button
                       type="button"
                       className="btn primary gigs-react-book-gig-btn"
-                      onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setAddGigsMode?.('bookNew'); setShowAddGigsModal(true); }}
+                      onClick={() => openNewGig({ route: 'full', entry: 'menu', kind: 'bookNew' })}
                     >
                       <CalendarIconSolid />
                       <span>Create a gig</span>
@@ -1020,7 +1418,7 @@ export const Gigs = ({
                     <button
                       type="button"
                       className="btn secondary gigs-react-add-booking-btn"
-                      onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setAddGigsMode?.('addExisting'); setShowAddGigsModal(true); }}
+                      onClick={() => openNewGig({ route: 'full', entry: 'menu', kind: 'addExisting' })}
                     >
                       <CalendarPlusIcon />
                       <span>Add existing gig</span>
@@ -1125,7 +1523,8 @@ export const Gigs = ({
               </>
               )}
           </div>
-        {gigsView === 'react' ? (
+        )}
+        {!isMdUp && (gigsView === 'react' ? (
           <div className='body gigs gigs-calendar-body gigs-calendar-react-body'>
             <GigsCalendarReact
               gigs={filteredGigs}
@@ -1137,8 +1536,17 @@ export const Gigs = ({
               setShowAddGigsModal={setShowAddGigsModal}
               setShowInvitesModal={setShowInvitesModal}
               setSelectedGigForInvites={setSelectedGigForInvites}
-              onAddGigForDate={(dateIso) => {
-                setAddGigsChoiceDateIso(dateIso);
+              onAddGigForDate={(dateIso) => openNewGig({ route: 'quick', entry: 'calendar_day', dateIso, kind: 'bookNew' })}
+              onEditGig={openEditGigModal}
+              onRequestConfirm={(type, gigIds) => {
+                setSelectedGigs(gigIds || []);
+                setConfirmType(type);
+                setConfirmModal(true);
+                setConfirmMessage(type === 'cancel'
+                  ? 'Are you sure you want to cancel this gig?'
+                  : type === 'duplicate'
+                    ? 'Duplicate this gig?'
+                    : 'Are you sure you want to delete this gig? This action cannot be undone.');
               }}
               onDeleteGigs={async (gigIds) => {
                 if (!gigIds?.length) return;
@@ -1164,17 +1572,18 @@ export const Gigs = ({
                   toast.error('Failed to remove. Please try again.');
                 }
               }}
-            />
-            <div className="gigs-calendar-react-subscribe-row">
-              <button
-                type="button"
-                className="btn tertiary"
-                onClick={handleSubscribeClick}
-              >
-                <FontAwesomeIcon icon={faWifi} className="icon" style={{ marginRight: '0.35rem' }} />
-                Subscribe to calendar
-              </button>
-            </div>
+            >
+              <div className="gigs-calendar-react-subscribe-row">
+                <button
+                  type="button"
+                  className="btn tertiary"
+                  onClick={handleSubscribeClick}
+                >
+                  <FontAwesomeIcon icon={faWifi} className="icon" style={{ marginRight: '0.35rem' }} />
+                  Subscribe to calendar
+                </button>
+              </div>
+            </GigsCalendarReact>
           </div>
         ) : (
         <div className='body gigs'>
@@ -1729,6 +2138,8 @@ export const Gigs = ({
                 )}
               </tbody>
             </table>
+        </div>
+        ))}
             {confirmModal && (
               <Portal>
                 {!loading ? (
@@ -1794,8 +2205,7 @@ export const Gigs = ({
                 fromGigsTable={true}
               />
             )}
-        </div>
-        )}
+
         {/* Modals below render for both table and calendar view so Add/Book a Gig / Subscribe work on calendar page */}
         {addGigsChoiceDateIso && (
           <Portal>

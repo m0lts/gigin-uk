@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FEATURES } from '../../config/features';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
@@ -592,7 +593,7 @@ export const Account = () => {
     const hasArtistProfiles = Array.isArray(user?.artistProfiles) && user.artistProfiles.length > 0;
     const hasStripeAccount = !!user?.stripeConnectId;
     const intentFlag = searchParams.get('show') === 'payouts';
-    const showPayoutSection = hasArtistProfiles || hasStripeAccount || intentFlag;
+    const showPayoutSection = FEATURES.payments && (hasArtistProfiles || hasStripeAccount || intentFlag);
 
     const renderStripeStatusBox = () => {
         if (acctStatusLoading) {

@@ -17,6 +17,7 @@ import { getLocalGigDateTime } from '@services/utils/filtering';
 import { formatDate } from '@services/utils/dates';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
+import { FEATURES } from '../../../../../config/features';
 import { LoadingSpinner } from '@features/shared/ui/loading/Loading';
 import { AddPerformersButton, AddPerformersModal } from '@features/venue/components/AddPerformersButtonAndModal';
 import { AddToContactsModal } from '@features/venue/components/AddToContactsModal';
@@ -28,11 +29,9 @@ import { VenueHireTechSetupMainCard } from '@features/venue/gigs/components/Venu
 import { GigApplications } from '@features/venue/dashboard/GigApplications';
 import { computeCompatibility } from '@services/utils/techRiderCompatibility';
 import {
-  gigSlotHasUnviewedApplicants,
-  gigSlotHasConfirmedArtist,
   isArtistBookingNightFullyBooked,
 } from '@features/venue/gigs/utils/multiSlotGigGroup';
-import { buildVenueHireGigSummaryProgrammeTimeLabel } from '@features/venue/gigs/utils/venueHireGigDetailsTimings';
+import { buildVenueHireGigSummaryProgrammeTimeLabel, formatVenueHireTimeDisplay } from '@features/venue/gigs/utils/venueHireGigDetailsTimings';
 import {
   CloseIcon,
   DocumentsIcon,
@@ -57,6 +56,196 @@ function normalizeCloseBookingAfterAcceptedCount(value) {
   const n = Number(value);
   if (!Number.isFinite(n) || n < 1) return 1;
   return Math.min(99, Math.floor(n));
+}
+
+function clockToMinutes(value) {
+  if (value == null) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  const [hours, minutes] = text.split(':').map(Number);
+  if (!Number.isFinite(hours)) return null;
+  return hours * 60 + (Number.isFinite(minutes) ? minutes : 0);
+}
+
+function formatClock(value) {
+  if (clockToMinutes(value) == null) return '';
+  const formatted = formatVenueHireTimeDisplay(value);
+  return formatted === '—' ? '' : formatted;
+}
+
+function setEndMinutes(startTime, duration) {
+  const start = clockToMinutes(startTime);
+  const length = Number(duration);
+  if (start == null || !(length > 0)) return null;
+  return (start + length) % (24 * 60);
+}
+
+function slotFeeText(slot) {
+  if (!slot || slot.kind === 'Ticketed Gig' || slot.kind === 'Open Mic') return null;
+  const raw = slot.budget
+    || (slot.budgetValue != null && slot.budgetValue !== '' ? `£${slot.budgetValue}` : '')
+    || slot.hireFee
+    || '';
+  const budget = String(raw).trim();
+  if (!budget) return null;
+  if (budget === '£0' || budget === '£') return 'No fee';
+  const numeric = budget.replace(/[^0-9.]/g, '');
+  if (numeric && parseFloat(numeric) > 0) {
+    const amount = parseFloat(numeric);
+    return Number.isInteger(amount) ? `£${amount}` : `£${numeric}`;
+  }
+  return budget;
+}
+
+function freshSlotDoc(slot, gigs) {
+  const id = slot?.gigId || slot?.id;
+  const fresh = id && Array.isArray(gigs) ? gigs.find((gig) => gig.gigId === id) : null;
+  return fresh ? { ...slot, ...fresh, gigId: id } : slot;
+}
+
+function setStatusKey(slot) {
+  const applicants = Array.isArray(slot?.applicants) ? slot.applicants : [];
+  if (applicants.some((applicant) => applicant?.status === 'confirmed' || applicant?.status === 'paid')) return 'booked';
+  if (applicants.some((applicant) => applicant?.status === 'accepted' || applicant?.status === 'payment processing')) return 'awaiting';
+  return 'open';
+}
+
+function readStoredTime(rawGig, eventKey, ...fallbacks) {
+  const timings = rawGig?.eventTimings;
+  const fromEvent = timings && typeof timings === 'object' && !Array.isArray(timings) ? timings[eventKey] : null;
+  for (const value of [fromEvent, ...fallbacks]) {
+    const formatted = formatClock(value);
+    if (formatted) return formatted;
+  }
+  return '';
+}
+
+const SET_STATUS_LABEL = {
+  open: 'Open for applications',
+  awaiting: 'Awaiting payment',
+  booked: 'Booked',
+};
+
+/** Ops rows plus one set per slot, sorted by time. Unset timings are omitted. */
+function buildRunningOrder(rawGig, slots, gigs) {
+  const items = [];
+  const pushOps = (key, label, time) => {
+    if (!time) return;
+    items.push({ kind: 'ops', key, label, time, minutes: clockToMinutes(time) });
+  };
+
+  pushOps('load-in', 'Load-in', readStoredTime(rawGig, 'accessFrom', rawGig?.loadInTime, rawGig?.accessFrom));
+  pushOps('sound-check', 'Sound check', readStoredTime(rawGig, 'soundcheck', rawGig?.soundCheckTime));
+  pushOps('doors', 'Doors', readStoredTime(rawGig, 'doors', rawGig?.doorsTime, rawGig?.doors));
+
+  const setRows = (Array.isArray(slots) ? slots : []).filter(Boolean).map((slot, index) => {
+    const doc = freshSlotDoc(slot, gigs);
+    const start = formatClock(doc?.startTime);
+    const endMinutes = setEndMinutes(doc?.startTime, doc?.duration);
+    const end = endMinutes == null ? '' : formatClock(`${Math.floor(endMinutes / 60)}:${endMinutes % 60}`);
+    const status = setStatusKey(doc);
+    const applicants = Array.isArray(doc?.applicants) ? doc.applicants : [];
+    const newCount = status === 'open'
+      ? applicants.filter((applicant) => applicant && !applicant.viewed && applicant.invited !== true).length
+      : 0;
+    return {
+      kind: 'set',
+      key: doc?.gigId || `set-${index + 1}`,
+      label: `Set ${index + 1}`,
+      time: start || '—',
+      minutes: clockToMinutes(doc?.startTime),
+      range: start && end ? `${start}\u2013${end}` : (start || '—'),
+      endMinutes,
+      fee: slotFeeText(doc),
+      applications: applicants.length,
+      newCount,
+      status,
+    };
+  });
+
+  setRows.forEach((set, index) => {
+    const previous = setRows[index - 1];
+    if (previous && previous.endMinutes != null && set.minutes != null && set.minutes > previous.endMinutes) {
+      items.push({
+        kind: 'ops',
+        key: `break-${index}`,
+        label: 'Break',
+        time: formatClock(`${Math.floor(previous.endMinutes / 60)}:${previous.endMinutes % 60}`),
+        minutes: previous.endMinutes,
+      });
+    }
+    items.push(set);
+  });
+
+  pushOps('curfew', 'Curfew', readStoredTime(rawGig, 'mustVacate', rawGig?.curfew, rawGig?.rentalHardCurfew));
+
+  const timed = items.filter((item) => item.minutes != null);
+  const untimed = items.filter((item) => item.minutes == null);
+  timed.sort((a, b) => {
+    if (a.minutes !== b.minutes) return a.minutes - b.minutes;
+    if (a.kind !== b.kind) return a.kind === 'ops' ? -1 : 1;
+    return 0;
+  });
+  return [...timed, ...untimed];
+}
+
+function SlotBodyMount({ gigId, onMount }) {
+  const ref = useCallback((node) => {
+    onMount(gigId, node);
+  }, [gigId, onMount]);
+  return <div ref={ref} />;
+}
+
+function RunningOrder({ rawGig, slots, gigs, onSlotBodyMount }) {
+  const items = buildRunningOrder(rawGig, slots, gigs);
+  if (!items.length) return null;
+  return (
+    <ol className="venue-gig-running" aria-label="Running order">
+      {items.map((item, index) => {
+        const position = `${index === 0 ? ' is-first' : ''}${index === items.length - 1 ? ' is-last' : ''}`;
+        return (
+          <li
+            key={item.key}
+            className={`venue-gig-running__item venue-gig-running__item--${item.kind}${position}`}
+          >
+            <span className="venue-gig-running__time">{item.time}</span>
+            <span className="venue-gig-running__track" aria-hidden="true">
+              <span className="venue-gig-running__line" />
+              <span className={`venue-gig-running__dot venue-gig-running__dot--${item.kind === 'set' ? item.status : 'ops'}`} />
+            </span>
+            <div className="venue-gig-running__body">
+              {item.kind === 'ops' ? (
+                <p className="venue-gig-running__ops">{item.label}</p>
+              ) : (
+                <article className="venue-gig-running__card">
+                  <div className="venue-gig-running__card-head">
+                    <span className="venue-gig-running__card-title">
+                      <span className="venue-gig-running__set-name">{item.label}</span>
+                      <span className="venue-gig-running__range">{item.range}</span>
+                      {item.fee ? <span className="venue-gig-running__fee">{item.fee}</span> : null}
+                    </span>
+                    <span className="venue-gig-running__card-meta">
+                      <span className="venue-gig-running__apps">
+                        {item.applications} application{item.applications === 1 ? '' : 's'}
+                      </span>
+                      {item.newCount > 0 ? (
+                        <span className="venue-gig-running__new">{item.newCount} new</span>
+                      ) : null}
+                      <span className={`venue-gig-running__pill venue-gig-running__pill--${item.status}`}>
+                        <span className="venue-gig-running__pill-dot" />
+                        {SET_STATUS_LABEL[item.status]}
+                      </span>
+                    </span>
+                  </div>
+                  <SlotBodyMount gigId={item.key} onMount={onSlotBodyMount} />
+                </article>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
 
 function slotTimeRangeLabel(slotGig) {
@@ -147,11 +336,26 @@ export function GigDetailsPanel({
   const [showApplicationsSettingsMenu, setShowApplicationsSettingsMenu] = useState(false);
   /** Venue hire: “closing booking after N applications” controls behind the Applications tile cog. */
   const [showApplicationsBookingLimitSettings, setShowApplicationsBookingLimitSettings] = useState(false);
-  /** Multi-set applications: active tab (strip is inside the Applications tile under the title). */
-  const [artistBookingSetTabIndex, setArtistBookingSetTabIndex] = useState(0);
-  /** DOM node for booked-artist tiles above set tabs + applications card (artist booking). */
-  const [artistBookingBookedStripEl, setArtistBookingBookedStripEl] = useState(null);
-  const [artistBookingSendGigDetailsEl, setArtistBookingSendGigDetailsEl] = useState(null);
+  /** Portal targets for each set card body in the running order. */
+  const runningOrderSlotElsRef = useRef({});
+  const [runningOrderSlotEpoch, setRunningOrderSlotEpoch] = useState(0);
+  const setRunningOrderSlotEl = useCallback((gigId, node) => {
+    if (!gigId) return;
+    const map = runningOrderSlotElsRef.current;
+    if (node) {
+      if (map[gigId] === node) return;
+      map[gigId] = node;
+    } else if (map[gigId]) {
+      delete map[gigId];
+    } else {
+      return;
+    }
+    setRunningOrderSlotEpoch((epoch) => epoch + 1);
+  }, []);
+  const runningOrderSlotEls = useMemo(
+    () => ({ ...runningOrderSlotElsRef.current }),
+    [runningOrderSlotEpoch]
+  );
   /** Venue hire: Gigin hirer profile for the booked tile (photo, tech rider). */
   const [venueHireBookerProfile, setVenueHireBookerProfile] = useState(null);
 
@@ -176,10 +380,6 @@ export function GigDetailsPanel({
       }),
     [normalisedGig, rawGig, artistBookingSlotGigs, gigs]
   );
-
-  useEffect(() => {
-    setArtistBookingSetTabIndex(0);
-  }, [rawGig?.gigId, sortedArtistBookingSlotGigs.length]);
 
   /** Invite from Contacts: which contact we're currently inviting; and which we've already invited. */
   const [invitingContactId, setInvitingContactId] = useState(null);
@@ -1596,6 +1796,7 @@ export function GigDetailsPanel({
                               <NewTabIcon /> View profile
                             </button>
                           )}
+                          {FEATURES.chat && (
                           <button
                             type="button"
                             className="btn secondary venue-hire-application-tile__btn"
@@ -1603,6 +1804,7 @@ export function GigDetailsPanel({
                           >
                             Message
                           </button>
+                          )}
                           {isBooker && (
                             <span className="venue-gig-page__hire-booking-pill venue-gig-page__hire-booking-pill--confirmed">Confirmed</span>
                           )}
@@ -1701,6 +1903,7 @@ export function GigDetailsPanel({
                               <NewTabIcon /> View profile
                             </button>
                           )}
+                          {FEATURES.chat && (
                           <button
                             type="button"
                             className="btn secondary venue-hire-application-tile__btn"
@@ -1708,6 +1911,7 @@ export function GigDetailsPanel({
                           >
                             Message
                           </button>
+                          )}
                           {declinedApplicationConvIds.has(conv.id) ? (
                             <span className="venue-hire-application-tile__status venue-hire-application-tile__status--declined">Declined</span>
                           ) : (
@@ -1759,230 +1963,41 @@ export function GigDetailsPanel({
   const status = normalisedGig?.status;
   const isArtistBooking = bookingMode === 'artist_booking' && (status === 'open' || status === 'confirmed');
   if (isArtistBooking) {
-    const isMultiSlotArtistGig =
-      Array.isArray(normalisedGig?.perSlotSummaries) && normalisedGig.perSlotSummaries.length > 1;
-    const applicantsCount =
-      isMultiSlotArtistGig && typeof artistBookingApplicantsTotalCount === 'number'
-        ? artistBookingApplicantsTotalCount
-        : Array.isArray(rawGig?.applicants)
-          ? rawGig.applicants.length
-          : 0;
-    const showArtistBookingSetTabs =
-      isMultiSlotArtistGig && sortedArtistBookingSlotGigs.length > 1;
-
-    const applicationsBody = (
-      <div className="venue-hire-confirmed-panel__applications-body">
-        <GigApplications
-          rawGig={rawGig}
-          setGigInfo={setGigInfo}
-          skipHeader
-          useCardLayout
-          showInvitesModalFromParent={showInvitesModal}
-          setShowInvitesModalFromParent={setShowInvitesModal}
-          gigs={gigs}
-          venues={venues}
-          refreshGigs={refreshGigs}
-          setShowAddGigsModal={setShowAddGigsModal}
-          setAddGigsEditData={setAddGigsEditData}
-          setAddGigsMode={setAddGigsMode}
-          refreshStripe={refreshStripe}
-          customerDetails={customerDetails}
-          copyToClipboard={copyToClipboard}
-          onInviteArtist={!isArtistBookingFullyBooked ? onInviteArtist : undefined}
-          onOpenConfirmGigManually={showConfirmGigManuallyLink ? openConfirmManualModal : undefined}
-          onEditManualBooked={showEditManualBookedLink ? openConfirmManualModal : undefined}
-          hideMultiSlotTabStrip={showArtistBookingSetTabs}
-          multiSlotActiveTabIndex={showArtistBookingSetTabs ? artistBookingSetTabIndex : undefined}
-          onMultiSlotActiveTabIndexChange={
-            showArtistBookingSetTabs ? setArtistBookingSetTabIndex : undefined
-          }
-          bookedTilesPortalContainer={artistBookingBookedStripEl}
-          sendGigDetailsPortalContainer={artistBookingSendGigDetailsEl}
-          sendGigDetailsPortalNightFullyBooked={isArtistBookingFullyBooked}
-        />
-      </div>
-    );
-
-    const artistBookingSetTabsStrip = showArtistBookingSetTabs ? (
-      <div
-        className="venue-gig-page__applications-set-tabs-row venue-gig-page__applications-set-tabs-row--in-card"
-        role="tablist"
-        aria-label="Sets on this gig"
-      >
-        <div className="venue-gig-applications-set-tabs venue-gig-applications-set-tabs--segmented">
-          {sortedArtistBookingSlotGigs.map((slotGig, idx) => {
-            const fresh =
-              Array.isArray(gigs) && slotGig?.gigId
-                ? gigs.find((g) => g.gigId === slotGig.gigId)
-                : null;
-            const slotForNotify = fresh ? { ...slotGig, ...fresh } : slotGig;
-            return (
-              <button
-                key={slotGig.gigId}
-                type="button"
-                role="tab"
-                aria-selected={idx === artistBookingSetTabIndex}
-                className={`venue-gig-applications-set-tab${
-                  idx === artistBookingSetTabIndex ? ' venue-gig-applications-set-tab--active' : ''
-                }`}
-                onClick={() => {
-                  setArtistBookingSetTabIndex(idx);
-                }}
-              >
-                <span className="venue-gig-applications-set-tab__title">
-                  Set {idx + 1}
-                  {gigSlotHasConfirmedArtist(slotForNotify) ? (
-                    <span className="venue-gig-applications-set-tab__status-pill">Booked</span>
-                  ) : null}
-                  {gigSlotHasUnviewedApplicants(slotForNotify) ? (
-                    <span
-                      className="venue-gig-applications-set-tab__notify"
-                      aria-label="New application"
-                    />
-                  ) : null}
-                </span>
-                <span className="venue-gig-applications-set-tab__time">
-                  {slotTimeRangeLabel(slotGig)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    ) : null;
-
-    const artistBookingApplicationsSection = (
-      <>
-        <div
-          ref={setArtistBookingSendGigDetailsEl}
-          className="venue-gig-page__send-gig-details-portal-host"
-        />
-        <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications gig-details-tile">
-        {isArtistBookingFullyBooked ? (
-          <>
-            <div className="venue-hire-confirmed-panel__applications-top">
-              <button
-                type="button"
-                className="venue-hire-confirmed-panel__applications-header"
-                onClick={() => setShowApplicationsTile((v) => !v)}
-                aria-expanded={showApplicationsTile}
-              >
-                <span className="venue-hire-confirmed-panel__applications-header-inner">
-                  <span className="fill-this-slot__header fill-this-slot__header--invite-promoter">
-                    <MessageIcon />
-                    <span className="fill-this-slot__title fill-this-slot__title--invite-promoter venue-hire-confirmed-panel__applications-title">
-                      Applications ({applicantsCount})
-                    </span>
-                  </span>
-                  {showApplicationsTile
-                    ? <UpChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden />
-                    : <DownChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden />}
-                </span>
-              </button>
-              {renderApplicationsSettingsCogMenu()}
-            </div>
-            {/*
-              Keep GigApplications mounted while collapsed so booked tiles can portal to
-              venue-gig-page__booked-strip. `hidden` only hides this subtree in the card;
-              portaled nodes are not descendants, so they stay visible at the top.
-            */}
-            <div
-              className="venue-hire-confirmed-panel__applications-expandable"
-              hidden={!showApplicationsTile}
-            >
-              {artistBookingSetTabsStrip}
-              {applicationsBody}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="venue-hire-confirmed-panel__applications-top">
-              <div className="venue-hire-confirmed-panel__applications-title-row">
-                <div className="venue-hire-confirmed-panel__applications-title-block fill-this-slot__header fill-this-slot__header--invite-promoter">
-                  <MessageIcon />
-                  <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">
-                    Applications ({applicantsCount})
-                  </h3>
-                </div>
-              </div>
-              {renderApplicationsSettingsCogMenu()}
-            </div>
-            {artistBookingSetTabsStrip}
-            {applicationsBody}
-          </>
-        )}
-        </div>
-      </>
-    );
 
     return (
       <>
         <div className="venue-hire-confirmed-panel gig-details-main">
-          <div ref={setArtistBookingBookedStripEl} className="venue-gig-page__booked-strip" />
-          {!isArtistBookingFullyBooked ? artistBookingApplicationsSection : null}
-          {renderVenueProfileVisibilityTile()}
-
-          {hireId ? (
-            <div className="gig-details-tile-row gig-details-tile-row--tech-span">
-              <div className="gig-details-tile gig-details-tile--tech-wide">
-                <VenueHireTechSetupMainCard
-                  rawGig={rawGig}
-                  normalisedGig={normalisedGig}
-                  setGigInfo={setGigInfo}
-                  refreshGigs={refreshGigs}
-                  venues={venues}
-                />
-              </div>
-            </div>
-          ) : null}
-
-          <div className="gig-details-tile-row">
-            <div className="gig-details-tile gig-details-tile--documents gig-details-tile--half">
-              <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
-                <DocumentsIcon />
-                <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Documents</h3>
-              </div>
-              {combinedListingDocuments.length === 0 ? (
-                <p className="gig-details-tile__empty">No documents attached to this listing.</p>
-              ) : (
-                <ul className="gig-details-doc-list">
-                  {combinedListingDocuments.map((doc, i) => (
-                    <li key={doc.key || `doc-${i}`} className="gig-details-doc-row">
-                      <div className="gig-details-doc-row__main">
-                        <span className="gig-details-doc-row__title">{doc.title || 'Document'}</span>
-                        {doc.signed === true ? (
-                          <span className="gig-details-doc-row__signed gig-details-doc-row__signed--yes" title="Signed">
-                            Signed
-                          </span>
-                        ) : null}
-                      </div>
-                      {doc.sourceUrl ? (
-                        <a
-                          href={doc.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn tertiary gig-details-doc-row__download"
-                          download
-                          aria-label={`Download ${doc.title || 'document'}`}
-                          title="Download"
-                        >
-                          <DownloadIcon />
-                        </a>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="gig-details-tile gig-details-tile--internal-notes gig-details-tile--half">
-              <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
-                <PencilIcon />
-                <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Notes</h3>
-              </div>
-              {renderGigPageInternalNotesTileBody()}
-            </div>
-          </div>
-          {isArtistBookingFullyBooked ? artistBookingApplicationsSection : null}
+          <RunningOrder
+            rawGig={rawGig}
+            slots={
+              sortedArtistBookingSlotGigs.length
+                ? sortedArtistBookingSlotGigs
+                : (artistBookingSlotGigs?.length ? artistBookingSlotGigs : [rawGig])
+            }
+            gigs={gigs}
+            onSlotBodyMount={setRunningOrderSlotEl}
+          />
+          <GigApplications
+            rawGig={rawGig}
+            setGigInfo={setGigInfo}
+            skipHeader
+            useCardLayout
+            showInvitesModalFromParent={showInvitesModal}
+            setShowInvitesModalFromParent={setShowInvitesModal}
+            gigs={gigs}
+            venues={venues}
+            refreshGigs={refreshGigs}
+            setShowAddGigsModal={setShowAddGigsModal}
+            setAddGigsEditData={setAddGigsEditData}
+            setAddGigsMode={setAddGigsMode}
+            refreshStripe={refreshStripe}
+            customerDetails={customerDetails}
+            copyToClipboard={copyToClipboard}
+            onInviteArtist={!isArtistBookingFullyBooked ? onInviteArtist : undefined}
+            onOpenConfirmGigManually={showConfirmGigManuallyLink ? openConfirmManualModal : undefined}
+            onEditManualBooked={showEditManualBookedLink ? openConfirmManualModal : undefined}
+            runningOrderSlotTargets={runningOrderSlotEls}
+          />
         </div>
 
         {applicationsTechRiderProfile && (
@@ -2139,7 +2154,7 @@ export function GigDetailsPanel({
                   </p>
                 </div>
                 <div className="venue-gig-booked-tile__actions">
-                  {isBookerGigin && bookerConversation ? (
+                  {FEATURES.chat && isBookerGigin && bookerConversation ? (
                     <button
                       type="button"
                       className="btn secondary venue-gig-booked-tile__btn"

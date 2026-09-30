@@ -16,6 +16,7 @@ import { getMusicianProfileByMusicianId, withdrawMusicianApplication } from '../
 import { toast } from 'sonner';
 import { markInviteAsViewed } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { FEATURES } from '../../../config/features';
 
 
 export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandProfiles, setGigs, setGigApplications, savedGigs, setSavedGigs }) => {
@@ -454,12 +455,14 @@ export const Gigs = ({ gigApplications, musicianId, musicianProfile, gigs, bandP
                                                             <button onClick={() => handleSaveGig(gig)}>Save Gig <SaveIcon /></button>
                                                         )} */}
                                                         <button onClick={(e) => { closeOptionsMenu(); openInNewTab(`/venues/${gig.venueId}?musicianId=${musicianId}`, e) }}>View Venue Page <NewTabIcon /></button>
+                                                        {FEATURES.chat && (
                                                         <button onClick={() => {
                                                             closeOptionsMenu();
                                                             handleContactVenue(appliedProfile, gig, gig.venueId);
                                                         }}>
                                                             Contact Venue <MailboxFullIcon />
                                                         </button>
+                                                        )}
                                                         {(gigStatus.text === 'Confirmed' && gig.startDateTime.toDate() > now) ? (
                                                             <button onClick={() => { closeOptionsMenu(); setUserCancelling(true); setGigForHandbook(gig); setShowGigHandbook(true); setFromOptionsMenu(true) }} className='danger'>Cancel Gig <CancelIcon /></button>
                                                         ) : gigStatus.text !== 'Withdrawn' && (

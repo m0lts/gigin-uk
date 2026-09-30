@@ -1,4 +1,5 @@
-import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Route, Routes, useLocation, useNavigate, Navigate } from 'react-router-dom'
+import { FEATURES } from '../../../config/features';
 import { Sidebar } from './Sidebar'
 import React, { useState, useEffect, useCallback } from 'react'
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
@@ -114,15 +115,15 @@ export const MusicianDashboard = ({ user, setNoProfileModal, setNoProfileModalCl
             <Route index element={<Overview user={user} musicianProfile={musicianProfile} gigApplications={gigApplications} gigs={gigs} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} bandProfiles={bandProfiles} unseenInvites={unseenInvites} setUnseenInvites={setUnseenInvites} />} />
             <Route path='profile' element={<Profile musicianProfile={musicianProfile} user={user} />} />
             <Route path='gigs' element={<Gigs gigApplications={gigApplications} musicianId={musicianProfile.musicianId} musicianProfile={musicianProfile} gigs={gigs} bandProfiles={bandProfiles} setGigs={setGigs} setGigApplications={setGigApplications} savedGigs={savedGigs} setSavedGigs={setSavedGigs} />} />
-            <Route path='bands' element={<Bands bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} />} />
-            <Route path="bands/create" element={<BandCreator musicianProfile={musicianProfile} refreshData={refreshMusicianProfile} />} />
-            <Route path="bands/join" element={<JoinBand musicianProfile={musicianProfile} />} />
-            <Route path="bands/:bandId" element={<BandDashboard user={user} musicianProfile={musicianProfile} bandProfiles={bandProfiles} />} />
-            <Route path='finances' element={<Finances user={user} musicianProfile={musicianProfile} />} />
+            <Route path='bands' element={FEATURES.bands ? <Bands bandProfiles={bandProfiles} refreshData={refreshMusicianProfile} /> : <Navigate to="/dashboard" replace />} />
+            <Route path="bands/create" element={FEATURES.bands ? <BandCreator musicianProfile={musicianProfile} refreshData={refreshMusicianProfile} /> : <Navigate to="/dashboard" replace />} />
+            <Route path="bands/join" element={FEATURES.bands ? <JoinBand musicianProfile={musicianProfile} /> : <Navigate to="/dashboard" replace />} />
+            <Route path="bands/:bandId" element={FEATURES.bands ? <BandDashboard user={user} musicianProfile={musicianProfile} bandProfiles={bandProfiles} /> : <Navigate to="/dashboard" replace />} />
+            <Route path='finances' element={FEATURES.finances ? <Finances user={user} musicianProfile={musicianProfile} /> : <Navigate to="/dashboard" replace />} />
           </Routes>
         </div>
       </div>
-      {showReviewModal && gigToReview && (
+      {FEATURES.reviews && showReviewModal && gigToReview && (
         <Portal>
           <ReviewModal
             gigData={gigToReview}

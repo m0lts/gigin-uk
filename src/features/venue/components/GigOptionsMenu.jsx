@@ -1,5 +1,5 @@
 import React from 'react';
-import { SettingsIcon, EditIcon, CancelIcon, DeleteGigIcon, NewTabIcon } from '@features/shared/ui/extras/Icons';
+import { SettingsIcon, EditIcon, CancelIcon, DeleteGigIcon, NewTabIcon, OptionsIcon } from '@features/shared/ui/extras/Icons';
 import '@styles/host/gigs-calendar-react.styles.css';
 
 /**
@@ -21,6 +21,8 @@ export function GigOptionsMenu({
   onCancelGig,
   showDeleteGig,
   onDeleteGig,
+  /** `icon` is the 34×34 ellipsis trigger used on the console gig-details bar. */
+  appearance = 'default',
 }) {
   const hasPreview = Boolean(showPreviewGigPost && onPreviewGigPost);
   const hasEdit = Boolean(showEditGig && onEditGig);
@@ -30,24 +32,37 @@ export function GigOptionsMenu({
     return null;
   }
 
+  const icon = appearance === 'icon';
+  const itemClass = icon
+    ? 'venue-gig-page__menu-item'
+    : 'gigs-calendar-react__venue-hire-more-menu-item';
+  const dangerClass = icon
+    ? ' venue-gig-page__menu-item--danger'
+    : ' gigs-calendar-react__venue-hire-more-menu-item--danger';
+
   return (
-    <div ref={menuRef} style={{ position: 'relative' }}>
+    <div ref={menuRef} className={icon ? 'venue-gig-page__menu' : undefined} style={{ position: 'relative' }}>
       <button
         type="button"
-        className={`btn tertiary gigs-calendar-react__venue-hire-options-btn${isOpen ? ' active' : ''}`}
+        className={icon
+          ? `venue-gig-page__icon-btn${isOpen ? ' is-open' : ''}`
+          : `btn tertiary gigs-calendar-react__venue-hire-options-btn${isOpen ? ' active' : ''}`}
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         aria-haspopup="true"
         aria-expanded={isOpen}
         aria-label="Options"
       >
-        <SettingsIcon /> Options
+        {icon ? <OptionsIcon /> : (<><SettingsIcon /> Options</>)}
       </button>
       {isOpen && (
-        <div className="gigs-calendar-react__venue-hire-more-menu" onClick={(e) => e.stopPropagation()}>
+        <div
+          className={icon ? 'venue-gig-page__menu-panel' : 'gigs-calendar-react__venue-hire-more-menu'}
+          onClick={(e) => e.stopPropagation()}
+        >
           {hasPreview && (
             <button
               type="button"
-              className="gigs-calendar-react__venue-hire-more-menu-item"
+              className={itemClass}
               title={previewGigPostTitle}
               onClick={(e) => { onPreviewGigPost(e); onToggle(); }}
             >
@@ -57,7 +72,7 @@ export function GigOptionsMenu({
           {hasEdit && (
             <button
               type="button"
-              className="gigs-calendar-react__venue-hire-more-menu-item"
+              className={itemClass}
               onClick={() => { onEditGig(); onToggle(); }}
             >
               Edit gig <EditIcon />
@@ -66,7 +81,7 @@ export function GigOptionsMenu({
           {hasCancel && (
             <button
               type="button"
-              className="gigs-calendar-react__venue-hire-more-menu-item gigs-calendar-react__venue-hire-more-menu-item--danger"
+              className={`${itemClass}${dangerClass}`}
               onClick={() => { onCancelGig(); onToggle(); }}
             >
               Cancel gig <CancelIcon />
@@ -75,7 +90,7 @@ export function GigOptionsMenu({
           {hasDelete && (
             <button
               type="button"
-              className="gigs-calendar-react__venue-hire-more-menu-item gigs-calendar-react__venue-hire-more-menu-item--danger"
+              className={`${itemClass}${dangerClass}`}
               onClick={() => { onDeleteGig(); onToggle(); }}
             >
               Delete gig <DeleteGigIcon />

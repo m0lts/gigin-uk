@@ -4,6 +4,61 @@ import { formatDate } from '@services/utils/dates';
 import { FacebookIcon, InstagramIcon, TwitterIcon, VenueIconSolid } from '@features/shared/ui/extras/Icons';
 import { buildBookNewListingPreview } from './bookNewListingPreviewModel';
 
+function CompactListingPreview({ gig, venue, dateIso, kind, artistName }) {
+  const photos = venue?.photos || [];
+  const photo = photos[0];
+  const title = String(gig?.gigName || '').trim() || (venue?.name ? `Gig at ${venue.name}` : 'Gig at your venue');
+  const titleEmpty = !String(gig?.gigName || '').trim();
+  const start = gig?.timingMusicStartTime || gig?.startTime || '—';
+  const end = gig?.timingMusicStopTime || '—';
+  const description = String(gig?.extraInformation || '').trim();
+  const looking = String(gig?.gigType || '').split(',').map((part) => part.trim()).filter(Boolean);
+  const tickets = gig?.ticketingModel === 'venue' ? 'Venue sells tickets' : gig?.ticketingModel === 'artist' ? 'Artist sells tickets' : 'Not ticketed';
+  const sets = [
+    { start: gig?.startTime, duration: gig?.duration, fee: gig?.slotBudgets?.[0] || gig?.unifiedFeeAmount },
+    ...(gig?.extraSlots || []).map((slot, index) => ({ start: slot.startTime, duration: slot.duration, fee: gig?.slotBudgets?.[index + 1] })),
+  ];
+  if (kind === 'booked') {
+    const who = artistName || 'the artist';
+    return (
+      <div className="ng-preview">
+        <div className="ng-kicker">What the artist will get</div>
+        <article className="ng-listing">
+          <p className="ng-mono ng-listing__when">{dateIso || 'Date'} · {start}–{end}</p>
+          <h3>{title}</h3>
+          <p className="ng-listing__desc">You’re confirmed to play at {venue?.name || 'the venue'}. We’ll send {who} the date, times{sets[0]?.fee && sets[0].fee !== '£' ? ` and the agreed fee of ${sets[0].fee}` : ''}.</p>
+        </article>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ng-preview">
+      <div className="ng-kicker">What artists will see</div>
+      <article className="ng-listing">
+        <div className="ng-listing__photo" style={photo ? { backgroundImage: `url(${typeof photo === 'string' ? photo : photo.url || photo.src || ''})` } : undefined} />
+        <p className="ng-mono ng-listing__when">{dateIso || 'Date'} · {start}–{end}</p>
+        <h3 className={titleEmpty ? 'is-placeholder' : ''}>{title}</h3>
+        <p className="ng-listing__venue">{venue?.name || 'Venue'}{venue?.capacity ? ` · ${venue.capacity} cap` : ''}</p>
+        <div className="ng-listing__sets">
+          {sets.map((set, index) => (
+            <div key={index}>
+              <span>Set {index + 1} · {set.start || '—'}</span>
+              <span>{set.fee && set.fee !== '£' ? set.fee : 'No fee'}</span>
+            </div>
+          ))}
+        </div>
+        <div className="ng-tags">
+          {looking.map((tag) => <span key={tag}>{tag}</span>)}
+          <span>{tickets}</span>
+        </div>
+        <p className={`ng-listing__desc${description ? '' : ' is-placeholder'}`}>{description || 'Description shows here.'}</p>
+        <button type="button" className="ng-apply" disabled>Apply</button>
+      </article>
+    </div>
+  );
+}
+
 function getGigCapacityDisplay(slot, venue) {
   const raw = slot?.rentalCapacity ?? slot?.capacity ?? venue?.capacity;
   if (raw == null || raw === '') return null;
@@ -49,7 +104,7 @@ function calculateTime(time, offset) {
   return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
 }
 
-export function BookNewEventListingPreview({ gig, venue, dateIso, onClose }) {
+export function BookNewEventListingPreview({ gig, venue, dateIso, onClose, compact = false, kind = 'find', artistName = '' }) {
   const built = useMemo(() => {
     if (!gig || !dateIso) return null;
     return buildBookNewListingPreview({ gig, venue, dateIso });
@@ -61,6 +116,10 @@ export function BookNewEventListingPreview({ gig, venue, dateIso, onClose }) {
     if (!currentSlot?.startTime || currentSlot?.duration == null) return '00:00';
     return calculateTime(currentSlot.startTime, currentSlot.duration);
   }, [currentSlot?.startTime, currentSlot?.duration]);
+
+  if (compact) {
+    return <CompactListingPreview gig={gig} venue={venue} dateIso={dateIso} kind={kind} artistName={artistName} />;
+  }
 
   if (!built || !gigData) return null;
 

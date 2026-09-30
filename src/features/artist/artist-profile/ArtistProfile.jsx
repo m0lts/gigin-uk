@@ -38,6 +38,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { createGigInvite } from '@services/api/gigInvites';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
+import { FEATURES } from '../../../config/features';
 import exampleProfileImage from '@assets/images/artist-profile-example.png';
 import { UpdateIcon } from '../../shared/ui/extras/Icons';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
@@ -205,10 +206,10 @@ const ArtistProfileComponent = ({
     if (pathWithoutProfileId === '/artist-profile/gigs' || pathWithoutProfileId.startsWith('/artist-profile/gigs/')) {
       return DashboardView.GIGS;
     }
-    if (pathWithoutProfileId === '/artist-profile/messages' || pathWithoutProfileId.startsWith('/artist-profile/messages/')) {
+    if (FEATURES.chat && (pathWithoutProfileId === '/artist-profile/messages' || pathWithoutProfileId.startsWith('/artist-profile/messages/'))) {
       return DashboardView.MESSAGES;
     }
-    if (pathWithoutProfileId === '/artist-profile/finances' || pathWithoutProfileId.startsWith('/artist-profile/finances/')) {
+    if (FEATURES.finances && (pathWithoutProfileId === '/artist-profile/finances' || pathWithoutProfileId.startsWith('/artist-profile/finances/'))) {
       return DashboardView.FINANCES;
     }
     // Default to PROFILE for /artist-profile or any other /artist-profile/* path
@@ -221,6 +222,16 @@ const ArtistProfileComponent = ({
     dashboardView === DashboardView.GIGS ||
     dashboardView === DashboardView.MESSAGES ||
     dashboardView === DashboardView.FINANCES;
+
+  useEffect(() => {
+    if (viewerMode) return;
+    const path = location.pathname;
+    const hideMessages = !FEATURES.chat && /\/messages(\/|$)/.test(path);
+    const hideFinances = !FEATURES.finances && /\/finances(\/|$)/.test(path);
+    if (!hideMessages && !hideFinances) return;
+    const next = path.replace(/\/(messages|finances)(\/.*)?$/, '') || '/artist-profile';
+    navigate(next, { replace: true });
+  }, [location.pathname, navigate, viewerMode]);
   
   // Track previous profile state to detect completion
   const previousProfileRef = useRef(null);

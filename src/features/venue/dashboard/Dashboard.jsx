@@ -1,4 +1,5 @@
-import { Route, Routes, useLocation, Link, useNavigate } from 'react-router-dom'
+import { Route, Routes, useLocation, Link, useNavigate, Navigate } from 'react-router-dom'
+import { FEATURES } from '../../../config/features';
 import { Sidebar } from './Sidebar'
 import React, { useState, useEffect, useMemo } from 'react'
 import { AddGigsModal } from './AddGigsModal';
@@ -52,6 +53,8 @@ export const VenueDashboard = ({ user }) => {
     const [addGigsEditData, setAddGigsEditData] = useState(null);
     const [addGigsInitialDateIso, setAddGigsInitialDateIso] = useState(null);
     const [addGigsMode, setAddGigsMode] = useState(null); // 'bookNew' | 'addExisting' | null
+    const [newGigRoute, setNewGigRoute] = useState(null);
+    const [newGigEntry, setNewGigEntry] = useState('menu');
     const [addGigsBookNewTemplate, setAddGigsBookNewTemplate] = useState(null);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [revisitingModal, setRevisitingModal] = useState(false);
@@ -90,6 +93,8 @@ export const VenueDashboard = ({ user }) => {
         } else {
           setAddGigsMode('bookNew');
         }
+        setNewGigRoute('full');
+        setNewGigEntry('crm');
         if (location.state?.initialDateIso) setAddGigsInitialDateIso(location.state.initialDateIso);
         if (location.state?.buildingForMusician) setBuildingForMusician(true);
         if (location.state?.musicianData) setBuildingForMusicianData(location.state?.musicianData);
@@ -106,6 +111,7 @@ export const VenueDashboard = ({ user }) => {
     }, [location, navigate]);
   
     useEffect(() => {
+      if (!FEATURES.reviews) return;
       if (!gigs?.length) return;
       const gigsWithReviewPerm = gigs.filter(gig =>
         hasVenuePerm(venueProfiles, gig.venueId, 'reviews.create')
@@ -153,7 +159,8 @@ export const VenueDashboard = ({ user }) => {
             )}
             <div className='window venues'>
               {isMdUp && (
-                location.pathname !== '/venues/dashboard' && (
+                location.pathname !== '/venues/dashboard' &&
+                !/^\/venues\/dashboard\/gigs\/?$/.test(location.pathname) && (
                     <div className="breadcrumbs">
                         {breadcrumbs.map((crumb, index) => (
                             <React.Fragment key={crumb.path}>
@@ -177,14 +184,14 @@ export const VenueDashboard = ({ user }) => {
                 <div className="output">
                     <Routes>
                         {/* <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setShowAddGigsModal={setShowAddGigsModal} setAddGigsMode={setAddGigsMode} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} requests={requests} />} /> */}
-                        <Route index path='gigs' element={<Gigs gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsInitialDateIso={setAddGigsInitialDateIso} setAddGigsMode={setAddGigsMode} setAddGigsBookNewTemplate={setAddGigsBookNewTemplate} requests={requests} setRequests={setRequests} user={user} refreshGigs={refreshGigs} templates={templates} refreshTemplates={refreshTemplates} />} />
+                        <Route index path='gigs' element={<Gigs gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsInitialDateIso={setAddGigsInitialDateIso} setAddGigsMode={setAddGigsMode} setNewGigRoute={setNewGigRoute} setNewGigEntry={setNewGigEntry} setAddGigsBookNewTemplate={setAddGigsBookNewTemplate} requests={requests} setRequests={setRequests} user={user} refreshGigs={refreshGigs} templates={templates} refreshTemplates={refreshTemplates} />} />
                         <Route path='gigs/gig-applications' element={<VenueGigPageShell setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsMode={setAddGigsMode} gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} user={user} refreshStripe={refreshStripe} customerDetails={customerDetails} refreshGigs={refreshGigs} />} />
-                        <Route path='messages' element={<MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} requests={requests} setRequests={setRequests} setShowAddGigsModal={setShowAddGigsModal} setAddGigsMode={setAddGigsMode} setBuildingForMusician={setBuildingForMusician} setBuildingForMusicianData={setBuildingForMusicianData} setRequestId={setRequestId} setPreferredDate={setPreferredDate} refreshGigs={refreshGigs} />} />
+                        <Route path='messages' element={FEATURES.chat ? <MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} requests={requests} setRequests={setRequests} setShowAddGigsModal={setShowAddGigsModal} setAddGigsMode={setAddGigsMode} setBuildingForMusician={setBuildingForMusician} setBuildingForMusicianData={setBuildingForMusicianData} setRequestId={setRequestId} setPreferredDate={setPreferredDate} refreshGigs={refreshGigs} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} setVenues={setVenueProfiles} />} />
                         <Route path='artists' element={<ArtistCRM user={user} venues={venueProfiles} />} />
-                        <Route path='artists/find' element={<FindArtists user={user} />} />
-                        <Route path='artists/find/nearby-lineups' element={<NearbyLineups />} />
-                        <Route path='finances' element={<Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} />} />
+                        <Route path='artists/find' element={FEATURES.discovery ? <FindArtists user={user} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
+                        <Route path='artists/find/nearby-lineups' element={FEATURES.discovery ? <NearbyLineups /> : <Navigate to="/venues/dashboard/gigs" replace />} />
+                        <Route path='finances' element={FEATURES.finances ? <Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                     </Routes>
                 </div>
             </div>
@@ -195,6 +202,7 @@ export const VenueDashboard = ({ user }) => {
                   setAddGigsEditData(null);
                   setAddGigsInitialDateIso(null);
                   setAddGigsMode(null);
+                  setNewGigRoute(null);
                   setAddGigsBookNewTemplate(null);
                   // Clear any "building for musician" context that may have
                   // been attached via location.state so a later open doesn't
@@ -210,6 +218,9 @@ export const VenueDashboard = ({ user }) => {
                 initialDateIso={addGigsInitialDateIso}
                 editGigData={addGigsEditData}
                 addGigsMode={addGigsMode}
+                newGigRoute={newGigRoute}
+                newGigEntry={newGigEntry}
+                gigs={gigs}
                 templates={templates}
                 refreshTemplates={refreshTemplates}
                 bookNewTemplateToApply={addGigsBookNewTemplate}
@@ -225,7 +236,7 @@ export const VenueDashboard = ({ user }) => {
                 setPreferredDate={setPreferredDate}
               />
             )}
-            {showReviewModal && gigToReview && hasVenuePerm(venueProfiles, gigToReview.venueId, 'reviews.create') && (
+            {FEATURES.reviews && showReviewModal && gigToReview && hasVenuePerm(venueProfiles, gigToReview.venueId, 'reviews.create') && (
               <Portal>
                 <ReviewModal
                     venueProfiles={venueProfiles}

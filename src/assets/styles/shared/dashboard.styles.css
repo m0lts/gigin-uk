@@ -16,6 +16,19 @@
     grid-template-columns: 72px auto;
 }
 
+.dashboard:has(.sidebar.sidebar--console) {
+    grid-template-columns: 248px minmax(0, 1fr);
+}
+
+.dashboard.dashboard--sidebar-collapsed:has(.sidebar.sidebar--console) {
+    grid-template-columns: 68px minmax(0, 1fr);
+}
+
+.dashboard:has(.sidebar.sidebar--console) .window {
+    background-color: var(--gn-console-bg);
+    padding-left: 0;
+}
+
 @media (--bp-md) {
     .dashboard {
         display: block;
@@ -620,4 +633,442 @@
 
 .dashboard .sidebar.sidebar--collapsed .account-dropdown.open .account-dropdown-item:not(.exempt):last-of-type {
     bottom: 0;
+}
+
+/* Venue console sidebar. Scoped so the musician sidebar keeps the light styles above. */
+
+.dashboard .sidebar.sidebar--console {
+    background-color: var(--gn-side-bg);
+    padding: 22px 14px 16px;
+    overflow: visible;
+    font-family: var(--gn-font);
+    color: var(--gn-side-text);
+}
+
+.dashboard .sidebar.sidebar--console button,
+.dashboard .sidebar.sidebar--console a,
+.dashboard .sidebar.sidebar--console li,
+.dashboard .sidebar.sidebar--console span,
+.dashboard .sidebar.sidebar--console p {
+    font-family: var(--gn-font);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__logo-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px;
+    min-height: 0;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__wordmark,
+.dashboard .sidebar.sidebar--console .sidebar__wordmark span {
+    font-family: var(--gn-logo-font);
+    font-weight: 600;
+    font-size: 28px;
+    line-height: 1;
+    color: var(--gn-white);
+    text-decoration: none;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__wordmark-dot {
+    color: var(--gn-orange);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__beta {
+    margin-top: 4px;
+    padding: 2px 6px;
+    border: 1px solid #3A2A26;
+    border-radius: 4px;
+    background: #1E1715;
+    color: #FF9C85;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__venue-wrap {
+    position: relative;
+    margin-top: 24px;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__venue {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--gn-side-hover);
+    border: 1px solid #262A31;
+    text-align: left;
+    color: #8A909C;
+    cursor: default;
+    transition: border-color 150ms linear, background-color 150ms linear;
+}
+
+.dashboard .sidebar.sidebar--console button.sidebar__venue {
+    cursor: pointer;
+}
+
+.dashboard .sidebar.sidebar--console button.sidebar__venue:hover {
+    border-color: #3A3F48;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__venue-mark,
+.dashboard .sidebar.sidebar--console .sidebar__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--gn-white);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__venue-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--gn-orange);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__venue-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__venue-name,
+.dashboard .sidebar.sidebar--console .sidebar__account-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--gn-white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__venue-meta,
+.dashboard .sidebar.sidebar--console .sidebar__account-email {
+    font-size: 12px;
+    font-weight: 400;
+    color: #8A909C;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__chevron {
+    display: flex;
+    width: 10px;
+    flex-shrink: 0;
+    color: #8A909C;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__chevron .icon {
+    font-size: 10px !important;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__popover {
+    position: absolute;
+    z-index: 30;
+    left: 0;
+    right: 0;
+    background: var(--gn-side-hover);
+    border-radius: 10px;
+    padding: 6px;
+    box-shadow: 0 8px 24px rgba(15, 17, 21, 0.28);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__venue-menu {
+    top: calc(100% + 6px);
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__venue-menu .sidebar__popover-item {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__popover-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--gn-white);
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 150ms linear;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__popover-item:hover {
+    background: #262A31;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__popover-item.is-selected {
+    background: var(--gn-side-active);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__popover-item.sidebar__popover-item--danger {
+    color: #FF9C85;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__popover-item .icon {
+    font-size: 14px;
+    padding: 0;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__section {
+    padding: 0 12px;
+    margin: 28px 0 8px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gn-muted);
+}
+
+.dashboard .sidebar.sidebar--console .menu {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    max-height: none;
+    overflow: visible;
+}
+
+.dashboard .sidebar.sidebar--console .menu-item {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 9px;
+    gap: 12px;
+    justify-content: flex-start;
+    color: var(--gn-side-text);
+    font-size: 14.5px;
+    font-weight: 500;
+    transition: background-color 150ms linear, color 150ms linear;
+}
+
+.dashboard .sidebar.sidebar--console .menu-item .body {
+    gap: 12px;
+    justify-content: flex-start;
+    min-width: 0;
+    font-size: 14.5px;
+    font-weight: 500;
+}
+
+.dashboard .sidebar.sidebar--console .menu-item .sidebar__nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    flex-shrink: 0;
+    color: inherit;
+}
+
+.dashboard .sidebar.sidebar--console .menu-item .icon {
+    padding: 0;
+    font-size: 16px;
+}
+
+.dashboard .sidebar.sidebar--console .menu-item:hover {
+    background: var(--gn-side-hover);
+    color: var(--gn-white);
+}
+
+.dashboard .sidebar.sidebar--console .menu-item.active {
+    background: var(--gn-side-active);
+    color: var(--gn-white);
+    font-weight: 500;
+}
+
+.dashboard .sidebar.sidebar--console .menu-item.active .sidebar__nav-icon {
+    color: var(--gn-orange);
+}
+
+.dashboard .sidebar.sidebar--console .menu-item .notification .icon {
+    font-size: 0.45rem;
+    color: var(--gn-orange);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__spacer {
+    flex: 1;
+    min-height: 0;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__collapse {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: #8A909C;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 150ms linear, color 150ms linear;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__collapse:hover {
+    background: var(--gn-side-hover);
+    color: var(--gn-white);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__collapse-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    flex-shrink: 0;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__collapse .icon {
+    font-size: 12px !important;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__account-wrap {
+    position: relative;
+    border-top: 1px solid var(--gn-side-line);
+    padding: 12px 10px 0;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__account {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #8A909C;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #2A2E36;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__account-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__account-menu {
+    bottom: calc(100% + 8px);
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console {
+    align-items: center;
+    gap: 8px;
+    padding: 20px 0;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .sidebar__logo-row {
+    padding: 0;
+    margin-bottom: 20px;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .sidebar__wordmark,
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .sidebar__wordmark span {
+    font-size: 26px;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu {
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 10px;
+    justify-content: center;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item .body {
+    justify-content: center;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item .sidebar__nav-icon {
+    width: auto;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item:hover {
+    background: var(--gn-side-active);
+    color: var(--gn-white);
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item.active {
+    background: var(--gn-orange);
+    color: var(--gn-white);
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item.active .sidebar__nav-icon {
+    background: transparent;
+    color: var(--gn-white);
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item .notification--dot {
+    top: 6px;
+    right: 6px;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .sidebar__collapse {
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    padding: 0;
+    border-radius: 10px;
+    justify-content: center;
+    gap: 0;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .sidebar__collapse-icon {
+    width: auto;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .sidebar__account-wrap {
+    border-top: none;
+    padding: 0;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .sidebar__account {
+    width: 34px;
+    height: 34px;
+    justify-content: center;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .sidebar__avatar {
+    width: 34px;
+    height: 34px;
 }

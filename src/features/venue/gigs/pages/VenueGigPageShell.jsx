@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import '@styles/host/venue-gig-page.styles.css';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import Portal from '@features/shared/components/Portal';
-import { LeftArrowIcon, LinkIcon, InviteIconSolid, CalendarIconLight, LocationPinIcon } from '@features/shared/ui/extras/Icons';
+import { LeftArrowIcon, LinkIcon, InviteIconSolid, CalendarIconLight, LocationPinIcon, RightChevronIcon } from '@features/shared/ui/extras/Icons';
 import { ArtistFillThisSlotTile } from '@features/venue/gigs/components/ArtistFillThisSlotTile';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { getLocalGigDateTime } from '@services/utils/filtering';
@@ -65,7 +65,65 @@ function dedupeGigSlots(slots) {
 function gigFirestoreDateToPlain(dateField) {
   if (!dateField) return null;
   if (typeof dateField.toDate === 'function') return dateField.toDate();
-  return dateField instanceof Date ? dateField : null;
+  if (dateField instanceof Date) return dateField;
+  if (typeof dateField === 'string') {
+    const parsed = new Date(dateField);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  if (dateField.seconds != null) return new Date(dateField.seconds * 1000);
+  return null;
+}
+
+const ARTIST_BOOKING_PILL_LABELS = {
+  confirmed: 'Confirmed',
+  awaiting: 'Awaiting payment',
+  negotiating: 'Negotiating',
+  open: 'Open for applications',
+  closed: 'Closed',
+  played: 'Played',
+  expired: 'Expired · unbooked',
+  dispute: 'In dispute',
+};
+
+function slotIsNegotiating(slot) {
+  const applicants = slot?.applicants || [];
+  return applicants.some((applicant) =>
+    applicant?.status === 'pending'
+    && (applicant.conversationId || (applicant.proposedFee && slot.budgetValue && applicant.proposedFee !== slot.budgetValue))
+  ) || applicants.some((applicant) => applicant?.status === 'accepted' && applicant.conversationId);
+}
+
+/** Same pill as the gigs table: `consolePillKey` + `PILL_LABELS` in Gigs / GigsConsole. */
+function artistBookingStatusPill(slots, now) {
+  const primary = slots?.[0];
+  if (!primary) return { key: 'open', label: ARTIST_BOOKING_PILL_LABELS.open };
+  if (primary.status === 'in dispute' || primary.disputeLogged) {
+    return { key: 'dispute', label: ARTIST_BOOKING_PILL_LABELS.dispute };
+  }
+  const dateTime = getLocalGigDateTime(primary);
+  if (dateTime && dateTime < now) {
+    if (primary.status === 'expired') return { key: 'expired', label: ARTIST_BOOKING_PILL_LABELS.expired };
+    return { key: 'played', label: ARTIST_BOOKING_PILL_LABELS.played };
+  }
+  const list = slots.length ? slots : [primary];
+  const confirmed = (slot) => (slot.applicants || []).some((applicant) => applicant?.status === 'confirmed');
+  if (list.every(confirmed)) return { key: 'confirmed', label: ARTIST_BOOKING_PILL_LABELS.confirmed };
+  if (list.some((slot) => (slot.applicants || []).some((applicant) => applicant?.status === 'accepted'))) {
+    return { key: 'awaiting', label: ARTIST_BOOKING_PILL_LABELS.awaiting };
+  }
+  if (list.some(slotIsNegotiating)) return { key: 'negotiating', label: ARTIST_BOOKING_PILL_LABELS.negotiating };
+  const isOpen = list.some((slot) => slot.status === 'upcoming' || slot.status === 'open');
+  const key = isOpen ? 'open' : 'closed';
+  return { key, label: ARTIST_BOOKING_PILL_LABELS[key] };
+}
+
+function formatArtistBookingDateLine(dateField, venueName) {
+  const date = gigFirestoreDateToPlain(dateField);
+  const datePart = date
+    ? date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+    : '';
+  const venue = venueName ? String(venueName).trim() : '';
+  return [datePart, venue].filter(Boolean).join(' · ');
 }
 
 function isAddExistingOriginGigFromApplicants(g) {
@@ -541,9 +599,66 @@ export function VenueGigPageShell({
   const showArtistInviteInApplications =
     canInviteArtist && !isGigApplicationsClosed && !isArtistBookingFullyBooked;
 
+  const openPreviewListing = (event) => {
+    const id = gigInfo?.id || gigInfo?.gigId;
+    if (id) openInNewTab(isVenueHirePage ? `/hire/${id}` : `/gig/${id}`, event);
+  };
+  const statusPill = isArtistBookingPage ? artistBookingStatusPill(allSlots, now) : null;
+  const dateLine = isArtistBookingPage ? formatArtistBookingDateLine(gigInfo?.date, venueName) : '';
+
   return (
-    <div className="venue-gig-page">
-      <div className="venue-gig-page__container">
+    <div className={`venue-gig-page${isArtistBookingPage ? ' venue-gig-page--console' : ''}`}>
+      {isArtistBookingPage && (
+        <header className="venue-gig-page__bar">
+          <div className="venue-gig-page__crumb">
+            {!isMdUp && (
+              <button
+                type="button"
+                className="btn text venue-gig-page__back"
+                onClick={() => navigate(-1)}
+              >
+                <LeftArrowIcon /> Back
+              </button>
+            )}
+            <Link className="venue-gig-page__crumb-link" to="/venues/dashboard/gigs">Gigs</Link>
+            <span className="venue-gig-page__crumb-chevron" aria-hidden="true">
+              <RightChevronIcon />
+            </span>
+            <span className="venue-gig-page__crumb-current">{venueGigPageTitle}</span>
+          </div>
+          <div className="venue-gig-page__bar-actions">
+            <button type="button" className="venue-gig-page__bar-btn" onClick={openPreviewListing}>
+              Preview listing
+            </button>
+            {showEditGigOption && (
+              <button type="button" className="venue-gig-page__bar-btn" onClick={openEditGigModal}>
+                Edit gig
+              </button>
+            )}
+            <GigOptionsMenu
+              appearance="icon"
+              isOpen={showOptionsMenu}
+              onToggle={() => setShowOptionsMenu((v) => !v)}
+              menuRef={optionsMenuRef}
+              showPreviewGigPost
+              onPreviewGigPost={openPreviewListing}
+              previewGigPostLabel="Preview listing"
+              previewGigPostTitle="Preview listing"
+              showEditGig={showEditGigOption}
+              onEditGig={openEditGigModal}
+              showCancelGig={gigDateTime > now && showCancelGigOption}
+              onCancelGig={() => {
+                toast.info('To cancel an artist booking, use the Options menu on the Gigs list.');
+                navigate('/venues/dashboard/gigs');
+              }}
+              showDeleteGig={gigDateTime > now && showDeleteGigOption}
+              onDeleteGig={() => setShowDeleteConfirm(true)}
+            />
+          </div>
+        </header>
+      )}
+      <div className={isArtistBookingPage ? 'venue-gig-page__scroll' : 'venue-gig-page__container'}>
+        {!isArtistBookingPage && (
         <header className="venue-gig-page__header venue-gig-page__header--surface">
           {!isMdUp && (
             <button
@@ -641,8 +756,22 @@ export function VenueGigPageShell({
             </div>
           </div>
         </header>
+        )}
 
-        <div className="venue-gig-page__layout">
+        <div className={isArtistBookingPage ? 'venue-gig-page__columns' : 'venue-gig-page__layout'}>
+          <div className={isArtistBookingPage ? 'venue-gig-page__column' : 'venue-gig-page__column-passthrough'}>
+          {isArtistBookingPage && (
+            <div className="venue-gig-page__page-head">
+              {dateLine ? <p className="venue-gig-page__date-line">{dateLine}</p> : null}
+              <div className="venue-gig-page__title-line">
+                <h1 className="venue-gig-page__page-title">{venueGigPageTitle}</h1>
+                <span className={`venue-gig-page__pill venue-gig-page__pill--${statusPill.key}`}>
+                  <span className="venue-gig-page__pill-dot" />
+                  {statusPill.label}
+                </span>
+              </div>
+            </div>
+          )}
           <main className="venue-gig-page__main">
             {(() => {
               const venueProfile = gigInfo?.venueId && venues?.length ? venues.find((v) => v.venueId === gigInfo.venueId) ?? null : null;
@@ -704,6 +833,8 @@ export function VenueGigPageShell({
               return isVenueHirePage || isArtistBookingPage ? panel : <div className="venue-gig-page__main-card">{panel}</div>;
             })()}
           </main>
+          </div>
+          <div className={isArtistBookingPage ? 'venue-gig-page__rail' : 'venue-gig-page__column-passthrough'}>
           <BookingSummarySidebar
             normalisedGig={normalisedGig}
             rawGig={gigInfo}
@@ -711,6 +842,12 @@ export function VenueGigPageShell({
             mergedTimelineSlots={allSlots}
             setGigInfo={setGigInfo}
             refreshGigs={refreshGigs}
+            gigLinkUrl={normalisedGig?.links?.gigLinkUrl || (gigInfo?.gigId ? `${window.location.origin}/gig/${gigInfo.gigId}` : '')}
+            onInviteFromContacts={
+              hasVenuePerm(venues, gigInfo?.venueId, 'gigs.invite')
+                ? () => setShowInviteToApplyModal(true)
+                : undefined
+            }
             bookingSummaryOnEditGig={
               hasVenuePerm(venues, gigInfo?.venueId, 'gigs.update') ? openEditGigModal : undefined
             }
@@ -718,6 +855,7 @@ export function VenueGigPageShell({
               hasVenuePerm(venues, gigInfo?.venueId, 'gigs.update') ? openEditGigModal : undefined
             }
           />
+          </div>
         </div>
       </div>
 

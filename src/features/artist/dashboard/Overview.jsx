@@ -11,6 +11,7 @@ import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { MapIcon, NextGigIcon, ImageIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { formatDate } from '../../../services/utils/dates';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { FEATURES } from '../../../config/features';
 
 export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToReview, setGigsToReview, bandProfiles, unseenInvites }) => {
 
@@ -181,7 +182,7 @@ export const Overview = ({ user, musicianProfile, gigApplications, gigs, gigsToR
                                     </div>
                                 </div>
                             </>
-                        ) : bandProfiles.length > 0 && bandProfiles[0] && (
+                        ) : FEATURES.bands && bandProfiles.length > 0 && bandProfiles[0] && (
                             <>
                                 <h1 className='large-title'>My Band Profile</h1>
                                 <div className="overview-profile">

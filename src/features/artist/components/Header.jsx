@@ -19,6 +19,7 @@ import {
     UserIcon,
     VenueBuilderIcon,
     TicketIcon } from '@features/shared/ui/extras/Icons';
+import { FEATURES } from '../../../config/features';
 import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth';
 import { useState, useEffect, useMemo } from 'react'
@@ -251,10 +252,12 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                         <>
                             <div className='left-block'>
                                 <NoTextLogoLink />
+                                {FEATURES.discovery && (
                                 <Link className={`link ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`} to={'/find-a-gig'}>
                                     Find a Gig
                                 </Link>
-                                {isLgUp && (
+                                )}
+                                {FEATURES.discovery && isLgUp && (
                                     <Link className={`link ${location.pathname === '/find-venues' ? 'disabled' : ''}`} to={'/find-venues'}>
                                         Find a Venue
                                     </Link>
@@ -279,6 +282,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                                     >
                                                         Gigs
                                                     </Link>
+                                                    {FEATURES.chat && (
                                                     <Link
                                                         className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
                                                         to={`/artist-profile/${activeProfile.id || activeProfile.profileId}/messages`}
@@ -300,12 +304,15 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                                             )}
                                                         </span>
                                                     </Link>
+                                                    )}
+                                                    {FEATURES.finances && (
                                                     <Link 
                                                         className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} 
                                                         to={`/artist-profile/${activeProfile.id || activeProfile.profileId}/finances`}
                                                     >
                                                         Finances
                                                     </Link>
+                                                    )}
                                                 </>
                                             ) : (
                                                 <>
@@ -315,6 +322,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                                     <Link className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} to={'/artist-profile/gigs'}>
                                                         Gigs
                                                     </Link>
+                                                    {FEATURES.chat && (
                                                     <Link
                                                         className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
                                                         to={'/artist-profile/messages'}
@@ -336,9 +344,12 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                                             )}
                                                         </span>
                                                     </Link>
+                                                    )}
+                                                    {FEATURES.finances && (
                                                     <Link className={`link ${location.pathname.includes('/finances') ? 'disabled' : ''}`} to={'/artist-profile/finances'}>
                                                         Finances
                                                     </Link>
+                                                    )}
                                                 </>
                                             )}
                                         </>

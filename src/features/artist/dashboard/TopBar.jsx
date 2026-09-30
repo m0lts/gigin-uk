@@ -27,6 +27,7 @@ import { listenToUserConversations } from '@services/client-side/conversations';
 import { CloseIcon, DashboardIconSolid, HamburgerMenuIcon } from '../../shared/ui/extras/Icons';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { MobileMenu } from '../../shared/components/MobileMenu';
+import { FEATURES } from '../../../config/features';
 
 export const TopBar = ({ user, bandProfiles }) => {
     
@@ -106,7 +107,7 @@ export const TopBar = ({ user, bandProfiles }) => {
                 </div>
             )} 
             <div className="right buttons">
-                {isLgUp && (
+                {FEATURES.discovery && isLgUp && (
                     <>
                         <Link className='link' to={'/find-a-gig'}>
                             <button className={`btn secondary ${location.pathname === '/find-a-gig' ? 'disabled' : ''}`}>
@@ -116,7 +117,7 @@ export const TopBar = ({ user, bandProfiles }) => {
                         </Link>
                     </>
                 )}
-                {isXlUp && (
+                {FEATURES.discovery && isXlUp && (
                     <Link className='link' to={'/find-venues'}>
                         <button className={`btn secondary ${location.pathname === '/find-venues' ? 'disabled' : ''}`}>
                             <TelescopeIcon />
@@ -124,7 +125,7 @@ export const TopBar = ({ user, bandProfiles }) => {
                         </button>
                     </Link>
                 )}
-                {isLgUp && (
+                {FEATURES.chat && isLgUp && (
                     newMessages ? (
                         <Link className='link' to={'/messages'}>
                             <button className='btn secondary messages'>

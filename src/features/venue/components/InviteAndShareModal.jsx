@@ -13,6 +13,7 @@ import { sendGigInvitationMessage } from '@services/client-side/messages';
 import { sendGigInviteEmail } from '@services/client-side/emails';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import '@styles/host/invite-and-share-modal.styles.css';
+import { FEATURES } from '../../../config/features';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function parseEmails(str) {
@@ -368,6 +369,7 @@ export function InviteAndShareModal({ gig, venues, user, onClose, refreshGigs })
                     >
                       My Contacts
                     </button>
+                    {FEATURES.discovery && (
                     <button
                       type="button"
                       className={`invite-and-share-modal__tab ${activeTab === 'gigin' ? 'invite-and-share-modal__tab--active' : ''}`}
@@ -375,6 +377,7 @@ export function InviteAndShareModal({ gig, venues, user, onClose, refreshGigs })
                     >
                       Find Artists
                     </button>
+                    )}
                   </div>
                   <div className="invite-and-share-modal__picker">
                     {activeTab === 'crm' && (
@@ -419,7 +422,7 @@ export function InviteAndShareModal({ gig, venues, user, onClose, refreshGigs })
                   </div>
                 </>
               )}
-              {activeTab === 'gigin' && (
+              {FEATURES.discovery && activeTab === 'gigin' && (
                 <>
                   <input
                     type="search"

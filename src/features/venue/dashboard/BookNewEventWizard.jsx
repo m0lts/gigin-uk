@@ -5,6 +5,7 @@ import {
   parseLookingForSelection,
   toggleLookingForOption,
 } from './bookNewEventTemplateHelpers';
+import { FEATURES } from '../../../config/features';
 
 /**
  * Optional whole-event fields (multi-set row + single-set timeline).
@@ -488,7 +489,9 @@ export function BookNewEventWizard({
         )}
       </section>
 
+      {(FEATURES.payments || FEATURES.ticketing) && (
       <div className="add-gigs-book-new-pay-tix-row">
+        {FEATURES.payments && (
         <section className="add-gigs-book-new-section add-gigs-book-new-section--pay-tix-col add-gigs-book-new-section--fee-model" aria-labelledby={`bn-pay-${activeTab}`}>
           <h3 id={`bn-pay-${activeTab}`} className="add-gigs-book-new-section-label-upper add-gigs-book-new-section-label-upper--in-pay-tix-row">Fee model</h3>
           <div className="add-gigs-book-new-payment-stack">
@@ -509,6 +512,7 @@ export function BookNewEventWizard({
                   <span className="add-gigs-book-new-fee-card-desc">You offer a fixed fee for the performance</span>
                 </span>
               </label>
+              {FEATURES.venueHire && (
               <label
                 className={`add-gigs-book-new-fee-card${currentGig.paymentModel === 'artist_pays_venue' ? ' add-gigs-book-new-fee-card--selected' : ''}${multiSlot ? ' add-gigs-book-new-fee-card--disabled' : ''}`}
                 title={multiSlot ? 'Not available when listing multiple sets on one night' : undefined}
@@ -527,6 +531,7 @@ export function BookNewEventWizard({
                   <span className="add-gigs-book-new-fee-card-desc">They cover a hire fee to use your venue</span>
                 </span>
               </label>
+              )}
               <label
                 className={`add-gigs-book-new-fee-card${currentGig.paymentModel === 'no_fee' ? ' add-gigs-book-new-fee-card--selected' : ''}`}
               >
@@ -585,7 +590,9 @@ export function BookNewEventWizard({
             )}
           </div>
         </section>
+        )}
 
+        {FEATURES.ticketing && (
         <section className="add-gigs-book-new-section add-gigs-book-new-section--pay-tix-col add-gigs-book-new-section--ticketing" aria-labelledby={`bn-tix-${activeTab}`}>
           <h3 id={`bn-tix-${activeTab}`} className="add-gigs-book-new-section-label-upper add-gigs-book-new-section-label-upper--in-pay-tix-row">Ticketing</h3>
           <div className="add-gigs-book-new-fee-cards" role="radiogroup" aria-labelledby={`bn-tix-${activeTab}`}>
@@ -639,7 +646,9 @@ export function BookNewEventWizard({
             </label>
           </div>
         </section>
+        )}
       </div>
+      )}
 
       {!isAddExisting && (
         <section className="add-gigs-book-new-section add-gigs-book-new-section--gig-desc" aria-labelledby={`bn-desc-${activeTab}`}>
@@ -849,7 +858,7 @@ export function BookNewEventWizard({
                     )}
                   </div>
                 )}
-                {!isRentalFlow && !isAddExisting && !multiSlot && supportsMaxApplicants && (
+                {FEATURES.payments && !isRentalFlow && !isAddExisting && !multiSlot && supportsMaxApplicants && (
                   <div className="add-gigs-field add-gigs-field--full">
                     <label
                       className="label add-gigs-more-details-field-label"

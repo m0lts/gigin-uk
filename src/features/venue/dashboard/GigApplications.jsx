@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { FEATURES } from '../../../config/features';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
@@ -13,7 +14,7 @@ import {
     TickIcon
 } from '@features/shared/ui/extras/Icons';
 import { format } from 'date-fns';
-import { LinkIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
+import { LinkIcon, InviteIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
 import '@styles/host/invite-and-share-modal.styles.css';
 import { SendGigDetailsTile } from '@features/venue/components/SendGigDetailsTile';
 import { ApplicantTechSetupModal } from '@features/venue/components/ApplicantTechSetupModal';
@@ -23,6 +24,7 @@ import { PaymentModal } from '@features/venue/components/PaymentModal';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { getMusicianProfileByMusicianId, getArtistProfileById } from '@services/client-side/artists';
+import { decideGuestApplication } from '@services/client-side/guestApplications';
 import { getUserEmailById } from '@services/api/users';
 import {
     getConversationsByParticipantAndGigId,
@@ -57,7 +59,9 @@ import { GigHandbook } from '@features/artist/components/GigHandbook';
 import { storage } from '@lib/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
 import { GigInvitesModal } from '../components/GigInvitesModal';
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const stripePromise = FEATURES.payments
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 const BOOKED_APPLICANT_STATUSES = ['confirmed', 'accepted', 'paid', 'payment processing'];
 
@@ -144,6 +148,64 @@ function ApplicationMessagePreview({ gigId, participantUserId, participantProfil
     );
 }
 
+function runningOrderInitials(name) {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    return `${parts[0][0] || ''}${parts[1]?.[0] || ''}`.toUpperCase();
+}
+
+function runningOrderFeeLabel(value) {
+    if (value == null || value === '') return '';
+    const text = String(value).trim();
+    if (!text || text === '£') return '';
+    if (text.startsWith('£')) return text;
+    const numeric = text.replace(/[^0-9.]/g, '');
+    return numeric ? `£${numeric}` : text;
+}
+
+function runningOrderApplicantMeta(profile) {
+    const genre = Array.isArray(profile?.genres) && profile.genres.length
+        ? profile.genres[0]
+        : (profile?.genre || '');
+    const rating = profile?.averageRating ?? profile?.rating;
+    const ratingText = typeof rating === 'number' && rating > 0 ? rating.toFixed(1) : '';
+    return [genre, ratingText].filter(Boolean).join(' · ');
+}
+
+/** Quoted application message for a running-order row. */
+function RunningOrderQuote({ gigId, participantUserId, participantProfileId, stored }) {
+    const [text, setText] = useState(typeof stored === 'string' && stored.trim() ? stored.trim() : null);
+    useEffect(() => {
+        if (typeof stored === 'string' && stored.trim()) {
+            setText(stored.trim());
+            return undefined;
+        }
+        if (!gigId || (!participantProfileId && !participantUserId)) return undefined;
+        let cancelled = false;
+        (async () => {
+            try {
+                let conversations = [];
+                if (participantProfileId) {
+                    conversations = await getConversationsByGigAndMusicianProfileId(gigId, participantProfileId);
+                }
+                if (!conversations?.length && participantUserId) {
+                    conversations = await getConversationsByParticipantAndGigId(gigId, participantUserId);
+                }
+                const conversationId = conversations?.[0]?.id;
+                if (!conversationId) return;
+                const msg = await getMostRecentMessage(conversationId, 'application');
+                const next = msg?.text != null && String(msg.text).trim() !== '' ? String(msg.text).trim() : null;
+                if (!cancelled) setText(next);
+            } catch (e) {
+                console.error(e);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [gigId, participantProfileId, participantUserId, stored]);
+    if (!text) return <span className="venue-gig-running__quote" />;
+    return <span className="venue-gig-running__quote">“{text}”</span>;
+}
+
 /** Equipment notes + step-3 message from applicant record; conversation fetch only as fallback for legacy applications. */
 function ApplicantSubmittedNotesSection({ gigId, participantUserId, participantProfileId, applicant }) {
     const trimmed =
@@ -227,6 +289,8 @@ export const GigApplications = ({
      * uses per-slot `maxApplicants` merged with `gigs`.
      */
     sendGigDetailsPortalNightFullyBooked,
+    /** When set, each slot's open/booked body portals into the running-order card and the old applications list is not rendered. */
+    runningOrderSlotTargets = null,
 }) => {
 
     const {isMdUp, isLgUp} = useBreakpoint();
@@ -291,6 +355,7 @@ export const GigApplications = ({
         extraDetails: '',
       });
     const [eventLoading, setEventLoading] = useState(false);
+    const [guestDetail, setGuestDetail] = useState(null);
     const [editingNotes, setEditingNotes] = useState(false);
     const [notesValue, setNotesValue] = useState('');
     const [savingNotes, setSavingNotes] = useState(false);
@@ -356,6 +421,7 @@ export const GigApplications = ({
         }
     };
     const [inviteModalGig, setInviteModalGig] = useState(null);
+    const [expandedRunningSets, setExpandedRunningSets] = useState({});
     const [showEditTimeModal, setShowEditTimeModal] = useState(false);
     const [editTimeModalMode, setEditTimeModalMode] = useState('both'); // 'name', 'timings', or 'both'
     const gigId = (rawGig ?? internalGigInfo)?.gigId || location.state?.gig?.gigId || '';
@@ -475,7 +541,7 @@ export const GigApplications = ({
         gigInfo.applicants.some(a => a?.viewed !== true);
     
       // Don’t call again for the same gig this session
-      if (!hasUnviewed || markedRef.current.has(gigInfo.gigId)) {
+      if (runningOrderSlotTargets || !hasUnviewed || markedRef.current.has(gigInfo.gigId)) {
         // still run musician profiles fetch
         fetchProfiles();
         return;
@@ -563,7 +629,7 @@ export const GigApplications = ({
           console.error("Error fetching profiles:", e);
         }
       }
-    }, [gigInfo, relatedSlots]);
+    }, [gigInfo, relatedSlots, runningOrderSlotTargets]);
 
     const formatDate = (timestamp) => {
         if (!timestamp) return "—";
@@ -614,8 +680,26 @@ export const GigApplications = ({
             if (!targetGig) return console.error('Target gig not found');
             
             if (getLocalGigDateTime(targetGig) < new Date()) return toast.error('Gig is in the past.');
+            const guestApplicant = (targetGig.applicants || []).find((entry) => entry.id === musicianId && (entry.guest || entry.type === 'guest'));
+            if (guestApplicant) {
+                setEventLoading(true);
+                try {
+                    await decideGuestApplication({ applicationId: musicianId, status: 'accepted' });
+                    const updatedApplicants = (targetGig.applicants || []).map((entry) => entry.id === musicianId ? { ...entry, status: 'confirmed' } : entry);
+                    if (targetGig.gigId === gigInfo.gigId) setGigInfoState?.((prev) => prev ? { ...prev, applicants: updatedApplicants } : prev);
+                    else setRelatedSlots((prev) => prev.map((slot) => slot.gigId === targetGig.gigId ? { ...slot, applicants: updatedApplicants } : slot));
+                    toast.success('Guest application accepted.');
+                    refreshGigs?.();
+                } catch (error) {
+                    console.error(error);
+                    toast.error('Could not accept this guest application.');
+                } finally {
+                    setEventLoading(false);
+                }
+                return;
+            }
             setEventLoading(true);
-            const nonPayableGig = targetGig.kind === 'Open Mic' || targetGig.kind === "Ticketed Gig" || targetGig.budget === '£' || targetGig.budget === '£0';
+            const nonPayableGig = !FEATURES.payments || targetGig.paymentModel === 'no_fee' || targetGig.kind === 'Open Mic' || targetGig.kind === "Ticketed Gig" || targetGig.budget === '£' || targetGig.budget === '£0';
             let globalAgreedFee;
             
             if (targetGig.kind === 'Open Mic') {
@@ -652,7 +736,7 @@ export const GigApplications = ({
                     toast.error('Failed to update gig status. Please try again.');
                     throw new Error('acceptGigOffer: no updatedApplicants')
                 };
-                if (agreedFee == null) {
+                if (agreedFee == null && !nonPayableGig) {
                     toast.error('Failed to update gig status. Please try again.');
                     throw new Error('acceptGigOffer: no agreedFee')
                 };
@@ -673,7 +757,7 @@ export const GigApplications = ({
                             : slot
                     ));
                 }
-                globalAgreedFee = agreedFee;
+                globalAgreedFee = agreedFee ?? '£';
             }
             
             // If this is a multi-slot gig, decline the musician's applications to other slots
@@ -697,6 +781,7 @@ export const GigApplications = ({
             
             const musicianProfile = await getProfileById(musicianId);
             const venueProfile = await getVenueProfileById(targetGig.venueId);
+            if (FEATURES.chat) {
             const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData: targetGig, venueProfile, type: 'application' });
             if (proposedFee === targetGig.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
@@ -723,6 +808,7 @@ export const GigApplications = ({
                     });
                 }
             }
+            }
             await sendGigAcceptedEmail({
                 userRole: 'venue',
                 musicianProfile: musicianProfile,
@@ -732,7 +818,7 @@ export const GigApplications = ({
                 isNegotiated: false,
                 nonPayableGig,
             })
-            if (nonPayableGig) {
+            if (nonPayableGig && FEATURES.payments) {
                 // Only fan out the "gig confirmed" notice to other applicants
                 // once the listing has filled to its `maxApplicants` cap —
                 // otherwise we'd tell pending artists the gig is gone while
@@ -774,6 +860,24 @@ export const GigApplications = ({
             if (!targetGig) return console.error('Target gig not found');
             
             if (getLocalGigDateTime(targetGig) < new Date()) return toast.error('Gig is in the past.');
+            const guestApplicant = (targetGig.applicants || []).find((entry) => entry.id === musicianId && (entry.guest || entry.type === 'guest'));
+            if (guestApplicant) {
+                setEventLoading(true);
+                try {
+                    await decideGuestApplication({ applicationId: musicianId, status: 'declined' });
+                    const updatedApplicants = (targetGig.applicants || []).map((entry) => entry.id === musicianId ? { ...entry, status: 'declined' } : entry);
+                    if (targetGig.gigId === gigInfo.gigId) setGigInfoState?.((prev) => prev ? { ...prev, applicants: updatedApplicants } : prev);
+                    else setRelatedSlots((prev) => prev.map((slot) => slot.gigId === targetGig.gigId ? { ...slot, applicants: updatedApplicants } : slot));
+                    toast.success('Guest application declined.');
+                    refreshGigs?.();
+                } catch (error) {
+                    console.error(error);
+                    toast.error('Could not decline this guest application.');
+                } finally {
+                    setEventLoading(false);
+                }
+                return;
+            }
             setEventLoading(true);
             const {updatedApplicants} = assertOk(
                 await declineGigApplication({ gigData: targetGig, musicianProfileId: musicianId, role: 'venue' }),
@@ -801,6 +905,7 @@ export const GigApplications = ({
             
             const musicianProfile = await getProfileById(musicianId);
             const venueProfile = await getVenueProfileById(targetGig.venueId);
+            if (FEATURES.chat) {
             const { conversationId } = await getOrCreateConversation({ musicianProfile, gigData: targetGig, venueProfile, type: 'application' })
             if (proposedFee === targetGig.budget) {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'application');
@@ -808,6 +913,7 @@ export const GigApplications = ({
             } else {
                 const applicationMessage = await getMostRecentMessage(conversationId, 'negotiation');
                 await updateDeclinedApplicationMessage({ conversationId, originalMessageId: applicationMessage.id, senderId: user.uid, userRole: 'venue', fee: proposedFee });
+            }
             }
             await sendGigDeclinedEmail({
                 userRole: 'venue',
@@ -1173,7 +1279,7 @@ export const GigApplications = ({
 
     /** Mark the active set’s applicants viewed when the venue opens that tab (clears notification dot after refresh). */
     useEffect(() => {
-        if (!useCardLayout || sortedSlots.length <= 1 || !gigInfo?.venueId) return;
+        if (runningOrderSlotTargets || !useCardLayout || sortedSlots.length <= 1 || !gigInfo?.venueId) return;
         const idx = Math.min(
             Math.max(0, activeMultiSlotTabIndex),
             sortedSlots.length - 1
@@ -1198,6 +1304,7 @@ export const GigApplications = ({
         activeMultiSlotTabIndex,
         gigInfo?.venueId,
         refreshGigs,
+        runningOrderSlotTargets,
     ]);
 
     // Helper to get slot status
@@ -1599,7 +1706,9 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
         const applicant = slotGig?.applicants?.find((a) => a.id === profile.id);
         const sender = applicant ? applicant.sentBy : (profile.sentBy || 'musician');
         const status = applicant ? applicant.status : (profile.status || 'pending');
-        const gigAlreadyConfirmed = slotGig?.applicants?.some((a) =>
+        const gigAlreadyConfirmed = (!FEATURES.payments || slotGig?.paymentModel === 'no_fee' || slotGig?.kind === 'Open Mic')
+            ? false
+            : slotGig?.applicants?.some((a) =>
             ['confirmed', 'accepted', 'paid'].includes(a?.status)
         );
 
@@ -1613,20 +1722,20 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                 Past
                             </div>
                         </div>
-                    ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
+                    ) : FEATURES.reviews && !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
                         <div className="leave-review">
                             <button type="button" className="btn primary venue-hire-application-tile__btn" onClick={() => { setShowReviewModal(true); setReviewProfile(profile); }}>
                                 Leave a Review
                             </button>
                         </div>
-                    ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && !hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
+                    ) : FEATURES.reviews && !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && !hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
                         <div className="status-box">
                             <div className="status past">
                                 <PermissionsIcon />
                                 You don&apos;t have permission to review artists
                             </div>
                         </div>
-                    ) : gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
+                    ) : FEATURES.reviews && gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
                         <div className="status-box">
                             <div className="status confirmed">
                                 <TickIcon />
@@ -1663,7 +1772,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                         </div>
                     </div>
                 )}
-                {status === 'accepted' &&
+                {FEATURES.payments && status === 'accepted' &&
                     slotGig.kind !== 'Open Mic' &&
                     slotGig.kind !== 'Ticketed Gig' &&
                     slotGig.budget !== '£' &&
@@ -1913,7 +2022,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                     <TechRiderIcon /> Tech Rider
                                 </button>
                             ) : null}
-                            {profile.userId || profile.id ? (
+                            {FEATURES.chat && (profile.userId || profile.id) ? (
                                 <button
                                     type="button"
                                     className="btn secondary venue-gig-booked-tile__btn"
@@ -2155,8 +2264,300 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
         );
     };
 
+    const canAcceptRunningOrderApplicant = (profile, slotGig) => {
+        if (!slotGig || getLocalGigDateTime(slotGig) < now) return false;
+        const applicant = slotGig.applicants?.find((entry) => entry.id === profile.id);
+        const sender = applicant ? applicant.sentBy : (profile.sentBy || 'musician');
+        const status = applicant ? applicant.status : (profile.status || 'pending');
+        if (status !== 'pending' || applicant?.invited || sender === 'venue') return false;
+        if (!hasVenuePerm(venues, slotGig.venueId, 'gigs.applications.manage')) return false;
+        const alreadyBooked = slotGig.applicants?.some((entry) =>
+            ['confirmed', 'accepted', 'paid', 'payment processing'].includes(entry?.status)
+        );
+        if (alreadyBooked && slotGig.kind !== 'Open Mic') return false;
+        return true;
+    };
+
+    const markRunningOrderApplicantViewed = async (slotGig, profileId) => {
+        if (!slotGig?.gigId || !profileId) return;
+        try {
+            await markApplicantsViewed({
+                venueId: slotGig.venueId,
+                gigId: slotGig.gigId,
+                applicantIds: [profileId],
+            });
+            setGigInfoState?.((prev) => {
+                if (!prev || prev.gigId !== slotGig.gigId || !Array.isArray(prev.applicants)) return prev;
+                return {
+                    ...prev,
+                    applicants: prev.applicants.map((entry) => (
+                        entry.id === profileId ? { ...entry, viewed: true } : entry
+                    )),
+                };
+            });
+            refreshGigs?.();
+        } catch (err) {
+            console.error('Error marking applicant viewed:', err);
+        }
+    };
+
+    const renderRunningOrderAvatar = (name, photoUrl, sizeClass) => (
+        photoUrl ? (
+            <img src={photoUrl} alt="" className={`venue-gig-running__avatar ${sizeClass}`} />
+        ) : (
+            <span className={`venue-gig-running__avatar venue-gig-running__avatar--initials ${sizeClass}`}>
+                {runningOrderInitials(name)}
+            </span>
+        )
+    );
+
+    const renderRunningOrderBookedBody = (slotGig, applicant, profile) => {
+        const name = (profile?.name || applicant?.name || applicant?.artistName || 'Artist').trim();
+        const meta = runningOrderApplicantMeta(profile);
+        const status = applicant?.status;
+        const awaiting = status === 'accepted' || status === 'payment processing';
+        const paid = status === 'paid' || status === 'confirmed';
+        const techStatus = applicant?.techSetup?.compatibilityStatus;
+        const techNeedsCheck = techStatus === 'missing_required';
+        const techOk = techStatus === 'fully_compatible' || techStatus === 'compatible_with_hired';
+        const fee = runningOrderFeeLabel(profile?.proposedFee || slotGig?.budget || applicant?.fee);
+        const payable = FEATURES.payments
+            && awaiting
+            && slotGig.kind !== 'Open Mic'
+            && slotGig.kind !== 'Ticketed Gig'
+            && slotGig.budget !== '£'
+            && slotGig.budget !== '£0'
+            && getLocalGigDateTime(slotGig) > now
+            && hasVenuePerm(venues, slotGig.venueId, 'gigs.pay');
+        const canMessage = FEATURES.chat && profile && (profile.userId || profile.id);
+        const canEditManual = !profile
+            && (onEditManualBooked || onOpenConfirmGigManually)
+            && getLocalGigDateTime(slotGig) > now
+            && hasVenuePerm(venues, slotGig.venueId, 'gigs.update');
+        return (
+            <div className="venue-gig-running__booked">
+                {renderRunningOrderAvatar(name, profile?.heroMedia?.url, 'venue-gig-running__avatar--lg')}
+                <div className="venue-gig-running__booked-copy">
+                    <span className="venue-gig-running__booked-name">{name}{(applicant?.guest || applicant?.type === 'guest') && <span className="ga-guest-tag">Guest</span>}</span>
+                    {meta ? <span className="venue-gig-running__booked-genre">{meta}</span> : null}
+                    <span className="venue-gig-running__chips">
+                        {awaiting ? (
+                            <span className="venue-gig-running__chip venue-gig-running__chip--amber">
+                                <span className="venue-gig-running__chip-dot" />
+                                Awaiting payment
+                            </span>
+                        ) : null}
+                        {paid && fee ? (
+                            <span className="venue-gig-running__chip venue-gig-running__chip--green">
+                                <span className="venue-gig-running__chip-dot" />
+                                Paid {fee}
+                            </span>
+                        ) : null}
+                        {techNeedsCheck ? (
+                            <span className="venue-gig-running__chip venue-gig-running__chip--amber">
+                                <span className="venue-gig-running__chip-dot" />
+                                Tech check needed
+                            </span>
+                        ) : null}
+                        {techOk ? (
+                            <span className="venue-gig-running__chip venue-gig-running__chip--green">
+                                <span className="venue-gig-running__chip-dot" />
+                                {paid ? 'Tech confirmed' : 'Tech fits'}
+                            </span>
+                        ) : null}
+                    </span>
+                </div>
+                <div className="venue-gig-running__booked-actions">
+                    {payable ? (
+                        <button
+                            type="button"
+                            className="venue-gig-running__pay"
+                            onClick={() => handleCompletePayment(profile.id, slotGig.gigId)}
+                        >
+                            Pay now
+                        </button>
+                    ) : null}
+                    {profile?.id ? (
+                        <button
+                            type="button"
+                            className="venue-gig-running__ghost"
+                            onClick={() => openBookedArtistTechRider(slotGig, profile, applicant)}
+                            disabled={bookedArtistTechRiderLoading}
+                        >
+                            Tech setup
+                        </button>
+                    ) : null}
+                    {canMessage ? (
+                        <button
+                            type="button"
+                            className="venue-gig-running__ghost"
+                            onClick={() => sendToConversation(profile.userId, slotGig.gigId, profile.id)}
+                        >
+                            Message
+                        </button>
+                    ) : null}
+                    {canEditManual ? (
+                        <button
+                            type="button"
+                            className="venue-gig-running__ghost"
+                            onClick={() => {
+                                if (onEditManualBooked) onEditManualBooked(applicant);
+                                else onOpenConfirmGigManually?.();
+                            }}
+                        >
+                            Edit
+                        </button>
+                    ) : null}
+                </div>
+            </div>
+        );
+    };
+
+    const renderRunningOrderSetBody = (slotGig) => {
+        const bookedApplicant = getBookedApplicantForSlot(slotGig);
+        if (bookedApplicant) {
+            const profile = getProfileForBookedApplicant(bookedApplicant);
+            if (profile || bookedApplicant.manual === true || bookedApplicant.name || bookedApplicant.artistName) {
+                return renderRunningOrderBookedBody(slotGig, bookedApplicant, profile);
+            }
+        }
+        const openApplicants = (Array.isArray(slotGig?.applicants) ? slotGig.applicants : [])
+            .filter((applicant) => {
+                if (!applicant || applicant === bookedApplicant) return false;
+                const status = applicant.status || 'pending';
+                if (BOOKED_APPLICANT_STATUSES.includes(status) || status === 'withdrawn') return false;
+                return true;
+            })
+            .sort((a, b) => {
+                const aNew = !a.viewed && a.invited !== true;
+                const bNew = !b.viewed && b.invited !== true;
+                if (aNew !== bNew) return aNew ? -1 : 1;
+                const aTime = Date.parse(a.appliedAt || a.createdAt || '') || 0;
+                const bTime = Date.parse(b.appliedAt || b.createdAt || '') || 0;
+                return bTime - aTime;
+            });
+        const openProfiles = openApplicants.map((applicant) => {
+            const profile = musicianProfiles.find((entry) =>
+                entry.id === applicant.id && (entry.applicationSlotGigId || gigInfo?.gigId) === slotGig.gigId
+            ) || musicianProfiles.find((entry) => entry.id === applicant.id);
+            return {
+                ...(profile || {}),
+                ...applicant,
+                id: applicant.id || profile?.id,
+                name: profile?.name || applicant.name || applicant.artistName || 'Artist',
+                heroMedia: profile?.heroMedia,
+                genres: profile?.genres,
+                proposedFee: profile?.proposedFee || applicant.proposedFee || applicant.fee,
+                userId: profile?.userId || applicant.userId,
+                email: profile?.email || applicant.email,
+            };
+        });
+        const expanded = Boolean(expandedRunningSets[slotGig.gigId]);
+        const visible = expanded ? openProfiles : openProfiles.slice(0, 3);
+        const canInvite = hasVenuePerm(venues, slotGig.venueId, 'gigs.invite');
+        return (
+            <>
+                {visible.length === 0 ? (
+                    <p className="venue-gig-running__empty">No applications yet</p>
+                ) : visible.map((profile) => {
+                    const applicant = slotGig?.applicants?.find((entry) => entry.id === profile.id);
+                    const unviewed = applicant && !applicant.viewed && applicant.invited !== true;
+                    const meta = runningOrderApplicantMeta(profile);
+                    const fee = runningOrderFeeLabel(profile.proposedFee || profile.fee);
+                    return (
+                        <div key={`${profile.id}-${slotGig.gigId}`} className="venue-gig-running__applicant">
+                            {renderRunningOrderAvatar(profile.name, profile.heroMedia?.url, 'venue-gig-running__avatar--sm')}
+                            <span className="venue-gig-running__who">
+                                <span className="venue-gig-running__who-name">
+                                    {profile.name}
+                                    {(profile.guest || profile.type === 'guest') && <span className="ga-guest-tag">Guest</span>}
+                                    {unviewed ? <span className="venue-gig-running__fresh" aria-label="New application" /> : null}
+                                </span>
+                                {meta ? <span className="venue-gig-running__who-meta">{meta}</span> : null}
+                            </span>
+                            <RunningOrderQuote
+                                gigId={slotGig.gigId}
+                                participantUserId={profile.userId}
+                                participantProfileId={profile.id}
+                                stored={applicant?.applicationMessage}
+                            />
+                            <span className="venue-gig-running__ask">{fee}</span>
+                            <span className="venue-gig-running__row-actions">
+                                <button
+                                    type="button"
+                                    className="venue-gig-running__view"
+                                    onClick={(event) => {
+                                        markRunningOrderApplicantViewed(slotGig, profile.id);
+                                        if (profile.guest || profile.type === 'guest') {
+                                            setGuestDetail(profile);
+                                            return;
+                                        }
+                                        openInNewTab(`/artist/${profile.id}`, event);
+                                    }}
+                                >
+                                    View
+                                </button>
+                                {canAcceptRunningOrderApplicant(profile, slotGig) ? (
+                                    <button
+                                        type="button"
+                                        className="venue-gig-running__accept"
+                                        disabled={eventLoading}
+                                        onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGig.gigId)}
+                                    >
+                                        Accept
+                                    </button>
+                                ) : null}
+                            </span>
+                        </div>
+                    );
+                })}
+                <div className="venue-gig-running__footer">
+                    {openProfiles.length > 3 ? (
+                        <button
+                            type="button"
+                            className="venue-gig-running__see-all"
+                            onClick={() => setExpandedRunningSets((prev) => ({
+                                ...prev,
+                                [slotGig.gigId]: !prev[slotGig.gigId],
+                            }))}
+                        >
+                            {expanded ? 'Show fewer' : `See all ${openProfiles.length} applications`}
+                        </button>
+                    ) : <span />}
+                    {canInvite ? (
+                        <button
+                            type="button"
+                            className="venue-gig-running__invite"
+                            onClick={() => setInviteModalGig(slotGig)}
+                        >
+                            <InviteIcon />
+                            Invite to this set
+                        </button>
+                    ) : null}
+                </div>
+            </>
+        );
+    };
+
+    const renderRunningOrderPortals = () => {
+        if (!runningOrderSlotTargets) return guestDetail ? createPortal(<GuestApplicantPanel applicant={guestDetail} onClose={() => setGuestDetail(null)} />, document.body) : null;
+        return <>
+        {sortedSlots.map((slotGig) => {
+            const target = runningOrderSlotTargets[slotGig.gigId];
+            if (!target) return null;
+            return createPortal(
+                <div key={slotGig.gigId}>{renderRunningOrderSetBody(slotGig)}</div>,
+                target
+            );
+        })}
+        {guestDetail && createPortal(<GuestApplicantPanel applicant={guestDetail} onClose={() => setGuestDetail(null)} />, document.body)}
+        </>
+    };
+
     return (
         <>
+            {runningOrderSlotTargets ? renderRunningOrderPortals() : (
+            <>
             {!skipHeader && (
             <div className='head gig-applications'>
                 <div style={{ width: '100%'}}>
@@ -2442,7 +2843,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                 </div>
                             </div>
                         )}
-                        {showDispute && hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') && (
+                        {FEATURES.reviews && showDispute && hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') && (
                             <div className='dispute-box'>
                                 <h3>Not happy with how the gig went?</h3>
                                 <h4>You have until {formatDisputeDate(gigInfo.disputeClearingTime)} to file an issue.</h4>
@@ -2850,7 +3251,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                                             </div>
                                                         </div>
                                                     );
-                                                })() : (
+                                                })() : FEATURES.discovery ? (
                                                     <button 
                                                         className='btn secondary'
                                                         style={{ marginTop: '0.5rem', width: '100%' }}
@@ -2858,7 +3259,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                                     >
                                                         Find Artist
                                                     </button>
-                                                )}
+                                                ) : null}
                                             </div>
                                         );
                                     })}
@@ -3007,7 +3408,9 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                     const applicant = slotGig?.applicants?.find(applicant => applicant.id === profile.id);
                                     const sender = applicant ? applicant.sentBy : (profile.sentBy || 'musician');
                                     const status = applicant ? applicant.status : (profile.status || 'pending');
-                                    const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'accepted', 'paid'].includes(a?.status));
+                                    const gigAlreadyConfirmed = (!FEATURES.payments || slotGig?.paymentModel === 'no_fee' || slotGig?.kind === 'Open Mic')
+                                        ? false
+                                        : slotGig?.applicants?.some((a) => ['confirmed', 'accepted', 'paid'].includes(a?.status));
                                     const slotNumber = getSlotNumber(slotGigId);
                                     const isInvited = sender === 'venue' || applicant?.invited;
                                     const appliedToSlotText = relatedSlots.length > 0 && slotNumber 
@@ -3061,20 +3464,20 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                                                 Past
                                                             </div>
                                                         </div>
-                                                    ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
+                                                    ) : FEATURES.reviews && !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
                                                         <div className='leave-review'>
                                                             <button className='btn primary' onClick={(e) => {e.stopPropagation(); setShowReviewModal(true); setReviewProfile(profile)}}>
                                                                 Leave a Review
                                                             </button>
                                                         </div>
-                                                    ) : !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && !hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
+                                                    ) : FEATURES.reviews && !gigInfo.venueHasReviewed && !gigInfo.disputeLogged && !hasVenuePerm(venues, gigInfo.venueId, 'reviews.create') ? (
                                                         <div className='status-box'>
                                                             <div className='status past'>
                                                                 <PermissionsIcon />
                                                                 You don't have permission to review artists
                                                             </div>
                                                         </div>
-                                                    ) : gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
+                                                    ) : FEATURES.reviews && gigInfo.venueHasReviewed && !gigInfo.disputeLogged ? (
                                                         <div className='status-box'>
                                                             <div className='status confirmed'>
                                                                 <TickIcon />
@@ -3122,7 +3525,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {status === 'accepted' && (slotGig.kind !== 'Open Mic' && slotGig.kind !== 'Ticketed Gig') && slotGig.budget !== '£' && slotGig.budget !== '£0' && hasVenuePerm(venues, slotGig.venueId, 'gigs.pay') && (
+                                                    {FEATURES.payments && status === 'accepted' && (slotGig.kind !== 'Open Mic' && slotGig.kind !== 'Ticketed Gig') && slotGig.budget !== '£' && slotGig.budget !== '£0' && hasVenuePerm(venues, slotGig.venueId, 'gigs.pay') && (
                                                         loadingPaymentDetails || showPaymentModal || status === 'payment processing' ? (
                                                             <LoadingSpinner />
                                                         ) : (
@@ -3292,9 +3695,11 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     ) : hasVenuePerm(venues, gigInfo.venueId, 'gigs.invite') && relatedSlots.length === 0 && (
                         <div className='no-applications'>
                             <h4>No artists have applied to this gig yet.</h4>
+                            {FEATURES.discovery && (
                             <button className='btn primary' onClick={() => navigate('/venues/dashboard/artists/find')}>
                                 Find Artist
                             </button>
+                            )}
                         </div>
                     )}
                     </>
@@ -3302,6 +3707,8 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     </>
                 )}
             </div>
+            </>
+            )}
             {bookedArtistTechRiderModal ? (
                 <Portal>
                     <ApplicantTechSetupModal
@@ -3319,7 +3726,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     />
                 </Portal>
             ) : null}
-            {showPaymentModal && (
+            {FEATURES.payments && showPaymentModal && (
                 <Portal>
                     <PaymentModal 
                         savedCards={savedCards}
@@ -3339,7 +3746,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     />
                 </Portal>
             )}
-            {showReviewModal && (
+            {FEATURES.reviews && showReviewModal && (
                 <Portal>
                     <ReviewModal
                         gigData={gigInfo}
@@ -3478,3 +3885,31 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
         </>
     );
 };
+
+function GuestApplicantPanel({ applicant, onClose }) {
+  const contacts = [
+    applicant.email && `Email · ${applicant.email}`,
+    applicant.phone && `Phone · ${applicant.phone}`,
+    applicant.whatsapp && 'WhatsApp',
+    applicant.instagram && `Instagram · ${applicant.instagram}`,
+  ].filter(Boolean);
+  const links = Object.entries(applicant.links || {}).filter(([, value]) => value);
+  return (
+    <div className="ga-guest-panel-backdrop" onClick={onClose}>
+      <aside className="ga-guest-panel" onClick={(event) => event.stopPropagation()}>
+        <header>
+          <h2>{applicant.name || 'Guest'}</h2>
+          <span className="ga-guest-tag">Guest</span>
+          <button type="button" onClick={onClose} aria-label="Close">×</button>
+        </header>
+        {applicant.photoUrl && <img src={applicant.photoUrl} alt="" />}
+        <p>{applicant.contactName}</p>
+        {contacts.map((line) => <p key={line}>{line}</p>)}
+        {links.map(([key, value]) => <p key={key}><a href={value} target="_blank" rel="noreferrer">{key}</a></p>)}
+        {applicant.note && <p>{applicant.note}</p>}
+        {!!applicant.needs?.length && <p>Needs {applicant.needs.length} items from the bar.</p>}
+        {!!applicant.bringOwn?.length && <p>Bringing {applicant.bringOwn.join(', ')}.</p>}
+      </aside>
+    </div>
+  );
+}

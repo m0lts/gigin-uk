@@ -24,7 +24,10 @@ import { acceptGigOffer, acceptGigOfferOM, declineGigApplication, updateGigWithC
 import { sendGigAcceptedMessage, sendMessage, updateDeclinedApplicationMessage, sendCounterOfferMessage, updateReviewMessageStatus } from '@services/api/messages';
 import { hasVenuePerm } from '../../../../services/utils/permissions';
 import { PermissionsIcon } from '../../../shared/ui/extras/Icons';
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+import { FEATURES } from '../../../../config/features';
+const stripePromise = FEATURES.payments
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 
 export const MessageThread = ({ activeConversation, conversationId, user, musicianProfileId, gigId, gigData, setGigData, venues, customerDetails, refreshStripe }) => {

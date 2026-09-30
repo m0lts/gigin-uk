@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
 
 *, *::after, *::before {
     box-sizing: border-box;
@@ -12,6 +13,8 @@
     --gn-semi-bold: 500;
     --gn-regular: 400;
     --gn-light: 300;
+    --gn-font: 'Geist', 'Inter', sans-serif;
+    --gn-font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
     /* Colours */
     --gn-orange: #FF6C4B;
@@ -52,6 +55,42 @@
     --gn-youtube-red: #ff0033;
     --gn-youtube-red-offset: #ff00331a;
     --gn-youtube-red-placeholder: #ff003380;
+
+    /* Venue console */
+    --gn-ink: #0F1115;
+    --gn-ink-2: #4B5160;
+    --gn-muted: #6B7280;
+    --gn-muted-2: #9AA0AA;
+    --gn-console-bg: #F6F7F9;
+    --gn-line: #E5E7EB;
+    --gn-line-soft: #F0F1F3;
+    --gn-surface-2: #FAFBFC;
+    --gn-hover: #F9FAFB;
+    --gn-chip: #F3F4F6;
+    --gn-side-bg: #111317;
+    --gn-side-hover: #1A1D22;
+    --gn-side-active: #1E2127;
+    --gn-side-line: #22252B;
+    --gn-side-text: #9AA0AA;
+    --gn-selected-row: #FFF7F4;
+    --gn-new-text: #B5462C;
+    --gn-new-bg: #FFEDE7;
+    --gn-hire-dot: oklch(0.62 0.12 300);
+    --gn-hire-text: oklch(0.45 0.11 300);
+    --gn-hire-bg: oklch(0.95 0.03 300);
+    --gn-empty-border: #F2B4A4;
+    --gn-today-bg: #FFF7F4;
+    --gn-weekend-col: #FCFCFD;
+    --gn-segment-bg: #EDEEF1;
+    --gn-modal-backdrop: rgba(15, 17, 21, 0.48);
+    --gn-drawer-backdrop: rgba(15, 17, 21, 0.28);
+    --gn-offered-bg: #FFF7F4;
+    --gn-offered-border: #FFD2C6;
+    --gn-error: #E5484D;
+    --gn-error-text: #C52A2F;
+    --gn-danger: oklch(0.52 0.16 25);
+    --gn-warn-soft-bg: #FFF7F4;
+    --gn-warn-soft-border: #FFD2C6;
 
     /* Common spacing */
     --gn-btn-padding-x: 14px;

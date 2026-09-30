@@ -1,3 +1,783 @@
+/* Calendar shell (console). Header is the redesigned chrome; the month grid still uses react-calendar until the hand-built grid lands. */
+
+.gigs-cal {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    background: var(--gn-console-bg);
+    color: var(--gn-ink);
+    font-family: var(--gn-font);
+}
+
+.gigs-cal button {
+    font-family: var(--gn-font);
+}
+
+.gigs-cal__main {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 22px 24px 24px;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.gigs-cal__header {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    flex-shrink: 0;
+}
+
+.gigs-cal__header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.gigs-cal__header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.gigs-cal__title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    min-width: 220px;
+    color: var(--gn-ink);
+}
+
+.gigs-cal__nav {
+    display: flex;
+    gap: 4px;
+}
+
+.gigs-cal__icon-btn,
+.gigs-cal__today {
+    height: 32px;
+    border: 1px solid var(--gn-line);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 150ms linear;
+}
+
+.gigs-cal__icon-btn {
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--gn-ink-2);
+}
+
+.gigs-cal__icon-btn svg {
+    width: 8px;
+    height: 11px;
+}
+
+.gigs-cal__today {
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gn-ink);
+}
+
+.gigs-cal__icon-btn:hover,
+.gigs-cal__today:hover {
+    background: var(--gn-hover);
+}
+
+.gigs-cal__views {
+    display: flex;
+    align-items: center;
+    padding: 3px;
+    background: var(--gn-segment-bg);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.gigs-cal__views button {
+    padding: 5px 14px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--gn-muted);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 150ms linear, color 150ms linear;
+}
+
+.gigs-cal__views button.is-active {
+    background: #fff;
+    color: var(--gn-ink);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.gigs-cal__filters {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.gigs-cal__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 30px;
+    padding: 0 11px;
+    border: 1px solid var(--gn-line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--gn-ink-2);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 150ms linear;
+}
+
+.gigs-cal__chip.is-selected {
+    box-shadow: 0 0 0 1.5px var(--gn-ink);
+}
+
+.gigs-cal__chip-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.gigs-cal__chip-dot--all { background: var(--gn-ink); }
+.gigs-cal__chip-dot--attention { background: var(--gn-orange); }
+.gigs-cal__chip-dot--awaiting { background: oklch(0.72 0.15 70); }
+.gigs-cal__chip-dot--confirmed { background: oklch(0.66 0.14 150); }
+
+.gigs-cal__chip-count {
+    font-family: var(--gn-font-mono);
+    font-size: 12px;
+    color: var(--gn-ink);
+}
+
+.gigs-cal__card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid var(--gn-line);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.gigs-cal__dow,
+.gigs-cal__season-head {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    height: 34px;
+    background: #FAFBFC;
+    border-bottom: 1px solid var(--gn-line);
+    flex-shrink: 0;
+}
+
+.gigs-cal__season-head {
+    grid-template-columns: 76px repeat(7, minmax(0, 1fr));
+    height: 34px;
+}
+
+.gigs-cal__dow span,
+.gigs-cal__season-head span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    color: var(--gn-muted);
+}
+
+.gigs-cal__dow span.is-weekend,
+.gigs-cal__season-head span.is-weekend {
+    color: var(--gn-ink);
+}
+
+.gigs-cal__month {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 1px;
+    background: #F0F1F3;
+}
+
+.gigs-cal__day {
+    background: #fff;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.gigs-cal__day.is-muted { background: #FAFBFC; }
+
+.gigs-cal__day-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 22px;
+}
+
+.gigs-cal__date {
+    font-family: var(--gn-font-mono);
+    font-size: 12.5px;
+    font-weight: 500;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gn-ink);
+}
+
+.gigs-cal__date.is-today { background: var(--gn-orange); color: #fff; }
+.gigs-cal__date.is-faded { color: #9AA0AA; }
+
+.gigs-cal__add {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    color: #C9CDD4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+}
+
+.gigs-cal__add:hover { background: #F3F4F6; color: var(--gn-ink); }
+
+.gigs-cal__gig,
+.gigs-cal__block,
+.gigs-cal__season-gig {
+    border: none;
+    text-align: left;
+    border-radius: 7px;
+    padding: 6px 7px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    cursor: pointer;
+    transition: opacity 150ms ease;
+}
+
+.gigs-cal__gig.is-compact { gap: 2px; }
+.gigs-cal__gig.is-dim,
+.gigs-cal__block.is-dim,
+.gigs-cal__season-gig.is-dim { opacity: 0.28; }
+.gigs-cal__season-gig.is-past { opacity: 0.55; }
+.gigs-cal__season-gig.is-past.is-dim { opacity: 0.15; }
+.gigs-cal__gig.is-selected,
+.gigs-cal__block.is-selected,
+.gigs-cal__season-gig.is-selected { box-shadow: 0 0 0 1.5px var(--gn-ink); }
+
+.gigs-cal__gig-top,
+.gigs-cal__season-top {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+.gigs-cal__gig-dot,
+.gigs-cal__set-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.gigs-cal__gig-time,
+.gigs-cal__block-time,
+.gigs-cal__season-num {
+    font-family: var(--gn-font-mono);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.gigs-cal__season-num { color: var(--gn-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.gigs-cal__new {
+    margin-left: auto;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #B5462C;
+    background: #FFEDE7;
+    border-radius: 4px;
+    padding: 0 5px;
+    white-space: nowrap;
+    line-height: 16px;
+}
+
+.gigs-cal__gig-title,
+.gigs-cal__block-title,
+.gigs-cal__season-label {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--gn-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gigs-cal__block-title { font-weight: 600; }
+
+.gigs-cal__gig-sub {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    color: #4B5160;
+    min-width: 0;
+}
+
+.gigs-cal__gig-sub > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gigs-cal__bars { display: inline-flex; gap: 2px; flex-shrink: 0; }
+.gigs-cal__bars span { width: 10px; height: 4px; border-radius: 2px; background: #D6D0C9; }
+.gigs-cal__bars span.is-booked { background: oklch(0.66 0.14 150); }
+
+.gigs-cal__more {
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: #4B5160;
+    padding: 0 2px;
+}
+
+.gigs-cal__week-head {
+    display: grid;
+    grid-template-columns: 56px repeat(7, minmax(0, 1fr));
+    height: 56px;
+    border-bottom: 1px solid var(--gn-line);
+    flex-shrink: 0;
+}
+
+.gigs-cal__week-day {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    padding: 0 10px;
+    border-left: 1px solid #F0F1F3;
+    min-width: 0;
+}
+
+.gigs-cal__week-dow { font-size: 11.5px; font-weight: 500; color: #6B7280; }
+.gigs-cal__week-num { font-family: var(--gn-font-mono); font-size: 19px; font-weight: 500; }
+.gigs-cal__week-day.is-today { background: var(--gn-today-bg); }
+.gigs-cal__week-day.is-today .gigs-cal__week-dow,
+.gigs-cal__week-day.is-today .gigs-cal__week-num { color: var(--gn-orange); }
+.gigs-cal__week-day.is-past .gigs-cal__week-dow,
+.gigs-cal__week-day.is-past .gigs-cal__week-num { color: #9AA0AA; }
+.gigs-cal__week-day .gigs-cal__add { position: absolute; top: 8px; right: 8px; }
+
+.gigs-cal__week-scroll { flex: 1; min-height: 0; overflow: auto; }
+.gigs-cal__week-body {
+    display: grid;
+    grid-template-columns: 56px repeat(7, minmax(0, 1fr));
+    position: relative;
+}
+.gigs-cal__hours { position: relative; }
+.gigs-cal__hours span {
+    position: absolute;
+    right: 8px;
+    font-family: var(--gn-font-mono);
+    font-size: 11px;
+    color: #9AA0AA;
+}
+.gigs-cal__week-col { position: relative; border-left: 1px solid #F0F1F3; }
+.gigs-cal__week-col.is-past { background: #FAFBFC; }
+.gigs-cal__hour-line { position: absolute; left: 0; right: 0; height: 1px; background: #F0F1F3; }
+.gigs-cal__now {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--gn-orange);
+    z-index: 2;
+}
+.gigs-cal__now::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gn-orange);
+}
+.gigs-cal__block {
+    position: absolute;
+    border-radius: 8px;
+    padding: 6px 7px;
+    gap: 3px;
+    overflow: hidden;
+    z-index: 1;
+}
+.gigs-cal__block-time,
+.gigs-cal__block-title { flex-shrink: 0; }
+.gigs-cal__set {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 11.5px;
+    color: var(--gn-ink);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.gigs-cal__season { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.gigs-cal__season-row {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 76px repeat(7, minmax(0, 1fr));
+}
+.gigs-cal__season-gutter {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 0 8px;
+}
+.gigs-cal__season-month { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
+.gigs-cal__season-wc { font-family: var(--gn-font-mono); font-size: 11px; color: #9AA0AA; }
+.gigs-cal__season-cell { padding: 3px; min-width: 0; min-height: 0; overflow: hidden; background: #fff; }
+.gigs-cal__season-cell.is-weekend { background: var(--gn-weekend-col); }
+.gigs-cal__season-gig { height: 100%; min-height: 0; overflow: hidden; justify-content: space-between; padding: 5px 8px; }
+.gigs-cal__season-label { font-size: 12px; }
+.gigs-cal__season-blank {
+    font-family: var(--gn-font-mono);
+    font-size: 11px;
+    color: #C9CDD4;
+    padding: 4px 6px;
+}
+.gigs-cal__season-blank:not(.is-past) { color: #9AA0AA; }
+.gigs-cal__empty {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    border: 1.5px dashed var(--gn-empty-border);
+    border-radius: 7px;
+    background: transparent;
+    color: #B5462C;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 5px 8px;
+    font-size: 11px;
+}
+.gigs-cal__empty:hover { background: var(--gn-today-bg); border-color: var(--gn-orange); }
+
+.gigs-cal__panel {
+    background: #fff;
+    border-left: 1px solid var(--gn-line);
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.gigs-cal__summary { flex: 1; }
+.gigs-cal__summary,
+.gigs-cal__selected-body {
+    padding: 22px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-height: 0;
+}
+
+.gigs-cal__selected { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.gigs-cal__selected-body { flex: 1; gap: 20px; padding-bottom: 18px; }
+.gigs-cal__section-title,
+.gigs-cal__selected-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+}
+.gigs-cal__section-title > span:last-child,
+.gigs-cal__selected-head > span {
+    font-family: var(--gn-font-mono);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #4B5160;
+}
+.gigs-cal__selected-head button {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    color: #4B5160;
+}
+.gigs-cal__selected-head button:hover { background: #F3F4F6; }
+.gigs-cal__bars-row { display: flex; gap: 2px; margin-top: 10px; }
+.gigs-cal__bars-row span { flex: 1; height: 6px; border-radius: 3px; background: #E5E7EB; }
+.gigs-cal__bars-row span.is-booked { background: var(--gn-orange); }
+.gigs-cal__range-line,
+.gigs-cal__night-label { margin: 10px 0 0; font-size: 13px; color: #4B5160; }
+.gigs-cal__night-label { font-weight: 500; margin-bottom: 8px; }
+.gigs-cal__nights { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.gigs-cal__nights button {
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--gn-line);
+    font-size: 11px;
+    font-weight: 500;
+    color: #6B7280;
+    background: #fff;
+}
+.gigs-cal__nights button.is-on { background: #111317; color: #fff; border-color: #111317; }
+.gigs-cal__list { border: 1px solid #F0F1F3; border-radius: 10px; overflow: hidden; }
+.gigs-cal__empty-row,
+.gigs-cal__action,
+.gigs-cal__line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 12px;
+    background: #fff;
+    border: none;
+    border-bottom: 1px solid #F0F1F3;
+    text-align: left;
+}
+.gigs-cal__list > :last-child { border-bottom: none; }
+.gigs-cal__empty-row span,
+.gigs-cal__action-top span:last-child,
+.gigs-cal__line > span:first-child {
+    font-family: var(--gn-font-mono);
+    font-size: 12px;
+    color: #6B7280;
+}
+.gigs-cal__empty-row button {
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 7px;
+    border: 1px solid var(--gn-line);
+    font-size: 12.5px;
+    font-weight: 500;
+}
+.gigs-cal__more-nights,
+.gigs-cal__quiet { margin: 0; padding: 10px 12px; font-size: 13px; color: #6B7280; }
+.gigs-cal__action { flex-direction: column; align-items: stretch; padding: 11px 12px; }
+.gigs-cal__action:hover { background: #FAFBFC; }
+.gigs-cal__action-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; font-weight: 500; color: var(--gn-ink); }
+.gigs-cal__action-top span:last-child { font-size: 11.5px; font-weight: 500; }
+.gigs-cal__action-why { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.gigs-cal__selected h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.gigs-cal__status-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #4B5160; }
+.gigs-cal__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+}
+.gigs-cal__kicker {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #6B7280;
+    margin-bottom: 8px;
+}
+.gigs-cal__line { display: grid; grid-template-columns: 96px 1fr; }
+.gigs-cal__line > span:last-child { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 500; color: var(--gn-ink); }
+.gigs-cal__line > span.is-muted { font-weight: 400; color: #6B7280; }
+.gigs-cal__apps {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #FAFBFC;
+    border: 1px solid #F0F1F3;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 13px;
+}
+.gigs-cal__apps-count { font-family: var(--gn-font-mono); font-size: 14px; font-weight: 500; }
+.gigs-cal__apps button {
+    margin-left: auto;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 7px;
+    background: var(--gn-orange);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.gigs-cal__apps button:hover { background: #F25A38; }
+.gigs-cal__share { display: flex; flex-direction: column; gap: 8px; }
+.gigs-cal__link {
+    display: flex;
+    height: 36px;
+    border: 1px solid var(--gn-line);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.gigs-cal__link span {
+    flex: 1;
+    min-width: 0;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    font-family: var(--gn-font-mono);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.gigs-cal__link button,
+.gigs-cal__invite,
+.gigs-cal__edit,
+.gigs-cal__open,
+.gigs-cal__more-btn {
+    height: 36px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+}
+.gigs-cal__link button { border-left: 1px solid var(--gn-line); padding: 0 12px; border-radius: 0; }
+.gigs-cal__invite {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--gn-line);
+    background: #fff;
+}
+.gigs-cal__invite:disabled { opacity: 0.45; }
+.gigs-cal__field { border-top: 1px solid #F0F1F3; padding-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.gigs-cal__field-value {
+    text-align: left;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--gn-ink);
+    border-radius: 8px;
+    padding: 6px 8px;
+}
+.gigs-cal__field-value.is-editable:hover { background: #F6F7F9; }
+.gigs-cal__field-input {
+    width: 100%;
+    border: 1px solid var(--gn-line);
+    border-radius: 8px;
+    padding: 8px;
+    font: inherit;
+    font-size: 13.5px;
+    resize: vertical;
+}
+.gigs-cal__footer {
+    display: flex;
+    gap: 8px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--gn-line);
+    flex-shrink: 0;
+}
+.gigs-cal__open { flex: 1; background: #111317; color: #fff; }
+.gigs-cal__edit { padding: 0 14px; border: 1px solid var(--gn-line); background: #fff; }
+.gigs-cal__edit:disabled { opacity: 0.45; }
+.gigs-cal__menu { position: relative; }
+.gigs-cal__more-btn { width: 36px; border: 1px solid var(--gn-line); background: #fff; font-size: 16px; }
+.gigs-cal__menu-pop {
+    position: absolute;
+    right: 0;
+    bottom: 42px;
+    min-width: 180px;
+    background: #fff;
+    border: 1px solid var(--gn-line);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(15, 17, 21, 0.12);
+    padding: 4px;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+}
+.gigs-cal__menu-pop button {
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}
+.gigs-cal__menu-pop button:hover { background: #F6F7F9; }
+.gigs-cal__menu-pop button.is-danger { color: #B42318; }
+.gigs-cal__menu-pop button:disabled { opacity: 0.4; }
+
+.gigs-calendar-react-subscribe-row { flex-shrink: 0; }
+
+@media (--bp-md) {
+    .gigs-cal {
+        grid-template-columns: minmax(0, 1fr);
+        height: auto;
+    }
+
+    .gigs-cal__main {
+        overflow: visible;
+    }
+
+    .gigs-cal__panel {
+        display: none;
+    }
+
+    .gigs-cal__title {
+        min-width: 0;
+    }
+
+    .gigs-cal__views button[data-view='week'],
+    .gigs-cal__views button[data-view='season'] {
+        display: none;
+    }
+}
+
 /* React calendar – match custom calendar look (no tile, month view) */
 
 .gigs-calendar-react {

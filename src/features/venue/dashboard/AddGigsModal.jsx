@@ -17,9 +17,12 @@ import { sendGigInvitationMessage } from '@services/client-side/messages';
 import { removeVenueRequest, removePreferredDateFromRequest } from '@services/client-side/venues';
 import { formatDate } from '@services/utils/dates';
 import { InviteMethodsModal } from './InviteMethodsModal';
+import { NewGigExperience } from './new-gig/NewGigExperience';
+import { draftToFormGig } from './new-gig/useNewGigDraft';
 import { uploadFileWithFallback } from '@services/storage';
 import { CopyIcon, TickIcon, DownChevronIcon, UpChevronIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
+import { FEATURES } from '../../../config/features';
 import '@styles/shared/modals.styles.css';
 import {
   buildBookNewTemplatePayload,
@@ -97,6 +100,9 @@ function inferBookNewKind(paymentModel, ticketingModel, storedKind) {
  * [1, 10] when a numeric value is returned.
  */
 function computeMaxApplicantsForSave(gig, kind) {
+  // Paid acceptance auto-declines everyone else. With payments off, keep the
+  // listing open so several artists can be confirmed on the same gig.
+  if (!FEATURES.payments) return 50;
   if (kind === 'Open Mic') return null;
   const isNonPaidArtistFlow = (gig?.paymentModel === 'no_fee' || kind === 'Ticketed Gig');
   if (!isNonPaidArtistFlow) return 1;
@@ -191,9 +197,9 @@ const defaultGigForDate = () => ({
   timingMusicStopTime: '',
   timingIncludeVacate: false,
   timingVacateTime: '',
-  paymentModel: '', // 'venue_pays_artist' | 'artist_pays_venue' | 'no_fee'
+  paymentModel: FEATURES.payments ? '' : 'no_fee', // 'venue_pays_artist' | 'artist_pays_venue' | 'no_fee'
   unifiedFeeAmount: '£',
-  ticketingModel: '', // 'venue' | 'artist' | 'free_entry'
+  ticketingModel: FEATURES.ticketing ? '' : 'free_entry', // 'venue' | 'artist' | 'free_entry'
   showOnVenueProfile: true,
   moreDetailsSectionOpen: false,
   listingDocEntries: null,
@@ -346,6 +352,7 @@ function isBookNewGigComplete(gig) {
   const g = gig || {};
   const t = validateBookNewTimings(g);
   if (!t.ok) return false;
+  if (FEATURES.payments) {
   if (!g.paymentModel) return false;
   if (g.paymentModel !== 'no_fee') {
     // Multi-slot + venue_pays_artist: every slot must have a positive fee.
@@ -363,7 +370,8 @@ function isBookNewGigComplete(gig) {
       return false;
     }
   }
-  if (!g.ticketingModel) return false;
+  }
+  if (FEATURES.ticketing && !g.ticketingModel) return false;
   return true;
 }
 
@@ -827,6 +835,9 @@ export function AddGigsModal({
   setRequests,
   preferredDate = null,
   setPreferredDate,
+  newGigRoute = null,
+  newGigEntry = 'menu',
+  gigs = [],
 }) {
   // A gig is in edit mode when we have editGigData with a known shape. We
   // accept venue-hire (rental) and both single- and multi-slot artist-booking
@@ -929,6 +940,29 @@ export function AddGigsModal({
     }
     return {};
   });
+  useEffect(() => {
+    if (FEATURES.payments && FEATURES.ticketing) return;
+    setGigsByDate((prev) => {
+      let changed = false;
+      const next = {};
+      Object.entries(prev).forEach(([iso, gig]) => {
+        if (!gig) {
+          next[iso] = gig;
+          return;
+        }
+        const patch = {};
+        if (!FEATURES.payments && gig.paymentModel !== 'no_fee') patch.paymentModel = 'no_fee';
+        if (!FEATURES.ticketing && gig.ticketingModel !== 'free_entry') patch.ticketingModel = 'free_entry';
+        if (Object.keys(patch).length) {
+          changed = true;
+          next[iso] = { ...gig, ...patch };
+        } else {
+          next[iso] = gig;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [gigsByDate]);
   const [activeTab, setActiveTab] = useState(
     () => initialIso || (bookNewAwaitingFirstDateFlow ? BOOK_NEW_PENDING_DATE_ISO : null),
   );
@@ -1382,8 +1416,10 @@ export function AddGigsModal({
     return next;
   }
 
+  const submitOverrideRef = useRef(null);
   const allSlotsFor = (iso) => {
-    const gig = gigsByDate[iso] || defaultGigForDate();
+    const source = submitOverrideRef.current?.gigsByDate || gigsByDate;
+    const gig = source[iso] || defaultGigForDate();
     return [
       { startTime: gig.startTime ?? '', duration: gig.duration },
       ...(gig.extraSlots || []).map((s) => ({ startTime: s?.startTime ?? '', duration: s?.duration })),
@@ -2149,7 +2185,11 @@ export function AddGigsModal({
       return;
     }
 
-    if (!venueId || !hasVenuePerm(venues, venueId, 'gigs.create')) return;
+    if (!venueId || !hasVenuePerm(venues, venueId, 'gigs.create')) {
+      submitOverrideRef.current?.onFailed?.(new Error("You don't have permission to create gigs for this venue."));
+      submitOverrideRef.current = null;
+      return;
+    }
     setSubmitting(true);
     try {
       const gigDocuments = [];
@@ -2159,10 +2199,13 @@ export function AddGigsModal({
       const hasCoords = Array.isArray(coords) && coords.length >= 2 && typeof coords[0] === 'number' && typeof coords[1] === 'number';
       const geopoint = hasCoords ? { latitude: coords[1], longitude: coords[0] } : null;
 
-      for (const dateIso of bookNewRealDateIsos) {
-        const gig = gigsByDate[dateIso] || defaultGigForDate();
+      const createOverride = submitOverrideRef.current;
+      const createDates = createOverride?.dates?.length ? createOverride.dates : bookNewRealDateIsos;
+      const createMode = createOverride?.mode || addGigsMode;
+      for (const dateIso of createDates) {
+        const gig = (createOverride?.gigsByDate || gigsByDate)[dateIso] || defaultGigForDate();
 
-        if (addGigsMode === 'bookNew') {
+        if (createMode === 'bookNew') {
           const venue = selectedVenue;
           const extraInformation = String(gig.extraInformation ?? '').trim() || undefined;
           // When artist-booking multi-slot, override musicStart/musicStop in
@@ -2317,7 +2360,7 @@ export function AddGigsModal({
           continue;
         }
 
-        if (addGigsMode === 'addExisting') {
+        if (createMode === 'addExisting') {
           const venue = selectedVenue;
           const bookedName = String(getArtistNamesForSlots(gig, 1)[0] ?? '').trim();
           const extraInformation = String(gig.extraInformation ?? '').trim() || undefined;
@@ -2641,6 +2684,8 @@ export function AddGigsModal({
       }
 
       if (gigDocuments.length === 0) {
+        submitOverrideRef.current?.onFailed?.(new Error('Nothing to create. Check the date and times.'));
+        submitOverrideRef.current = null;
         setSubmitting(false);
         return;
       }
@@ -2664,6 +2709,13 @@ export function AddGigsModal({
           }
           toast.success(`Added ${gigDocuments.length} gig${gigDocuments.length === 1 ? '' : 's'}.`);
           refreshGigs?.();
+          if (submitOverrideRef.current?.stayOpen) {
+            const done = submitOverrideRef.current.onCreated;
+            submitOverrideRef.current = null;
+            done?.(gigDocuments);
+            setSubmitting(false);
+            return;
+          }
           if (!keepOpenForInviteMethods) onClose();
           setSubmitting(false);
           return;
@@ -2681,7 +2733,10 @@ export function AddGigsModal({
       }
       console.error(lastErr);
       const is429 = lastErr?.message?.includes('Too Many Requests') || lastErr?.status === 429;
-      toast.error(is429 ? 'Too many requests. Please wait a few minutes and try again.' : (lastErr?.message || 'Failed to add gigs.'));
+      const message = is429 ? 'Too many requests. Please wait a few minutes and try again.' : (lastErr?.message || 'Failed to add gigs.');
+      toast.error(message);
+      submitOverrideRef.current?.onFailed?.(lastErr || new Error(message));
+      submitOverrideRef.current = null;
     } finally {
       setSubmitting(false);
     }
@@ -2919,6 +2974,52 @@ export function AddGigsModal({
     step === 'details' &&
     !!activeTab &&
     !isBookNewPendingDateIso(activeTab);
+
+  const showNewGigFlow = !isEditMode
+    && newGigRoute
+    && newGigRoute !== 'legacy'
+    && (addGigsMode === 'bookNew' || addGigsMode === 'addExisting');
+
+  if (showNewGigFlow) {
+    const seededArtist = buildingForMusicianData?.name
+      ? { artistId: buildingForMusicianData.crmEntryId || buildingForMusicianData.id || '', artistName: buildingForMusicianData.name, kind: 'find' }
+      : {};
+    return (
+      <Portal>
+      <NewGigExperience
+        route={newGigRoute}
+        entry={bookNewAwaitingFirstDateFlow ? 'crm' : newGigEntry}
+        venues={venues}
+        venueId={venueId}
+        setVenueId={setVenueId}
+        templates={templates}
+        user={user}
+        gigs={gigs}
+        refreshTemplates={refreshTemplates}
+        onClose={onClose}
+        initialDraft={{
+          kind: addGigsMode === 'addExisting' ? 'booked' : 'find',
+          dates: initialIso ? [initialIso] : [],
+          showOnProfile: buildForMusicianActive ? false : true,
+          ...seededArtist,
+        }}
+        onSubmit={(draft) => new Promise((resolve, reject) => {
+          const gig = draftToFormGig(draft, venues.find((item) => item.venueId === venueId));
+          const dates = (draft.dates || []).filter((iso) => iso && !isBookNewPendingDateIso(iso));
+          submitOverrideRef.current = {
+            dates,
+            gigsByDate: Object.fromEntries(dates.map((iso) => [iso, gig])),
+            mode: draft.kind === 'booked' ? 'addExisting' : 'bookNew',
+            stayOpen: true,
+            onCreated: resolve,
+            onFailed: reject,
+          };
+          handleAddGigs();
+        })}
+      />
+      </Portal>
+    );
+  }
 
   return (
     <Portal>

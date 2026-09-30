@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { CalendarIconLight, CoinsIconSolid, DashboardIconLight, DashboardIconSolid, DotIcon, DownChevronIcon, LocationPinIcon, LogOutIcon, MailboxEmptyIcon, MailboxEmptyIconSolid, MailboxFullIcon, MailboxFullIconSolid, PeopleGroupIconSolid, PeopleRoofIconLight, ProfileIconSolid, SettingsIcon, UpChevronIcon, UserIcon } from '../../shared/ui/extras/Icons';
 import { TextLogoMed } from '../../shared/ui/logos/Logos';
 import { FeedbackBox } from '../../venue/dashboard/FeedbackBox';
+import { FEATURES } from '../../../config/features';
 
 export const Sidebar = ({ user, newMessages, unseenInvites, bandProfiles, musicianProfile, setShowWelcomeModal, setRevisitingModal }) => {
     const navigate = useNavigate();
@@ -60,18 +61,18 @@ export const Sidebar = ({ user, newMessages, unseenInvites, bandProfiles, musici
           iconActive: <CalendarIconSolid />,
           notification: unseenInvites.length > 0,
         },
-        {
+        ...(FEATURES.bands ? [{
           path: '/dashboard/bands',
           label: 'My Band(s)',
           icon: <PeopleGroupIcon />,
           iconActive: <PeopleGroupIconSolid />,
-        },
-        {
+        }] : []),
+        ...(FEATURES.finances ? [{
           path: '/dashboard/finances',
           label: 'Finances',
           icon: <CoinsIcon />,
           iconActive: <CoinsIconSolid />,
-        },
+        }] : []),
       ];
       const hasBand = Array.isArray(bandProfiles) && bandProfiles.length > 0;
       const shouldSwap = hasBand && isOnlyNameFilled;

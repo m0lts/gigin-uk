@@ -154,7 +154,40 @@ export function getVenueEquipmentSummary(venueTechRider) {
  * @param {Object} venueTechRider
  * @returns {{ providedByVenue: Array<{label: string}>, hireableEquipment: Array<{label: string, hireFee: number}>, coveredByArtist: Array<{label: string}>, needsDiscussion: Array<{label: string, note?: string}> }}
  */
+/**
+ * Temporary rider for a guest application. Ticked keys are things the act
+ * needs from the bar. bringOwn is gear they supply themselves.
+ */
+export function buildGuestTechRider({ needs = [], bringOwn = [], members = [] } = {}) {
+  return {
+    mode: 'guest',
+    guestNeeds: Array.isArray(needs) ? needs.filter(Boolean) : [],
+    bringOwn: Array.isArray(bringOwn) ? bringOwn.map((item) => String(item || '').trim()).filter(Boolean) : [],
+    members: Array.isArray(members) ? members : [],
+  };
+}
+
+function computeGuestCompatibility(artistTechRider, venueTechRider) {
+  const { equipmentByKey } = getVenueEquipmentSummary(venueTechRider);
+  const normalized = normalizeTechRider(venueTechRider);
+  const labels = {};
+  (normalized.equipment || []).forEach((item) => { labels[item.key] = item.label; });
+  const providedByVenue = [];
+  const needsDiscussion = [];
+  (artistTechRider.guestNeeds || []).forEach((key) => {
+    const label = labels[key] || EQUIPMENT_LABELS[key] || key;
+    const venueItem = equipmentByKey[key];
+    if (venueItem?.available) providedByVenue.push({ key, label });
+    else needsDiscussion.push({ key, label });
+  });
+  const coveredByArtist = (artistTechRider.bringOwn || []).map((label) => ({ label }));
+  return { providedByVenue, hireableEquipment: [], coveredByArtist, needsDiscussion };
+}
+
 export function computeCompatibility(artistTechRider, venueTechRider) {
+  if (artistTechRider?.mode === 'guest') {
+    return computeGuestCompatibility(artistTechRider, venueTechRider);
+  }
   const providedByVenue = [];
   const hireableEquipment = [];
   const coveredByArtist = [];

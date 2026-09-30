@@ -18,6 +18,7 @@ import { MobileMenu } from '../shared/components/MobileMenu';
 import Portal from '../shared/components/Portal';
 import { incrementProClicks } from '../../services/client-side/reports';
 import { TextLogoArtistLandingPage } from '../shared/ui/logos/Logos';
+import { FEATURES } from '../../config/features';
 
 const toLngLat = (venue) => {
     if (venue?.geopoint?.longitude != null && venue?.geopoint?.latitude != null) {
@@ -866,12 +867,16 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
                                 <Link className='link item no-margin' to='/venues' onClick={() => setMobileMenuOpen(false)}>
                                     I'm a Venue
                                 </Link>
+                                {FEATURES.discovery && (
                                 <Link className='link item no-margin' to='/find-a-gig' onClick={() => setMobileMenuOpen(false)}>
                                     Find a Gig
                                 </Link>
+                                )}
+                                {FEATURES.discovery && (
                                 <Link className='link item no-margin' to='/find-venues' onClick={() => setMobileMenuOpen(false)}>
                                     Find a Venue
                                 </Link>
+                                )}
                                 <div className="two-buttons">
                                     <button className='btn secondary' onClick={() => { setAuthType('login'); setAuthModal(true); setMobileMenuOpen(false); }}>
                                         Log In
@@ -888,12 +893,16 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
                                         I'm a Venue
                                     </Link>
                                 )}
+                                {FEATURES.discovery && (
                                 <Link className='link item no-margin' to='/find-a-gig' onClick={() => setMobileMenuOpen(false)}>
                                     Find a Gig
                                 </Link>
+                                )}
+                                {FEATURES.discovery && (
                                 <Link className='link item no-margin' to='/find-venues' onClick={() => setMobileMenuOpen(false)}>
                                     Find a Venue
                                 </Link>
+                                )}
                                 {hasArtistProfile ? (
                                     <Link className='link item no-margin' to='/artist-profile' onClick={() => setMobileMenuOpen(false)}>
                                         My Artist Profile

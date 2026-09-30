@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { FEATURES } from '../../../../config/features';
 import '@styles/shared/logos.styles.css'
 import '@assets/fonts/fonts.css'
 
@@ -59,7 +60,7 @@ export const VenueLogoLink = () => {
 export const MusicianLogoLink = () => {
     return (
         <h1 className='logo'>
-            <Link className='link' to={'/find-a-gig'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
+            <Link className='link' to={FEATURES.discovery ? '/find-a-gig' : '/'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
                 gigin<span className='orange-txt'>.</span>
                 <span className='user-type' style={{ fontWeight: 600 }}>MUSICIANS</span>
             </Link>
@@ -83,7 +84,7 @@ export const NoTextLogoLink = () => {
 export const NoTextMusicianLogoLink = () => {
     return (
         <h1 className='logo no-text'>
-            <Link className='link' to={'/find-a-gig'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
+            <Link className='link' to={FEATURES.discovery ? '/find-a-gig' : '/'} style={{ fontFamily: 'Visby CF, sans-serif', fontWeight: 600 }}>
                 g<span className='orange-txt'>.</span>
             </Link>
         </h1>
