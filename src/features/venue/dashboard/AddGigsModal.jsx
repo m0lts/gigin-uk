@@ -28,9 +28,21 @@ import {
   filterBookNewEventTemplatesForVenue,
   templateNameExistsForVenue,
   templateDocId,
+  formatBookNewTemplateSummaryLine,
+  LOOKING_FOR_OPTIONS,
+  parseLookingForSelection,
+  toggleLookingForOption,
 } from './bookNewEventTemplateHelpers';
 
+/** Placeholder date key for "Create event" before user picks a single date (e.g. from Offer gig). */
+export const BOOK_NEW_PENDING_DATE_ISO = '__book_new_pending_date__';
+
+export function isBookNewPendingDateIso(iso) {
+  return iso === BOOK_NEW_PENDING_DATE_ISO;
+}
+
 function formatTabDate(iso) {
+  if (isBookNewPendingDateIso(iso)) return '…';
   const d = new Date(iso + 'T12:00:00');
   if (isNaN(d.getTime())) return iso;
   const day = d.getDate();
@@ -39,6 +51,7 @@ function formatTabDate(iso) {
 }
 
 function formatDisplayDate(iso) {
+  if (isBookNewPendingDateIso(iso)) return '—';
   const d = new Date(iso + 'T12:00:00');
   if (isNaN(d.getTime())) return iso;
   const day = d.getDate();
@@ -48,14 +61,13 @@ function formatDisplayDate(iso) {
 
 /** Full weekday + date for Create event header pills (e.g. Thursday 11 July 2024). */
 function formatHeaderDisplayDate(iso) {
+  if (isBookNewPendingDateIso(iso)) return '';
   const d = new Date(iso + 'T12:00:00');
   if (isNaN(d.getTime())) return iso;
   return format(d, 'EEEE d MMMM yyyy');
 }
 
 const GIG_KIND_OPTIONS = ['Live Music', 'Background Music', 'Wedding', 'Open Mic', 'House Party'];
-
-const MUSICIAN_TYPE_OPTIONS = ['Musician/Band', 'DJ'];
 
 /**
  * Resolve the canonical gig `kind` at save time.
@@ -344,6 +356,9 @@ function isBookNewGigComplete(gig) {
       for (let i = 0; i < slotCount; i += 1) {
         if (!hasPositiveBudgetValue(budgets[i])) return false;
       }
+    } else if (g.bookingMode === 'rental' && g.paymentModel === 'artist_pays_venue') {
+      const digits = String(g.unifiedFeeAmount ?? g.rentalFee ?? '').replace(/[^\d]/g, '');
+      if (!digits.length) return false;
     } else if (!hasPositiveBudgetValue(g.unifiedFeeAmount)) {
       return false;
     }
@@ -387,13 +402,24 @@ function apiRentalGigToFormGig(apiGig) {
   const hasDocs = Array.isArray(apiGig?.documents) && apiGig.documents.length > 0;
   const firstDocUrl = hasDocs && apiGig.documents[0]?.url ? apiGig.documents[0].url : '';
   const notesInternal = (apiGig?.notesInternal ?? apiGig?.internalNotes ?? '').toString().trim();
+  const rentalAccessStr = (apiGig?.rentalAccessFrom ?? apiGig?.accessFrom ?? apiGig?.startTime ?? '').toString().trim() || '';
+  const rentalCurfewStr = (apiGig?.rentalHardCurfew ?? apiGig?.curfew ?? apiGig?.endTime ?? '').toString().trim() || '';
   return {
     ...def,
     bookingMode: 'rental',
+    kind: 'Venue Rental',
     gigName: (apiGig?.gigName ?? '').trim() || def.gigName,
+    paymentModel: 'artist_pays_venue',
+    ticketingModel: 'free_entry',
+    unifiedFeeAmount: feeStr,
+    showOnVenueProfile: apiGig?.private == null ? true : !apiGig.private,
+    timingAccessTime: rentalAccessStr,
+    timingMusicStartTime: rentalAccessStr,
+    timingMusicStopTime: rentalCurfewStr,
+    timingIncludeAccess: !!rentalAccessStr,
     // Accept both legacy and current field names when prefilling edit modal.
-    rentalStartTime: (apiGig?.rentalAccessFrom ?? apiGig?.accessFrom ?? apiGig?.startTime ?? '').toString().trim() || '',
-    rentalEndTime: (apiGig?.rentalHardCurfew ?? apiGig?.curfew ?? apiGig?.endTime ?? '').toString().trim() || '',
+    rentalStartTime: rentalAccessStr,
+    rentalEndTime: rentalCurfewStr,
     rentalFee: feeStr,
     rentalStatus: status,
     rentalPrivate: apiGig?.private ?? (status === 'confirmed_renter'),
@@ -587,6 +613,10 @@ function apiArtistBookingGigToFormGig(apiGig) {
     _gigNameAutoFromVenue: !((apiGig?.gigName ?? '').toString().trim()),
     _rentalCapacityAutoFromVenue: !((apiGig?.capacity ?? apiGig?.rentalCapacity ?? '').toString().trim()),
     _listingDocsVenueId: listingDocEntries ? (apiGig?.venueId ?? null) : null,
+    // BookNewEventWizard: which optional whole-event timings are expanded (or were saved).
+    timingIncludeAccess: !!String(timingAccessTime || '').trim(),
+    timingIncludeSoundcheck: !!String(timingSoundcheckTime || '').trim(),
+    timingIncludeVacate: !!String(timingVacateTime || '').trim(),
   };
 }
 
@@ -830,6 +860,14 @@ export function AddGigsModal({
     } catch { return null; }
   })();
   const initialIso = editDateIso || initialDateIso || buildForMusicianIso;
+  /** Offer-gig / CRM path: open Create event on details with a single native date picker (no calendar multiselect step). */
+  const bookNewAwaitingFirstDateFlow = !!(
+    buildingForMusician &&
+    buildingForMusicianData?.bookNewAwaitingFirstDate &&
+    addGigsMode === 'bookNew' &&
+    !isEditMode &&
+    !initialIso
+  );
   /** When editing an already confirmed venue hire (manually confirmed), show only from "Venue access & timings" down. */
   const effectiveRentalStatus =
     editGigData?.rentalStatus ?? (editGigData?.status === 'confirmed' ? 'confirmed_renter' : 'available');
@@ -837,7 +875,7 @@ export function AddGigsModal({
   const isEditManuallyConfirmed =
     isVenueHireEdit && (effectiveRentalStatus === 'confirmed_renter' || hasRenterName);
 
-  const [step, setStep] = useState(() => (initialIso ? 'details' : 'dates'));
+  const [step, setStep] = useState(() => (initialIso || bookNewAwaitingFirstDateFlow ? 'details' : 'dates'));
   const [bookNewTimingError, setBookNewTimingError] = useState(null);
   const [month, setMonth] = useState(() => {
     if (initialIso) {
@@ -846,7 +884,11 @@ export function AddGigsModal({
     }
     return new Date();
   });
-  const [selectedDates, setSelectedDates] = useState(() => (initialIso ? [initialIso] : []));
+  const [selectedDates, setSelectedDates] = useState(() => {
+    if (initialIso) return [initialIso];
+    if (bookNewAwaitingFirstDateFlow) return [BOOK_NEW_PENDING_DATE_ISO];
+    return [];
+  });
   const [gigsByDate, setGigsByDate] = useState(() => {
     if (isEditMode && editDateIso && editGigData) {
       const mapped = isVenueHireEdit
@@ -873,9 +915,23 @@ export function AddGigsModal({
       }
       return { [initialIso]: base };
     }
+    if (bookNewAwaitingFirstDateFlow) {
+      const base = defaultGigForDate();
+      return {
+        [BOOK_NEW_PENDING_DATE_ISO]: {
+          ...base,
+          gigType: buildingForMusicianData?.type || base.gigType,
+          genre: Array.isArray(buildingForMusicianData?.genres) ? buildingForMusicianData.genres : [],
+          showOnVenueProfile: false,
+          private: true,
+        },
+      };
+    }
     return {};
   });
-  const [activeTab, setActiveTab] = useState(initialIso || null);
+  const [activeTab, setActiveTab] = useState(
+    () => initialIso || (bookNewAwaitingFirstDateFlow ? BOOK_NEW_PENDING_DATE_ISO : null),
+  );
   const [venueId, setVenueId] = useState(() => {
     if (isEditMode && editGigData?.venueId) return editGigData.venueId;
     if (buildForMusicianActive) {
@@ -918,6 +974,8 @@ export function AddGigsModal({
   const [showBookNewListingPreview, setShowBookNewListingPreview] = useState(false);
   /** After a template is applied in this modal session, show success styling on the CTA (modal remount resets). */
   const [bookNewTemplateAppliedInSession, setBookNewTemplateAppliedInSession] = useState(false);
+  const [bookNewTemplatePickerOpen, setBookNewTemplatePickerOpen] = useState(false);
+  const bookNewTemplatePickerRef = useRef(null);
   /**
    * When building for a musician without a Gigin profile, we open the
    * InviteMethodsModal inline. Keeping the state local avoids coupling to
@@ -935,12 +993,49 @@ export function AddGigsModal({
 
   const sortedDates = useMemo(() => [...selectedDates].sort(), [selectedDates]);
 
+  const bookNewRealDateIsos = useMemo(
+    () => sortedDates.filter((iso) => !isBookNewPendingDateIso(iso)),
+    [sortedDates],
+  );
+
+  const changeBookNewDateFromTo = (oldIso, newIso) => {
+    if (!oldIso || !newIso || oldIso === newIso) return;
+    setGigsByDate((prev) => {
+      const g = prev[oldIso];
+      if (!g) return prev;
+      const next = { ...prev };
+      delete next[oldIso];
+      next[newIso] = g;
+      return next;
+    });
+    setSelectedDates((prev) => prev.map((d) => (d === oldIso ? newIso : d)));
+    setActiveTab(newIso);
+  };
+
+  const commitBookNewPendingDate = (yyyyMmDd) => {
+    changeBookNewDateFromTo(BOOK_NEW_PENDING_DATE_ISO, yyyyMmDd);
+  };
+
   const bookNewTemplatesForVenue = useMemo(() => {
     const list = filterBookNewEventTemplatesForVenue(templates, venueId);
     return [...list].sort((a, b) =>
       String(a.templateName || '').localeCompare(String(b.templateName || ''), undefined, { sensitivity: 'base' })
     );
   }, [templates, venueId]);
+
+  useEffect(() => {
+    if (!bookNewTemplatePickerOpen) return;
+    const onDocMouseDown = (e) => {
+      if (bookNewTemplatePickerRef.current?.contains(e.target)) return;
+      setBookNewTemplatePickerOpen(false);
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [bookNewTemplatePickerOpen]);
+
+  useEffect(() => {
+    setBookNewTemplatePickerOpen(false);
+  }, [venueId]);
 
   const selectedVenue = useMemo(
     () => venues.find((v) => v.venueId === venueId),
@@ -1087,7 +1182,7 @@ export function AddGigsModal({
         const entries = await getArtistCRMEntries(user.uid);
         if (!cancelled) setMyArtists(entries || []);
       } catch (err) {
-        console.error('Error loading My Artists:', err);
+        console.error('Error loading My Contacts:', err);
       }
     })();
     return () => { cancelled = true; };
@@ -1521,6 +1616,7 @@ export function AddGigsModal({
     setGigsByDate((prev) => {
       const next = { ...prev };
       sortedDates.forEach((iso) => {
+        if (isBookNewPendingDateIso(iso)) return;
         if (iso === activeTab) return;
         const { rentalGigId, ...rest } = sourceGig;
         next[iso] = { ...rest, rentalGigId: '' };
@@ -1561,7 +1657,7 @@ export function AddGigsModal({
     }
     if (!canSubmit) {
       if (addGigsMode === 'bookNew') {
-        const firstInvalidIso = sortedDates.find(
+        const firstInvalidIso = bookNewRealDateIsos.find(
           (iso) => !isBookNewGigComplete(gigsByDate[iso] || defaultGigForDate())
         );
         if (firstInvalidIso) {
@@ -1573,7 +1669,12 @@ export function AddGigsModal({
             toast.error(tv.message);
             return;
           }
-          if (!gig.paymentModel || (gig.paymentModel !== 'no_fee' && !hasPositiveBudgetValue(gig.unifiedFeeAmount))) {
+          const feeMissing =
+            gig.paymentModel !== 'no_fee' &&
+            (gig.bookingMode === 'rental' && gig.paymentModel === 'artist_pays_venue'
+              ? String(gig.unifiedFeeAmount ?? gig.rentalFee ?? '').replace(/[^\d]/g, '').length === 0
+              : !hasPositiveBudgetValue(gig.unifiedFeeAmount));
+          if (!gig.paymentModel || feeMissing) {
             toast.error('Choose a payment model and enter a valid fee where required.');
             return;
           }
@@ -1597,7 +1698,12 @@ export function AddGigsModal({
             toast.error(tv.message);
             return;
           }
-          if (!gig.paymentModel || (gig.paymentModel !== 'no_fee' && !hasPositiveBudgetValue(gig.unifiedFeeAmount))) {
+          const feeMissingAddExisting =
+            gig.paymentModel !== 'no_fee' &&
+            (gig.bookingMode === 'rental' && gig.paymentModel === 'artist_pays_venue'
+              ? String(gig.unifiedFeeAmount ?? gig.rentalFee ?? '').replace(/[^\d]/g, '').length === 0
+              : !hasPositiveBudgetValue(gig.unifiedFeeAmount));
+          if (!gig.paymentModel || feeMissingAddExisting) {
             toast.error('Choose a payment model and enter a valid fee where required.');
             return;
           }
@@ -1803,7 +1909,8 @@ export function AddGigsModal({
     };
     const formatPounds = (n) => (n === 0 ? '£' : `£${Number(n).toLocaleString('en-GB')}`);
 
-    if (isEditMode && editGigData?.gigId && sortedDates.length === 1) {
+    const editFirestoreTargetId = editGigData?.gigId ?? editGigData?.id;
+    if (isEditMode && editFirestoreTargetId && sortedDates.length === 1) {
       const dateIso = sortedDates[0];
       const gig = gigsByDate[dateIso] || defaultGigForDate();
 
@@ -1856,7 +1963,7 @@ export function AddGigsModal({
 
           const existingIds = Array.isArray(editGigData?.existingGigIds) && editGigData.existingGigIds.length > 0
             ? editGigData.existingGigIds
-            : [editGigData.gigId];
+            : [editFirestoreTargetId];
           const slotsRow = allSlotsFor(dateIso) || [];
           // If the wizard was used single-slot, fall back to top-level music
           // start/stop for slot 0 since `startTime`/`duration` may be empty.
@@ -1961,9 +2068,9 @@ export function AddGigsModal({
       if (gig.bookingMode !== 'rental') return;
       setSubmitting(true);
       try {
-        const rentalStart = String(gig.rentalStartTime ?? '').trim();
-        const rentalEnd = String(gig.rentalEndTime ?? '').trim();
-        const feeValue = getBudgetValue(gig.rentalFee ?? '£');
+        const rentalStart = String(gig.rentalStartTime ?? pickRentalStart(gig) ?? '').trim();
+        const rentalEnd = String(gig.rentalEndTime ?? pickRentalEnd(gig) ?? '').trim();
+        const feeValue = getBudgetValue(gig.unifiedFeeAmount ?? gig.rentalFee ?? '£');
         const feeText = formatPounds(feeValue);
         const rentalStatus = gig.rentalStatus === 'confirmed_renter' ? 'confirmed' : 'open';
         const rentalDepositRequired = !!gig.rentalDepositRequired;
@@ -2009,7 +2116,7 @@ export function AddGigsModal({
             ...(String(gig.soundManager ?? '').trim() && { soundManager: String(gig.soundManager).trim() }),
             ...(buildTechSetupPayload(gig.techSetup) && { techSetup: buildTechSetupPayload(gig.techSetup) }),
           };
-          await updateVenueHireOpportunity(editGigData.gigId, hireUpdates);
+          await updateVenueHireOpportunity(editFirestoreTargetId, hireUpdates);
         } else {
           const updates = {
             gigName: (String(gig.gigName ?? '').trim()) || undefined,
@@ -2025,7 +2132,7 @@ export function AddGigsModal({
             budgetValue: feeValue,
           };
           await updateGigDocument({
-            gigId: editGigData.gigId,
+            gigId: editFirestoreTargetId,
             action: 'gigs.update',
             updates,
           });
@@ -2052,7 +2159,7 @@ export function AddGigsModal({
       const hasCoords = Array.isArray(coords) && coords.length >= 2 && typeof coords[0] === 'number' && typeof coords[1] === 'number';
       const geopoint = hasCoords ? { latitude: coords[1], longitude: coords[0] } : null;
 
-      for (const dateIso of sortedDates) {
+      for (const dateIso of bookNewRealDateIsos) {
         const gig = gigsByDate[dateIso] || defaultGigForDate();
 
         if (addGigsMode === 'bookNew') {
@@ -2690,19 +2797,19 @@ export function AddGigsModal({
   };
 
   const canSubmit =
-    sortedDates.length > 0 &&
-    sortedDates.every((iso) => {
+    bookNewRealDateIsos.length > 0 &&
+    bookNewRealDateIsos.every((iso) => {
       const g = gigsByDate[iso] || defaultGigForDate();
       if (addGigsMode === 'bookNew') return isBookNewGigComplete(g);
       return isGigValidWithMode(g);
     });
 
-  const isMultipleGigs = sortedDates.length > 1;
+  const isMultipleGigs = bookNewRealDateIsos.length > 1;
 
   const submitButtonLabel = useMemo(() => {
     if (addGigsMode === 'bookNew') {
       if (isEditMode) return 'Update event';
-      return isMultipleGigs ? 'Create events' : 'Create event';
+      return isMultipleGigs ? 'Create gigs' : 'Create gig';
     }
     if (!activeTab) return isMultipleGigs ? 'Add/Book Gigs' : 'Add/Book a Gig';
     if (addGigsMode === 'addExisting') {
@@ -2753,6 +2860,10 @@ export function AddGigsModal({
   const handleSaveBookNewTemplate = async () => {
     const name = templateSaveNameInput.trim();
     if (!name || !venueId || !activeTab || addGigsMode !== 'bookNew') return;
+    if (isBookNewPendingDateIso(activeTab)) {
+      toast.error('Choose a date before saving a template.');
+      return;
+    }
     if (templateNameExistsForVenue(templates, venueId, name, null)) {
       toast.error('A template with this name already exists for this venue.');
       return;
@@ -2781,7 +2892,7 @@ export function AddGigsModal({
 
   const handleUseBookNewTemplateClick = (template) => {
     if (!template) return;
-    if (sortedDates.length > 1) {
+    if (bookNewRealDateIsos.length > 1) {
       setShowUseBookNewTemplateModal(false);
       setPendingApplyBookNewTemplate(template);
       setShowApplyBookNewTemplateScopeModal(true);
@@ -2802,7 +2913,12 @@ export function AddGigsModal({
     setPendingApplyBookNewTemplate(null);
   };
 
-  const previewOpen = showBookNewListingPreview && addGigsMode === 'bookNew' && step === 'details' && !!activeTab;
+  const previewOpen =
+    showBookNewListingPreview &&
+    addGigsMode === 'bookNew' &&
+    step === 'details' &&
+    !!activeTab &&
+    !isBookNewPendingDateIso(activeTab);
 
   return (
     <Portal>
@@ -2845,23 +2961,25 @@ export function AddGigsModal({
           <div className="add-gigs-modal-header">
             <div className="add-gigs-modal-header-top">
               <div className="add-gigs-modal-title-wrap">
-                <h2 id="add-gigs-title" className="add-gigs-modal-title">
+                <h2
+                  id="add-gigs-title"
+                  className={`add-gigs-modal-title${addGigsMode === 'bookNew' && !isEditMode && !buildForMusicianActive ? ' add-gigs-modal-title--book-new' : ''}`}
+                >
                   {isEditMode
                     ? 'Edit Event'
                     : buildForMusicianActive
                       ? `Build event for ${buildingForMusicianData?.name || 'artist'}`
-                      : isMultipleGigs
-                        ? 'Create Events'
-                        : 'Create event'}
+                      : addGigsMode === 'bookNew' && !isMultipleGigs
+                        ? 'Create a gig'
+                        : addGigsMode === 'bookNew' && isMultipleGigs
+                          ? 'Create gigs'
+                          : isMultipleGigs
+                            ? 'Create Events'
+                            : 'Create event'}
                 </h2>
-                {buildForMusicianActive && !isEditMode && (
-                  <p className="add-gigs-modal-subtitle">
-                    This listing will be private — only {buildingForMusicianData?.name || 'the invited artist'} can apply.
-                  </p>
-                )}
               </div>
-              <button type="button" className="btn close tertiary" onClick={onClose}>
-                Close <span aria-hidden="true">×</span>
+              <button type="button" className="btn close tertiary add-gigs-modal-close-x" onClick={onClose} aria-label="Close">
+                <span aria-hidden="true">×</span>
               </button>
             </div>
             {step === 'details' && !isEditManuallyConfirmed && sortedDates.length >= 2 && (
@@ -2907,6 +3025,58 @@ export function AddGigsModal({
               </div>
             )}
           </div>
+          {step === 'details' && addGigsMode === 'bookNew' && !isEditManuallyConfirmed && (
+            <div className="add-gigs-book-new-template-row-wrap" ref={bookNewTemplatePickerRef}>
+              <div className="add-gigs-book-new-template-row">
+                <div className="add-gigs-book-new-template-row-text">
+                  <span className="add-gigs-book-new-template-row-title">Use a template</span>
+                  <span className="add-gigs-book-new-template-row-sub">Pre-fill from a previous gig setup</span>
+                </div>
+                <button
+                  type="button"
+                  className="add-gigs-book-new-template-choose-btn"
+                  aria-expanded={bookNewTemplatePickerOpen}
+                  aria-haspopup="listbox"
+                  disabled={bookNewTemplateAppliedInSession}
+                  onClick={() => setBookNewTemplatePickerOpen((o) => !o)}
+                >
+                  Choose <span className="add-gigs-book-new-template-choose-chevron" aria-hidden>▾</span>
+                </button>
+              </div>
+              {bookNewTemplatePickerOpen && (
+                <ul className="add-gigs-book-new-template-dropdown" role="listbox">
+                  {bookNewTemplatesForVenue.length === 0 ? (
+                    <li className="add-gigs-book-new-template-dropdown-empty" role="option">
+                      No saved templates yet for this venue.
+                      {/* TODO: Add empty-state CTA to manage templates when product defines it. */}
+                    </li>
+                  ) : (
+                    bookNewTemplatesForVenue.map((t) => {
+                      const tid = templateDocId(t);
+                      const vName = venues.find((v) => v.venueId === t.venueId)?.name ?? '';
+                      const summary = formatBookNewTemplateSummaryLine(t, vName);
+                      const displayName = String(t.templateName || 'Untitled template').trim() || 'Untitled template';
+                      return (
+                        <li key={tid || displayName} role="option">
+                          <button
+                            type="button"
+                            className="add-gigs-book-new-template-dropdown-item"
+                            onClick={() => {
+                              setBookNewTemplatePickerOpen(false);
+                              handleUseBookNewTemplateClick(t);
+                            }}
+                          >
+                            <span className="add-gigs-book-new-template-dropdown-name">{displayName}</span>
+                            <span className="add-gigs-book-new-template-dropdown-summary">{summary}</span>
+                          </button>
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              )}
+            </div>
+          )}
           <div className={`add-gigs-modal-body ${isEditManuallyConfirmed ? 'add-gigs-modal-body--edit-confirmed' : ''}`.trim()} ref={modalBodyRef}>
           {step === 'dates' && (
             <>
@@ -2974,19 +3144,46 @@ export function AddGigsModal({
                     }`}
                   >
                     <div className="add-gigs-field add-gigs-header-field-pill">
-                      <label className="add-gigs-header-field-label" htmlFor={`add-gigs-header-date-${activeTab}`}>Date</label>
-                      <button
-                        id={`add-gigs-header-date-${activeTab}`}
-                        type="button"
-                        className="add-gigs-header-pill add-gigs-header-pill--date"
-                        onClick={() => setStep('dates')}
-                        aria-label="Change date"
+                      <label
+                        className="add-gigs-header-field-label"
+                        htmlFor={bookNewAwaitingFirstDateFlow ? 'add-gigs-header-date-native' : `add-gigs-header-date-${activeTab}`}
                       >
-                        <span className="add-gigs-header-pill-icon" aria-hidden="true">
-                          <CalendarIconSolid />
-                        </span>
-                        <span className="add-gigs-header-pill-value">{formatHeaderDisplayDate(activeTab)}</span>
-                      </button>
+                        Date
+                      </label>
+                      {bookNewAwaitingFirstDateFlow ? (
+                        <div className="add-gigs-header-pill add-gigs-header-pill--date add-gigs-header-pill--date-native">
+                          <span className="add-gigs-header-pill-icon" aria-hidden="true">
+                            <CalendarIconSolid />
+                          </span>
+                          <input
+                            id="add-gigs-header-date-native"
+                            type="date"
+                            className="add-gigs-header-date-native-input"
+                            min={format(new Date(), 'yyyy-MM-dd')}
+                            value={isBookNewPendingDateIso(activeTab) ? '' : activeTab}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (!v) return;
+                              if (isBookNewPendingDateIso(activeTab)) commitBookNewPendingDate(v);
+                              else changeBookNewDateFromTo(activeTab, v);
+                            }}
+                            aria-label="Event date"
+                          />
+                        </div>
+                      ) : (
+                        <button
+                          id={`add-gigs-header-date-${activeTab}`}
+                          type="button"
+                          className="add-gigs-header-pill add-gigs-header-pill--date"
+                          onClick={() => setStep('dates')}
+                          aria-label="Change date"
+                        >
+                          <span className="add-gigs-header-pill-icon" aria-hidden="true">
+                            <CalendarIconSolid />
+                          </span>
+                          <span className="add-gigs-header-pill-value">{formatHeaderDisplayDate(activeTab)}</span>
+                        </button>
+                      )}
                     </div>
                     {venues.length > 0 && (
                       <div className="add-gigs-field add-gigs-header-field-pill">
@@ -3014,7 +3211,7 @@ export function AddGigsModal({
                       </div>
                     )}
                   </div>
-                  {(addGigsMode === 'bookNew' || addGigsMode === 'addExisting') && venueId && bookNewTemplatesForVenue.length > 0 && (
+                  {addGigsMode === 'addExisting' && venueId && bookNewTemplatesForVenue.length > 0 && (
                     <div className="add-gigs-book-new-use-template-row">
                       <button
                         type="button"
@@ -3397,7 +3594,7 @@ export function AddGigsModal({
                                   >
                                     {filtered.length === 0 ? (
                                       <li className="add-gigs-artist-dropdown-item add-gigs-artist-dropdown-item--muted">
-                                        No artists in My Artists
+                                        No contacts in My Contacts
                                       </li>
                                     ) : (
                                       filtered.map((entry) => (
@@ -3636,17 +3833,34 @@ export function AddGigsModal({
                           {currentBookingMode === 'artist' && (
                             <>
                               <div className="add-gigs-field">
-                                <label className="label add-gigs-more-details-field-label" htmlFor={`add-gigs-musician-type-${activeTab}`}>Type of Artist</label>
-                                <select
-                                  id={`add-gigs-musician-type-${activeTab}`}
-                                  className="select add-gigs-filter-select add-gigs-select-no-border"
-                                  value={currentGig?.gigType ?? 'Musician/Band'}
-                                  onChange={(e) => updateGig(activeTab, { gigType: e.target.value })}
+                                <label id={`add-gigs-looking-for-label-${activeTab}`} className="label add-gigs-more-details-field-label">
+                                  Looking for
+                                </label>
+                                <div
+                                  className="add-gigs-book-new-looking-for-pills"
+                                  role="group"
+                                  aria-labelledby={`add-gigs-looking-for-label-${activeTab}`}
                                 >
-                                  {MUSICIAN_TYPE_OPTIONS.map((opt) => (
-                                    <option key={opt} value={opt}>{opt}</option>
-                                  ))}
-                                </select>
+                                  {LOOKING_FOR_OPTIONS.map((opt) => {
+                                    const selected = parseLookingForSelection(currentGig?.gigType);
+                                    const isOn = selected.includes(opt);
+                                    return (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        className={`btn tertiary add-gigs-book-new-looking-for-pill${isOn ? ' add-gigs-book-new-looking-for-pill--selected' : ''}`}
+                                        aria-pressed={isOn}
+                                        onClick={() => {
+                                          updateGig(activeTab, {
+                                            gigType: toggleLookingForOption(currentGig?.gigType, opt),
+                                          });
+                                        }}
+                                      >
+                                        {opt}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               </div>
                               <div className="add-gigs-load-soundcheck-row add-gigs-field--full">
                                 <div className="add-gigs-field">
@@ -3677,7 +3891,7 @@ export function AddGigsModal({
                               <label className="label add-gigs-more-details-field-label">Description</label>
                               <textarea
                               className="input add-gigs-input-no-border"
-                              placeholder="Describe the kind of event you’re looking for, the vibe, and any key requirements or arrangements…"
+                              placeholder="(Optional) Describe the gig, the vibe, what you're looking for"
                               value={currentGig?.extraInformation ?? ''}
                               onChange={(e) => updateGig(activeTab, { extraInformation: e.target.value })}
                               maxLength={250}
@@ -3727,23 +3941,34 @@ export function AddGigsModal({
             {step === 'details' ? (
               <>
                 {addGigsMode === 'bookNew' ? (
-                  <>
-                    <button
-                      type="button"
-                      className="btn tertiary"
-                      onClick={() => setStep('dates')}
-                    >
-                      Back
+                  <div className="add-gigs-actions-book-new">
+                    <button type="button" className="btn tertiary add-gigs-footer-pill add-gigs-footer-pill--ghost" onClick={onClose}>
+                      Cancel
                     </button>
-                    <button
-                      type="button"
-                      className="btn primary"
-                      onClick={handleSubmitClick}
-                      disabled={submitting}
-                    >
-                      {submitting ? submitButtonBusyLabel : submitButtonLabel}
-                    </button>
-                  </>
+                    <div className="add-gigs-actions-book-new-right">
+                      {/*
+                        Opens the save-as-template dialog (no persistence until the user confirms there).
+                      */}
+                      <button
+                        type="button"
+                        className="btn tertiary add-gigs-footer-pill add-gigs-footer-pill--ghost"
+                        onClick={() => {
+                          setTemplateSaveNameInput('');
+                          setShowSaveBookNewTemplateModal(true);
+                        }}
+                      >
+                        Save Template
+                      </button>
+                      <button
+                        type="button"
+                        className="btn primary gigs-react-book-gig-btn"
+                        onClick={handleSubmitClick}
+                        disabled={submitting}
+                      >
+                        {submitting ? submitButtonBusyLabel : submitButtonLabel}
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <>
                     {!initialDateIso && (

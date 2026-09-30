@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import '@styles/host/venue-gig-page.styles.css';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import Portal from '@features/shared/components/Portal';
-import { LeftArrowIcon, LinkIcon, InviteIconSolid, CalendarIconLight, LocationPinIcon, CloseIcon } from '@features/shared/ui/extras/Icons';
+import { LeftArrowIcon, LinkIcon, InviteIconSolid, CalendarIconLight, LocationPinIcon } from '@features/shared/ui/extras/Icons';
 import { ArtistFillThisSlotTile } from '@features/venue/gigs/components/ArtistFillThisSlotTile';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { getLocalGigDateTime } from '@services/utils/filtering';
@@ -56,9 +56,62 @@ function sortGigSlotsByStartTime(a, b) {
 function dedupeGigSlots(slots) {
   const byId = new Map();
   (slots || []).forEach((g) => {
-    if (g?.gigId) byId.set(g.gigId, g);
+    const id = g?.gigId || g?.id;
+    if (id) byId.set(id, { ...g, gigId: id });
   });
   return [...byId.values()].sort(sortGigSlotsByStartTime);
+}
+
+function gigFirestoreDateToPlain(dateField) {
+  if (!dateField) return null;
+  if (typeof dateField.toDate === 'function') return dateField.toDate();
+  return dateField instanceof Date ? dateField : null;
+}
+
+function isAddExistingOriginGigFromApplicants(g) {
+  if (!g) return false;
+  const apps = Array.isArray(g.applicants) ? g.applicants : [];
+  return g.private === true && apps.some((a) => a?.status === 'confirmed' && !a?.id && !a?.artistId);
+}
+
+/** Matches `Gigs.jsx` edit packaging so AddGigsModal prefills multi-slot artist nights. */
+function packageArtistBookingEditDataFromSlots(sortedSlots) {
+  if (!sortedSlots?.length) return null;
+  const slotDocId = (g) => g?.gigId || g?.id;
+  if (sortedSlots.length === 1) {
+    const g = sortedSlots[0];
+    const gid = slotDocId(g);
+    return {
+      ...g,
+      gigId: gid,
+      date: gigFirestoreDateToPlain(g.date),
+      existingGigIds: gid ? [gid] : [],
+    };
+  }
+  const primaryGig = sortedSlots[0];
+  const baseGigName = String(primaryGig.gigName ?? '').replace(/\s*\(Set\s+\d+\)\s*$/, '');
+  const extraSlots = sortedSlots.slice(1).map((slot) => ({
+    startTime: slot.startTime,
+    duration: slot.duration,
+  }));
+  const slotBudgets = sortedSlots.map((slot) =>
+    slot.budgetValue !== undefined ? slot.budgetValue : null
+  );
+  const artistNames = sortedSlots.map((slot) => {
+    const apps = Array.isArray(slot.applicants) ? slot.applicants : [];
+    const confirmed = apps.find((a) => a?.status === 'confirmed');
+    return confirmed?.name ?? slot.artistName ?? '';
+  });
+  return {
+    ...primaryGig,
+    gigId: slotDocId(primaryGig),
+    gigName: baseGigName,
+    date: gigFirestoreDateToPlain(primaryGig.date),
+    extraSlots,
+    slotBudgets,
+    artistNames,
+    existingGigIds: sortedSlots.map((slot) => slotDocId(slot)).filter(Boolean),
+  };
 }
 
 export function VenueGigPageShell({
@@ -462,15 +515,22 @@ export function VenueGigPageShell({
   const hasPublicApplyLink = !gigInfo.private && normalisedGig?.links?.gigLinkUrl;
 
   const openEditGigModal = () => {
-    let mode;
-    if (normalisedGig.bookingMode === 'venue_hire') mode = null;
-    else {
-      const apps = Array.isArray(gigInfo?.applicants) ? gigInfo.applicants : [];
-      const isAddExistingOrigin = gigInfo?.private === true
-        && apps.some((a) => a?.status === 'confirmed' && !a?.id && !a?.artistId);
-      mode = isAddExistingOrigin ? 'addExisting' : 'bookNew';
+    if (normalisedGig.bookingMode === 'venue_hire') {
+      const hireId = gigInfo.gigId || gigInfo.id;
+      setAddGigsEditData?.({
+        ...gigInfo,
+        gigId: hireId,
+        date: gigFirestoreDateToPlain(gigInfo.date),
+      });
+      setAddGigsMode?.('bookNew');
+      setShowAddGigsModal?.(true);
+      return;
     }
-    setAddGigsEditData?.(gigInfo);
+    const sortedSlots = dedupeGigSlots([gigInfo, ...relatedSlots]);
+    const convertedGig = packageArtistBookingEditDataFromSlots(sortedSlots);
+    if (!convertedGig?.existingGigIds?.length) return;
+    const mode = sortedSlots.some(isAddExistingOriginGigFromApplicants) ? 'addExisting' : 'bookNew';
+    setAddGigsEditData?.(convertedGig);
     setAddGigsMode?.(mode);
     setShowAddGigsModal?.(true);
   };
@@ -478,7 +538,7 @@ export function VenueGigPageShell({
   /* Open + confirmed artist bookings: header invite opens share / ArtistFillThisSlotTile (not only while status is open). */
   const canInviteArtist = isArtistBookingPage && hasVenuePerm(venues, gigInfo?.venueId, 'gigs.invite');
   const isGigApplicationsClosed = gigInfo?.status === 'closed';
-  const showArtistInviteInHeader =
+  const showArtistInviteInApplications =
     canInviteArtist && !isGigApplicationsClosed && !isArtistBookingFullyBooked;
 
   return (
@@ -520,16 +580,6 @@ export function VenueGigPageShell({
             </div>
             <div className="venue-gig-page__header-right">
               <div className="venue-gig-page__header-row venue-gig-page__header-row--actions">
-                {showArtistInviteInHeader && (
-                  <button
-                    type="button"
-                    className="btn artist-profile"
-                    onClick={() => setShowArtistInviteModal(true)}
-                    title="Invite an artist or promoter with a shareable link"
-                  >
-                    <InviteIconSolid /> Invite artist or promoter
-                  </button>
-                )}
                 {isVenueHirePage && !isConfirmedVenueHire && !noBookerYet && (
                   <button
                     type="button"
@@ -613,7 +663,6 @@ export function VenueGigPageShell({
                   copyToClipboard={copyToClipboard}
                   showInvitesModal={showInvitesModal}
                   setShowInvitesModal={setShowInvitesModal}
-                  onInviteHirer={showInviteUx ? () => setShowInviteToApplyModal(true) : undefined}
                   onCopyBookingLink={showInviteUx ? copyGigLink : undefined}
                   bookingLinkUrl={showInviteUx && (gigInfo?.id || gigInfo?.gigId) && typeof window !== 'undefined' ? `${window.location.origin}/${isVenueHirePage ? 'hire' : 'gig'}/${gigInfo.id || gigInfo.gigId}` : undefined}
                   applicationsInviteOnly={
@@ -646,7 +695,7 @@ export function VenueGigPageShell({
                       : undefined
                   }
                   onInviteArtist={
-                    showArtistInviteInHeader ? () => setShowArtistInviteModal(true) : undefined
+                    showArtistInviteInApplications ? () => setShowArtistInviteModal(true) : undefined
                   }
                   artistBookingApplicantsTotalCount={artistBookingApplicantsTotalCount}
                   artistBookingSlotGigs={isArtistBookingPage ? allSlots : undefined}
@@ -662,23 +711,11 @@ export function VenueGigPageShell({
             mergedTimelineSlots={allSlots}
             setGigInfo={setGigInfo}
             refreshGigs={refreshGigs}
-            bookingSummaryOnEditGig={showEditGigOption ? openEditGigModal : undefined}
+            bookingSummaryOnEditGig={
+              hasVenuePerm(venues, gigInfo?.venueId, 'gigs.update') ? openEditGigModal : undefined
+            }
             onEdit={
-              hasVenuePerm(venues, gigInfo?.venueId, 'gigs.update')
-                ? () => {
-                    let mode;
-                    if (normalisedGig?.bookingMode === 'venue_hire') mode = null;
-                    else {
-                      const apps = Array.isArray(gigInfo?.applicants) ? gigInfo.applicants : [];
-                      const isAddExistingOrigin = gigInfo?.private === true
-                        && apps.some((a) => a?.status === 'confirmed' && !a?.id && !a?.artistId);
-                      mode = isAddExistingOrigin ? 'addExisting' : 'bookNew';
-                    }
-                    setAddGigsEditData?.(gigInfo);
-                    setAddGigsMode?.(mode);
-                    setShowAddGigsModal?.(true);
-                  }
-                : undefined
+              hasVenuePerm(venues, gigInfo?.venueId, 'gigs.update') ? openEditGigModal : undefined
             }
           />
         </div>
@@ -753,35 +790,16 @@ export function VenueGigPageShell({
       )}
 
       {showArtistInviteModal && gigInfo && (
-        <Portal>
-          <div
-            className="modal cancel-gig venue-gig-page__invite-artist-modal-overlay"
-            onClick={() => setShowArtistInviteModal(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="venue-gig-invite-artist-title"
-          >
-            <div
-              className="modal-content venue-gig-page__invite-artist-modal"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="venue-gig-page__invite-artist-modal-head">
-                <h3 id="venue-gig-invite-artist-title" className="venue-gig-page__invite-artist-modal-title">
-                  Invite artist or promoter
-                </h3>
-                <button
-                  type="button"
-                  className="btn tertiary venue-gig-page__invite-artist-modal-close"
-                  onClick={() => setShowArtistInviteModal(false)}
-                  aria-label="Close"
-                >
-                  <CloseIcon />
-                </button>
-              </div>
-              <ArtistFillThisSlotTile gig={gigInfo} venues={venues} refreshGigs={refreshGigs} />
-            </div>
-          </div>
-        </Portal>
+        <ArtistFillThisSlotTile
+          gig={gigInfo}
+          venues={venues}
+          refreshGigs={refreshGigs}
+          initialPopup="contacts"
+          hideInlineShareButton
+          submodalOnly
+          showManualOption={false}
+          onPopupClose={() => setShowArtistInviteModal(false)}
+        />
       )}
     </div>
   );

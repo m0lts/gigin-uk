@@ -18,7 +18,16 @@ import '@styles/host/venue-gig-page.styles.css';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function ArtistFillThisSlotTile({ gig, venues = [], refreshGigs }) {
+export function ArtistFillThisSlotTile({
+  gig,
+  venues = [],
+  refreshGigs,
+  initialPopup = null,
+  hideInlineShareButton = false,
+  submodalOnly = false,
+  onPopupClose,
+  showManualOption = true,
+}) {
   const { user } = useAuth();
   const [linkCopied, setLinkCopied] = useState(false);
   const [crmEntries, setCrmEntries] = useState([]);
@@ -99,7 +108,7 @@ export function ArtistFillThisSlotTile({ gig, venues = [], refreshGigs }) {
       } else {
         const email = (entry.email || '').trim();
         if (!email) {
-          toast.error('This contact has no email. Add one in My Artists.');
+          toast.error('This contact has no email. Add one in My Contacts.');
           return;
         }
         await sendGigInviteEmail({
@@ -208,13 +217,17 @@ export function ArtistFillThisSlotTile({ gig, venues = [], refreshGigs }) {
         linkCopied={linkCopied}
         linkHelperText="Send this link to artists who would be interested in this slot."
         manualPopupTitle="Confirm manually"
-        showManualOption
+        showManualOption={showManualOption}
+        initialPopup={initialPopup}
+        hideInlineShareButton={hideInlineShareButton}
+        submodalOnly={submodalOnly}
+        onPopupClose={onPopupClose}
         contactsBody={(
           <div className="invite-and-share-modal__list fill-this-slot__contacts-list">
             {crmLoading ? (
               <LoadingSpinner />
             ) : !crmEntries?.length ? (
-              <p className="invite-and-share-modal__empty">No contacts yet. Add artists in My Artists.</p>
+              <p className="invite-and-share-modal__empty">No contacts yet. Add contacts in My Contacts.</p>
             ) : (
               crmEntries.map((entry) => {
                 const invited = invitedContactIds.has(entry.id);

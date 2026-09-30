@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import Portal from '@features/shared/components/Portal';
@@ -23,6 +23,7 @@ import { AddToContactsModal } from '@features/venue/components/AddToContactsModa
 import { ContactDetailsModal } from '@features/venue/components/ContactDetailsModal';
 import { ApplicantTechSetupModal } from '@features/venue/components/ApplicantTechSetupModal';
 import { InviteArtistPromoterTile } from '@features/venue/components/InviteArtistPromoterTile';
+import { SendGigDetailsTile } from '@features/venue/components/SendGigDetailsTile';
 import { VenueHireTechSetupMainCard } from '@features/venue/gigs/components/VenueHireTechSetupMainCard';
 import { GigApplications } from '@features/venue/dashboard/GigApplications';
 import { computeCompatibility } from '@services/utils/techRiderCompatibility';
@@ -31,7 +32,24 @@ import {
   gigSlotHasConfirmedArtist,
   isArtistBookingNightFullyBooked,
 } from '@features/venue/gigs/utils/multiSlotGigGroup';
-import { CloseIcon, DocumentsIcon, DownChevronIcon, DownloadIcon, EyeIcon, MessageIcon, MicrophoneIcon, NewTabIcon, PencilIcon, PlusIcon, TechRiderIcon, TickIcon, UpChevronIcon } from '@features/shared/ui/extras/Icons';
+import { buildVenueHireGigSummaryProgrammeTimeLabel } from '@features/venue/gigs/utils/venueHireGigDetailsTimings';
+import {
+  CloseIcon,
+  DocumentsIcon,
+  DownChevronIcon,
+  DownloadIcon,
+  EyeIcon,
+  InviteIconSolid,
+  MessageIcon,
+  MicrophoneIcon,
+  NewTabIcon,
+  PencilIcon,
+  PlusIcon,
+  TechRiderIcon,
+  SettingsIcon,
+  TickIcon,
+  UpChevronIcon,
+} from '@features/shared/ui/extras/Icons';
 import '@styles/host/invite-and-share-modal.styles.css';
 import '@styles/host/venue-gig-page.styles.css';
 
@@ -57,8 +75,8 @@ function slotTimeRangeLabel(slotGig) {
 /**
  * Unified gig details panel for both venue-hire and artist-booking gigs.
  *
- * Venue hire: Booked by + Performers + Applications + Tech setup cards. hireState one of
- * 'available' (no hirer), 'pending' (hirer set, not confirmed), or 'confirmed'.
+ * Venue hire: hirer booked tile (same chrome as artist-booking booked tiles) when there is a
+ * booker, then Performers + Applications + Tech setup. hireState: 'available' | 'pending' | 'confirmed'.
  *
  * Artist booking (open): reuses the same card chrome — an Invite/Fill-this-slot tile, a
  * Performers card (manual + confirmed performers), and the legacy GigApplications
@@ -85,7 +103,6 @@ export function GigDetailsPanel({
   setShowInvitesModal,
   addPerformersTrigger,
   onAddPerformersOpened,
-  onInviteHirer,
   onCopyBookingLink,
   bookingLinkUrl,
   applicationsInviteOnly,
@@ -124,10 +141,19 @@ export function GigDetailsPanel({
   const [contactModalEntryId, setContactModalEntryId] = useState(null);
   /** For confirmed venue hires: whether the booker applications tile is expanded. */
   const [showApplicationsTile, setShowApplicationsTile] = useState(false);
+  /** Venue hire: same invite UI as the former top-of-page tile, opened from Applications empty state. */
+  const [showVenueHireInviteModal, setShowVenueHireInviteModal] = useState(false);
+  /** Venue hire Applications tile: settings dropdown open state (cog menu). */
+  const [showApplicationsSettingsMenu, setShowApplicationsSettingsMenu] = useState(false);
+  /** Venue hire: “closing booking after N applications” controls behind the Applications tile cog. */
+  const [showApplicationsBookingLimitSettings, setShowApplicationsBookingLimitSettings] = useState(false);
   /** Multi-set applications: active tab (strip is inside the Applications tile under the title). */
   const [artistBookingSetTabIndex, setArtistBookingSetTabIndex] = useState(0);
   /** DOM node for booked-artist tiles above set tabs + applications card (artist booking). */
   const [artistBookingBookedStripEl, setArtistBookingBookedStripEl] = useState(null);
+  const [artistBookingSendGigDetailsEl, setArtistBookingSendGigDetailsEl] = useState(null);
+  /** Venue hire: Gigin hirer profile for the booked tile (photo, tech rider). */
+  const [venueHireBookerProfile, setVenueHireBookerProfile] = useState(null);
 
   const sortedArtistBookingSlotGigs = useMemo(() => {
     if (!Array.isArray(artistBookingSlotGigs) || artistBookingSlotGigs.length < 2) return [];
@@ -182,6 +208,7 @@ export function GigDetailsPanel({
   const [draftCloseCount, setDraftCloseCount] = useState(closeBookingAfterAcceptedCount);
   const [bookingLimitSaving, setBookingLimitSaving] = useState(false);
   const [bookingLimitEditing, setBookingLimitEditing] = useState(false);
+  const applicationsSettingsMenuRef = useRef(null);
   /** Internal notes draft for main-column tile (artist booking); null = use rawGig. */
   const [gigPageInternalNotesDraft, setGigPageInternalNotesDraft] = useState(null);
   const [gigPageInternalNotesSaving, setGigPageInternalNotesSaving] = useState(false);
@@ -235,17 +262,33 @@ export function GigDetailsPanel({
     return true;
   }, [normalisedGig?.bookingMode, normalisedGig?.status, rawGig, venues, hasAnyConfirmedApplicants, gigDateTimeForEdit]);
 
+  const showEditManualBookedLink = React.useMemo(() => {
+    if (normalisedGig?.bookingMode !== 'artist_booking') return false;
+    if (!['open', 'confirmed'].includes(normalisedGig?.status || '')) return false;
+    if (rawGig?.status === 'closed') return false;
+    if (!rawGig?.venueId) return false;
+    if (!hasVenuePerm(venues, rawGig.venueId, 'gigs.update')) return false;
+    if (!hasVenuePerm(venues, rawGig.venueId, 'gigs.applications.manage')) return false;
+    if (!gigDateTimeForEdit || gigDateTimeForEdit.getTime() <= Date.now()) return false;
+    return true;
+  }, [normalisedGig?.bookingMode, normalisedGig?.status, rawGig, venues, gigDateTimeForEdit]);
+
   const filteredConfirmManualCrm = React.useMemo(() => {
     const q = (confirmManualName || '').trim().toLowerCase();
     if (q.length < 1) return [];
     return (crmEntries || []).filter((e) => (e.name || '').toLowerCase().includes(q)).slice(0, 8);
   }, [confirmManualName, crmEntries]);
 
-  const openConfirmManualModal = useCallback(() => {
-    setConfirmManualName('');
+  const openConfirmManualModal = useCallback((manualApplicant = null) => {
+    const existingName = (
+      manualApplicant?.name ||
+      manualApplicant?.artistName ||
+      ''
+    ).trim();
+    setConfirmManualName(existingName);
     setConfirmManualAddToContacts(false);
     setConfirmManualPickedCrmId(null);
-    setConfirmManualDropdownOpen(false);
+    setConfirmManualDropdownOpen(Boolean(existingName));
     setShowConfirmManualModal(true);
   }, []);
 
@@ -284,7 +327,7 @@ export function GigDetailsPanel({
           await createArtistCRMEntry(user.uid, { name });
           const entries = await getArtistCRMEntries(user.uid);
           setCrmEntries(entries);
-          toast.success('Added to My Artists.');
+          toast.success('Added to My Contacts.');
         } catch (e) {
           console.error(e);
           toast.error('Could not add to contacts.');
@@ -406,6 +449,58 @@ export function GigDetailsPanel({
   const isVenueHire = rawGig?.itemType === 'venue_hire';
   const hireId = rawGig?.id ?? rawGig?.gigId;
   const venueForHire = venues?.find((v) => v.venueId === rawGig?.venueId);
+
+  /** Send gig details (venue hire): show until accepted hirers/applicants reach `closeBookingAfterAcceptedCount`. */
+  const showVenueHireSendGigDetailsTile = React.useMemo(() => {
+    if (!isVenueHire || !hireId) return false;
+    if (!bookingLinkUrl || hireApplicationsLoading) return false;
+
+    const limit = closeBookingAfterAcceptedCount;
+    const applicants = Array.isArray(rawGig?.applicants) ? rawGig.applicants : [];
+    const confirmedFromApplicants = applicants.filter((a) =>
+      ['confirmed', 'accepted', 'paid'].includes(a?.status)
+    ).length;
+
+    const hirerAccepted =
+      hireState === 'confirmed' &&
+      !!bookerName &&
+      (isConfirmedRental || rawGig?.hirerType === 'manual' || !!rawGig?.hirerUserId);
+
+    const acceptedCount =
+      confirmedFromApplicants > 0 ? confirmedFromApplicants : hirerAccepted ? 1 : 0;
+
+    return acceptedCount < limit;
+  }, [
+    isVenueHire,
+    hireId,
+    bookingLinkUrl,
+    hireApplicationsLoading,
+    closeBookingAfterAcceptedCount,
+    rawGig?.applicants,
+    hireState,
+    bookerName,
+    isConfirmedRental,
+    rawGig?.hirerType,
+    rawGig?.hirerUserId,
+  ]);
+
+  useEffect(() => {
+    if (!isVenueHire || !rawGig?.hirerUserId || !isBookerGigin) {
+      setVenueHireBookerProfile(null);
+      return;
+    }
+    let cancelled = false;
+    getArtistProfileById(rawGig.hirerUserId)
+      .then((p) => {
+        if (!cancelled) setVenueHireBookerProfile(p || null);
+      })
+      .catch(() => {
+        if (!cancelled) setVenueHireBookerProfile(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isVenueHire, rawGig?.hirerUserId, isBookerGigin]);
 
   const saveGigPageInternalNotes = useCallback(async (value) => {
     if (!canUpdate) return;
@@ -603,6 +698,25 @@ export function GigDetailsPanel({
     setDraftCloseCount((prev) => normalizeCloseBookingAfterAcceptedCount(prev + delta));
   }, [bookingLimitSaving]);
 
+  const toggleApplicationsBookingLimitSettings = useCallback(() => {
+    setShowApplicationsBookingLimitSettings((prev) => {
+      if (prev) cancelBookingLimitEdit();
+      return !prev;
+    });
+  }, [cancelBookingLimitEdit]);
+
+  useEffect(() => {
+    if (!showApplicationsSettingsMenu) return undefined;
+    const onDocMouseDown = (e) => {
+      const root = applicationsSettingsMenuRef.current;
+      if (root && !root.contains(e.target)) {
+        setShowApplicationsSettingsMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [showApplicationsSettingsMenu]);
+
   const inviteContactToHire = useCallback(
     async (entry) => {
       if (!bookingLinkUrl || !entry?.id) return;
@@ -643,7 +757,7 @@ export function GigDetailsPanel({
 
         const email = (entry.email || '').trim();
         if (!email) {
-          toast.error('This contact has no email. Add one in My Artists.');
+          toast.error('This contact has no email. Add one in My Contacts.');
           return;
         }
         await sendGigInviteEmail({
@@ -1057,6 +1171,7 @@ export function GigDetailsPanel({
           hirerUserId: participantId || undefined,
           hirerType: participantId ? 'gigin_user' : 'manual',
           status: 'confirmed',
+          ...(participantId ? { acceptedApplicantId: participantId } : {}),
         };
         if (participantId && venueProfile?.techRider) {
           try {
@@ -1316,11 +1431,99 @@ export function GigDetailsPanel({
     );
   };
 
+  const renderApplicationsSettingsCogMenu = () => {
+    const isVenueHireMenu = Boolean(isVenueHire && hireId);
+    const isArtistBookingMenu = Boolean(!isVenueHire && showConfirmGigManuallyLink);
+    if (!isVenueHireMenu && !isArtistBookingMenu) return null;
+    const showAddManuallyOption = isVenueHireMenu
+      ? hireState === 'available' && canUpdate
+      : showConfirmGigManuallyLink;
+    const showPreviewOption = Boolean(bookingLinkUrl);
+    return (
+      <div className="venue-hire-confirmed-panel__applications-settings-wrap" ref={applicationsSettingsMenuRef}>
+        <button
+          type="button"
+          className="venue-hire-confirmed-panel__applications-booking-settings-btn"
+          onClick={() => setShowApplicationsSettingsMenu((v) => !v)}
+          aria-expanded={showApplicationsSettingsMenu}
+          aria-haspopup="true"
+          aria-label="Applications settings"
+          title="Applications settings"
+        >
+          <SettingsIcon />
+        </button>
+        {showApplicationsSettingsMenu ? (
+          <div className="venue-hire-confirmed-panel__applications-settings-menu" onClick={(e) => e.stopPropagation()}>
+            {isVenueHireMenu ? (
+              <button
+                type="button"
+                className="venue-hire-confirmed-panel__applications-settings-item"
+                onClick={() => {
+                  toggleApplicationsBookingLimitSettings();
+                  setShowApplicationsSettingsMenu(false);
+                }}
+              >
+                {showApplicationsBookingLimitSettings ? 'Hide booking close settings' : 'Booking close settings'}
+              </button>
+            ) : null}
+            {showPreviewOption ? (
+              <button
+                type="button"
+                className="venue-hire-confirmed-panel__applications-settings-item"
+                onClick={() => {
+                  window.open(bookingLinkUrl, '_blank', 'noopener,noreferrer');
+                  setShowApplicationsSettingsMenu(false);
+                }}
+              >
+                Preview gig details <NewTabIcon />
+              </button>
+            ) : null}
+            {showAddManuallyOption ? (
+              <button
+                type="button"
+                className="venue-hire-confirmed-panel__applications-settings-item"
+                onClick={() => {
+                  if (isVenueHireMenu) openEditBooker();
+                  else openConfirmManualModal();
+                  setShowApplicationsSettingsMenu(false);
+                }}
+              >
+                Add manually
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
+  /** Same structure as `GigApplications` card layout empty state (artist booking). */
+  const renderVenueHireApplicationsEmptyState = () => {
+    return (
+      <div className="venue-gig-applications-empty">
+        <h3 className="venue-gig-applications-empty__title">No applications yet</h3>
+        <p className="venue-gig-applications-empty__body">
+          Send the gig details to artists and promoters, or manually enter who is booked.
+        </p>
+      </div>
+    );
+  };
+
   /** Confirmed venue hire: collapsible applications (sidebar when layout swap; else below Documents/Notes). */
   const renderVenueHireConfirmedApplicationsCard = () => {
     if (!(isVenueHire && hireId && hireState === 'confirmed')) return null;
     return (
-      <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications gig-details-tile">
+      <>
+        {showVenueHireSendGigDetailsTile ? (
+          <SendGigDetailsTile
+            bookingLinkUrl={bookingLinkUrl}
+            onCopyLink={copyBookingLink}
+            linkCopied={linkCopied}
+            onInviteArtist={() => setShowVenueHireInviteModal(true)}
+            showInviteButton={canUpdate}
+          />
+        ) : null}
+        <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications gig-details-tile">
         <div className="venue-hire-confirmed-panel__applications-top">
           <button
             type="button"
@@ -1338,13 +1541,16 @@ export function GigDetailsPanel({
               {showApplicationsTile ? <UpChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden /> : <DownChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden />}
             </span>
           </button>
+          {renderApplicationsSettingsCogMenu()}
         </div>
+        {showApplicationsBookingLimitSettings ? renderApplicationsBookingLimitBlock() : null}
         {showApplicationsTile && (
           <div className="venue-hire-confirmed-panel__applications-body">
-            {renderApplicationsBookingLimitBlock()}
             {hireApplicationsLoading ? (
               <p className="venue-hire-confirmed-card__empty-text">Loading…</p>
-            ) : hireApplications.length === 0 ? null : (
+            ) : hireApplications.length === 0 ? (
+              renderVenueHireApplicationsEmptyState()
+            ) : (
               <div className="venue-hire-application-tiles">
                 {hireApplications.map((conv) => {
                   const applicant = getApplicantFromConversation(conv);
@@ -1413,6 +1619,7 @@ export function GigDetailsPanel({
           </div>
         )}
       </div>
+      </>
     );
   };
 
@@ -1422,7 +1629,17 @@ export function GigDetailsPanel({
           ? renderVenueHireConfirmedApplicationsCard()
           : null}
         {isVenueHire && hireId && hireState !== 'confirmed' && (
-          <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications">
+          <>
+            {showVenueHireSendGigDetailsTile ? (
+              <SendGigDetailsTile
+                bookingLinkUrl={bookingLinkUrl}
+                onCopyLink={copyBookingLink}
+                linkCopied={linkCopied}
+                onInviteArtist={() => setShowVenueHireInviteModal(true)}
+                showInviteButton={canUpdate}
+              />
+            ) : null}
+            <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications gig-details-tile">
             <div className="venue-hire-confirmed-panel__applications-top">
               <div className="venue-hire-confirmed-panel__applications-title-row">
                 <div className="venue-hire-confirmed-panel__applications-title-block fill-this-slot__header fill-this-slot__header--invite-promoter">
@@ -1431,21 +1648,15 @@ export function GigDetailsPanel({
                     Applications ({hireApplicationsLoading ? '…' : hireApplications.length})
                   </h3>
                 </div>
-                {hireState === 'available' && canUpdate ? (
-                  <button
-                    type="button"
-                    className="venue-hire-confirmed-panel__applications-confirm-manual-link"
-                    onClick={openEditBooker}
-                  >
-                    Confirm manually
-                  </button>
-                ) : null}
               </div>
+              {renderApplicationsSettingsCogMenu()}
             </div>
-            {renderApplicationsBookingLimitBlock()}
+            {showApplicationsBookingLimitSettings ? renderApplicationsBookingLimitBlock() : null}
             {hireApplicationsLoading ? (
               <p className="venue-hire-confirmed-card__empty-text">Loading…</p>
-            ) : hireApplications.length === 0 ? null : (
+            ) : hireApplications.length === 0 ? (
+              renderVenueHireApplicationsEmptyState()
+            ) : (
               <div className="venue-hire-application-tiles">
                 {hireApplications.map((conv) => {
                   const applicant = getApplicantFromConversation(conv);
@@ -1533,6 +1744,7 @@ export function GigDetailsPanel({
               </div>
             )}
           </div>
+          </>
         )}
         {renderVenueProfileVisibilityTile()}
       </>
@@ -1578,12 +1790,15 @@ export function GigDetailsPanel({
           copyToClipboard={copyToClipboard}
           onInviteArtist={!isArtistBookingFullyBooked ? onInviteArtist : undefined}
           onOpenConfirmGigManually={showConfirmGigManuallyLink ? openConfirmManualModal : undefined}
+          onEditManualBooked={showEditManualBookedLink ? openConfirmManualModal : undefined}
           hideMultiSlotTabStrip={showArtistBookingSetTabs}
           multiSlotActiveTabIndex={showArtistBookingSetTabs ? artistBookingSetTabIndex : undefined}
           onMultiSlotActiveTabIndexChange={
             showArtistBookingSetTabs ? setArtistBookingSetTabIndex : undefined
           }
           bookedTilesPortalContainer={artistBookingBookedStripEl}
+          sendGigDetailsPortalContainer={artistBookingSendGigDetailsEl}
+          sendGigDetailsPortalNightFullyBooked={isArtistBookingFullyBooked}
         />
       </div>
     );
@@ -1636,8 +1851,13 @@ export function GigDetailsPanel({
       </div>
     ) : null;
 
-    const artistBookingApplicationsCard = (
-      <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications gig-details-tile">
+    const artistBookingApplicationsSection = (
+      <>
+        <div
+          ref={setArtistBookingSendGigDetailsEl}
+          className="venue-gig-page__send-gig-details-portal-host"
+        />
+        <div className="venue-hire-confirmed-card venue-hire-confirmed-panel__applications gig-details-tile">
         {isArtistBookingFullyBooked ? (
           <>
             <div className="venue-hire-confirmed-panel__applications-top">
@@ -1659,6 +1879,7 @@ export function GigDetailsPanel({
                     : <DownChevronIcon className="venue-hire-confirmed-panel__see-applications-chevron" aria-hidden />}
                 </span>
               </button>
+              {renderApplicationsSettingsCogMenu()}
             </div>
             {/*
               Keep GigApplications mounted while collapsed so booked tiles can portal to
@@ -1684,19 +1905,21 @@ export function GigDetailsPanel({
                   </h3>
                 </div>
               </div>
+              {renderApplicationsSettingsCogMenu()}
             </div>
             {artistBookingSetTabsStrip}
             {applicationsBody}
           </>
         )}
-      </div>
+        </div>
+      </>
     );
 
     return (
       <>
         <div className="venue-hire-confirmed-panel gig-details-main">
           <div ref={setArtistBookingBookedStripEl} className="venue-gig-page__booked-strip" />
-          {!isArtistBookingFullyBooked ? artistBookingApplicationsCard : null}
+          {!isArtistBookingFullyBooked ? artistBookingApplicationsSection : null}
           {renderVenueProfileVisibilityTile()}
 
           {hireId ? (
@@ -1727,12 +1950,11 @@ export function GigDetailsPanel({
                     <li key={doc.key || `doc-${i}`} className="gig-details-doc-row">
                       <div className="gig-details-doc-row__main">
                         <span className="gig-details-doc-row__title">{doc.title || 'Document'}</span>
-                        <span
-                          className={`gig-details-doc-row__signed gig-details-doc-row__signed--${doc.signed === true ? 'yes' : 'pending'}`}
-                          title={doc.signed === true ? 'Signed' : 'Signature tracking coming soon'}
-                        >
-                          {doc.signed === true ? 'Signed' : 'Not signed yet'}
-                        </span>
+                        {doc.signed === true ? (
+                          <span className="gig-details-doc-row__signed gig-details-doc-row__signed--yes" title="Signed">
+                            Signed
+                          </span>
+                        ) : null}
                       </div>
                       {doc.sourceUrl ? (
                         <a
@@ -1751,7 +1973,6 @@ export function GigDetailsPanel({
                   ))}
                 </ul>
               )}
-              <p className="gig-details-tile__hint">Document signing will be tracked here in a future update.</p>
             </div>
             <div className="gig-details-tile gig-details-tile--internal-notes gig-details-tile--half">
               <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
@@ -1761,7 +1982,7 @@ export function GigDetailsPanel({
               {renderGigPageInternalNotesTileBody()}
             </div>
           </div>
-          {isArtistBookingFullyBooked ? artistBookingApplicationsCard : null}
+          {isArtistBookingFullyBooked ? artistBookingApplicationsSection : null}
         </div>
 
         {applicationsTechRiderProfile && (
@@ -1801,7 +2022,7 @@ export function GigDetailsPanel({
                   </button>
                 </div>
                 <p className="venue-gig-confirm-manual-modal__intro">
-                  Add the artist or promoter who booked this gig outside Gigin. You can pick from My Artists or type a new name.
+                  Add the artist or promoter who booked this gig outside Gigin. You can pick from My Contacts or type a new name.
                 </p>
                 <div className="venue-gig-confirm-manual-modal__field">
                   <label className="label" htmlFor="venue-gig-confirm-manual-name">
@@ -1856,7 +2077,7 @@ export function GigDetailsPanel({
                       onChange={(e) => setConfirmManualAddToContacts(e.target.checked)}
                       disabled={confirmManualSaving}
                     />
-                    <span>Add to My Artists (contacts)</span>
+                    <span>Add to My Contacts</span>
                   </label>
                 ) : null}
                 <div className="venue-gig-confirm-manual-modal__actions">
@@ -1884,141 +2105,98 @@ export function GigDetailsPanel({
     );
   }
 
-  return (
-    <>
-      <div className="venue-hire-confirmed-panel">
-        <div
-          className={`venue-hire-confirmed-card venue-hire-confirmed-panel__booked-by${hireState === 'available' ? ' venue-hire-confirmed-panel__booked-by--invite-promoter' : ''}`}
-        >
-          {hireState === 'available' ? (
-            <InviteArtistPromoterTile
-              bookingLinkUrl={bookingLinkUrl}
-              onCopyLink={onCopyBookingLink ?? copyBookingLink}
-              linkCopied={linkCopied}
-              showManualOption={false}
-              contactsBody={(
-                <div className="invite-and-share-modal__list fill-this-slot__contacts-list">
-                  {crmLoading ? (
-                    <LoadingSpinner />
-                  ) : !crmEntries?.length ? (
-                    <p className="invite-and-share-modal__empty">No contacts yet. Add artists in My Artists.</p>
-                  ) : (
-                    crmEntries.map((entry) => {
-                      const invited = invitedContactIds.has(entry.id);
-                      const inviting = invitingContactId === entry.id;
-                      return (
-                        <div key={entry.id} className="invite-and-share-modal__row">
-                          <div className="invite-and-share-modal__row-info">
-                            <span className="invite-and-share-modal__row-name">{entry.name || 'Unknown'}</span>
-                            <span className="invite-and-share-modal__row-sub">
-                              {entry.artistId ? 'On Gigin' : entry.email || 'No email'}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className="btn tertiary invite-and-share-modal__row-btn"
-                            onClick={() => inviteContactToHire(entry)}
-                            disabled={invited || inviting}
-                          >
-                            {invited ? <><TickIcon /> Invited</> : inviting ? 'Inviting…' : 'Invite'}
-                          </button>
-                        </div>
-                      );
-                    })
-                  )}
+  const renderVenueHireHirerBookedCard = () => {
+    if (!isVenueHire || !bookerName || hireState === 'available') return null;
+    const photoUrl = venueHireBookerProfile?.heroMedia?.url;
+    const hasTech =
+      isBookerGigin &&
+      venueHireBookerProfile?.techRider?.isComplete &&
+      Array.isArray(venueHireBookerProfile?.techRider?.lineup) &&
+      venueHireBookerProfile.techRider.lineup.length > 0;
+    const tr = (normalisedGig?.timeRangeLabel && String(normalisedGig.timeRangeLabel).trim()) || (rawGig ? slotTimeRangeLabel(rawGig) : '');
+    const timeRange = tr && tr !== '—' ? tr : '';
+    const showTimeSuffix = Boolean(timeRange);
+    const isPending = hireState === 'pending';
+
+    return (
+      <div className="venue-gig-page__booked-strip">
+        <div className="venue-gig-booked-section">
+          <div className="venue-gig-booked-tile venue-gig-booked-tile--venue-hire-hirer">
+            <div className="venue-gig-booked-tile__body">
+              <div className="venue-gig-booked-tile__main">
+                <div className="venue-gig-booked-tile__identity">
+                  <span className="venue-gig-booked-tile__name">{bookerName}</span>
+                  <p className="venue-gig-booked-tile__set-line">
+                    <span className="venue-gig-booked-tile__set-label">Venue hire</span>
+                    {showTimeSuffix ? <span className="venue-gig-booked-tile__time-range"> · {timeRange}</span> : null}
+                    {isPending ? (
+                      <span className="venue-gig-applications-set-tab__status-pill venue-gig-booked-tile__booked-pill venue-gig-booked-tile__booked-pill--pending">
+                        Pending
+                      </span>
+                    ) : (
+                      <span className="venue-gig-applications-set-tab__status-pill venue-gig-booked-tile__booked-pill">Booked</span>
+                    )}
+                  </p>
                 </div>
-              )}
-              emailBody={(
-                <>
-                  <div className="fill-this-slot__share-row">
-                    <input
-                      type="email"
-                      className="input fill-this-slot__input"
-                      placeholder="Email address"
-                      value={emailInviteInput}
-                      onChange={(e) => { setEmailInviteInput(e.target.value); setEmailInviteError(''); }}
-                      onKeyDown={(e) => e.key === 'Enter' && sendInviteByEmail()}
-                      aria-label="Email address"
-                      aria-invalid={!!emailInviteError}
-                    />
+                <div className="venue-gig-booked-tile__actions">
+                  {isBookerGigin && bookerConversation ? (
                     <button
                       type="button"
-                      className="btn secondary fill-this-slot__copy-btn"
-                      onClick={sendInviteByEmail}
-                      disabled={emailInviteSending}
-                    >
-                      {emailInviteSending ? 'Sending…' : 'Invite'}
-                    </button>
-                  </div>
-                  {emailInviteError ? (
-                    <p className="fill-this-slot__helper fill-this-slot__helper--above-input" style={{ color: 'var(--gn-red-800)', marginTop: 6 }}>
-                      {emailInviteError}
-                    </p>
-                  ) : null}
-                </>
-              )}
-            />
-          ) : hireState === 'pending' ? (
-            <>
-              <h3 className="venue-hire-confirmed-card__title venue-hire-confirmed-panel__booked-by-title">
-                <span className="venue-hire-confirmed-card__title-inner">Booked by</span>
-              </h3>
-              <div className="venue-hire-confirmed-card__name-row">
-                <p className="venue-hire-confirmed-card__name">{bookerName}</p>
-                <span className="venue-gig-page__status-pill venue-gig-page__status-pill--pending">Pending</span>
-              </div>
-              <div className="venue-hire-confirmed-card__meta-row">
-                <span className="venue-hire-confirmed-card__meta">{isBookerGigin ? 'On Gigin' : 'Manually entered'}</span>
-                {!isBookerGigin && canUpdate && (
-                  <button type="button" className="venue-hire-confirmed-card__edit-link" onClick={openEditBooker}>
-                    Edit
-                  </button>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <h3 className="venue-hire-confirmed-card__title venue-hire-confirmed-panel__booked-by-title">
-                <span className="venue-hire-confirmed-card__title-inner">Booked by</span>
-              </h3>
-              <div className="venue-hire-confirmed-card__name-row">
-                <p className="venue-hire-confirmed-card__name">{bookerName}</p>
-              </div>
-              <div className="venue-hire-confirmed-card__meta-row">
-                <span className="venue-hire-confirmed-card__meta">
-                  {isBookerGigin ? 'On Gigin' : 'Manually entered'}
-                </span>
-                {!isBookerGigin && canUpdate && (
-                  <button type="button" className="venue-hire-confirmed-card__edit-link" onClick={openEditBooker}>
-                    Edit
-                  </button>
-                )}
-              </div>
-              {isBookerGigin && (
-                <div className="venue-hire-confirmed-card__actions">
-                  {bookerConversation ? (
-                    <button
-                      type="button"
-                      className="btn secondary"
+                      className="btn secondary venue-gig-booked-tile__btn"
                       onClick={() => navigate(`/venues/dashboard/messages?conversationId=${bookerConversation.id}`)}
                     >
-                      Message
+                      <MessageIcon /> Message
                     </button>
                   ) : null}
-                  {rawGig?.hirerUserId && (
+                  {isBookerGigin && rawGig?.hirerUserId && hasTech ? (
                     <button
                       type="button"
-                      className="btn tertiary"
+                      className="btn tertiary venue-gig-booked-tile__btn"
+                      onClick={() => openTechRiderForApplication(rawGig.hirerUserId)}
+                      disabled={applicationsTechRiderLoading}
+                    >
+                      <TechRiderIcon /> Tech setup
+                    </button>
+                  ) : null}
+                  {isBookerGigin && rawGig?.hirerUserId ? (
+                    <button
+                      type="button"
+                      className="btn tertiary venue-gig-booked-tile__btn"
                       onClick={(e) => openInNewTab(`/artist/${rawGig.hirerUserId}`, e)}
                     >
                       <NewTabIcon /> View profile
                     </button>
-                  )}
+                  ) : null}
+                  {!isBookerGigin && canUpdate ? (
+                    <button type="button" className="btn tertiary venue-gig-booked-tile__btn" onClick={openEditBooker}>
+                      Edit
+                    </button>
+                  ) : null}
                 </div>
-              )}
-            </>
-          )}
+              </div>
+              <div className="venue-gig-booked-tile__photo">
+                {photoUrl ? (
+                  <img src={photoUrl} alt="" className="venue-gig-booked-tile__img" />
+                ) : (
+                  <MicrophoneIcon />
+                )}
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+    );
+  };
+
+  const renderVenueHireGigDetailsProgrammeTile = () => {
+    // Timing info (access → curfew) is already shown in the Gig Summary sidebar — hide this redundant body tile.
+    return null;
+  };
+
+  return (
+    <>
+      <div className="venue-hire-confirmed-panel">
+        {renderVenueHireHirerBookedCard()}
 
         {/* Performers first for confirmed/pending venue hires */}
         {hireState !== 'available' && (
@@ -2144,6 +2322,7 @@ export function GigDetailsPanel({
             </div>
 
             <div className="gig-details-main">
+              {renderVenueHireGigDetailsProgrammeTile()}
               <div className="gig-details-tile-row">
                 <div className="gig-details-tile gig-details-tile--documents gig-details-tile--half">
                   <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
@@ -2158,12 +2337,11 @@ export function GigDetailsPanel({
                         <li key={doc.key || `doc-${i}`} className="gig-details-doc-row">
                           <div className="gig-details-doc-row__main">
                             <span className="gig-details-doc-row__title">{doc.title || 'Document'}</span>
-                            <span
-                              className={`gig-details-doc-row__signed gig-details-doc-row__signed--${doc.signed === true ? 'yes' : 'pending'}`}
-                              title={doc.signed === true ? 'Signed' : 'Signature tracking coming soon'}
-                            >
-                              {doc.signed === true ? 'Signed' : 'Not signed yet'}
-                            </span>
+                            {doc.signed === true ? (
+                              <span className="gig-details-doc-row__signed gig-details-doc-row__signed--yes" title="Signed">
+                                Signed
+                              </span>
+                            ) : null}
                           </div>
                           {doc.sourceUrl ? (
                             <a
@@ -2182,7 +2360,6 @@ export function GigDetailsPanel({
                       ))}
                     </ul>
                   )}
-                  <p className="gig-details-tile__hint">Document signing will be tracked here in a future update.</p>
                 </div>
                 <div className="gig-details-tile gig-details-tile--internal-notes gig-details-tile--half">
                   <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
@@ -2237,6 +2414,87 @@ export function GigDetailsPanel({
           </div>
         </Portal>
       )}
+
+      {showVenueHireInviteModal ? (
+        <InviteArtistPromoterTile
+          showHeader={false}
+          bookingLinkUrl={bookingLinkUrl}
+          onCopyLink={onCopyBookingLink ?? copyBookingLink}
+          linkCopied={linkCopied}
+          showManualOption={false}
+          initialPopup="contacts"
+          hideInlineShareButton
+          submodalOnly
+          onPopupClose={() => setShowVenueHireInviteModal(false)}
+          contactsBody={(
+                  <div className="invite-and-share-modal__list fill-this-slot__contacts-list">
+                    {crmLoading ? (
+                      <LoadingSpinner />
+                    ) : !crmEntries?.length ? (
+                      <p className="invite-and-share-modal__empty">No contacts yet. Add contacts in My Contacts.</p>
+                    ) : (
+                      crmEntries.map((entry) => {
+                        const invited = invitedContactIds.has(entry.id);
+                        const inviting = invitingContactId === entry.id;
+                        return (
+                          <div key={entry.id} className="invite-and-share-modal__row">
+                            <div className="invite-and-share-modal__row-info">
+                              <span className="invite-and-share-modal__row-name">{entry.name || 'Unknown'}</span>
+                              <span className="invite-and-share-modal__row-sub">
+                                {entry.artistId ? 'On Gigin' : entry.email || 'No email'}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn tertiary invite-and-share-modal__row-btn"
+                              onClick={() => inviteContactToHire(entry)}
+                              disabled={invited || inviting}
+                            >
+                              {invited ? <><TickIcon /> Invited</> : inviting ? 'Inviting…' : 'Invite'}
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+          )}
+          emailBody={(
+                  <>
+                    <div className="fill-this-slot__share-row">
+                      <input
+                        type="email"
+                        className="input fill-this-slot__input"
+                        placeholder="Email address"
+                        value={emailInviteInput}
+                        onChange={(e) => {
+                          setEmailInviteInput(e.target.value);
+                          setEmailInviteError('');
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && sendInviteByEmail()}
+                        aria-label="Email address"
+                        aria-invalid={!!emailInviteError}
+                      />
+                      <button
+                        type="button"
+                        className="btn secondary fill-this-slot__copy-btn"
+                        onClick={sendInviteByEmail}
+                        disabled={emailInviteSending}
+                      >
+                        {emailInviteSending ? 'Sending…' : 'Invite'}
+                      </button>
+                    </div>
+                    {emailInviteError ? (
+                      <p
+                        className="fill-this-slot__helper fill-this-slot__helper--above-input"
+                        style={{ color: 'var(--gn-red-800)', marginTop: 6 }}
+                      >
+                        {emailInviteError}
+                      </p>
+                    ) : null}
+                  </>
+          )}
+        />
+      ) : null}
 
       <AddPerformersModal
         isOpen={showAddPerformersModal}

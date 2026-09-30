@@ -7,6 +7,7 @@ import {
   DrumsIcon,
   AmpIcon,
   BassIcon,
+  KeysIcon,
   MonitorIcon,
 } from '@features/shared/ui/extras/Icons';
 
@@ -24,6 +25,6 @@ export function getEquipmentIconForLabel(label) {
   if (s.includes('guitar amp') || s.includes('guitar')) return AmpIcon;
   if (s.includes('bass')) return BassIcon;
   if (s.includes('stage monitor') || s.includes('monitor')) return MonitorIcon;
-  if (s.includes('keyboard')) return AmpIcon;
+  if (s.includes('keyboard') || s.includes('piano') || s.includes('keys')) return KeysIcon;
   return null;
 }

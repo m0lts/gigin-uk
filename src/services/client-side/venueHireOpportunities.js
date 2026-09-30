@@ -171,3 +171,17 @@ export async function deleteVenueHireOpportunity(id) {
   if (!id) return;
   await venueHireApi.deleteVenueHireOpportunity(id);
 }
+
+/**
+ * Artist applies to a hire opportunity via the API.
+ * Creates a structured applicant record on the hire opportunity document
+ * (analogous to applyToGig for regular gigs).
+ * @param {string} hireId
+ * @param {{ musicianId: string, name?: string }} musicianProfile
+ */
+export async function applyToHireOpportunity(hireId, musicianProfile) {
+  if (!hireId || !musicianProfile?.musicianId) {
+    throw new Error('applyToHireOpportunity: hireId and musicianProfile.musicianId required');
+  }
+  return venueHireApi.applyToHireOpportunity(hireId, musicianProfile);
+}

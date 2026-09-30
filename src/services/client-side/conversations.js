@@ -83,6 +83,27 @@ export const getConversationsByParticipantAndGigId = async (gigId, participantId
 };
 
 /**
+ * Conversations store the musician/artist profile document id in `participants` (see API getOrCreateConversation).
+ * Use this from venue dashboards when resolving threads by applicant — `authorizedUserIds` may omit the applying
+ * user's UID for artist profiles if member docs are missing/out of sync.
+ */
+export const getConversationsByGigAndMusicianProfileId = async (gigId, musicianProfileId) => {
+  try {
+    if (!gigId || !musicianProfileId) return [];
+    const q = query(
+      collection(firestore, 'conversations'),
+      where('participants', 'array-contains', musicianProfileId),
+      where('gigId', '==', gigId)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ref: d.ref, ...d.data() }));
+  } catch (error) {
+    console.error('[Firestore Error] getConversationsByGigAndMusicianProfileId:', error);
+    return [];
+  }
+};
+
+/**
  * Fetches all conversations that include any of the specified authorized user UIDs.
  */
 export const getConversationsByParticipants = async (participantIds) => {

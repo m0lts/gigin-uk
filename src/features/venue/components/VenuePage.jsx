@@ -135,10 +135,16 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
               if (typeof v === 'string') { const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
               return null;
             };
-            const nonCancelled = (hires || []).filter((h) => String(h?.status).toLowerCase() !== 'cancelled');
-            // Exclude confirmed hires from profile – they are already booked, same as confirmed artist gigs
-            const availableHires = nonCancelled.filter((h) => String(h?.status).toLowerCase() !== 'confirmed');
-            const sortedHires = [...availableHires].sort((a, b) => {
+            const nonCancelled = (hires || []).filter((h) => {
+              const s = String(h?.status).toLowerCase();
+              return s !== 'cancelled' && s !== 'confirmed' && s !== 'expired';
+            });
+            // Only show future hire opportunities on the venue profile
+            const futureHires = nonCancelled.filter((h) => {
+              const d = toHireDate(h);
+              return d && d > now;
+            });
+            const sortedHires = [...futureHires].sort((a, b) => {
               const da = toHireDate(a) || new Date(0);
               const db = toHireDate(b) || new Date(0);
               return da.getTime() - db.getTime();

@@ -994,7 +994,7 @@ export const ProfileView = ({
                 disabled={!profileData.onInviteArtist}
               >
                 <InviteIconSolid />
-                Invite to Gig
+                Offer Gig
               </button>
               <button
                 type="button"

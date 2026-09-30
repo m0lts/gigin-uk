@@ -34,7 +34,7 @@ import { formatDurationSpan, getCityFromAddress } from '@services/utils/misc';
 import { getMusicianProfilesByIds, updateBandMembersGigApplications, withdrawMusicianApplication, withdrawArtistApplication, getArtistProfileMembers } from '../../services/client-side/artists';
 import { getBandMembers } from '../../services/client-side/bands';
 import { getGigById, getGigsByIds, getGigInviteById, getGigsByVenueId } from '../../services/client-side/gigs';
-import { getVenueHireOpportunityById } from '../../services/client-side/venueHireOpportunities';
+import { getVenueHireOpportunityById, applyToHireOpportunity } from '../../services/client-side/venueHireOpportunities';
 import { getMostRecentMessage } from '../../services/client-side/messages';
 import { toast } from 'sonner';
 import { sendCounterOfferEmail, sendInvitationAcceptedEmailToVenue } from '../../services/client-side/emails';
@@ -889,7 +889,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
 
     const formatTicketingResponsibility = (v) => {
         if (v === 'venue') return 'Venue handles ticketing';
-        if (v === 'artist') return 'Artist handles ticketing';
+        if (v === 'artist') return 'They handle ticketing';
         if (v === 'free_entry') return 'Not ticketed';
         return '';
     };
@@ -1208,7 +1208,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             };
 
             if (currentSlot.itemType === 'venue_hire') {
-              // Hire: create conversation + message only (no applyToGig, no artist gig applications)
+              // Hire: record structured applicant on the hire opp document, then create conversation + message.
+              await applyToHireOpportunity(slotGigId, {
+                musicianId: normalizedProfile.musicianId,
+                name: normalizedProfile.name || null,
+              });
               const gigDataForConv = { ...currentSlot, gigId: slotGigId };
               const { conversationId } = await getOrCreateConversation(
                 { musicianProfile: normalizedProfile, gigData: gigDataForConv, venueProfile, type: 'application' }
@@ -1277,7 +1281,13 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                   compatibilityStatus: hasNeedsDiscussion ? 'missing_required' : (hiringFromVenue.length > 0 ? 'compatible_with_hired' : 'fully_compatible'),
                 };
               }
-              const { updatedApplicants } = await applyToGig({ gigId: slotGigId, musicianProfile: normalizedProfile, inviteId, techSetup });
+              const { updatedApplicants } = await applyToGig({
+                gigId: slotGigId,
+                musicianProfile: normalizedProfile,
+                inviteId,
+                techSetup,
+                ...(messageTrimmed ? { applicationMessage: messageTrimmed } : {}),
+              });
               setGigData(prev => {
                   if (prev.gigId === slotGigId) {
                       return { ...prev, applicants: updatedApplicants };
@@ -2399,10 +2409,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                             <div className='images-and-location'>
                                 <div className='main-image'>
                                     <figure className='img' onClick={() => handleImageClick(0)}>
-                                        <img src={venueProfile?.photos[0]} alt={`${gigData?.venue?.venueName ?? venueProfile?.name ?? 'Venue'} photo`} />
-                                        <div className='more-overlay'>
-                                            <h2>+{venueProfile?.photos.length - 1}</h2>
-                                        </div>
+                                        <img src={venueProfile?.photos?.[0]} alt={`${gigData?.venue?.venueName ?? venueProfile?.name ?? 'Venue'} photo`} />
+                                        {(venueProfile?.photos?.length ?? 0) > 1 && (
+                                            <div className='more-overlay'>
+                                                <h2>+{venueProfile.photos.length - 1}</h2>
+                                            </div>
+                                        )}
                                     </figure>
                                 </div>
                                 <div className='location'>
@@ -2884,6 +2896,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                     )}
                                                 </div>
                                             </>
+                                        )}
+                                        {((user?.venueProfiles?.length > 0 && !user.artistProfiles?.length) || venueVisiting) && isFutureOpen && (
+                                            <div className='action-box-buttons'>
+                                                <button
+                                                    type="button"
+                                                    className="btn artist-profile"
+                                                    disabled
+                                                >
+                                                    {currentSlot?.itemType === 'venue_hire' ? 'Apply to Hire' : 'Apply To Gig'}
+                                                </button>
+                                                <p className="gig-page__venue-preview-note">You&apos;re previewing as a venue</p>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -3391,6 +3415,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 </div>
                                             </>
                                         )}
+                                        {((user?.venueProfiles?.length > 0 && !user.artistProfiles?.length) || venueVisiting) && isFutureOpen && (
+                                            <div className='action-box-buttons'>
+                                                <button
+                                                    type="button"
+                                                    className="btn artist-profile"
+                                                    disabled
+                                                >
+                                                    {currentSlot?.itemType === 'venue_hire' ? 'Apply to Hire' : 'Apply To Gig'}
+                                                </button>
+                                                <p className="gig-page__venue-preview-note">You&apos;re previewing as a venue</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -3409,15 +3445,18 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
             {applyWizardOpen && applyWizardStep && (
                 <Portal>
                     <div className="modal equipment-check-modal apply-wizard-modal" onClick={() => { if (!applyingToGig) closeApplyWizard(); }}>
-                        <div className="modal-content equipment-check-content" onClick={(e) => e.stopPropagation()}>
-                            <div className="modal-header">
+                        <div
+                            className={`modal-content equipment-check-content${applyWizardStep === 'message' ? ' equipment-check-content--message-step' : ''}`}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className={`modal-header${applyWizardStep === 'equipment' ? ' modal-header--equipment-check' : ''}`}>
                                 {applyWizardProgress.total > 1 && applyWizardProgress.index > 0 && (
                                     <p className="apply-wizard-progress">Step {applyWizardProgress.index} of {applyWizardProgress.total}</p>
                                 )}
                                 {applyWizardStep === 'equipment' && (
                                     <>
                                         <h2>Equipment check</h2>
-                                        <p>We&apos;ve compared your tech rider with this gig&apos;s listed equipment.</p>
+                                        <p className="equipment-check-intro">We&apos;ve compared your tech rider with this gig&apos;s listed equipment.</p>
                                     </>
                                 )}
                                 {applyWizardStep === 'documents' && (
@@ -3427,10 +3466,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                     </>
                                 )}
                                 {applyWizardStep === 'message' && (
-                                    <>
-                                        <h2>Message to the venue</h2>
-                                        <p>Add a note to send with your application.</p>
-                                    </>
+                                    <h2>Message to the venue</h2>
                                 )}
                             </div>
 
@@ -3448,7 +3484,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                     {compat.providedByVenue.map((item, i) => (
                                                         <li key={i}>
                                                             <span className="tech-spec-compat-icon tech-spec-compat-icon--check" aria-hidden><TickIcon /></span>
-                                                            {item.label}
+                                                            <span className="equipment-check-item-name">{item.label}</span>
                                                         </li>
                                                     ))}
                                                 </ul>
@@ -3461,8 +3497,14 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                     {compat.hireableEquipment.map((item, i) => (
                                                         <li key={item.key || i} className="equipment-check-hireable-item">
                                                             <div className="equipment-check-hireable-item-header">
-                                                                <span className="tech-spec-compat-icon tech-spec-compat-icon--hire" aria-hidden>£</span>
-                                                                <span>{item.label} — £{item.hireFee}</span>
+                                                                <div className="equipment-check-hireable-item-head-text">
+                                                                    <span className="equipment-check-item-name">
+                                                                        {(item.hireFee != null && String(item.hireFee).trim() !== '')
+                                                                            ? `£${item.hireFee} `
+                                                                            : ''}
+                                                                        {item.label}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                             <div className="equipment-check-hireable-item-choice">
                                                                 <span className="equipment-check-hireable-item-choice-label">How will you handle this?</span>
@@ -3475,7 +3517,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                             checked={(equipmentCheckHireChoices[item.key || `_${i}`] || 'venue') === 'venue'}
                                                                             onChange={() => setEquipmentCheckHireChoices((prev) => ({ ...prev, [item.key || `_${i}`]: 'venue' }))}
                                                                         />
-                                                                        <span>Use venue&apos;s ({`£${item.hireFee}`})</span>
+                                                                        <span className="equipment-check-hireable-option-text">Use venue&apos;s ({`£${item.hireFee}`})</span>
                                                                     </label>
                                                                     <label className="equipment-check-hireable-option">
                                                                         <input
@@ -3485,7 +3527,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                             checked={(equipmentCheckHireChoices[item.key || `_${i}`] || 'venue') === 'own'}
                                                                             onChange={() => setEquipmentCheckHireChoices((prev) => ({ ...prev, [item.key || `_${i}`]: 'own' }))}
                                                                         />
-                                                                        <span>We&apos;ll provide our own</span>
+                                                                        <span className="equipment-check-hireable-option-text">We&apos;ll provide our own</span>
                                                                     </label>
                                                                     {(item.key === 'soundEngineer' || item.label?.toLowerCase().includes('sound engineer')) && (
                                                                         <label className="equipment-check-hireable-option">
@@ -3496,7 +3538,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                                                 checked={(equipmentCheckHireChoices[item.key || `_${i}`] || 'venue') === 'not_required'}
                                                                                 onChange={() => setEquipmentCheckHireChoices((prev) => ({ ...prev, [item.key || `_${i}`]: 'not_required' }))}
                                                                             />
-                                                                            <span>Not required</span>
+                                                                            <span className="equipment-check-hireable-option-text">Not required</span>
                                                                         </label>
                                                                     )}
                                                                 </div>
@@ -3513,7 +3555,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                     {compat.coveredByArtist.map((item, i) => (
                                                         <li key={i}>
                                                             <span className="tech-spec-compat-icon tech-spec-compat-icon--check" aria-hidden><TickIcon /></span>
-                                                            {item.label}
+                                                            <span className="equipment-check-item-name">{item.label}</span>
                                                         </li>
                                                     ))}
                                                 </ul>
@@ -3524,7 +3566,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                                 <h4>Needs discussion</h4>
                                                 <ul>
                                                     {compat.needsDiscussion.map((item, i) => (
-                                                        <li key={i}>{item.label}{item.note ? ` — ${item.note}` : ''}</li>
+                                                        <li key={i}>
+                                                            <span className="equipment-check-item-name">{item.label}</span>
+                                                            {item.note ? (
+                                                                <span className="equipment-check-item-meta equipment-check-item-meta--block">{item.note}</span>
+                                                            ) : null}
+                                                        </li>
                                                     ))}
                                                 </ul>
                                             </section>
@@ -3536,11 +3583,11 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 );
                             })()}
                             <div className="equipment-check-optional-note">
-                                <label htmlFor="equipment-check-note">Optional: note anything about equipment you may need to discuss with the venue (this is separate from your application message).</label>
                                 <textarea
                                     id="equipment-check-note"
                                     className="input"
                                     placeholder="Equipment / setup notes (optional)"
+                                    aria-label="Optional equipment or setup notes for the venue"
                                     value={equipmentCheckNote}
                                     onChange={(e) => setEquipmentCheckNote(e.target.value)}
                                     rows={2}
@@ -3608,10 +3655,10 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
 
                             {applyWizardStep === 'message' && (
                             <div className="equipment-check-modal-body apply-wizard-message">
-                                <label htmlFor="apply-wizard-message-input">Your message</label>
                                 <textarea
                                     id="apply-wizard-message-input"
                                     className={`input${applyWizardMessageShowError ? ' apply-wizard-message-input--invalid' : ''}`}
+                                    aria-label="Message to the venue"
                                     placeholder="Introduce yourself, confirm details, or ask the venue a question…"
                                     value={applyWizardMessage}
                                     onChange={(e) => {
@@ -3629,7 +3676,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                 {applyWizardStep === 'equipment' && (
                                     <div className="two-buttons equipment-check-actions">
                                         <button type="button" className="btn tertiary" onClick={closeApplyWizard} disabled={applyingToGig}>Cancel</button>
-                                        <button type="button" className="btn artist-profile" onClick={handleEquipmentStepContinue} disabled={applyingToGig}>Continue</button>
+                                        <button type="button" className="btn apply-wizard-continue" onClick={handleEquipmentStepContinue} disabled={applyingToGig}>Continue</button>
                                     </div>
                                 )}
                                 {applyWizardStep === 'documents' && (
@@ -3637,7 +3684,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, noProfileModal, setNo
                                         <button type="button" className="btn tertiary" onClick={goBackApplyWizard} disabled={applyingToGig}>Go back</button>
                                         <div className="apply-wizard-footer-actions">
                                             <button type="button" className="btn secondary" onClick={handleDocumentsStepDecline} disabled={applyingToGig}>Decline</button>
-                                            <button type="button" className="btn artist-profile" onClick={handleDocumentsStepContinue} disabled={applyingToGig}>Continue</button>
+                                            <button type="button" className="btn apply-wizard-continue" onClick={handleDocumentsStepContinue} disabled={applyingToGig}>Continue</button>
                                         </div>
                                     </div>
                                 )}

@@ -49,7 +49,7 @@ export const getBreadcrumbs = (
         label = "Who's playing nearby";
         break;
       case 'artists':
-        label = 'My Artists';
+        label = 'My Contacts';
         break;
       case 'finances':
         label = 'Finances';

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faWaveformLines } from '@fortawesome/pro-regular-svg-icons';
 import { DownChevronIcon, RightChevronIcon } from '@features/shared/ui/extras/Icons';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { getArtistProfileById } from '@services/client-side/artists';
@@ -151,7 +153,14 @@ export function VenueHireTechSetupMainCard({
         aria-controls="venue-hire-tech-setup-panel"
         id="venue-hire-tech-setup-expand-label"
       >
-        <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Tech Setup</h3>
+        <span className="venue-hire-main-column__tech-setup-expand-title-row fill-this-slot__header fill-this-slot__header--invite-promoter">
+          <FontAwesomeIcon
+            icon={faWaveformLines}
+            className="icon venue-hire-main-column__tech-setup-title-icon"
+            aria-hidden
+          />
+          <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Tech Setup</h3>
+        </span>
         <span className="venue-hire-main-column__tech-setup-expand-chevron" aria-hidden>
           {techSetupExpanded ? <DownChevronIcon /> : <RightChevronIcon />}
         </span>

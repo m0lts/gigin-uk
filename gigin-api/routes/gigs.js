@@ -429,7 +429,7 @@ router.post("/updateGigDocument", requireAuth, asyncHandler(async (req, res) => 
 // POST /api/gigs/applyToGig
 router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
   const caller = req.auth.uid;
-  const { gigId, musicianProfile, inviteId, techSetup } = req.body || {};
+  const { gigId, musicianProfile, inviteId, techSetup, applicationMessage } = req.body || {};
   const musicianId = musicianProfile?.musicianId;
   if (!gigId || !musicianId) {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigId and musicianProfile.musicianId required" });
@@ -462,6 +462,12 @@ router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
     });
   }
 
+  let applicationMessageStored = null;
+  if (typeof applicationMessage === "string") {
+    const m = applicationMessage.trim();
+    if (m) applicationMessageStored = m.slice(0, 4000);
+  }
+
   const now = new Date();
   const newApplication = {
     id: musicianProfile?.musicianId,
@@ -470,6 +476,7 @@ router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
     status: "pending",
     type: artistSnap.exists ? "artist" : (musicianProfile?.bandProfile ? "band" : "musician"),
     ...(techSetup && typeof techSetup === "object" && Object.keys(techSetup).length > 0 ? { techSetup } : {}),
+    ...(applicationMessageStored ? { applicationMessage: applicationMessageStored } : {}),
   };
   const updatedApplicants = [...(Array.isArray(gig.applicants) ? gig.applicants : []), newApplication];
   await gigRef.update({ applicants: updatedApplicants });
@@ -676,6 +683,18 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
   const { gigData, musicianProfileId, nonPayableGig = false, role, inviteId } = req.body || {};
   const caller = req.auth.uid;
   if (!gigData || !musicianProfileId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigData and musicianProfileId required" });
+
+  // Guard: reject actions on past gigs (fetch fresh to prevent client spoofing)
+  if (gigData.gigId) {
+    const freshSnap = await db.doc(`gigs/${gigData.gigId}`).get();
+    if (freshSnap.exists) {
+      const freshGig = freshSnap.data() || {};
+      const startTs = toAdminTimestamp(freshGig.startDateTime);
+      if (startTs && startTs.toDate() < new Date()) {
+        return res.status(409).json({ error: "GIG_IN_PAST", message: "This gig has already passed and cannot be accepted." });
+      }
+    }
+  }
 
   // Validate invite if gig is private (only for musician role)
   if (role === 'musician' && gigData.private) {
@@ -889,6 +908,18 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
   const caller = req.auth.uid;
   if (!gigData || !musicianProfileId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigData and musicianProfileId required" });
 
+  // Guard: reject actions on past gigs
+  if (gigData.gigId) {
+    const freshSnap = await db.doc(`gigs/${gigData.gigId}`).get();
+    if (freshSnap.exists) {
+      const freshGig = freshSnap.data() || {};
+      const startTs = toAdminTimestamp(freshGig.startDateTime);
+      if (startTs && startTs.toDate() < new Date()) {
+        return res.status(409).json({ error: "GIG_IN_PAST", message: "This gig has already passed and cannot be accepted." });
+      }
+    }
+  }
+
   // Validate invite if gig is private (only for musician role)
   if (role === 'musician' && gigData.private) {
     const inviteValidation = await validateGigInvite(gigData, inviteId, musicianProfileId);
@@ -1019,6 +1050,18 @@ router.post("/declineGigApplication", requireAuth, asyncHandler(async (req, res)
   const { gigData, musicianProfileId, role = 'venue' } = req.body || {};
   const caller = req.auth.uid;
   if (!gigData || !musicianProfileId) return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigData and musicianProfileId required" });
+
+  // Guard: reject actions on past gigs
+  if (gigData.gigId) {
+    const freshSnap = await db.doc(`gigs/${gigData.gigId}`).get();
+    if (freshSnap.exists) {
+      const freshGig = freshSnap.data() || {};
+      const startTs = toAdminTimestamp(freshGig.startDateTime);
+      if (startTs && startTs.toDate() < new Date()) {
+        return res.status(409).json({ error: "GIG_IN_PAST", message: "This gig has already passed and cannot be declined." });
+      }
+    }
+  }
 
   if (role === 'venue') {
     const venueId = gigData?.venueId;

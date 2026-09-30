@@ -7,8 +7,8 @@ import {
   HouseIconLight,
   PlusIcon,
   DownChevronIcon,
-  MailboxEmptyIcon,
-  MailboxFullIcon,
+  MessageIcon,
+  MessageIconSolid,
   VenueBuilderIcon,
   SettingsIcon,
   LogOutIcon,
@@ -18,7 +18,7 @@ import { TextLogoMed } from '../../shared/ui/logos/Logos';
 import { useAuth } from '@hooks/useAuth';
 import { useVenueDashboard } from '@context/VenueDashboardContext';
 import '@assets/fonts/fonts.css';
-import { AddressBookIcon, CalendarIconLight, CalendarIconSolid, CoinsIconSolid, DashboardIconLight, DashboardIconSolid, DotIcon, FeedbackIcon, GigIcon, HouseIconSolid, LeftChevronIcon, MailboxEmptyIconSolid, MailboxFullIconSolid, RightChevronIcon, UpChevronIcon } from '../../shared/ui/extras/Icons';
+import { AddressBookIcon, CalendarIconLight, CalendarIconSolid, CoinsIconSolid, DashboardIconLight, DashboardIconSolid, DotIcon, FeedbackIcon, GigIcon, HouseIconSolid, LeftChevronIcon, RightChevronIcon, UpChevronIcon } from '../../shared/ui/extras/Icons';
 import { FeedbackBox } from './FeedbackBox';
 import { toast } from 'sonner';
 
@@ -64,15 +64,9 @@ export const Sidebar = ({ user, newMessages, setShowWelcomeModal, setRevisitingM
     {
       path: '/venues/dashboard/messages',
       label: 'Messages',
-      icon: !newMessages ? <MailboxEmptyIcon /> : <MailboxFullIcon />,
-      iconActive: !newMessages ? <MailboxEmptyIconSolid /> : <MailboxFullIconSolid />,
+      icon: <MessageIcon />,
+      iconActive: <MessageIconSolid />,
       notification: newMessages,
-    },
-    {
-      path: '/venues/dashboard/my-venues',
-      label: 'My Venues',
-      icon: <HouseIconLight />,
-      iconActive: <HouseIconSolid />,
     },
     {
       path: '/venues/dashboard/artists',
@@ -85,7 +79,13 @@ export const Sidebar = ({ user, newMessages, setShowWelcomeModal, setRevisitingM
       label: 'Finances',
       icon: <CoinsIcon />,
       iconActive: <CoinsIconSolid />,
-    }
+    },
+    {
+      path: '/venues/dashboard/my-venues',
+      label: 'Venue Settings',
+      icon: <HouseIconLight />,
+      iconActive: <HouseIconSolid />,
+    },
   ];
 
   return (

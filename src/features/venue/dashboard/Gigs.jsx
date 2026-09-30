@@ -223,6 +223,7 @@ export const Gigs = ({
             else status = 'closed';
           } else if (dt && dt < now) {
             if (!!inDispute) status = 'in dispute';
+            else if (gig.status === 'expired') status = 'expired';
           }
           return {
             ...gig,
@@ -242,6 +243,8 @@ export const Gigs = ({
         let status = 'past';
         if (dt && dt > now) {
           status = hireStatus === 'confirmed' ? 'confirmed' : hireStatus === 'pending' ? 'upcoming' : 'upcoming';
+        } else if (dt && dt < now) {
+          if (hireStatus === 'expired') status = 'expired';
         }
         return {
           ...h,
@@ -277,6 +280,14 @@ export const Gigs = ({
       const isPast = dt && dt < now;
       
       if (isPast) {
+        if (gig.status === 'expired') {
+          return {
+            statusClass: 'expired',
+            icon: <ExclamationIconSolid />,
+            text: 'Expired — Unbooked',
+            subText: null,
+          };
+        }
         return {
           statusClass: 'past',
           icon: <PreviousIcon />,
@@ -1004,7 +1015,7 @@ export const Gigs = ({
                       onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setAddGigsMode?.('bookNew'); setShowAddGigsModal(true); }}
                     >
                       <CalendarIconSolid />
-                      <span>Book an Event</span>
+                      <span>Create a gig</span>
                     </button>
                     <button
                       type="button"
@@ -1012,7 +1023,7 @@ export const Gigs = ({
                       onClick={() => { setAddGigsEditData(null); setAddGigsInitialDateIso(null); setAddGigsMode?.('addExisting'); setShowAddGigsModal(true); }}
                     >
                       <CalendarPlusIcon />
-                      <span>Add Existing Event</span>
+                      <span>Add existing gig</span>
                     </button>
                   </div>
                   {canShowTemplatesButton && (
@@ -1812,7 +1823,7 @@ export const Gigs = ({
                     }}
                   >
                     <CalendarIconSolid />
-                    <span>Book an Event</span>
+                    <span>Create a gig</span>
                   </button>
                   <button
                     type="button"
@@ -1826,7 +1837,7 @@ export const Gigs = ({
                     }}
                   >
                     <CalendarPlusIcon />
-                    <span>Add Existing Event</span>
+                    <span>Add existing gig</span>
                   </button>
                 </div>
               </div>
@@ -2001,7 +2012,7 @@ export const Gigs = ({
                     }}
                   >
                     <CalendarIconSolid />
-                    <span>Book an Event</span>
+                    <span>Create a gig</span>
                   </button>
                   <button
                     type="button"
@@ -2009,7 +2020,7 @@ export const Gigs = ({
                     onClick={() => setTemplateUseChoiceTemplate(null)}
                   >
                     <CalendarPlusIcon />
-                    <span>Add Existing Event</span>
+                    <span>Add existing gig</span>
                   </button>
                 </div>
               </div>

@@ -14,6 +14,8 @@ import {
 } from '@features/shared/ui/extras/Icons';
 import { format } from 'date-fns';
 import { LinkIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
+import '@styles/host/invite-and-share-modal.styles.css';
+import { SendGigDetailsTile } from '@features/venue/components/SendGigDetailsTile';
 import { ApplicantTechSetupModal } from '@features/venue/components/ApplicantTechSetupModal';
 import { EditGigTimeModal } from '@features/venue/components/EditGigTimeModal';
 import { useAuth } from '@hooks/useAuth';
@@ -22,7 +24,10 @@ import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { getMusicianProfileByMusicianId, getArtistProfileById } from '@services/client-side/artists';
 import { getUserEmailById } from '@services/api/users';
-import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
+import {
+    getConversationsByParticipantAndGigId,
+    getConversationsByGigAndMusicianProfileId,
+} from '@services/client-side/conversations';
 import { getOrCreateConversation, notifyOtherApplicantsGigConfirmed } from '@services/api/conversations';
 import { getMostRecentMessage } from '@services/client-side/messages';
 import { removeGigFromVenue } from '@services/client-side/venues';
@@ -56,6 +61,34 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const BOOKED_APPLICANT_STATUSES = ['confirmed', 'accepted', 'paid', 'payment processing'];
 
+/** True if tech setup object has anything worth showing in ApplicantTechSetupModal (applicant or gig-level shape). */
+function techSetupPayloadHasContent(ts) {
+    if (!ts || typeof ts !== 'object') return false;
+    return (
+        (Array.isArray(ts.usingVenueEquipment) && ts.usingVenueEquipment.length > 0) ||
+        (Array.isArray(ts.bringingOwnEquipment) && ts.bringingOwnEquipment.length > 0) ||
+        (Array.isArray(ts.hiringFromVenue) && ts.hiringFromVenue.length > 0) ||
+        (Array.isArray(ts.needsDiscussion) && ts.needsDiscussion.length > 0) ||
+        (Array.isArray(ts.missingEquipment) && ts.missingEquipment.length > 0) ||
+        (Array.isArray(ts.venueEquipmentSelected) && ts.venueEquipmentSelected.length > 0) ||
+        (Array.isArray(ts.hiredFromVenue) && ts.hiredFromVenue.length > 0) ||
+        (typeof ts.setupNotes === 'string' && ts.setupNotes.trim() !== '') ||
+        !!ts.compatibilityStatus
+    );
+}
+
+/** Merge gig-level techSetup with applicant’s so equipment lists + setupNotes (equipment notes) stay together. */
+function mergeBookedArtistTechSetup(slotGig, applicant) {
+    const g = slotGig?.techSetup && typeof slotGig.techSetup === 'object' ? { ...slotGig.techSetup } : {};
+    const a = applicant?.techSetup && typeof applicant.techSetup === 'object' ? { ...applicant.techSetup } : {};
+    const merged = { ...g, ...a };
+    const applicantNotes = typeof a.setupNotes === 'string' ? a.setupNotes.trim() : '';
+    const gigNotes = typeof g.setupNotes === 'string' ? g.setupNotes.trim() : '';
+    if (applicantNotes) merged.setupNotes = a.setupNotes;
+    else if (gigNotes) merged.setupNotes = g.setupNotes;
+    return merged;
+}
+
 const VideoModal = ({ video, onClose }) => {
     return (
         <div className='modal videos'  onClick={onClose}>
@@ -71,14 +104,20 @@ const VideoModal = ({ video, onClose }) => {
 };
 
 /** Artist application note under the name on card-layout application tiles (same conversation as Message). */
-function ApplicationMessagePreview({ gigId, participantUserId }) {
+function ApplicationMessagePreview({ gigId, participantUserId, participantProfileId }) {
     const [text, setText] = useState(null);
     useEffect(() => {
-        if (!gigId || !participantUserId) return undefined;
+        if (!gigId || (!participantProfileId && !participantUserId)) return undefined;
         let cancelled = false;
         (async () => {
             try {
-                const conversations = await getConversationsByParticipantAndGigId(gigId, participantUserId);
+                let conversations = [];
+                if (participantProfileId) {
+                    conversations = await getConversationsByGigAndMusicianProfileId(gigId, participantProfileId);
+                }
+                if (!conversations?.length && participantUserId) {
+                    conversations = await getConversationsByParticipantAndGigId(gigId, participantUserId);
+                }
                 const conversationId = conversations?.[0]?.id;
                 if (!conversationId) return;
                 const msg = await getMostRecentMessage(conversationId, 'application');
@@ -95,9 +134,63 @@ function ApplicationMessagePreview({ gigId, participantUserId }) {
         return () => {
             cancelled = true;
         };
-    }, [gigId, participantUserId]);
+    }, [gigId, participantProfileId, participantUserId]);
     if (!text) return null;
-    return <p className="venue-hire-application-tile__message">{text}</p>;
+    return (
+        <div className="venue-application-submitted-note">
+            <span className="venue-application-submitted-note__label">Application message</span>
+            <p className="venue-application-submitted-note__body">{text}</p>
+        </div>
+    );
+}
+
+/** Equipment notes + step-3 message from applicant record; conversation fetch only as fallback for legacy applications. */
+function ApplicantSubmittedNotesSection({ gigId, participantUserId, participantProfileId, applicant }) {
+    const trimmed =
+        typeof applicant?.techSetup?.setupNotes === 'string' ? applicant.techSetup.setupNotes.trim() : '';
+    const applicationMessageStored =
+        typeof applicant?.applicationMessage === 'string' ? applicant.applicationMessage.trim() : '';
+    const fetchMessageFromConversation =
+        !applicationMessageStored && !!(participantProfileId || participantUserId);
+
+    if (!trimmed && !applicationMessageStored && !fetchMessageFromConversation) return null;
+
+    const equipmentBlock = trimmed ? (
+        <div className="venue-application-submitted-note">
+            <span className="venue-application-submitted-note__label">Equipment notes</span>
+            <p className="venue-application-submitted-note__body">{trimmed}</p>
+        </div>
+    ) : null;
+
+    const applicationMessageBlock = applicationMessageStored ? (
+        <div className="venue-application-submitted-note">
+            <span className="venue-application-submitted-note__label">Application message</span>
+            <p className="venue-application-submitted-note__body">{applicationMessageStored}</p>
+        </div>
+    ) : fetchMessageFromConversation ? (
+        <ApplicationMessagePreview
+            gigId={gigId}
+            participantUserId={participantUserId}
+            participantProfileId={participantProfileId}
+        />
+    ) : null;
+
+    if (!equipmentBlock) {
+        return (
+            <div className="venue-application-submitted-notes venue-application-submitted-notes--single">
+                {applicationMessageBlock}
+            </div>
+        );
+    }
+    if (!applicationMessageBlock) {
+        return <div className="venue-application-submitted-notes">{equipmentBlock}</div>;
+    }
+    return (
+        <div className="venue-application-submitted-notes">
+            {equipmentBlock}
+            {applicationMessageBlock}
+        </div>
+    );
 }
 
 export const GigApplications = ({
@@ -118,6 +211,7 @@ export const GigApplications = ({
     setShowInvitesModalFromParent,
     onInviteArtist,
     onOpenConfirmGigManually,
+    onEditManualBooked,
     /** Hide in-component tab strip (e.g. parent renders filter-style tabs above the applications card). */
     hideMultiSlotTabStrip = false,
     /** Controlled multi-set tab index; pair with `onMultiSlotActiveTabIndexChange`. */
@@ -125,6 +219,14 @@ export const GigApplications = ({
     onMultiSlotActiveTabIndexChange,
     /** When set, booked artist tile(s) render here (e.g. above the applications card and set tabs). */
     bookedTilesPortalContainer = null,
+    /** When set with `useCardLayout`, the Send gig details block portals here (above the applications tile). */
+    sendGigDetailsPortalContainer = null,
+    /**
+     * When using `sendGigDetailsPortalContainer`, optional override: hide the tile when the artist-booking
+     * night is fully booked (all sets filled per `isArtistBookingNightFullyBooked`). When omitted, visibility
+     * uses per-slot `maxApplicants` merged with `gigs`.
+     */
+    sendGigDetailsPortalNightFullyBooked,
 }) => {
 
     const {isMdUp, isLgUp} = useBreakpoint();
@@ -182,14 +284,13 @@ export const GigApplications = ({
     const [showCancelConfirmationModal, setShowCancelConfirmationModal] = useState(false);
     const [showCloseGigModal, setShowCloseGigModal] = useState(false);
     const [watchPaymentIntentId, setWatchPaymentIntentId] = useState(null);
+    const [gigLinkCopied, setGigLinkCopied] = useState(false);
     const [hoveredRowId, setHoveredRowId] = useState(null);
     const [cancellationReason, setCancellationReason] = useState({
         reason: '',
         extraDetails: '',
       });
     const [eventLoading, setEventLoading] = useState(false);
-    const [showTechRiderModal, setShowTechRiderModal] = useState(false);
-    const [techRiderProfile, setTechRiderProfile] = useState(null);
     const [editingNotes, setEditingNotes] = useState(false);
     const [notesValue, setNotesValue] = useState('');
     const [savingNotes, setSavingNotes] = useState(false);
@@ -204,6 +305,8 @@ export const GigApplications = ({
     /** When set, Cancel Gig modal only cancels this slot’s booking (multi-set). */
     const [cancelSlotGig, setCancelSlotGig] = useState(null);
     const [bookedTileOptionsGigId, setBookedTileOptionsGigId] = useState(null);
+    const [bookedArtistTechRiderModal, setBookedArtistTechRiderModal] = useState(null);
+    const [bookedArtistTechRiderLoading, setBookedArtistTechRiderLoading] = useState(false);
     const bookedTileOptionsMenuRef = useRef(null);
 
     // Close options menu when clicking outside
@@ -440,7 +543,7 @@ export const GigApplications = ({
             }
           }
           
-          // Convert to array and create separate entries for each slot application (spread app so techSetup available for Tech setup modal)
+          // Convert to array and create separate entries for each slot application (spread app so techSetup is available on the applicant)
           const profiles = [];
           profilesMap.forEach((profile) => {
             profile.applications.forEach((app) => {
@@ -723,10 +826,16 @@ export const GigApplications = ({
         }
     };
 
-    const sendToConversation = async (userId, gigIdOverride = null) => {
+    const sendToConversation = async (userId, gigIdOverride = null, musicianProfileId = null) => {
         try {
             const gid = gigIdOverride ?? gigInfo.gigId;
-            const conversations = await getConversationsByParticipantAndGigId(gid, userId);
+            let conversations = [];
+            if (musicianProfileId) {
+                conversations = await getConversationsByGigAndMusicianProfileId(gid, musicianProfileId);
+            }
+            if (!conversations?.length && userId) {
+                conversations = await getConversationsByParticipantAndGigId(gid, userId);
+            }
             const conversationId = conversations?.[0]?.id;
             if (!conversationId) {
                 toast.error('No conversation found.');
@@ -736,6 +845,44 @@ export const GigApplications = ({
         } catch (err) {
             console.error(err);
             toast.error('Could not open messages.');
+        }
+    };
+
+    const openBookedArtistTechRider = async (slotGig, profile, applicant) => {
+        const participantId = profile?.id;
+        if (!participantId) return;
+        setBookedArtistTechRiderLoading(true);
+        try {
+            const [loadedProfile, venueProfile] = await Promise.all([
+                getProfileById(participantId),
+                slotGig?.venueId ? getVenueProfileById(slotGig.venueId) : Promise.resolve(null),
+            ]);
+            const artistProfile = loadedProfile || profile;
+            if (!artistProfile) {
+                toast.error('Could not load artist profile.');
+                return;
+            }
+            const techRider = artistProfile?.techRider;
+            const hasRider = techRider?.isComplete && techRider?.lineup?.length > 0;
+            const mergedTechSetup = mergeBookedArtistTechSetup(slotGig, applicant);
+            const hasAppSetup = techSetupPayloadHasContent(mergedTechSetup);
+            const venueRider = venueProfile?.techRider;
+            const hasVenueRider = venueRider?.isComplete && venueRider?.lineup?.length > 0;
+            if (!hasRider && !hasAppSetup && !hasVenueRider) {
+                toast.info('No tech spec available.');
+                return;
+            }
+            setBookedArtistTechRiderModal({
+                artistProfile,
+                venueTechRider: venueRider ?? null,
+                applicant: applicant ?? null,
+                applicationTechSetup: hasAppSetup ? mergedTechSetup : null,
+            });
+        } catch (err) {
+            console.error(err);
+            toast.error('Could not load tech spec.');
+        } finally {
+            setBookedArtistTechRiderLoading(false);
         }
     };
 
@@ -1318,7 +1465,6 @@ export const GigApplications = ({
                 <tr>
                     <th>Name</th>
                     <th>Video</th>
-                    {isMdUp && <th>Tech setup</th>}
                     <th>Fee</th>
                     <th>Status</th>
                 </tr>
@@ -1368,7 +1514,6 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                     </div>
                                 </td>
                                 <td>{profile.video?.file ? <button type="button" className="btn tertiary" onClick={() => setVideoToPlay(profile.video)}>Play</button> : '—'}</td>
-                                {isMdUp && <td>{profile.techRider?.isComplete ? <button type="button" className="btn tertiary" onClick={() => { setTechRiderProfile(profile); setShowTechRiderModal(true); }}>Tech setup</button> : '—'}</td>}
                                 <td>{profile.fee ?? '—'}</td>
                                 <td>
                                     {status === 'pending' && !gigAlreadyConfirmed && (
@@ -1643,7 +1788,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     slotGig.kind !== 'Open Mic' &&
                     !applicant?.invited &&
                     hasVenuePerm(venues, slotGig.venueId, 'gigs.applications.manage') && (
-                    <button type="button" className="btn primary venue-hire-application-tile__btn" onClick={() => sendToConversation(profile.userId, slotGigId)}>
+                    <button type="button" className="btn primary venue-hire-application-tile__btn" onClick={() => sendToConversation(profile.userId, slotGigId, profile.id)}>
                         Negotiate Fee
                     </button>
                 )}
@@ -1710,20 +1855,34 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
         return st || '—';
     };
 
-    const renderBookedTileCard = (slotGig, profile, applicant, tileOpts = {}) => {
+    /** Single-set nights: show music window only; multi-set keeps “Set N” + optional “ · times”. */
+    const getBookedTileSetLineDisplay = (slotGig, tileOpts = {}) => {
         const { setSubLabel = null } = tileOpts;
+        const timeRange = resolveBookedMusicTimeLabel(slotGig);
+        const hasTimeLabel = Boolean(timeRange && String(timeRange).trim() && timeRange !== '—');
+        const isSingleSlotNight = sortedSlots.length <= 1;
+
+        if (setSubLabel != null) {
+            return { primaryLabel: setSubLabel, showTimeSuffix: hasTimeLabel, timeRange };
+        }
+        if (isSingleSlotNight && hasTimeLabel) {
+            return { primaryLabel: timeRange, showTimeSuffix: false, timeRange };
+        }
+        if (isSingleSlotNight) {
+            return { primaryLabel: '', showTimeSuffix: false, timeRange };
+        }
+        return {
+            primaryLabel: `Set ${getSlotNumber(slotGig.gigId) ?? 1}`,
+            showTimeSuffix: hasTimeLabel,
+            timeRange,
+        };
+    };
+
+    const renderBookedTileCard = (slotGig, profile, applicant, tileOpts = {}) => {
         if (!slotGig || !profile || !applicant) return null;
         const slotGigId = slotGig.gigId;
         const photoUrl = profile.heroMedia?.url;
-        const hasTech =
-            (profile.techRider?.isComplete && profile.techRider.lineup && profile.techRider.lineup.length > 0) ||
-            (applicant.techSetup &&
-                (Array.isArray(applicant.techSetup.usingVenueEquipment) ||
-                    Array.isArray(applicant.techSetup.bringingOwnEquipment)));
-        const techProfileForModal = { ...profile, techSetup: applicant.techSetup ?? profile.techSetup };
-        const setLineLabel = setSubLabel ?? `Set ${getSlotNumber(slotGig.gigId) ?? 1}`;
-        const timeRange = resolveBookedMusicTimeLabel(slotGig);
-        const showTimeSuffix = timeRange && String(timeRange).trim() && timeRange !== '—';
+        const { primaryLabel, showTimeSuffix, timeRange } = getBookedTileSetLineDisplay(slotGig, tileOpts);
 
         return (
             <div className="venue-gig-booked-tile" key={`booked-${slotGigId}`}>
@@ -1732,7 +1891,9 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                         <div className="venue-gig-booked-tile__identity">
                             <span className="venue-gig-booked-tile__name">{profile.name}</span>
                             <p className="venue-gig-booked-tile__set-line">
-                                <span className="venue-gig-booked-tile__set-label">{setLineLabel}</span>
+                                {primaryLabel ? (
+                                    <span className="venue-gig-booked-tile__set-label">{primaryLabel}</span>
+                                ) : null}
                                 {showTimeSuffix ? (
                                     <span className="venue-gig-booked-tile__time-range"> · {timeRange}</span>
                                 ) : null}
@@ -1742,25 +1903,23 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                             </p>
                         </div>
                         <div className="venue-gig-booked-tile__actions">
-                            {profile.userId ? (
-                                <button
-                                    type="button"
-                                    className="btn secondary venue-gig-booked-tile__btn"
-                                    onClick={() => sendToConversation(profile.userId, slotGigId)}
-                                >
-                                    <MessageIcon /> Message
-                                </button>
-                            ) : null}
-                            {hasTech ? (
+                            {profile.id ? (
                                 <button
                                     type="button"
                                     className="btn tertiary venue-gig-booked-tile__btn"
-                                    onClick={() => {
-                                        setTechRiderProfile(techProfileForModal);
-                                        setShowTechRiderModal(true);
-                                    }}
+                                    onClick={() => openBookedArtistTechRider(slotGig, profile, applicant)}
+                                    disabled={bookedArtistTechRiderLoading}
                                 >
-                                    <TechRiderIcon /> Tech setup
+                                    <TechRiderIcon /> Tech Rider
+                                </button>
+                            ) : null}
+                            {profile.userId || profile.id ? (
+                                <button
+                                    type="button"
+                                    className="btn secondary venue-gig-booked-tile__btn"
+                                    onClick={() => sendToConversation(profile.userId, slotGigId, profile.id)}
+                                >
+                                    <MessageIcon /> Message
                                 </button>
                             ) : null}
                             {getLocalGigDateTime(slotGig) > now &&
@@ -1817,6 +1976,61 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
         );
     };
 
+    /**
+     * Simplified booked tile for manually-confirmed artists (no Gigin profile).
+     * Shows name + an Edit button (opens the confirm-manually modal) but no photo or Message button.
+     */
+    const renderManualBookedTileCard = (slotGig, applicant, tileOpts = {}) => {
+        if (!slotGig || !applicant) return null;
+        const slotGigId = slotGig.gigId;
+        const name = (applicant.name || applicant.artistName || '').trim() || 'Manually booked';
+        const { primaryLabel, showTimeSuffix, timeRange } = getBookedTileSetLineDisplay(slotGig, tileOpts);
+        const canEdit =
+            (onEditManualBooked || onOpenConfirmGigManually) &&
+            getLocalGigDateTime(slotGig) > now &&
+            hasVenuePerm(venues, slotGig.venueId, 'gigs.update');
+
+        return (
+            <div className="venue-gig-booked-tile venue-gig-booked-tile--manual" key={`booked-manual-${slotGigId}`}>
+                <div className="venue-gig-booked-tile__body">
+                    <div className="venue-gig-booked-tile__main">
+                        <div className="venue-gig-booked-tile__identity">
+                            <span className="venue-gig-booked-tile__name">{name}</span>
+                            <p className="venue-gig-booked-tile__set-line">
+                                {primaryLabel ? (
+                                    <span className="venue-gig-booked-tile__set-label">{primaryLabel}</span>
+                                ) : null}
+                                {showTimeSuffix ? (
+                                    <span className="venue-gig-booked-tile__time-range"> · {timeRange}</span>
+                                ) : null}
+                                <span className="venue-gig-applications-set-tab__status-pill venue-gig-booked-tile__booked-pill">
+                                    Booked
+                                </span>
+                            </p>
+                        </div>
+                        <div className="venue-gig-booked-tile__actions">
+                            {canEdit ? (
+                                <button
+                                    type="button"
+                                    className="btn tertiary venue-gig-booked-tile__btn"
+                                    onClick={() => {
+                                        if (onEditManualBooked) onEditManualBooked(applicant);
+                                        else onOpenConfirmGigManually?.();
+                                    }}
+                                >
+                                    <EditIcon /> Edit
+                                </button>
+                            ) : null}
+                        </div>
+                    </div>
+                    <div className="venue-gig-booked-tile__photo">
+                        <MicrophoneIcon />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const wrapBookedSection = (children) => (
         <div className="venue-gig-booked-section">{children}</div>
     );
@@ -1830,8 +2044,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
             <div className="venue-hire-application-tiles">
                 {slotProfiles.map((profile) => {
                     const photoUrl = profile.heroMedia?.url;
-                    const hasTech =
-                        profile.techRider?.isComplete && profile.techRider.lineup && profile.techRider.lineup.length > 0;
+                    const applicant = slotGig?.applicants?.find((a) => a.id === profile.id);
                     return (
                         <div key={`${profile.id}-${slotGigId}`} className="venue-hire-application-tile">
                             <div className="venue-hire-application-tile__photo">
@@ -1844,23 +2057,8 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                             <div className="venue-hire-application-tile__main">
                                 <div className="venue-hire-application-tile__identity">
                                     <span className="venue-hire-application-tile__name">{profile.name}</span>
-                                    {profile.userId ? (
-                                        <ApplicationMessagePreview gigId={slotGigId} participantUserId={profile.userId} />
-                                    ) : null}
                                 </div>
                                 <div className="venue-hire-application-tile__actions">
-                                    {hasTech && (
-                                        <button
-                                            type="button"
-                                            className="btn tertiary venue-hire-application-tile__btn"
-                                            onClick={() => {
-                                                setTechRiderProfile(profile);
-                                                setShowTechRiderModal(true);
-                                            }}
-                                        >
-                                            <TechRiderIcon /> Tech setup
-                                        </button>
-                                    )}
                                     <button
                                         type="button"
                                         className="btn tertiary venue-hire-application-tile__btn"
@@ -1868,17 +2066,23 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                     >
                                         <NewTabIcon /> View profile
                                     </button>
-                                    {profile.userId ? (
+                                    {profile.userId || profile.id ? (
                                         <button
                                             type="button"
                                             className="btn secondary venue-hire-application-tile__btn"
-                                            onClick={() => sendToConversation(profile.userId, slotGigId)}
+                                            onClick={() => sendToConversation(profile.userId, slotGigId, profile.id)}
                                         >
                                             Message
                                         </button>
                                     ) : null}
                                     {renderSlotApplicationTileSecondaryActions(profile, slotGig, slotGigId)}
                                 </div>
+                                <ApplicantSubmittedNotesSection
+                                    gigId={slotGigId}
+                                    participantUserId={profile.userId}
+                                    participantProfileId={profile.id}
+                                    applicant={applicant}
+                                />
                             </div>
                         </div>
                     );
@@ -1901,7 +2105,6 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     <tr>
                         <th>Name</th>
                         <th>Video</th>
-                        {isMdUp && <th>Tech setup</th>}
                         <th>Fee</th>
                         <th>Status</th>
                     </tr>
@@ -1925,7 +2128,6 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                     </div>
                                 </td>
                                 <td>{profile.video?.file ? <button type="button" className="btn tertiary" onClick={() => setVideoToPlay(profile.video)}>Play</button> : '—'}</td>
-                                {isMdUp && <td>{profile.techRider?.isComplete ? <button type="button" className="btn tertiary" onClick={() => { setTechRiderProfile(profile); setShowTechRiderModal(true); }}>Tech setup</button> : '—'}</td>}
                                 <td>{profile.fee ?? '—'}</td>
                                 <td>
                                     {status === 'pending' && (
@@ -1991,7 +2193,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                             toast.error('You do not have permission to perform this action.');
                                             return;
                                         }
-                                        setShowInvitesModal(true);
+                                        onInviteArtist?.();
                                     }}
                                     title={!hasVenuePerm(venues, gigInfo.venueId, 'gigs.invite') ? 'You do not have permission to create invites' : 'Create invite link'}
                                 >
@@ -2258,37 +2460,95 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                         {useCardLayout ? (() => {
                             // GigDetailsPanel wraps this in `.venue-hire-confirmed-panel__applications`.
                             const isMultiSlot = sortedSlots.length > 1;
+                            const gigId = gigInfo?.gigId;
+                            const gigLinkUrl = gigId ? `${window.location.origin}/gig/${gigId}` : null;
+                            const mergeSlotWithGigsList = (slotGig) => {
+                                if (!slotGig?.gigId || !Array.isArray(gigs)) return slotGig;
+                                const fresh = gigs.find((g) => g.gigId === slotGig.gigId);
+                                return fresh ? { ...slotGig, ...fresh } : slotGig;
+                            };
+                            const effectiveMaxApplicantsForSendTile = (slotGig) => {
+                                const m = mergeSlotWithGigsList(slotGig);
+                                const rawMax = Number(m?.maxApplicants);
+                                const hasExplicitMax = Number.isFinite(rawMax) && rawMax >= 1;
+                                if (hasExplicitMax) return Math.max(1, Math.floor(rawMax));
+                                if (m?.kind === 'Open Mic') return Number.POSITIVE_INFINITY;
+                                return 1;
+                            };
+                            const countBookedApplicantsOnSlotForSendTile = (slotGig) => {
+                                const m = mergeSlotWithGigsList(slotGig);
+                                if (!m?.applicants?.length) return 0;
+                                return m.applicants.filter((a) =>
+                                    BOOKED_APPLICANT_STATUSES.includes(a?.status)
+                                ).length;
+                            };
+                            const isSlotFullyBookedForSendTile = (slotGig) =>
+                                countBookedApplicantsOnSlotForSendTile(slotGig) >=
+                                effectiveMaxApplicantsForSendTile(slotGig);
+                            const handleCopyGigLink = () => {
+                                if (!gigLinkUrl) return;
+                                copyToClipboardProp?.(gigLinkUrl);
+                                setGigLinkCopied(true);
+                                window.setTimeout(() => setGigLinkCopied(false), 2000);
+                            };
+                            const renderShareDetailsBlock = ({ persistent = false } = {}) => {
+                                if (sendGigDetailsPortalContainer) return null;
+                                if (!gigLinkUrl) return null;
+                                return (
+                                    <div className={`venue-gig-applications-empty__gig-link${persistent ? ' venue-gig-applications-empty__gig-link--persistent' : ''}`}>
+                                        <p className="venue-gig-applications-empty__gig-link-label">Send gig details</p>
+                                        <div className="invite-and-share-modal__share-row venue-gig-applications-empty__gig-link-row">
+                                            <input
+                                                type="text"
+                                                className="input invite-and-share-modal__share-input"
+                                                value={gigLinkUrl}
+                                                readOnly
+                                                onFocus={(e) => e.target.select()}
+                                                onClick={(e) => e.target.select()}
+                                                aria-label="Gig link"
+                                            />
+                                            <button
+                                                type="button"
+                                                className="btn secondary invite-and-share-modal__copy-btn"
+                                                onClick={handleCopyGigLink}
+                                            >
+                                                {gigLinkCopied ? <><TickIcon /> Copied</> : <><LinkIcon /> Copy</>}
+                                            </button>
+                                            {onInviteArtist ? (
+                                                <button
+                                                    type="button"
+                                                    className="btn artist-profile venue-gig-applications-empty__preview-btn"
+                                                    onClick={onInviteArtist}
+                                                >
+                                                    <InviteIconSolid /> Invite
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                );
+                            };
+
+                            const renderSendGigDetailsPortal = (visible) => {
+                                if (!sendGigDetailsPortalContainer || !gigLinkUrl || !visible) return null;
+                                return createPortal(
+                                    <SendGigDetailsTile
+                                        bookingLinkUrl={gigLinkUrl}
+                                        onCopyLink={handleCopyGigLink}
+                                        linkCopied={gigLinkCopied}
+                                        onInviteArtist={onInviteArtist}
+                                        showInviteButton={!!onInviteArtist}
+                                    />,
+                                    sendGigDetailsPortalContainer
+                                );
+                            };
                             const renderEmptyState = () => {
-                                const showEmptyActions = onInviteArtist || onOpenConfirmGigManually;
                                 return (
                                     <div className="venue-gig-applications-empty">
                                         <h3 className="venue-gig-applications-empty__title">No applications yet</h3>
                                         <p className="venue-gig-applications-empty__body">
-                                            This gig hasn&apos;t received any applications. Start by inviting artists or promoters,
-                                            or manually confirming who has already booked this gig.
+                                            Send the gig details to artists and promoters, or manually enter who is booked.
                                         </p>
-                                        {showEmptyActions ? (
-                                            <div className="venue-gig-applications-empty__actions">
-                                                {onInviteArtist ? (
-                                                    <button
-                                                        type="button"
-                                                        className="btn artist-profile venue-gig-applications-empty__invite"
-                                                        onClick={onInviteArtist}
-                                                    >
-                                                        <InviteIconSolid /> Invite artist or promoter
-                                                    </button>
-                                                ) : null}
-                                                {onOpenConfirmGigManually ? (
-                                                    <button
-                                                        type="button"
-                                                        className="venue-gig-applications-empty__manual-link"
-                                                        onClick={onOpenConfirmGigManually}
-                                                    >
-                                                        Add manually
-                                                    </button>
-                                                ) : null}
-                                            </div>
-                                        ) : null}
+                                        {!sendGigDetailsPortalContainer ? renderShareDetailsBlock() : null}
                                     </div>
                                 );
                             };
@@ -2298,14 +2558,31 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                 if (!slotGig) return null;
                                 const bookedApp = getBookedApplicantForSlot(slotGig);
                                 const bookedProfile = bookedApp ? getProfileForBookedApplicant(bookedApp) : null;
+                                const isManualBooking = bookedApp?.manual === true;
                                 const pending = getPendingSlotProfilesForSlot(slotGig);
-                                if (!bookedProfile && pending.length === 0) return renderEmptyState();
-                                const bookedSection =
-                                    bookedProfile && bookedApp
-                                        ? wrapBookedSection(
-                                              renderBookedTileCard(slotGig, bookedProfile, bookedApp)
-                                          )
-                                        : null;
+                                const sendTileFullyBooked =
+                                    typeof sendGigDetailsPortalNightFullyBooked === 'boolean'
+                                        ? sendGigDetailsPortalNightFullyBooked
+                                        : isSlotFullyBookedForSendTile(slotGig);
+                                if (!bookedProfile && !isManualBooking && pending.length === 0) {
+                                    return (
+                                        <>
+                                            {renderSendGigDetailsPortal(
+                                                Boolean(gigLinkUrl && !sendTileFullyBooked)
+                                            )}
+                                            {renderEmptyState()}
+                                        </>
+                                    );
+                                }
+                                const bookedSection = bookedApp
+                                    ? wrapBookedSection(
+                                          bookedProfile
+                                              ? renderBookedTileCard(slotGig, bookedProfile, bookedApp)
+                                              : isManualBooking
+                                                ? renderManualBookedTileCard(slotGig, bookedApp)
+                                                : null
+                                      )
+                                    : null;
                                 const renderBookedSection = () => {
                                     if (!bookedSection) return null;
                                     if (bookedTilesPortalContainer) {
@@ -2315,6 +2592,12 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                 };
                                 return (
                                     <>
+                                        {renderSendGigDetailsPortal(
+                                            Boolean(gigLinkUrl && !sendTileFullyBooked)
+                                        )}
+                                        {!sendTileFullyBooked
+                                            ? renderShareDetailsBlock({ persistent: true })
+                                            : null}
                                         {renderBookedSection()}
                                         {pending.length > 0 ? renderApplicationTilesForSlot(slotGig, pending) : null}
                                     </>
@@ -2327,11 +2610,19 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                             const bookedStack = sortedSlots
                                 .map((sg) => {
                                     const app = getBookedApplicantForSlot(sg);
-                                    const prof = app ? getProfileForBookedApplicant(app) : null;
-                                    return app && prof ? { slotGig: sg, applicant: app, profile: prof } : null;
+                                    if (!app) return null;
+                                    const prof = getProfileForBookedApplicant(app);
+                                    if (prof) return { slotGig: sg, applicant: app, profile: prof, manual: false };
+                                    if (app.manual === true) return { slotGig: sg, applicant: app, profile: null, manual: true };
+                                    return null;
                                 })
                                 .filter(Boolean);
                             const hasAnyApplicationsContent = anyApplicantAcrossSlots || bookedStack.length > 0;
+                            const sendTileFullyBookedMulti =
+                                typeof sendGigDetailsPortalNightFullyBooked === 'boolean'
+                                    ? sendGigDetailsPortalNightFullyBooked
+                                    : sortedSlots.length > 0 &&
+                                      sortedSlots.every((sg) => isSlotFullyBookedForSendTile(sg));
                             const activeIdx = Math.min(
                                 Math.max(0, activeMultiSlotTabIndex),
                                 sortedSlots.length - 1
@@ -2362,10 +2653,14 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                 bookedStack.length > 0
                                     ? wrapBookedSection(
                                           <div className="venue-gig-booked-tiles-stack">
-                                              {bookedStack.map(({ slotGig: sg, applicant, profile }) =>
-                                                  renderBookedTileCard(sg, profile, applicant, {
-                                                      setSubLabel: `Set ${getSlotNumber(sg.gigId) ?? '?'}`,
-                                                  })
+                                              {bookedStack.map(({ slotGig: sg, applicant, profile, manual }) =>
+                                                  manual
+                                                      ? renderManualBookedTileCard(sg, applicant, {
+                                                            setSubLabel: `Set ${getSlotNumber(sg.gigId) ?? '?'}`,
+                                                        })
+                                                      : renderBookedTileCard(sg, profile, applicant, {
+                                                            setSubLabel: `Set ${getSlotNumber(sg.gigId) ?? '?'}`,
+                                                        })
                                               )}
                                           </div>
                                       )
@@ -2378,8 +2673,14 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                 return bookedSection;
                             };
 
+                            const showSendGigDetailsPortal = Boolean(gigLinkUrl) && !sendTileFullyBookedMulti;
+
                             return (
                                 <>
+                                    {renderSendGigDetailsPortal(showSendGigDetailsPortal)}
+                                    {!sendTileFullyBookedMulti
+                                        ? renderShareDetailsBlock({ persistent: true })
+                                        : null}
                                     {renderBookedSection()}
                                     {!hideMultiSlotTabStrip ? (
                                         <div
@@ -2540,17 +2841,6 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                                                 </div>
                                                             )}
                                                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                                {confirmedArtist.techRider && confirmedArtist.techRider.isComplete && (
-                                                                    <button
-                                                                        className='btn tertiary'
-                                                                        onClick={() => {
-                                                                            setTechRiderProfile(confirmedArtist);
-                                                                            setShowTechRiderModal(true);
-                                                                        }}
-                                                                    >
-Tech setup
-                                                                </button>
-                                                                )}
                                                                 <button
                                                                     className='btn tertiary'
                                                                     onClick={(e) => openInNewTab(`/artist/${confirmedArtist.id}`, e)}
@@ -2656,17 +2946,6 @@ Tech setup
                                                         </div>
                                                     )}
                                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                        {confirmedArtist.techRider && confirmedArtist.techRider.isComplete && (
-                                                            <button
-                                                                className='btn tertiary'
-                                                                onClick={() => {
-                                                                    setTechRiderProfile(confirmedArtist);
-                                                                    setShowTechRiderModal(true);
-                                                                }}
-                                                            >
-Tech setup
-                                                                </button>
-                                                        )}
                                                         <button
                                                             className='btn tertiary'
                                                             onClick={(e) => openInNewTab(`/artist/${confirmedArtist.id}`, e)}
@@ -2690,9 +2969,6 @@ Tech setup
                                 <tr>
                                     <th>Name</th>
                                     <th>Video</th>
-                                    {isMdUp && (
-                                        <th>Tech setup</th>
-                                    )}
                                     <th>Fee</th>
                                     <th>Status</th>
                                 </tr>
@@ -2755,26 +3031,6 @@ Tech setup
                                             ) : (
                                                 'No Video'
                                             )}</td>
-                                            {isMdUp && (
-                                                <td>
-                                                    {profile?.techRider && profile.techRider.isComplete && profile.techRider.lineup && profile.techRider.lineup.length > 0 ? (
-                                                        <button 
-                                                            className='btn tertiary' 
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setTechRiderProfile(profile);
-                                                                setShowTechRiderModal(true);
-                                                            }}
-                                                            onMouseEnter={() => setHoveredRowId(null)} 
-                                                            onMouseLeave={() => setHoveredRowId(profile.id)}
-                                                        >
-                                                            Tech setup
-                                                                </button>
-                                                    ) : (
-                                                        <span style={{ color: 'var(--gn-grey-500)', fontSize: '0.9rem' }}>No tech setup</span>
-                                                    )}
-                                                </td>
-                                            )}
                                             <td>
                                                 {(gigInfo.kind !== 'Open Mic' && gigInfo.kind !== 'Ticketed Gig') ? (
                                                     profile.proposedFee !== gigInfo.budget ? (
@@ -2962,7 +3218,7 @@ Tech setup
                                                         </div>
                                                     )}
                                                     {status === 'declined' && !gigAlreadyConfirmed && !applicant?.declinedForOtherSet && (slotGig.budget !== '£' && slotGig.budget !== '£0') && (slotGig.kind !== 'Ticketed Gig' && slotGig.kind !== 'Open Mic') && !applicant?.invited && hasVenuePerm(venues, slotGig.venueId, 'gigs.applications.manage') && (
-                                                        <button className='btn primary small' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.userId, slotGigId)}}>
+                                                        <button className='btn primary small' onClick={(event) => {event.stopPropagation(); sendToConversation(profile.userId, slotGigId, profile.id)}}>
                                                             Negotiate Fee
                                                         </button>
                                                     )}
@@ -3046,6 +3302,23 @@ Tech setup
                     </>
                 )}
             </div>
+            {bookedArtistTechRiderModal ? (
+                <Portal>
+                    <ApplicantTechSetupModal
+                        techRider={bookedArtistTechRiderModal.artistProfile?.techRider || {}}
+                        artistName={bookedArtistTechRiderModal.artistProfile?.name || 'Artist'}
+                        venueTechRider={bookedArtistTechRiderModal.venueTechRider}
+                        application={
+                            bookedArtistTechRiderModal.applicationTechSetup
+                                ? { techSetup: bookedArtistTechRiderModal.applicationTechSetup }
+                                : bookedArtistTechRiderModal.applicant?.techSetup
+                                  ? { techSetup: bookedArtistTechRiderModal.applicant.techSetup }
+                                  : null
+                        }
+                        onClose={() => setBookedArtistTechRiderModal(null)}
+                    />
+                </Portal>
+            ) : null}
             {showPaymentModal && (
                 <Portal>
                     <PaymentModal 
@@ -3160,24 +3433,6 @@ Tech setup
                 </Portal>
             )}
             {videoToPlay && <VideoModal video={videoToPlay} onClose={closeModal} />}
-            {showTechRiderModal && techRiderProfile && (
-                <Portal>
-                    <ApplicantTechSetupModal
-                        techRider={techRiderProfile.techRider}
-                        artistName={techRiderProfile.name}
-                        venueTechRider={(() => {
-                            if (!gigInfo?.venueId || !venues) return null;
-                            const venue = venues.find(v => v.venueId === gigInfo.venueId);
-                            return venue?.techRider || null;
-                        })()}
-                        application={techRiderProfile}
-                        onClose={() => {
-                            setShowTechRiderModal(false);
-                            setTechRiderProfile(null);
-                        }}
-                    />
-                </Portal>
-            )}
             {showGigHandbook && gigForHandbook && (
                 <Portal>
                     <div className="modal" onClick={() => setShowGigHandbook(false)}>

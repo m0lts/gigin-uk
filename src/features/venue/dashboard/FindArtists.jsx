@@ -138,6 +138,7 @@ export const FindArtists = ({ user }) => {
               artistId: artist.id,
               name: artist.name || 'Unknown Artist',
               notes: '',
+              contactType: 'artist',
             });
             
             // Update local state
@@ -184,7 +185,7 @@ export const FindArtists = ({ user }) => {
                 className='btn primary' 
                 onClick={() => navigate('/venues/dashboard/artists')}
             >
-                My Artists
+                My Contacts
             </button>
         </div>
         <div className='body musicians'>

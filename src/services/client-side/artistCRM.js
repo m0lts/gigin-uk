@@ -44,6 +44,25 @@ export const createArtistCRMEntry = async (userId, data) => {
     facebook: data.facebook || null,
     other: data.other || null,
     tags: data.tags || [],
+    contactType:
+      data.contactType === 'promoter' ||
+      data.contactType === 'other' ||
+      data.contactType === 'soundEngineer'
+        ? data.contactType
+        : 'artist',
+    otherTypeLabel:
+      data.contactType === 'other' && data.otherTypeLabel?.trim()
+        ? data.otherTypeLabel.trim()
+        : null,
+    genre: data.genre?.trim() || null,
+    actFormat: data.actFormat?.trim() || null,
+    numberOfPeople: (() => {
+      if (data.numberOfPeople === undefined || data.numberOfPeople === null || data.numberOfPeople === '') {
+        return null;
+      }
+      const n = Number(data.numberOfPeople);
+      return Number.isFinite(n) ? n : null;
+    })(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -76,7 +95,32 @@ export const updateArtistCRMEntry = async (userId, entryId, updates) => {
   if (updates.other !== undefined) cleanedUpdates.other = updates.other || null;
   if (updates.tags !== undefined) cleanedUpdates.tags = updates.tags || [];
   if (updates.artistId !== undefined) cleanedUpdates.artistId = updates.artistId || null;
-  
+  if (updates.contactType !== undefined) {
+    cleanedUpdates.contactType =
+      updates.contactType === 'promoter' ||
+      updates.contactType === 'other' ||
+      updates.contactType === 'soundEngineer'
+        ? updates.contactType
+        : 'artist';
+  }
+  if (updates.otherTypeLabel !== undefined) {
+    cleanedUpdates.otherTypeLabel = updates.otherTypeLabel?.trim() || null;
+  }
+  if (updates.genre !== undefined) cleanedUpdates.genre = updates.genre?.trim() || null;
+  if (updates.actFormat !== undefined) cleanedUpdates.actFormat = updates.actFormat?.trim() || null;
+  if (updates.numberOfPeople !== undefined) {
+    if (
+      updates.numberOfPeople === '' ||
+      updates.numberOfPeople === undefined ||
+      updates.numberOfPeople === null
+    ) {
+      cleanedUpdates.numberOfPeople = null;
+    } else {
+      const n = Number(updates.numberOfPeople);
+      cleanedUpdates.numberOfPeople = Number.isFinite(n) ? n : null;
+    }
+  }
+
   cleanedUpdates.updatedAt = serverTimestamp();
 
   await updateDoc(entryRef, cleanedUpdates);

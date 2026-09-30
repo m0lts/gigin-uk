@@ -97,6 +97,7 @@ function inferBookingMode(gig) {
 
 function inferStatus(gig) {
   if (gig.status === 'cancelled') return 'cancelled';
+  if (gig.status === 'expired') return 'expired';
   if (gig.status === 'past') return 'completed';
   const applicants = gig.applicants || [];
   const hasConfirmed = applicants.some((a) => a?.status === 'confirmed' || a?.status === 'paid');

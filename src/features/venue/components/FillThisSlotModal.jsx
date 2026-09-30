@@ -111,7 +111,7 @@ export function FillThisSlotModal({ gig, venues = [], user, refreshGigs, onClose
 
         const email = (entry.email || '').trim();
         if (!email) {
-          toast.error('This contact has no email. Add one in My Artists.');
+          toast.error('This contact has no email. Add one in My Contacts.');
           return;
         }
         await sendGigInviteEmail({
@@ -223,7 +223,7 @@ export function FillThisSlotModal({ gig, venues = [], user, refreshGigs, onClose
                 {crmLoading ? (
                   <LoadingSpinner />
                 ) : !crmEntries?.length ? (
-                  <p className="invite-and-share-modal__empty">No contacts yet. Add artists in My Artists.</p>
+                  <p className="invite-and-share-modal__empty">No contacts yet. Add contacts in My Contacts.</p>
                 ) : (
                   crmEntries.map((entry) => {
                     const invited = invitedContactIds.has(entry.id);

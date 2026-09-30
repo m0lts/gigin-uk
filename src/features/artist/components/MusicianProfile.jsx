@@ -385,7 +385,7 @@ return (
                               className="btn quaternary"
                               onClick={() => handleInviteMusician()}
                           >
-                              Invite to Gig
+                              Offer Gig
                           </button>
                           {!musicianSaved ? (
                               <button className='btn quaternary' onClick={handleSaveMusician}>
@@ -448,7 +448,7 @@ return (
                     className="btn secondary"
                     onClick={() => handleInviteMusician()}
                 >
-                    Invite to Gig
+                    Offer Gig
                 </button>
                 {!musicianSaved ? (
                     <button className='btn secondary' onClick={handleSaveMusician}>

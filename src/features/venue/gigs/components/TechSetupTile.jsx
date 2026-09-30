@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { getEquipmentIconForLabel } from '@features/venue/utils/techSetupIcons';
-import { VenueTechSpecDisplay } from './VenueTechSpecDisplay';
+import { GigDetailsTechSpecPanel } from './GigDetailsTechSpecPanel';
 
 /**
  * Normalize hired-from-venue items to { label, feeDisplay } and optional numeric fee for total.
@@ -139,7 +139,7 @@ export function TechSetupTile({ rawGig, normalisedGig, venueTechRider, canUpdate
         className="venue-gig-page-sidebar__section venue-gig-page-sidebar__tech-setup-section venue-hire-main-column__tech-setup-venue-spec"
         aria-label="Venue tech specification"
       >
-        <VenueTechSpecDisplay techRider={venueTechRider} hideNotes />
+        <GigDetailsTechSpecPanel techRider={venueTechRider} />
       </section>
 
       <div className="venue-hire-main-column__tech-setup-gig-block">

@@ -99,6 +99,29 @@ export function buildVenueHireGigDetailsTimingDisplayRows(rawGig, accessFrom, cu
   });
 }
 
+function formatTimeRangeSpacedLabel(timeRangeLabel) {
+  if (!timeRangeLabel || typeof timeRangeLabel !== 'string') return '—';
+  return timeRangeLabel.replace(/\s*[\u2013-]\s*/g, ' – ');
+}
+
+/**
+ * Single programme line for venue-hire UIs (sidebar gig summary, host gig details column).
+ * Music start–stop from `eventTimings` (with access/curfew fallbacks), else night `timeRangeLabel`.
+ */
+export function buildVenueHireGigSummaryProgrammeTimeLabel(rawGig, normalisedGig, accessFrom, curfew) {
+  const rows = buildVenueHireGigDetailsTimingDisplayRows(rawGig, accessFrom, curfew);
+  const ms = rows.find((r) => r.key === 'musicStart')?.displayTime ?? '—';
+  const mStop = rows.find((r) => r.key === 'musicStop')?.displayTime ?? '—';
+  if (ms !== '—' && mStop !== '—') {
+    return formatTimeRangeSpacedLabel(`${ms}–${mStop}`);
+  }
+  if (ms !== '—') return ms;
+  if (mStop !== '—') return mStop;
+  const tr = normalisedGig?.timeRangeLabel;
+  if (tr && String(tr).trim()) return formatTimeRangeSpacedLabel(String(tr));
+  return '—';
+}
+
 /** End HH:MM from start + duration (minutes); same-day wrap at 24h as elsewhere in the app. */
 function endTimeFromStartAndDurationMinutes(startTime, durationMinutes) {
   if (!startTime || !String(startTime).trim() || !(Number(durationMinutes) > 0)) return '';

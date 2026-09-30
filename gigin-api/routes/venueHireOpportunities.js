@@ -95,6 +95,19 @@ function buildHirePayload(data, now) {
   });
 }
 
+function toJsDate(input) {
+  if (!input) return null;
+  if (input instanceof Date) return input;
+  if (typeof input?.toDate === 'function') return input.toDate();
+  if (typeof input === 'number') return new Date(input);
+  if (typeof input === 'string') { const d = new Date(input); return isNaN(d.getTime()) ? null : d; }
+  if (typeof input === 'object') {
+    const s = input.seconds ?? input._seconds;
+    if (typeof s === 'number') return new Date(s * 1000);
+  }
+  return null;
+}
+
 // POST /api/venueHireOpportunities/createBatch
 router.post("/createBatch", requireAuth, asyncHandler(async (req, res) => {
   const caller = req.auth.uid;
@@ -125,6 +138,89 @@ router.post("/createBatch", requireAuth, asyncHandler(async (req, res) => {
   return res.json({ data: { ids } });
 }));
 
+// POST /api/venueHireOpportunities/apply
+// Artist applies to a hire opportunity — writes a structured applicant entry to the document.
+router.post("/apply", requireAuth, asyncHandler(async (req, res) => {
+  const caller = req.auth.uid;
+  const { hireId, musicianProfile } = req.body || {};
+  const musicianId = musicianProfile?.musicianId;
+  if (!hireId || typeof hireId !== "string") {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "hireId required" });
+  }
+  if (!musicianId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "musicianProfile.musicianId required" });
+  }
+
+  const ref = db.doc(`${COLLECTION}/${hireId}`);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Venue hire opportunity not found" });
+  }
+  const data = snap.data() || {};
+
+  // Guard: reject applications to past or non-available hire opportunities
+  const hireDate = toJsDate(data.date ?? data.startDateTime);
+  if (hireDate && hireDate < new Date()) {
+    return res.status(409).json({ error: "GIG_IN_PAST", message: "This hire opportunity has already passed." });
+  }
+  const status = (data.status ?? 'available').toLowerCase();
+  if (status === 'confirmed' || status === 'cancelled' || status === 'expired') {
+    return res.status(409).json({ error: "GIG_SLOT_FILLED", message: "This hire opportunity is no longer accepting applications." });
+  }
+
+  const currentApplicants = Array.isArray(data.applicants) ? data.applicants : [];
+  const alreadyApplied = currentApplicants.some((a) => a?.id === musicianId);
+  if (alreadyApplied) {
+    return res.json({ data: { applicants: currentApplicants } });
+  }
+
+  const now = Timestamp.fromDate(new Date());
+  const newApplicant = {
+    id: musicianId,
+    name: musicianProfile?.name || null,
+    timestamp: now,
+    status: "pending",
+  };
+  const updatedApplicants = [...currentApplicants, newApplicant];
+  const updates = { applicants: updatedApplicants, updatedAt: now };
+  // Advance status from available → pending once first applicant arrives
+  if (status === 'available') {
+    updates.status = 'pending';
+  }
+  await ref.update(updates);
+
+  return res.json({ data: { applicants: updatedApplicants } });
+}));
+
+// POST /api/venueHireOpportunities/declineApplicant
+// Venue declines a specific applicant on a hire opportunity.
+router.post("/declineApplicant", requireAuth, asyncHandler(async (req, res) => {
+  const caller = req.auth.uid;
+  const { hireId, applicantId } = req.body || {};
+  if (!hireId || typeof hireId !== "string") {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "hireId required" });
+  }
+  if (!applicantId) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "applicantId required" });
+  }
+
+  const ref = db.doc(`${COLLECTION}/${hireId}`);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Venue hire opportunity not found" });
+  }
+  const data = snap.data() || {};
+  await assertVenuePerm(db, caller, data.venueId, "gigs.update");
+
+  const applicants = Array.isArray(data.applicants) ? data.applicants : [];
+  const updatedApplicants = applicants.map((a) =>
+    a?.id === applicantId ? { ...a, status: "declined" } : a
+  );
+  await ref.update({ applicants: updatedApplicants, updatedAt: Timestamp.fromDate(new Date()) });
+
+  return res.json({ data: { applicants: updatedApplicants } });
+}));
+
 // POST /api/venueHireOpportunities/update
 router.post("/update", requireAuth, asyncHandler(async (req, res) => {
   const caller = req.auth.uid;
@@ -148,8 +244,20 @@ router.post("/update", requireAuth, asyncHandler(async (req, res) => {
 
   await assertVenuePerm(db, caller, venueId, "gigs.update");
 
+  // If a specific applicant is being accepted, update the applicants array accordingly.
+  const acceptedApplicantId = updates.acceptedApplicantId;
   const technicalSetup = updates.technicalSetup;
   let normalizedUpdates = { ...updates, updatedAt: Timestamp.fromDate(new Date()) };
+  delete normalizedUpdates.acceptedApplicantId;
+
+  if (acceptedApplicantId && normalizedUpdates.status === 'confirmed') {
+    const existingApplicants = Array.isArray(snap.data()?.applicants) ? snap.data().applicants : [];
+    normalizedUpdates.applicants = existingApplicants.map((a) =>
+      a?.id === acceptedApplicantId
+        ? { ...a, status: 'confirmed' }
+        : a?.status === 'pending' ? { ...a, status: 'declined' } : a
+    );
+  }
   if (technicalSetup && typeof technicalSetup === "object") {
     const setupClean = {};
     if (technicalSetup.paIncluded != null) setupClean.paIncluded = technicalSetup.paIncluded;

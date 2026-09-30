@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@hooks/useAuth';
 import { hasVenuePerm } from '@services/utils/permissions';
 import { updateGigDocument } from '@services/api/gigs';
+import { updateVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
+import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
 import { getArtistProfileById, getMusicianProfileByMusicianId } from '@services/client-side/artists';
-import { EditIcon, InviteIconSolid } from '@features/shared/ui/extras/Icons';
+import { CoinsIcon, EditIcon, InviteIconSolid, MicrophoneIcon, TicketIcon } from '@features/shared/ui/extras/Icons';
 import { gigSlotHasConfirmedArtist } from '../utils/multiSlotGigGroup';
 import {
   buildArtistBookingMergedTimingDisplayRows,
   buildVenueHireGigDetailsTimingDisplayRows,
+  buildVenueHireGigSummaryProgrammeTimeLabel,
 } from '../utils/venueHireGigDetailsTimings';
 
 /** Labels when we don't use the venue-pays-artist summary line (see `resolveFeeModelDisplayLabel`). */
@@ -69,9 +73,9 @@ function inferArtistBookingPaymentModelKey(rawGig) {
 
 function formatTicketingResponsibility(v, kind) {
   if (v === 'venue') return 'Venue handles ticketing';
-  if (v === 'artist') return 'Artist handles ticketing';
+  if (v === 'artist') return 'They handle ticketing';
   if (v === 'free_entry') return 'Not ticketed';
-  if (kind === 'Ticketed Gig') return 'Artist handles ticketing';
+  if (kind === 'Ticketed Gig') return 'They handle ticketing';
   if (kind === 'Open Mic') return 'Not ticketed';
   return '';
 }
@@ -164,7 +168,7 @@ function formatPoundsFromNumber(n) {
 
 function resolveArtistBookingFinancialsFeeHeading(paymentModelKey, setCount) {
   if (paymentModelKey === 'venue_pays_artist') {
-    return setCount > 1 ? 'Venue pays artists' : 'Venue pays artist';
+    return setCount > 1 ? 'We pay artists' : 'We pay artist';
   }
   if (paymentModelKey === 'no_fee') return 'No fee';
   return '—';
@@ -248,21 +252,55 @@ function GigSummaryEditFooter({ onEditGig, onInviteArtist }) {
 
 function renderVenueHireGigSummaryV2({
   rawGig,
+  normalisedGig,
+  accessFrom,
+  curfew,
   feeModelLabel,
   capacityDisplay,
   ticketingTypeLabel,
+  venueHireApplicationsCount = null,
+  venueHireApplicationsLoading = false,
+  refreshGigs,
+  setGigInfo,
+  canUpdate = false,
   onEditGig,
   onInviteArtist,
 }) {
-  const capTicketing = [
-    capacityDisplay != null && String(capacityDisplay).trim()
-      ? `Capacity ${capacityDisplay}`
-      : null,
-    ticketingTypeLabel && String(ticketingTypeLabel).trim() ? ticketingTypeLabel : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const [busyGigId, setBusyGigId] = useState(null);
+  const capacitySummary =
+    capacityDisplay != null && String(capacityDisplay).trim() ? String(capacityDisplay).trim() : null;
+  const ticketingSummary =
+    ticketingTypeLabel && String(ticketingTypeLabel).trim() ? String(ticketingTypeLabel).trim() : null;
   const hireFee = formatHireFeeAmountForSummary(rawGig);
+  const isConfirmedVenueHire =
+    normalisedGig?.status === 'confirmed' ||
+    rawGig?.status === 'confirmed' ||
+    !!String(rawGig?.hirerName || rawGig?.renterName || '').trim();
+  const showHireFeePaidActions = isConfirmedVenueHire && hireFee !== '—';
+  const setVenueHireManualPaid = useCallback(
+    async (gigId, paid) => {
+      if (!canUpdate || !gigId) return;
+      setBusyGigId(gigId);
+      try {
+        await updateVenueHireOpportunity(gigId, { venueMarkedArtistFeePaid: paid });
+        setGigInfo?.((prev) => (prev ? { ...prev, venueMarkedArtistFeePaid: paid } : prev));
+        refreshGigs?.();
+        toast.success(paid ? 'Marked as paid.' : 'Marked as unpaid.');
+      } catch (e) {
+        console.error(e);
+        toast.error('Could not update payment status.');
+      } finally {
+        setBusyGigId(null);
+      }
+    },
+    [canUpdate, refreshGigs, setGigInfo]
+  );
+  const programmeTime = buildVenueHireGigSummaryProgrammeTimeLabel(
+    rawGig,
+    normalisedGig,
+    accessFrom,
+    curfew
+  );
 
   return (
     <div
@@ -273,13 +311,67 @@ function renderVenueHireGigSummaryV2({
         <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter venue-gig-page-sidebar__booking-summary-heading">
           Gig Summary
         </h3>
-        {capTicketing ? (
-          <p className="venue-gig-page-sidebar__gig-summary-v2__meta">{capTicketing}</p>
-        ) : null}
       </section>
 
       <section className="venue-gig-page-sidebar__gig-summary-v2__section venue-gig-page-sidebar__gig-summary-v2__section--ruled">
-        <p className="venue-gig-page-sidebar__gig-summary-v2__kicker">Financials</p>
+        <p className="venue-gig-page-sidebar__gig-summary-v2__kicker"><MicrophoneIcon /> Programme</p>
+        <div className="venue-gig-page-sidebar__gig-summary-v2__programme">
+          {(() => {
+            const hirerName =
+              (rawGig?.hirerName && String(rawGig.hirerName).trim()) ||
+              (rawGig?.renterName && String(rawGig.renterName).trim()) ||
+              null;
+            const isConfirmed =
+              normalisedGig?.status === 'confirmed' ||
+              rawGig?.status === 'confirmed' ||
+              !!hirerName;
+            return (
+              <div className="venue-gig-page-sidebar__gig-summary-v2__programme-row venue-gig-page-sidebar__gig-summary-v2__programme-row--no-set">
+                <span className="venue-gig-page-sidebar__gig-summary-v2__programme-time">{programmeTime}</span>
+                <span
+                  className={
+                    isConfirmed
+                      ? 'venue-gig-page-sidebar__gig-summary-v2__programme-artist'
+                      : 'venue-gig-page-sidebar__gig-summary-v2__programme-open'
+                  }
+                >
+                  {isConfirmed
+                    ? (hirerName || '—')
+                    : (venueHireApplicationsLoading || venueHireApplicationsCount === null
+                        ? '…'
+                        : formatApplicationCountLabel(venueHireApplicationsCount))}
+                </span>
+                <span className="venue-gig-page-sidebar__gig-summary-v2__programme-badge-cell">
+                  {isConfirmed ? (
+                    <span className="venue-gig-applications-set-tab__status-pill">Booked</span>
+                  ) : (
+                    <span className="venue-gig-page-sidebar__gig-summary-v2__pill venue-gig-page-sidebar__gig-summary-v2__pill--unbooked">
+                      Unbooked
+                    </span>
+                  )}
+                </span>
+              </div>
+            );
+          })()}
+        </div>
+      </section>
+
+      <section className="venue-gig-page-sidebar__gig-summary-v2__section venue-gig-page-sidebar__gig-summary-v2__section--ruled">
+        <p className="venue-gig-page-sidebar__gig-summary-v2__kicker"><TicketIcon /> Ticketing</p>
+        <div className="venue-gig-page-sidebar__gig-summary-v2__ticketing-rows">
+          <div className="venue-gig-page-sidebar__gig-summary-v2__fin-row">
+            <span className="venue-gig-page-sidebar__gig-summary-v2__fin-label">Capacity</span>
+            <span className="venue-gig-page-sidebar__gig-summary-v2__fin-value">{capacitySummary ?? '—'}</span>
+          </div>
+          <div className="venue-gig-page-sidebar__gig-summary-v2__fin-row">
+            <span className="venue-gig-page-sidebar__gig-summary-v2__fin-label">Handled by</span>
+            <span className="venue-gig-page-sidebar__gig-summary-v2__fin-value">{ticketingSummary ?? '—'}</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="venue-gig-page-sidebar__gig-summary-v2__section venue-gig-page-sidebar__gig-summary-v2__section--ruled">
+        <p className="venue-gig-page-sidebar__gig-summary-v2__kicker"><CoinsIcon /> Financials</p>
         <div className="venue-gig-page-sidebar__gig-summary-v2__fin-row">
           <span className="venue-gig-page-sidebar__gig-summary-v2__fin-label">Fee model</span>
           <span className="venue-gig-page-sidebar__gig-summary-v2__fin-value">
@@ -289,11 +381,23 @@ function renderVenueHireGigSummaryV2({
         {hireFee !== '—' ? (
           <>
             <div className="venue-gig-page-sidebar__gig-summary-v2__fin-divider" />
-            <div className="venue-gig-page-sidebar__gig-summary-v2__fin-row">
+            <div className="venue-gig-page-sidebar__gig-summary-v2__fin-row venue-gig-page-sidebar__gig-summary-v2__fin-row--set-fee">
               <span className="venue-gig-page-sidebar__gig-summary-v2__fin-label">Hire fee</span>
-              <span className="venue-gig-page-sidebar__gig-summary-v2__fin-value venue-gig-page-sidebar__gig-summary-v2__fin-value--strong">
-                {hireFee}
-              </span>
+              <div className="venue-gig-page-sidebar__gig-summary-v2__fin-set-fee-right">
+                <span className="venue-gig-page-sidebar__gig-summary-v2__fin-value venue-gig-page-sidebar__gig-summary-v2__fin-value--strong">
+                  {hireFee}
+                </span>
+                {showHireFeePaidActions ? (
+                  <MarkPaidForSetInline
+                    gigId={rawGig?.id || rawGig?.gigId}
+                    doc={rawGig}
+                    feeLabel={hireFee}
+                    canUpdate={canUpdate}
+                    busyGigId={busyGigId}
+                    setManualPaid={setVenueHireManualPaid}
+                  />
+                ) : null}
+              </div>
             </div>
           </>
         ) : null}
@@ -307,7 +411,6 @@ function renderVenueHireGigSummaryV2({
 function ArtistBookingGigSummaryV2({
   normalisedGig,
   rawGig,
-  feeModelLabel,
   capacityDisplay,
   ticketingTypeLabel,
   paymentModelKey,
@@ -391,14 +494,10 @@ function ArtistBookingGigSummaryV2({
     [canUpdate, refreshGigs, setGigInfo]
   );
   const setCount = hasMulti ? slotSummaries.length : 1;
-  const capTicketing = [
-    capacityDisplay != null && String(capacityDisplay).trim()
-      ? `Capacity ${capacityDisplay}`
-      : null,
-    ticketingTypeLabel && String(ticketingTypeLabel).trim() ? ticketingTypeLabel : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const capacitySummary =
+    capacityDisplay != null && String(capacityDisplay).trim() ? String(capacityDisplay).trim() : null;
+  const ticketingSummary =
+    ticketingTypeLabel && String(ticketingTypeLabel).trim() ? String(ticketingTypeLabel).trim() : null;
 
   const programmeRows = hasMulti
     ? slotSummaries.map((s) => {
@@ -418,7 +517,7 @@ function ArtistBookingGigSummaryV2({
     : [
         {
           key: rawGig?.gigId || 'single',
-          setLabel: 'Set 1',
+          setLabel: '',
           timeRange: formatTimeRangeSpaced(normalisedGig?.timeRangeLabel || ''),
           artistName: getBookedArtistDisplayName(rawGig, bookedArtistNamesById),
           booked: gigSlotHasConfirmedArtist(rawGig),
@@ -468,28 +567,25 @@ function ArtistBookingGigSummaryV2({
   } else if (showPerSetPayments && !hasMulti) {
     const doc = rawGig;
     const booked = gigSlotHasConfirmedArtist(doc);
-    const artist = getBookedArtistDisplayName(doc, bookedArtistNamesById);
     const feeStr = doc.budget || doc.hireFee;
     const budgetN = parsePoundsAmount(feeStr);
     if (budgetN != null) totalBudgetNum += budgetN;
     const agreedStr = doc.agreedFee || feeStr;
     const committedN = booked ? parsePoundsAmount(agreedStr) : null;
     if (committedN != null) committedNum += committedN;
-    const left = booked && artist ? `Set 1 · ${artist}` : 'Set 1';
-    let rightClass = 'venue-gig-page-sidebar__gig-summary-v2__fin-value';
+    // Single slot: no "Set 1" label; budget amount is always strong (black)
+    let rightClass = 'venue-gig-page-sidebar__gig-summary-v2__fin-value venue-gig-page-sidebar__gig-summary-v2__fin-value--strong';
     let rightText;
     if (booked && committedN != null) {
       rightText = formatPoundsFromNumber(committedN);
-      rightClass += ' venue-gig-page-sidebar__gig-summary-v2__fin-value--strong';
     } else if (budgetN != null) {
       rightText = `${formatPoundsFromNumber(budgetN)} budgeted`;
-      rightClass += ' venue-gig-page-sidebar__gig-summary-v2__fin-value--muted';
     } else {
       rightText = formatHireFeeAmountForSummary(rawGig);
     }
     financialRows.push({
       key: 'fin-single',
-      left,
+      left: '',
       rightText,
       rightClass,
       gigId: doc?.gigId,
@@ -498,8 +594,6 @@ function ArtistBookingGigSummaryV2({
     });
   }
 
-  const showTotalRow =
-    showPerSetPayments && financialRows.length > 0 && totalBudgetNum > 0 && paymentModelKey === 'venue_pays_artist';
 
   return (
     <div
@@ -510,15 +604,23 @@ function ArtistBookingGigSummaryV2({
         <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter venue-gig-page-sidebar__booking-summary-heading">
           Gig Summary
         </h3>
-        {capTicketing ? <p className="venue-gig-page-sidebar__gig-summary-v2__meta">{capTicketing}</p> : null}
       </section>
 
       <section className="venue-gig-page-sidebar__gig-summary-v2__section venue-gig-page-sidebar__gig-summary-v2__section--ruled">
-        <p className="venue-gig-page-sidebar__gig-summary-v2__kicker">Programme</p>
+        <p className="venue-gig-page-sidebar__gig-summary-v2__kicker"><MicrophoneIcon /> Programme</p>
         <div className="venue-gig-page-sidebar__gig-summary-v2__programme">
           {programmeRows.map((row) => (
-            <div key={row.key} className="venue-gig-page-sidebar__gig-summary-v2__programme-row">
-              <span className="venue-gig-page-sidebar__gig-summary-v2__programme-set">{row.setLabel}</span>
+            <div
+              key={row.key}
+              className={
+                row.setLabel
+                  ? 'venue-gig-page-sidebar__gig-summary-v2__programme-row'
+                  : 'venue-gig-page-sidebar__gig-summary-v2__programme-row venue-gig-page-sidebar__gig-summary-v2__programme-row--no-set'
+              }
+            >
+              {row.setLabel ? (
+                <span className="venue-gig-page-sidebar__gig-summary-v2__programme-set">{row.setLabel}</span>
+              ) : null}
               <span className="venue-gig-page-sidebar__gig-summary-v2__programme-time">{row.timeRange}</span>
               <span
                 className={
@@ -532,14 +634,16 @@ function ArtistBookingGigSummaryV2({
                     : undefined
                 }
               >
-                {row.booked ? (row.artistName?.trim() ? row.artistName.trim() : '—') : 'Open'}
+                {row.booked
+                  ? (row.artistName?.trim() ? row.artistName.trim() : '—')
+                  : formatApplicationCountLabel(row.appsCount)}
               </span>
               <span className="venue-gig-page-sidebar__gig-summary-v2__programme-badge-cell">
                 {row.booked ? (
                   <span className="venue-gig-applications-set-tab__status-pill">Booked</span>
                 ) : (
-                  <span className="venue-gig-page-sidebar__gig-summary-v2__pill venue-gig-page-sidebar__gig-summary-v2__pill--apps">
-                    {formatApplicationCountLabel(row.appsCount)}
+                  <span className="venue-gig-page-sidebar__gig-summary-v2__pill venue-gig-page-sidebar__gig-summary-v2__pill--unbooked">
+                    Unbooked
                   </span>
                 )}
               </span>
@@ -549,18 +653,27 @@ function ArtistBookingGigSummaryV2({
       </section>
 
       <section className="venue-gig-page-sidebar__gig-summary-v2__section venue-gig-page-sidebar__gig-summary-v2__section--ruled">
-        <p className="venue-gig-page-sidebar__gig-summary-v2__kicker">Financials</p>
+        <p className="venue-gig-page-sidebar__gig-summary-v2__kicker"><TicketIcon /> Ticketing</p>
+        <div className="venue-gig-page-sidebar__gig-summary-v2__ticketing-rows">
+          <div className="venue-gig-page-sidebar__gig-summary-v2__fin-row">
+            <span className="venue-gig-page-sidebar__gig-summary-v2__fin-label">Capacity</span>
+            <span className="venue-gig-page-sidebar__gig-summary-v2__fin-value">{capacitySummary ?? '—'}</span>
+          </div>
+          <div className="venue-gig-page-sidebar__gig-summary-v2__fin-row">
+            <span className="venue-gig-page-sidebar__gig-summary-v2__fin-label">Handled by</span>
+            <span className="venue-gig-page-sidebar__gig-summary-v2__fin-value">{ticketingSummary ?? '—'}</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="venue-gig-page-sidebar__gig-summary-v2__section venue-gig-page-sidebar__gig-summary-v2__section--ruled">
+        <p className="venue-gig-page-sidebar__gig-summary-v2__kicker"><CoinsIcon /> Financials</p>
         <div className="venue-gig-page-sidebar__gig-summary-v2__fin-row">
           <span className="venue-gig-page-sidebar__gig-summary-v2__fin-label">Fee model</span>
           <span className="venue-gig-page-sidebar__gig-summary-v2__fin-value venue-gig-page-sidebar__gig-summary-v2__fin-value--strong">
             {feeHeading}
           </span>
         </div>
-        {feeModelLabel &&
-        paymentModelKey === 'venue_pays_artist' &&
-        String(feeModelLabel).includes('•') ? (
-          <p className="venue-gig-page-sidebar__gig-summary-v2__fin-note">{feeModelLabel}</p>
-        ) : null}
 
         {financialRows.length > 0 ? (
           <>
@@ -588,17 +701,6 @@ function ArtistBookingGigSummaryV2({
           </>
         ) : null}
 
-        {showTotalRow ? (
-          <>
-            <div className="venue-gig-page-sidebar__gig-summary-v2__fin-divider" />
-            <div className="venue-gig-page-sidebar__gig-summary-v2__fin-row venue-gig-page-sidebar__gig-summary-v2__fin-row--total">
-              <span className="venue-gig-page-sidebar__gig-summary-v2__fin-label">Total committed</span>
-              <span className="venue-gig-page-sidebar__gig-summary-v2__fin-value venue-gig-page-sidebar__gig-summary-v2__fin-value--strong">
-                {`${formatPoundsFromNumber(committedNum)} of ${formatPoundsFromNumber(totalBudgetNum)}`}
-              </span>
-            </div>
-          </>
-        ) : null}
       </section>
 
       <GigSummaryEditFooter onEditGig={onEditGig} onInviteArtist={onInviteArtist} />
@@ -623,13 +725,14 @@ function renderBookingSummaryTile({
   setGigInfo = null,
   canUpdate = false,
   paymentModelKey = 'no_fee',
+  venueHireApplicationsCount = null,
+  venueHireApplicationsLoading = false,
 }) {
   if (variant === 'artist_booking') {
     return (
       <ArtistBookingGigSummaryV2
         normalisedGig={normalisedGig}
         rawGig={rawGig}
-        feeModelLabel={feeModelLabel}
         capacityDisplay={capacityDisplay}
         ticketingTypeLabel={ticketingTypeLabel}
         paymentModelKey={paymentModelKey}
@@ -648,21 +751,45 @@ function renderBookingSummaryTile({
 
   return renderVenueHireGigSummaryV2({
     rawGig,
+    normalisedGig,
+    accessFrom: normalisedGig != null ? normalisedGig.accessFrom : null,
+    curfew: normalisedGig != null ? normalisedGig.curfew : null,
     feeModelLabel,
     capacityDisplay,
     ticketingTypeLabel,
+    venueHireApplicationsCount,
+    venueHireApplicationsLoading,
+    refreshGigs,
+    setGigInfo,
+    canUpdate,
     onEditGig,
     onInviteArtist,
   });
 }
 
-function renderTimelineTile(timingDisplayRows) {
+function renderTimelineTile(
+  timingDisplayRows,
+  {
+    canUpdate = false,
+    editingTimingKey = null,
+    editingTimingValue = '',
+    timelineSaving = false,
+    onStartAddTime = null,
+    onChangeAddTime = null,
+    onCancelAddTime = null,
+    onSaveAddTime = null,
+  } = {}
+) {
   return (
     <div className="venue-gig-page-sidebar__surface-tile venue-gig-page-sidebar__surface-tile--timeline">
       <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter venue-gig-page-sidebar__timeline-tile-heading">Timeline</h3>
       <div className="venue-gig-page-sidebar__timeline-wrap">
         <ul className="venue-gig-page-sidebar__timeline-list">
-          {timingDisplayRows.map(({ key, label, displayTime }, index) => (
+          {timingDisplayRows.map(({ key, label, displayTime }, index) => {
+            const isMissing = displayTime === '—' || displayTime === 'TBC';
+            const displayTimeLabel = isMissing ? 'TBC' : displayTime;
+            const isEditing = editingTimingKey === key;
+            return (
             <li key={key} className="venue-gig-page-sidebar__timeline-item">
               <div className="venue-gig-page-sidebar__timeline-axis" aria-hidden>
                 <span className="venue-gig-page-sidebar__timeline-dot" />
@@ -671,11 +798,53 @@ function renderTimelineTile(timingDisplayRows) {
                 ) : null}
               </div>
               <div className="venue-gig-page-sidebar__timeline-body">
-                <div className="venue-gig-page-sidebar__timeline-time">{displayTime}</div>
+                {isEditing ? (
+                  <div className="venue-gig-page-sidebar__timeline-inline-editor">
+                    <input
+                      type="time"
+                      className="venue-gig-page-sidebar__timeline-time-input"
+                      value={editingTimingValue}
+                      onChange={(e) => onChangeAddTime?.(e.target.value)}
+                      disabled={timelineSaving}
+                    />
+                    <div className="venue-gig-page-sidebar__timeline-inline-actions">
+                      <button
+                        type="button"
+                        className="btn tertiary venue-gig-page-sidebar__timeline-inline-btn"
+                        onClick={() => onCancelAddTime?.()}
+                        disabled={timelineSaving}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="btn tertiary venue-gig-page-sidebar__timeline-inline-btn"
+                        onClick={() => onSaveAddTime?.(key)}
+                        disabled={timelineSaving || !editingTimingValue}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="venue-gig-page-sidebar__timeline-time">
+                    {displayTimeLabel}
+                    {canUpdate && isMissing && typeof onStartAddTime === 'function' ? (
+                      <button
+                        type="button"
+                        className="btn tertiary venue-gig-page-sidebar__timeline-add-time-btn"
+                        onClick={() => onStartAddTime(key)}
+                      >
+                        Add time
+                      </button>
+                    ) : null}
+                  </div>
+                )}
                 <div className="venue-gig-page-sidebar__timeline-label">{label}</div>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </div>
     </div>
@@ -725,10 +894,106 @@ export function BookingSummarySidebar({
   setGigInfo = null,
   refreshGigs = null,
 }) {
+  const { user } = useAuth();
+  const hireIdForVenueHire = rawGig?.id ?? rawGig?.gigId;
+  const [venueHireAppsCount, setVenueHireAppsCount] = useState(null);
+  const [venueHireAppsLoading, setVenueHireAppsLoading] = useState(false);
+  const [editingTimingKey, setEditingTimingKey] = useState(null);
+  const [editingTimingValue, setEditingTimingValue] = useState('');
+  const [timelineSaving, setTimelineSaving] = useState(false);
+
+  useEffect(() => {
+    if (normalisedGig?.bookingMode !== 'venue_hire' || !hireIdForVenueHire) {
+      setVenueHireAppsCount(null);
+      setVenueHireAppsLoading(false);
+      return undefined;
+    }
+    if (!user?.uid) {
+      setVenueHireAppsCount(0);
+      setVenueHireAppsLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setVenueHireAppsLoading(true);
+    getConversationsByParticipantAndGigId(hireIdForVenueHire, user.uid)
+      .then((list) => {
+        if (!cancelled) setVenueHireAppsCount((list || []).length);
+      })
+      .catch(() => {
+        if (!cancelled) setVenueHireAppsCount(0);
+      })
+      .finally(() => {
+        if (!cancelled) setVenueHireAppsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [normalisedGig?.bookingMode, hireIdForVenueHire, user?.uid, refreshGigs]);
+
   const isVenueHire = normalisedGig?.bookingMode === 'venue_hire';
   const isArtistBooking = normalisedGig?.bookingMode === 'artist_booking';
 
   const canUpdate = rawGig?.venueId && hasVenuePerm(venues, rawGig.venueId, 'gigs.update');
+
+  const startAddTimelineTime = useCallback(
+    (timingKey) => {
+      if (!canUpdate || !timingKey) return;
+      const existing = String(rawGig?.eventTimings?.[timingKey] || '').trim();
+      setEditingTimingKey(timingKey);
+      setEditingTimingValue(existing);
+    },
+    [canUpdate, rawGig?.eventTimings]
+  );
+
+  const cancelAddTimelineTime = useCallback(() => {
+    setEditingTimingKey(null);
+    setEditingTimingValue('');
+  }, []);
+
+  const saveAddTimelineTime = useCallback(
+    async (timingKey) => {
+      if (!canUpdate || !rawGig || !timingKey) return;
+      const value = String(editingTimingValue || '').trim();
+      if (!value) return;
+      setTimelineSaving(true);
+      try {
+        const nextEventTimings = {
+          ...(rawGig?.eventTimings || {}),
+          [timingKey]: value,
+        };
+        const updates = { eventTimings: nextEventTimings };
+        // Keep legacy/fallback top-level fields in sync so all surfaces update consistently.
+        if (timingKey === 'accessFrom') {
+          updates.accessFrom = value;
+          updates.rentalAccessFrom = value;
+        } else if (timingKey === 'musicStop') {
+          updates.curfew = value;
+          updates.rentalHardCurfew = value;
+        }
+
+        if (normalisedGig?.bookingMode === 'venue_hire') {
+          await updateVenueHireOpportunity(rawGig.id || rawGig.gigId, updates);
+        } else {
+          await updateGigDocument({
+            gigId: rawGig.gigId,
+            action: 'gigs.update',
+            updates,
+          });
+        }
+        setGigInfo?.((prev) => (prev ? { ...prev, ...updates } : prev));
+        refreshGigs?.();
+        toast.success('Time added.');
+        setEditingTimingKey(null);
+        setEditingTimingValue('');
+      } catch (e) {
+        console.error(e);
+        toast.error('Could not save time.');
+      } finally {
+        setTimelineSaving(false);
+      }
+    },
+    [canUpdate, editingTimingValue, normalisedGig?.bookingMode, rawGig, refreshGigs, setGigInfo]
+  );
 
   if (!normalisedGig) return null;
 
@@ -766,9 +1031,23 @@ export function BookingSummarySidebar({
           feeModelLabel: paymentModelLabel,
           capacityDisplay: capacitySummary,
           ticketingTypeLabel: ticketingLabel,
+          venueHireApplicationsCount: venueHireAppsCount,
+          venueHireApplicationsLoading: venueHireAppsLoading,
+          refreshGigs,
+          setGigInfo,
+          canUpdate,
           onEditGig: bookingSummaryOnEditGig,
         })}
-        {renderTimelineTile(timingDisplayRows)}
+        {renderTimelineTile(timingDisplayRows, {
+          canUpdate,
+          editingTimingKey,
+          editingTimingValue,
+          timelineSaving,
+          onStartAddTime: startAddTimelineTime,
+          onChangeAddTime: setEditingTimingValue,
+          onCancelAddTime: cancelAddTimelineTime,
+          onSaveAddTime: saveAddTimelineTime,
+        })}
 
         {showTicketSalesTile ? renderTargetSalesPreviewMarkup(capacity) : null}
       </>
@@ -797,10 +1076,6 @@ export function BookingSummarySidebar({
     const paymentModelKey = inferArtistBookingPaymentModelKey(rawGig);
     const slotSummaries = normalisedGig?.perSlotSummaries;
     const hasMultiSlot = Array.isArray(slotSummaries) && slotSummaries.length > 1;
-    const paymentModelLabel =
-      hasMultiSlot && paymentModelKey === 'venue_pays_artist'
-        ? "I'll pay the artists"
-        : resolveFeeModelDisplayLabel(paymentModelKey, rawGig);
     const ticketingLabel = resolveTicketingLabel(rawGig);
     const slotsForTimeline =
       Array.isArray(mergedTimelineSlots) && mergedTimelineSlots.length > 1
@@ -824,7 +1099,6 @@ export function BookingSummarySidebar({
             normalisedGig,
             rawGig,
             paymentModelKey,
-            feeModelLabel: paymentModelLabel,
             capacityDisplay: capacitySummary,
             ticketingTypeLabel: ticketingLabel,
             onEditGig: bookingSummaryOnEditGig,
@@ -837,7 +1111,16 @@ export function BookingSummarySidebar({
             setGigInfo,
             canUpdate,
           })}
-          {renderTimelineTile(timingDisplayRows)}
+          {renderTimelineTile(timingDisplayRows, {
+            canUpdate,
+            editingTimingKey,
+            editingTimingValue,
+            timelineSaving,
+            onStartAddTime: startAddTimelineTime,
+            onChangeAddTime: setEditingTimingValue,
+            onCancelAddTime: cancelAddTimelineTime,
+            onSaveAddTime: saveAddTimelineTime,
+          })}
 
           {showTicketSalesTile ? renderTargetSalesPreviewMarkup(capacity) : null}
         </div>

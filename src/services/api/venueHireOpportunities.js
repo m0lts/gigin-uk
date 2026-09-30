@@ -16,3 +16,13 @@ export function updateVenueHireOpportunity(id, updates) {
 export function deleteVenueHireOpportunity(id) {
   return post('/venueHireOpportunities/delete', { body: { id } });
 }
+
+/** Artist applies to a hire opportunity. Creates a structured applicant record on the document. */
+export function applyToHireOpportunity(hireId, musicianProfile) {
+  return post('/venueHireOpportunities/apply', { body: { hireId, musicianProfile } });
+}
+
+/** Venue declines a specific applicant on a hire opportunity. */
+export function declineHireApplicant(hireId, applicantId) {
+  return post('/venueHireOpportunities/declineApplicant', { body: { hireId, applicantId } });
+}

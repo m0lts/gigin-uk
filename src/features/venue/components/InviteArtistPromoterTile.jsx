@@ -29,69 +29,89 @@ export function InviteArtistPromoterTile({
   contactsBody,
   emailBody,
   manualBody,
+  /** When set, opens this submodal immediately on mount (e.g. 'share'). */
+  initialPopup = null,
+  /** Hide inline Share button in the shareable-link row. */
+  hideInlineShareButton = false,
+  /** Render only the submodal, without the outer tile shell. */
+  submodalOnly = false,
+  /** Called when submodal closes. */
+  onPopupClose,
 }) {
-  const [popup, setPopup] = useState(null);
+  const [popup, setPopup] = useState(initialPopup);
+  const closePopup = () => {
+    setPopup(null);
+    if (typeof onPopupClose === 'function') onPopupClose();
+  };
+
+  if (submodalOnly && !popup) return null;
 
   return (
-    <div className={`fill-this-slot fill-this-slot--invite-promoter ${className}`.trim()}>
-      {showHeader ? (
-        <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
-          <FontAwesomeIcon icon={faPaperPlaneTop} className="icon" aria-hidden />
-          <h3 id={titleId} className="fill-this-slot__title fill-this-slot__title--invite-promoter">
-            Invite artist or promoter
-          </h3>
-        </div>
-      ) : null}
+    <>
+      {!submodalOnly ? (
+        <div className={`fill-this-slot fill-this-slot--invite-promoter ${className}`.trim()}>
+          {showHeader ? (
+            <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+              <FontAwesomeIcon icon={faPaperPlaneTop} className="icon" aria-hidden />
+              <h3 id={titleId} className="fill-this-slot__title fill-this-slot__title--invite-promoter">
+                Invite artist or promoter
+              </h3>
+            </div>
+          ) : null}
 
-      <div className="fill-this-slot__share-tile">
-        <p className="fill-this-slot__share-tile-label">Shareable link</p>
-        <div className="fill-this-slot__share-row fill-this-slot__share-row--in-tile">
-          <input
-            type="text"
-            className="input fill-this-slot__input"
-            value={bookingLinkUrl || ''}
-            readOnly
-            onFocus={(e) => e.target.select()}
-            aria-label="Booking link"
-          />
-          <button
-            type="button"
-            className="btn secondary fill-this-slot__copy-btn fill-this-slot__copy-btn--tile"
-            onClick={onCopyLink}
-          >
-            {linkCopied ? <TickIcon /> : <CopyIcon />}
-            <span className="fill-this-slot__copy-btn-text">{linkCopied ? 'Copied' : 'Copy'}</span>
-          </button>
-          <button
-            type="button"
-            className="btn fill-this-slot__share-btn fill-this-slot__share-btn--tile"
-            onClick={() => setPopup('share')}
-          >
-            <ShareIcon />
-            <span className="fill-this-slot__copy-btn-text">Share</span>
-          </button>
-        </div>
-      </div>
-
-      {linkHelperText ? (
-        <p className="fill-this-slot__invite-promoter-hint">{linkHelperText}</p>
-      ) : null}
-
-      {footerStart || showManualOption ? (
-        <div
-          className={`fill-this-slot__invite-footer${!footerStart && showManualOption ? ' fill-this-slot__invite-footer--manual-only' : ''}`.trim()}
-        >
-          {footerStart ? <div className="fill-this-slot__invite-footer-left">{footerStart}</div> : null}
-          {showManualOption ? (
-            <div className="fill-this-slot__invite-footer-right">
+          <div className="fill-this-slot__share-tile">
+            <p className="fill-this-slot__share-tile-label">Shareable link</p>
+            <div className="fill-this-slot__share-row fill-this-slot__share-row--in-tile">
+              <input
+                type="text"
+                className="input fill-this-slot__input"
+                value={bookingLinkUrl || ''}
+                readOnly
+                onFocus={(e) => e.target.select()}
+                aria-label="Booking link"
+              />
               <button
                 type="button"
-                className="btn fill-this-slot__invite-action-btn"
-                onClick={() => setPopup('manual')}
-                disabled={manualButtonDisabled}
+                className="btn secondary fill-this-slot__copy-btn fill-this-slot__copy-btn--tile"
+                onClick={onCopyLink}
               >
-                <EditIcon /> Confirm Manually
+                {linkCopied ? <TickIcon /> : <CopyIcon />}
+                <span className="fill-this-slot__copy-btn-text">{linkCopied ? 'Copied' : 'Copy'}</span>
               </button>
+              {!hideInlineShareButton ? (
+                <button
+                  type="button"
+                  className="btn fill-this-slot__share-btn fill-this-slot__share-btn--tile"
+                  onClick={() => setPopup('share')}
+                >
+                  <ShareIcon />
+                  <span className="fill-this-slot__copy-btn-text">Share</span>
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {linkHelperText ? (
+            <p className="fill-this-slot__invite-promoter-hint">{linkHelperText}</p>
+          ) : null}
+
+          {footerStart || showManualOption ? (
+            <div
+              className={`fill-this-slot__invite-footer${!footerStart && showManualOption ? ' fill-this-slot__invite-footer--manual-only' : ''}`.trim()}
+            >
+              {footerStart ? <div className="fill-this-slot__invite-footer-left">{footerStart}</div> : null}
+              {showManualOption ? (
+                <div className="fill-this-slot__invite-footer-right">
+                  <button
+                    type="button"
+                    className="btn fill-this-slot__invite-action-btn"
+                    onClick={() => setPopup('manual')}
+                    disabled={manualButtonDisabled}
+                  >
+                    <EditIcon /> Confirm Manually
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -101,7 +121,7 @@ export function InviteArtistPromoterTile({
         <Portal>
           <div
             className="modal cancel-gig fill-this-slot__submodal-overlay"
-            onClick={() => setPopup(null)}
+            onClick={closePopup}
             role="dialog"
             aria-modal="true"
             aria-labelledby={`fill-slot-submodal-${popup}`}
@@ -120,7 +140,7 @@ export function InviteArtistPromoterTile({
                 <button
                   type="button"
                   className="btn icon tertiary fill-this-slot__submodal-close"
-                  onClick={() => setPopup(null)}
+                  onClick={closePopup}
                   aria-label="Close"
                 >
                   <CloseIcon />
@@ -155,6 +175,6 @@ export function InviteArtistPromoterTile({
           </div>
         </Portal>
       )}
-    </div>
+    </>
   );
 }

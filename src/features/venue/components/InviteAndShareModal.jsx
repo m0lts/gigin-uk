@@ -199,7 +199,7 @@ export function InviteAndShareModal({ gig, venues, user, onClose, refreshGigs })
       } else {
         const artistEmail = artist.email?.trim();
         if (!artistEmail) {
-          toast.error('This artist has no email in My Artists.');
+          toast.error('This artist has no email in My Contacts.');
           return;
         }
         let inviteId = null;
@@ -366,7 +366,7 @@ export function InviteAndShareModal({ gig, venues, user, onClose, refreshGigs })
                       className={`invite-and-share-modal__tab ${activeTab === 'crm' ? 'invite-and-share-modal__tab--active' : ''}`}
                       onClick={() => setActiveTab('crm')}
                     >
-                      My Artists
+                      My Contacts
                     </button>
                     <button
                       type="button"
@@ -382,10 +382,10 @@ export function InviteAndShareModal({ gig, venues, user, onClose, refreshGigs })
                   <input
                     type="search"
                     className="input invite-and-share-modal__search"
-                    placeholder="Search my artists…"
+                    placeholder="Search my contacts…"
                     value={crmSearch}
                     onChange={(e) => setCrmSearch(e.target.value)}
-                    aria-label="Search My Artists"
+                    aria-label="Search My Contacts"
                   />
                   <div className="invite-and-share-modal__list">
                     {crmLoading ? (

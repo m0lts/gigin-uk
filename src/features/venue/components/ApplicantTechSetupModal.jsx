@@ -55,7 +55,7 @@ function SetupSection({ title, items, icon: Icon, emptyLabel = 'None selected', 
   );
 }
 
-/** Tab 1: Setup for this gig – application-specific when saved, otherwise derived from artist rider + venue */
+/** Tab 1: Setup for this artist – application-specific when saved, otherwise derived from artist rider + venue */
 function GigSetupForShowTab({ application, techRider, venueTechRider, artistName }) {
   const techSetup = application?.techSetup || application;
   let usingVenue = techSetup?.usingVenueEquipment ?? [];
@@ -126,7 +126,7 @@ function GigSetupForShowTab({ application, techRider, venueTechRider, artistName
       )}
       {setupNotes && setupNotes.trim() && (
         <div className="applicant-tech-setup-section">
-          <h6 className="applicant-tech-setup-section-title">Notes for this show</h6>
+          <h6 className="applicant-tech-setup-section-title">Equipment notes</h6>
           <p className="applicant-tech-setup-notes">{setupNotes.trim()}</p>
         </div>
       )}
@@ -135,7 +135,7 @@ function GigSetupForShowTab({ application, techRider, venueTechRider, artistName
 }
 
 /**
- * Tabbed modal: Tab 1 = Setup for this gig (application), Tab 2 = Full Tech Rider (profile).
+ * Tabbed modal: Tab 1 = Setup for this artist (application), Tab 2 = Full Tech Rider (profile).
  * @param {Object} props
  * @param {Object} props.techRider - Artist profile tech rider (for tab 2)
  * @param {string} props.artistName
@@ -167,7 +167,7 @@ export function ApplicantTechSetupModal({ techRider, artistName, venueTechRider,
             className={`tech-spec-tab applicant-tech-setup-tab ${activeTab === TAB_GIG_SETUP ? 'tech-spec-tab--active' : ''}`}
             onClick={() => setActiveTab(TAB_GIG_SETUP)}
           >
-            Setup for this gig
+            Setup for this artist
           </button>
           <button
             type="button"

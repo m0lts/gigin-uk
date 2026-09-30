@@ -294,14 +294,16 @@ export function GigsCalendarReact({
     return byDate;
   }, [gigs]);
 
-  // Fetch profile names for confirmed single-artist applicants that don't have a name on the gig
+  // Fetch profile names for booked single-artist applicants that don't have a name on the gig
   const applicantIdsToFetch = useMemo(() => {
     const flat = Array.isArray(gigs) ? gigs.flatMap((g) => (g.allGigs ? g.allGigs : [g.primaryGig || g])) : [];
     const ids = new Set();
     flat.forEach((gig) => {
-      const confirmedApplicants = (gig.applicants || []).filter((a) => a.status === 'confirmed');
-      if (confirmedApplicants.length !== 1 || !confirmedApplicants[0]?.id) return;
-      const a = confirmedApplicants[0];
+      const bookedApplicants = (gig.applicants || []).filter(
+        (a) => a.status === 'confirmed' || a.status === 'accepted' || a.status === 'paid'
+      );
+      if (bookedApplicants.length !== 1 || !bookedApplicants[0]?.id) return;
+      const a = bookedApplicants[0];
       if (a.profileName ?? a.name ?? a.musicianName) return;
       ids.add(a.id);
     });
@@ -957,13 +959,11 @@ export function GigsCalendarReact({
                   })()}
 
                   <section className="gigs-calendar-react__venue-hire-section">
-                    {(hasRenter || isConfirmedHire) && <h4 className="gigs-calendar-react__venue-hire-section-title">Booked by</h4>}
                     <div className="gigs-calendar-react__venue-hire-booked-row">
                       {hasRenter || isConfirmedHire ? (
                         <p className="gigs-calendar-react__venue-hire-booked-name">
-                          {isConfirmedHire
-                            ? ((primaryGig.renterName && String(primaryGig.renterName).trim()) || '—')
-                            : (primaryGig.renterName && String(primaryGig.renterName).trim()) || '—'}
+                          <span className="gigs-calendar-react__venue-hire-booked-label">Hired by: </span>
+                          {(primaryGig.renterName && String(primaryGig.renterName).trim()) || '—'}
                         </p>
                       ) : null}
                       <span className={`gigs-calendar-react__venue-hire-status-pill gigs-calendar-react__venue-hire-status-pill--${isConfirmedHire ? 'confirmed' : hasRenter ? 'ready' : 'available'}`}>
@@ -1064,11 +1064,22 @@ export function GigsCalendarReact({
         }
 
         if (isArtistBooking(primaryGig)) {
-          const confirmedArtists = allGigs.flatMap((g) =>
-            (g.applicants || [])
-              .filter((a) => a.status === 'confirmed' || a.status === 'paid' || a.status === 'accepted')
-              .map((a) => a.name || a.profileName || 'Artist')
-          );
+          // Build per-slot confirmed artist entries (preserving slot order for Set 1/2/... labels)
+          const confirmedBySlot = allGigs
+            .map((g, idx) => {
+              const confirmed = (g.applicants || []).find(
+                (a) => a.status === 'confirmed' || a.status === 'paid' || a.status === 'accepted'
+              );
+              if (!confirmed) return null;
+              const name =
+                confirmed.name ||
+                confirmed.profileName ||
+                (confirmed.id ? applicantNames[confirmed.id] : null) ||
+                'Artist';
+              return { slotIndex: idx + 1, name };
+            })
+            .filter(Boolean);
+          const confirmedArtists = confirmedBySlot.map((s) => s.name);
           const totalSlots = Math.max(1, allGigs.length);
           const bookedCount = allGigs.filter((g) =>
             (g.applicants || []).some((a) =>
@@ -1181,11 +1192,22 @@ export function GigsCalendarReact({
                         {artistApplicationLine}
                       </p>
                     ) : null}
-                    {confirmedArtists.length > 0 ? (
-                      <>
-                        <h4 className="gigs-calendar-react__venue-hire-section-title">Artist(s)</h4>
-                        <p className="gigs-calendar-react__gig-detail-value">{confirmedArtists.join(', ')}</p>
-                      </>
+                    {confirmedBySlot.length > 0 ? (
+                      <div className="gigs-calendar-react__artist-booking-artists">
+                        {confirmedBySlot.length === 1 ? (
+                          <p className="gigs-calendar-react__gig-detail-value">
+                            <span className="gigs-calendar-react__venue-hire-booked-label">Artist: </span>
+                            {confirmedBySlot[0].name}
+                          </p>
+                        ) : (
+                          confirmedBySlot.map((slot) => (
+                            <p key={slot.slotIndex} className="gigs-calendar-react__gig-detail-value">
+                              <span className="gigs-calendar-react__venue-hire-booked-label">Set {slot.slotIndex}: </span>
+                              {slot.name}
+                            </p>
+                          ))
+                        )}
+                      </div>
                     ) : null}
                   </section>
 

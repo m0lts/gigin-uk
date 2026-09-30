@@ -23,6 +23,40 @@ export const BOOK_NEW_TEMPLATE_FIELD_KEYS = [
   'slotBudgets',
 ];
 
+/** Multi-select “Looking for” — stored on `gig.gigType` as comma-separated labels (legacy-safe). */
+export const LOOKING_FOR_OPTIONS = ['Musician/Band', 'DJ', 'Promoter'];
+export const LOOKING_FOR_DEFAULT = 'Musician/Band';
+
+export function parseLookingForSelection(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return [LOOKING_FOR_DEFAULT];
+  const parts = s.split(',').map((x) => x.trim()).filter(Boolean);
+  const knownOrdered = LOOKING_FOR_OPTIONS.filter((o) => parts.includes(o));
+  const unknown = parts.filter((p) => !LOOKING_FOR_OPTIONS.includes(p));
+  const out = [...knownOrdered, ...unknown];
+  return out.length ? out : [LOOKING_FOR_DEFAULT];
+}
+
+export function serializeLookingForSelection(selected) {
+  const uniq = [...new Set((selected || []).filter(Boolean))];
+  const ordered = [
+    ...LOOKING_FOR_OPTIONS.filter((o) => uniq.includes(o)),
+    ...uniq.filter((u) => !LOOKING_FOR_OPTIONS.includes(u)),
+  ];
+  return ordered.length ? ordered.join(', ') : LOOKING_FOR_DEFAULT;
+}
+
+/** Toggle one known option; keeps unknown legacy tokens; never leaves an empty selection. */
+export function toggleLookingForOption(currentRaw, opt) {
+  const sel = parseLookingForSelection(currentRaw);
+  const unknown = sel.filter((s) => !LOOKING_FOR_OPTIONS.includes(s));
+  let known = LOOKING_FOR_OPTIONS.filter((o) => sel.includes(o));
+  if (known.includes(opt)) known = known.filter((x) => x !== opt);
+  else known = [...known, opt];
+  if (known.length === 0) known = [LOOKING_FOR_DEFAULT];
+  return serializeLookingForSelection([...known, ...unknown]);
+}
+
 export function filterBookNewEventTemplatesForVenue(templates, venueId) {
   if (!venueId || !Array.isArray(templates)) return [];
   return templates.filter((t) => t && t.bookNewEventTemplate === true && t.venueId === venueId);
@@ -206,4 +240,21 @@ export function templateNameExistsForVenue(templates, venueId, name, excludeTemp
     if (excludeTemplateId && templateDocId(t) === excludeTemplateId) return false;
     return String(t.templateName || '').trim().toLowerCase() === norm;
   });
+}
+
+/** Summary line for template picker UI: fee model · amount · times · venue. */
+export function formatBookNewTemplateSummaryLine(template, venueName = '') {
+  if (!template) return '';
+  const pm = template.paymentModel;
+  let feePart = 'No fee';
+  if (pm === 'venue_pays_artist') feePart = 'Venue pays';
+  else if (pm === 'artist_pays_venue') feePart = 'Hire fee';
+  const digits = String(template.unifiedFeeAmount ?? '').replace(/[^\d]/g, '');
+  const amountPart = digits ? `£${digits}` : '—';
+  const start = String(template.timingMusicStartTime ?? '').trim();
+  const stop = String(template.timingMusicStopTime ?? '').trim();
+  const timePart = start && stop ? `${start}–${stop}` : start || stop || '—';
+  const v = String(venueName || '').trim();
+  const tail = v ? ` · ${v}` : '';
+  return `${feePart} · ${amountPart} · ${timePart}${tail}`;
 }
