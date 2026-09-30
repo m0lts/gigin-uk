@@ -414,6 +414,9 @@ export function GigDetailsPanel({
   const [gigPageInternalNotesSaving, setGigPageInternalNotesSaving] = useState(false);
   /** When true, notes tile shows textarea + Save / Discard (add or edit flow). */
   const [gigPageInternalNotesComposing, setGigPageInternalNotesComposing] = useState(false);
+  const [soundEngineerDraft, setSoundEngineerDraft] = useState(null);
+  const [soundEngineerSaving, setSoundEngineerSaving] = useState(false);
+  const [soundEngineerComposing, setSoundEngineerComposing] = useState(false);
   const [showConfirmManualModal, setShowConfirmManualModal] = useState(false);
   const [confirmManualName, setConfirmManualName] = useState('');
   const [confirmManualAddToContacts, setConfirmManualAddToContacts] = useState(false);
@@ -437,6 +440,8 @@ export function GigDetailsPanel({
   useEffect(() => {
     setGigPageInternalNotesComposing(false);
     setGigPageInternalNotesDraft(null);
+    setSoundEngineerComposing(false);
+    setSoundEngineerDraft(null);
   }, [rawGig?.gigId]);
 
   const canUpdate = rawGig?.venueId && hasVenuePerm(venues, rawGig.venueId, 'gigs.update');
@@ -734,6 +739,40 @@ export function GigDetailsPanel({
     }
   }, [isVenueHire, hireId, rawGig?.gigId, canUpdate, setGigInfo, refreshGigs]);
 
+  const saveSoundEngineer = useCallback(async (name, contact) => {
+    if (!canUpdate) return;
+    setSoundEngineerSaving(true);
+    try {
+      const now = new Date().toISOString();
+      const updates = {
+        soundEngineerName: name || null,
+        soundEngineerContact: contact || null,
+        soundEngineerLastEdited: now,
+      };
+      if (isVenueHire && hireId) {
+        await updateVenueHireOpportunity(hireId, updates);
+      } else if (rawGig?.gigId) {
+        await updateGigDocument({
+          gigId: rawGig.gigId,
+          action: 'gigs.update',
+          updates,
+        });
+      } else {
+        return;
+      }
+      setGigInfo?.((prev) => (prev ? { ...prev, ...updates } : null));
+      refreshGigs?.();
+      setSoundEngineerDraft(null);
+      setSoundEngineerComposing(false);
+      toast.success('Sound engineer saved.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save sound engineer.');
+    } finally {
+      setSoundEngineerSaving(false);
+    }
+  }, [isVenueHire, hireId, rawGig?.gigId, canUpdate, setGigInfo, refreshGigs]);
+
   const renderGigPageInternalNotesTileBody = () => {
     const savedRaw = rawGig?.internalNotes ?? rawGig?.notesInternal ?? '';
     const savedStr = savedRaw != null ? String(savedRaw) : '';
@@ -829,6 +868,135 @@ export function GigDetailsPanel({
       </>
     );
   };
+
+  const renderSoundEngineerTileBody = () => {
+    const savedName = rawGig?.soundEngineerName != null ? String(rawGig.soundEngineerName) : '';
+    const savedContact = rawGig?.soundEngineerContact != null ? String(rawGig.soundEngineerContact) : '';
+    const hasSaved = savedName.trim().length > 0 || savedContact.trim().length > 0;
+    const draft = soundEngineerDraft || { name: '', contact: '' };
+
+    if (!canUpdate) {
+      return (
+        <>
+          <p className="gig-details-tile__readonly">{savedName || '—'}</p>
+          {savedContact ? <p className="gig-details-tile__readonly">{savedContact}</p> : null}
+        </>
+      );
+    }
+
+    const discardCompose = () => {
+      setSoundEngineerDraft(null);
+      setSoundEngineerComposing(false);
+    };
+
+    if (soundEngineerComposing) {
+      return (
+        <>
+          <label className="label" htmlFor="gig-sound-engineer-name">Name</label>
+          <input
+            id="gig-sound-engineer-name"
+            className="input"
+            value={draft.name}
+            onChange={(e) => setSoundEngineerDraft({ ...draft, name: e.target.value })}
+            placeholder="Sound engineer name"
+            disabled={soundEngineerSaving}
+            autoFocus
+          />
+          <label className="label" htmlFor="gig-sound-engineer-contact">Contact</label>
+          <input
+            id="gig-sound-engineer-contact"
+            className="input"
+            value={draft.contact}
+            onChange={(e) => setSoundEngineerDraft({ ...draft, contact: e.target.value })}
+            placeholder="Phone or email"
+            disabled={soundEngineerSaving}
+          />
+          <div className="gig-details-tile__notes-actions">
+            <button type="button" className="btn tertiary" onClick={discardCompose} disabled={soundEngineerSaving}>
+              Discard
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => { void saveSoundEngineer(draft.name.trim(), draft.contact.trim()); }}
+              disabled={soundEngineerSaving}
+            >
+              {soundEngineerSaving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </>
+      );
+    }
+
+    if (!hasSaved) {
+      return (
+        <button
+          type="button"
+          className="btn secondary gig-details-tile__notes-add"
+          onClick={() => {
+            setSoundEngineerDraft({ name: '', contact: '' });
+            setSoundEngineerComposing(true);
+          }}
+        >
+          <PlusIcon />
+          Add sound engineer
+        </button>
+      );
+    }
+
+    return (
+      <>
+        <p className="gig-details-tile__readonly">{savedName || '—'}</p>
+        {savedContact ? <p className="gig-details-tile__readonly">{savedContact}</p> : null}
+        {rawGig?.soundEngineerLastEdited ? (
+          <p className="gig-details-tile__edited">
+            Last edited {formatDate(rawGig.soundEngineerLastEdited, 'short')}
+          </p>
+        ) : null}
+        <div className="gig-details-tile__notes-actions">
+          <button
+            type="button"
+            className="btn tertiary"
+            onClick={() => {
+              if (!window.confirm('Remove this sound engineer?')) return;
+              void saveSoundEngineer('', '');
+            }}
+          >
+            Discard
+          </button>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => {
+              setSoundEngineerDraft({ name: savedName, contact: savedContact });
+              setSoundEngineerComposing(true);
+            }}
+          >
+            Edit
+          </button>
+        </div>
+      </>
+    );
+  };
+
+  const renderSoundEngineerAndNotesTiles = () => (
+    <div className="gig-details-tile-row">
+      <div className="gig-details-tile gig-details-tile--half">
+        <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+          <PencilIcon />
+          <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Sound engineer</h3>
+        </div>
+        {renderSoundEngineerTileBody()}
+      </div>
+      <div className="gig-details-tile gig-details-tile--internal-notes gig-details-tile--half">
+        <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
+          <PencilIcon />
+          <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Additional notes</h3>
+        </div>
+        {renderGigPageInternalNotesTileBody()}
+      </div>
+    </div>
+  );
 
   /** Listing docs from the wizard; venue-hire legacy `documents` URLs map into the same row shape. */
   const combinedListingDocuments = React.useMemo(() => {
@@ -1998,6 +2166,7 @@ export function GigDetailsPanel({
             onEditManualBooked={showEditManualBookedLink ? openConfirmManualModal : undefined}
             runningOrderSlotTargets={runningOrderSlotEls}
           />
+          {renderSoundEngineerAndNotesTiles()}
         </div>
 
         {applicationsTechRiderProfile && (
@@ -2376,14 +2545,8 @@ export function GigDetailsPanel({
                     </ul>
                   )}
                 </div>
-                <div className="gig-details-tile gig-details-tile--internal-notes gig-details-tile--half">
-                  <div className="fill-this-slot__header fill-this-slot__header--invite-promoter">
-                    <PencilIcon />
-                    <h3 className="fill-this-slot__title fill-this-slot__title--invite-promoter">Notes</h3>
-                  </div>
-                  {renderGigPageInternalNotesTileBody()}
-                </div>
               </div>
+              {renderSoundEngineerAndNotesTiles()}
               {!venueHireSwapApplicationsAndGigDetails ? renderVenueHireConfirmedApplicationsCard() : null}
             </div>
           </>
