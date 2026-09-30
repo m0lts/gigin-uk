@@ -41,6 +41,7 @@ export function countBookedApplicantsForGig(gig) {
  */
 export function isGigClosedToNewApplicants(gig) {
   if (!gig) return false;
+  if (gig.applicationsOpen === false) return true;
   const max = resolveMaxApplicantsForGig(gig);
   if (!Number.isFinite(max)) return false;
   return countBookedApplicantsForGig(gig) >= max;

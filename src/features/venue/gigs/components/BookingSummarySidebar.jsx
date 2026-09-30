@@ -914,7 +914,7 @@ function ArtistBookingConsoleRail({
   const isCancelled = rawGig?.status === 'cancelled';
   const fullyBooked = nightSlots.length > 0 && bookedCount === nightSlots.length;
   const showFill = !fullyBooked && !isPast && !isCancelled;
-  const accepting = nightSlots.some((slot) => slot?.status === 'open' || slot?.status === 'upcoming');
+  const accepting = nightSlots.some((slot) => slot?.applicationsOpen !== false);
   const notes = String(rawGig?.internalNotes ?? rawGig?.notesInternal ?? rawGig?.notes ?? '');
   const documents = listingDocumentsForGig(rawGig);
   const daysUntil = gigDate ? Math.ceil((gigDate.getTime() - Date.now()) / 86400000) : null;
@@ -1057,7 +1057,7 @@ function ArtistBookingConsoleRail({
                 className="venue-gig-rail__toggle"
                 disabled={toggleSaving}
                 onClick={() => updateSlots(
-                  { status: accepting ? 'closed' : 'open' },
+                  { applicationsOpen: !accepting },
                   accepting ? 'Applications closed.' : 'Applications open.',
                   'gigs.applications.manage'
                 )}

@@ -390,8 +390,17 @@ router.post("/", asyncHandler(async (req, res) => {
   if (!gig) return res.status(404).json({ error: "Gig not found." });
   const when = gigDate(gig);
   if (when && when.getTime() < Date.now()) return res.status(400).json({ error: "This gig has already happened." });
+  const groupForClose = await loadGroup(body.gigId);
+  const chosen = new Set(Array.isArray(body.slotGigIds) ? body.slotGigIds : []);
+  const closedTarget = groupForClose.find((doc) => {
+    const selected = doc.id === body.gigId || chosen.has(doc.id);
+    return selected && doc.data?.applicationsOpen === false;
+  });
+  if (gig.applicationsOpen === false || closedTarget) {
+    return res.status(409).json({ error: "Applications for this gig are closed." });
+  }
 
-  const group = await loadGroup(body.gigId);
+  const group = groupForClose;
   const manageTokenHash = hashToken(body.manageToken);
   const already = group.flatMap((doc) => doc.data.applicants || []).find((entry) => entry?.id === body.applicationId);
   if (already) {

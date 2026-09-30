@@ -373,6 +373,8 @@ export const GigApplications = ({
     const [showDeleteConfirmationModal, setShowDeleteConfirmationModal] = useState(false);
     const [showCancelConfirmationModal, setShowCancelConfirmationModal] = useState(false);
     const [showCloseGigModal, setShowCloseGigModal] = useState(false);
+    const [closeApplicationsPrompt, setCloseApplicationsPrompt] = useState(null);
+    const [closeApplicationsGigIds, setCloseApplicationsGigIds] = useState([]);
     const [watchPaymentIntentId, setWatchPaymentIntentId] = useState(null);
     const [gigLinkCopied, setGigLinkCopied] = useState(false);
     const [hoveredRowId, setHoveredRowId] = useState(null);
@@ -720,6 +722,7 @@ export const GigApplications = ({
             setEventLoading(true);
             const nonPayableGig = !FEATURES.payments || targetGig.paymentModel === 'no_fee' || targetGig.kind === 'Open Mic' || targetGig.kind === "Ticketed Gig" || targetGig.budget === '£' || targetGig.budget === '£0';
             let globalAgreedFee;
+            let acceptedApplicants = null;
             
             if (targetGig.kind === 'Open Mic') {
                 const { updatedApplicants } = assertOk(
@@ -730,6 +733,7 @@ export const GigApplications = ({
                     toast.error('Failed to update gig status. Please try again.');
                     throw new Error('acceptGigOfferOM: updatedApplicants is not an array');
                 };
+                acceptedApplicants = updatedApplicants;
                 
                 // Update the target gig
                 if (targetGig.gigId === gigInfo.gigId) {
@@ -759,6 +763,7 @@ export const GigApplications = ({
                     toast.error('Failed to update gig status. Please try again.');
                     throw new Error('acceptGigOffer: no agreedFee')
                 };
+                acceptedApplicants = updatedApplicants;
                 
                 // Update the target gig
                 if (targetGig.gigId === gigInfo.gigId) {
@@ -798,6 +803,32 @@ export const GigApplications = ({
                 }
             }
             
+            if (acceptedApplicants) {
+                const filledStatuses = ['confirmed', 'accepted', 'paid', 'payment processing'];
+                const night = [gigInfo, ...relatedSlots].filter(Boolean).map((slot) => (
+                    slot.gigId === targetGig.gigId ? { ...slot, applicants: acceptedApplicants } : slot
+                ));
+                const seen = new Set();
+                const unique = night.filter((slot) => {
+                    if (!slot?.gigId || seen.has(slot.gigId)) return false;
+                    seen.add(slot.gigId);
+                    return true;
+                });
+                const slotFilled = (slot) => {
+                    const apps = Array.isArray(slot?.applicants) ? slot.applicants : [];
+                    if (slot?.kind === 'Open Mic') return apps.some((entry) => entry?.status === 'confirmed');
+                    const rawMax = Number(slot?.maxApplicants);
+                    const cap = Number.isFinite(rawMax) && rawMax >= 1 ? Math.floor(rawMax) : 1;
+                    return apps.filter((entry) => filledStatuses.includes(entry?.status)).length >= cap;
+                };
+                const stillOpen = unique.filter((slot) => slot.applicationsOpen !== false);
+                if (stillOpen.length && unique.length) {
+                    const allFilled = unique.every(slotFilled);
+                    setCloseApplicationsGigIds(stillOpen.map((slot) => slot.gigId));
+                    setCloseApplicationsPrompt(allFilled ? 'filled' : 'rest');
+                }
+            }
+
             if (guestApplicant) {
                 toast.success('Guest application accepted.');
                 refreshGigs();
@@ -3818,6 +3849,47 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                         musicianId={null}
                         venueId={gigInfo.venueId}
                     />
+                </Portal>
+            )}
+            {closeApplicationsPrompt && (
+                <Portal>
+                    <div className='modal' onClick={() => setCloseApplicationsPrompt(null)}>
+                        <div className='modal-content' onClick={(e) => e.stopPropagation()}>
+                            <h3>{closeApplicationsPrompt === 'filled' ? 'Close applications now?' : 'Some sets are still open'}</h3>
+                            <p>
+                                {closeApplicationsPrompt === 'filled'
+                                    ? 'Every slot is filled. You can close applications, or keep the gig open.'
+                                    : 'You can close applications for the sets that are still open, or keep taking applications.'}
+                            </p>
+                            <div className='two-buttons' style={{ marginTop: '1rem' }}>
+                                <button type='button' className='btn tertiary' onClick={() => setCloseApplicationsPrompt(null)}>
+                                    Keep open
+                                </button>
+                                <button
+                                    type='button'
+                                    className='btn primary'
+                                    onClick={async () => {
+                                        const ids = closeApplicationsGigIds;
+                                        setCloseApplicationsPrompt(null);
+                                        try {
+                                            await Promise.all(ids.map((id) => updateGigDocument({
+                                                gigId: id,
+                                                action: 'gigs.applications.manage',
+                                                updates: { applicationsOpen: false },
+                                            })));
+                                            toast.success('Applications closed.');
+                                            refreshGigs();
+                                        } catch (err) {
+                                            console.error(err);
+                                            toast.error('Failed to close applications.');
+                                        }
+                                    }}
+                                >
+                                    {closeApplicationsPrompt === 'filled' ? 'Close' : 'Close applications for the rest'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </Portal>
             )}
             {showDeleteConfirmationModal && (

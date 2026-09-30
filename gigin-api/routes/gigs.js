@@ -331,6 +331,7 @@ router.post("/postMultipleGigs", requireAuth, asyncHandler(async (req, res) => {
     // Ensure createdAt exists and is a Timestamp
     const createdAtTs = toAdminTimestamp(raw.createdAt) || Timestamp.fromDate(new Date());
     normalized.createdAt = createdAtTs;
+    if (normalized.applicationsOpen === undefined) normalized.applicationsOpen = true;
     // Normalize geopoint to Firestore Admin GeoPoint (handles serialized objects from client)
     const geopoint = toAdminGeoPoint(raw.geopoint);
     if (geopoint) normalized.geopoint = geopoint;
@@ -463,6 +464,12 @@ router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
   const gigSnap = await gigRef.get();
   if (!gigSnap.exists) return res.json({ data: { applicants: null } });
   const gig = gigSnap.data() || {};
+  if (gig.applicationsOpen === false) {
+    return res.status(409).json({
+      error: "APPLICATIONS_CLOSED",
+      message: "Applications for this gig are closed.",
+    });
+  }
   if (isListingClosedToNewApplicants(gig)) {
     return res.status(409).json({
       error: "GIG_SLOT_FILLED",
