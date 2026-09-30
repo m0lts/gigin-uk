@@ -6,7 +6,7 @@ export function GuestApplied({ draft, dateLabel, bookerName, onClose, onCreateAc
   const [hidden, setHidden] = useState(() => {
     try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; }
   });
-  const channel = draft.phone && draft.whatsapp ? 'email, or WhatsApp' : 'email';
+  const channel = 'email';
   return (
     <div className="ga-applied">
       <span className="ga-check">✓</span>

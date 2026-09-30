@@ -57,7 +57,7 @@ export function ManageGuestApplication() {
     let cancelled = false;
     (async () => {
       try {
-        const loaded = await getGuestApplication(token);
+        const loaded = await getGuestApplication(gigId, token);
         if (cancelled) return;
         setApplication(loaded);
         setDraft(fromApplication(loaded));
@@ -81,9 +81,10 @@ export function ManageGuestApplication() {
     setSaving(true);
     try {
       const next = await updateGuestApplication(token, {
+        gigId,
         actName: draft.actName,
         contactName: draft.contactName,
-        contacts: { email: draft.email, phone: draft.phone, whatsapp: draft.whatsapp, instagram: draft.instagram },
+        contacts: { email: draft.email, phone: draft.phone, instagram: draft.instagram },
         links: draft.links,
         members: draft.members,
         needs: draft.needs,
@@ -103,7 +104,7 @@ export function ManageGuestApplication() {
   const withdraw = async () => {
     setSaving(true);
     try {
-      const next = await withdrawGuestApplication(token);
+      const next = await withdrawGuestApplication(gigId, token);
       setApplication(next);
       setConfirmWithdraw(false);
     } catch (err) {

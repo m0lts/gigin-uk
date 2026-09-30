@@ -138,10 +138,13 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return undefined;
-    let token = '';
-    try { token = sessionStorage.getItem('guestApplicationLink') || ''; } catch { token = ''; }
-    if (!token) return undefined;
-    linkGuestApplication(token)
+    let stored = '';
+    try { stored = sessionStorage.getItem('guestApplicationLink') || ''; } catch { stored = ''; }
+    const splitAt = stored.indexOf(':');
+    const gigId = splitAt > 0 ? stored.slice(0, splitAt) : '';
+    const token = splitAt > 0 ? stored.slice(splitAt + 1) : '';
+    if (!gigId || !token) return undefined;
+    linkGuestApplication(gigId, token)
       .catch(() => {})
       .finally(() => {
         try { sessionStorage.removeItem('guestApplicationLink'); } catch { /* ignore */ }

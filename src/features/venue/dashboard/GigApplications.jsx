@@ -24,7 +24,6 @@ import { PaymentModal } from '@features/venue/components/PaymentModal';
 import { ReviewModal } from '@features/shared/components/ReviewModal';
 import { PromoteModal } from '@features/shared/components/PromoteModal';
 import { getMusicianProfileByMusicianId, getArtistProfileById } from '@services/client-side/artists';
-import { decideGuestApplication } from '@services/client-side/guestApplications';
 import { getUserEmailById } from '@services/api/users';
 import {
     getConversationsByParticipantAndGigId,
@@ -681,23 +680,6 @@ export const GigApplications = ({
             
             if (getLocalGigDateTime(targetGig) < new Date()) return toast.error('Gig is in the past.');
             const guestApplicant = (targetGig.applicants || []).find((entry) => entry.id === musicianId && (entry.guest || entry.type === 'guest'));
-            if (guestApplicant) {
-                setEventLoading(true);
-                try {
-                    await decideGuestApplication({ applicationId: musicianId, status: 'accepted' });
-                    const updatedApplicants = (targetGig.applicants || []).map((entry) => entry.id === musicianId ? { ...entry, status: 'confirmed' } : entry);
-                    if (targetGig.gigId === gigInfo.gigId) setGigInfoState?.((prev) => prev ? { ...prev, applicants: updatedApplicants } : prev);
-                    else setRelatedSlots((prev) => prev.map((slot) => slot.gigId === targetGig.gigId ? { ...slot, applicants: updatedApplicants } : slot));
-                    toast.success('Guest application accepted.');
-                    refreshGigs?.();
-                } catch (error) {
-                    console.error(error);
-                    toast.error('Could not accept this guest application.');
-                } finally {
-                    setEventLoading(false);
-                }
-                return;
-            }
             setEventLoading(true);
             const nonPayableGig = !FEATURES.payments || targetGig.paymentModel === 'no_fee' || targetGig.kind === 'Open Mic' || targetGig.kind === "Ticketed Gig" || targetGig.budget === '£' || targetGig.budget === '£0';
             let globalAgreedFee;
@@ -779,6 +761,11 @@ export const GigApplications = ({
                 }
             }
             
+            if (guestApplicant) {
+                toast.success('Guest application accepted.');
+                refreshGigs();
+                return;
+            }
             const musicianProfile = await getProfileById(musicianId);
             const venueProfile = await getVenueProfileById(targetGig.venueId);
             if (FEATURES.chat) {
@@ -861,23 +848,6 @@ export const GigApplications = ({
             
             if (getLocalGigDateTime(targetGig) < new Date()) return toast.error('Gig is in the past.');
             const guestApplicant = (targetGig.applicants || []).find((entry) => entry.id === musicianId && (entry.guest || entry.type === 'guest'));
-            if (guestApplicant) {
-                setEventLoading(true);
-                try {
-                    await decideGuestApplication({ applicationId: musicianId, status: 'declined' });
-                    const updatedApplicants = (targetGig.applicants || []).map((entry) => entry.id === musicianId ? { ...entry, status: 'declined' } : entry);
-                    if (targetGig.gigId === gigInfo.gigId) setGigInfoState?.((prev) => prev ? { ...prev, applicants: updatedApplicants } : prev);
-                    else setRelatedSlots((prev) => prev.map((slot) => slot.gigId === targetGig.gigId ? { ...slot, applicants: updatedApplicants } : slot));
-                    toast.success('Guest application declined.');
-                    refreshGigs?.();
-                } catch (error) {
-                    console.error(error);
-                    toast.error('Could not decline this guest application.');
-                } finally {
-                    setEventLoading(false);
-                }
-                return;
-            }
             setEventLoading(true);
             const {updatedApplicants} = assertOk(
                 await declineGigApplication({ gigData: targetGig, musicianProfileId: musicianId, role: 'venue' }),
@@ -903,6 +873,11 @@ export const GigApplications = ({
                 ));
             }
             
+            if (guestApplicant) {
+                toast.success('Guest application declined.');
+                refreshGigs();
+                return;
+            }
             const musicianProfile = await getProfileById(musicianId);
             const venueProfile = await getVenueProfileById(targetGig.venueId);
             if (FEATURES.chat) {
@@ -3887,12 +3862,13 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
 };
 
 function GuestApplicantPanel({ applicant, onClose }) {
+  const phoneDigits = String(applicant.phone || '').replace(/[^\d]/g, '');
+  const waNumber = phoneDigits.startsWith('0') ? `44${phoneDigits.slice(1)}` : phoneDigits;
   const contacts = [
-    applicant.email && `Email · ${applicant.email}`,
-    applicant.phone && `Phone · ${applicant.phone}`,
-    applicant.whatsapp && 'WhatsApp',
-    applicant.instagram && `Instagram · ${applicant.instagram}`,
-  ].filter(Boolean);
+    applicant.email && { key: 'email', node: <a href={`mailto:${applicant.email}`}>{applicant.email}</a> },
+    applicant.phone && { key: 'phone', node: <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noreferrer">{applicant.phone}</a> },
+    applicant.instagram && { key: 'instagram', node: applicant.instagram },
+  ].filter((line) => line && (line.key !== 'phone' || waNumber));
   const links = Object.entries(applicant.links || {}).filter(([, value]) => value);
   return (
     <div className="ga-guest-panel-backdrop" onClick={onClose}>
@@ -3904,7 +3880,7 @@ function GuestApplicantPanel({ applicant, onClose }) {
         </header>
         {applicant.photoUrl && <img src={applicant.photoUrl} alt="" />}
         <p>{applicant.contactName}</p>
-        {contacts.map((line) => <p key={line}>{line}</p>)}
+        {contacts.map((line) => <p key={line.key}>{line.key === 'phone' ? 'Phone · ' : line.key === 'email' ? 'Email · ' : 'Instagram · '}{line.node}</p>)}
         {links.map(([key, value]) => <p key={key}><a href={value} target="_blank" rel="noreferrer">{key}</a></p>)}
         {applicant.note && <p>{applicant.note}</p>}
         {!!applicant.needs?.length && <p>Needs {applicant.needs.length} items from the bar.</p>}

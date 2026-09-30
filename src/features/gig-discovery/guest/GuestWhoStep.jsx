@@ -35,15 +35,9 @@ export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, show
       {missingContact && <p className="ga-error">Add at least one so {bookerName} can get back to you.</p>}
       <div className={`ga-contact-rows${missingContact ? ' is-invalid' : ''}`}>
         <label><span>Email</span><input type="email" inputMode="email" value={draft.email} onChange={(event) => patch({ email: event.target.value })} onBlur={checkDuplicate} /></label>
-        <label><span>Phone</span><input type="tel" inputMode="tel" value={draft.phone} onChange={(event) => patch({ phone: event.target.value, whatsapp: event.target.value ? draft.whatsapp : false })} onBlur={checkDuplicate} /></label>
+        <label><span>Phone</span><input type="tel" inputMode="tel" value={draft.phone} onChange={(event) => patch({ phone: event.target.value })} onBlur={checkDuplicate} /></label>
         <label><span>Instagram</span><input value={draft.instagram} placeholder="@name" onChange={(event) => patch({ instagram: event.target.value })} /></label>
       </div>
-      {draft.phone.trim() && (
-        <label className="ga-check">
-          <input type="checkbox" checked={draft.whatsapp} onChange={(event) => patch({ whatsapp: event.target.checked })} />
-          <span>{bookerName} can message me on WhatsApp on this number</span>
-        </label>
-      )}
       {duplicate && !draft.ignoreDuplicate && (
         <div className="ga-soft">
           <strong>You've already applied with this email</strong>

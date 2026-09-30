@@ -90,7 +90,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         contacts: {
           email: draft.email,
           phone: draft.phone,
-          whatsapp: draft.whatsapp,
+          whatsapp: false,
           instagram: draft.instagram,
         },
         photo: draft.photo ? { path: draft.photo.path, name: draft.photo.name, size: draft.photo.size } : null,
@@ -102,7 +102,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         note: draft.note,
       });
       clearDraft(gig.gigId, invite?.inviteId);
-      try { sessionStorage.setItem('guestApplicationLink', draft.manageToken); } catch { /* ignore */ }
+      try { sessionStorage.setItem('guestApplicationLink', `${gig.gigId}:${draft.manageToken}`); } catch { /* ignore */ }
       setSent(true);
       setOffline(false);
     } catch (error) {

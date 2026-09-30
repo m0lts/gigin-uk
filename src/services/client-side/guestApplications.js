@@ -22,20 +22,20 @@ export function createGuestApplication(body) {
   return httpClient.post('/guest-applications', { auth, body });
 }
 
-export function getGuestApplication(token) {
-  return httpClient.get(`/guest-applications/${encodeURIComponent(token)}`, { auth });
+export function getGuestApplication(gigId, token) {
+  return httpClient.get(`/guest-applications/${encodeURIComponent(token)}`, { auth, query: { gigId } });
 }
 
 export function updateGuestApplication(token, body) {
   return httpClient.patch(`/guest-applications/${encodeURIComponent(token)}`, { auth, body });
 }
 
-export function withdrawGuestApplication(token) {
-  return httpClient.post(`/guest-applications/${encodeURIComponent(token)}/withdraw`, { auth, body: {} });
+export function withdrawGuestApplication(gigId, token) {
+  return httpClient.post(`/guest-applications/${encodeURIComponent(token)}/withdraw`, { auth, body: { gigId } });
 }
 
-export function linkGuestApplication(token) {
-  return httpClient.post(`/guest-applications/${encodeURIComponent(token)}/link`, { body: {} });
+export function linkGuestApplication(gigId, token) {
+  return httpClient.post(`/guest-applications/${encodeURIComponent(token)}/link`, { body: { gigId } });
 }
 
 export function decideGuestApplication({ applicationId, status }) {
