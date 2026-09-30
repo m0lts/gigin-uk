@@ -146,8 +146,8 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs, user, fromG
             setHasExpiryDate(false);
             setShowCreateForm(false);
             
-            // If from Gigs table, show CRM artist selection
-            if (fromGigsTable && user) {
+            // After creating an invite, let the venue pick Contacts (guests and linked artists).
+            if (user) {
                 await loadCRMArtists();
                 setShowCRMArtists(true);
             } else {

@@ -5,6 +5,7 @@ import { getArtistCRMEntries } from '@services/client-side/artistCRM';
 import { getArtistProfileById } from '@services/client-side/artists';
 import { inviteToGig } from '@services/api/gigs';
 import { updateGigDocument } from '@services/api/gigs';
+import { createGigInvite } from '@services/api/gigInvites';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { sendGigInvitationMessage } from '@services/client-side/messages';
 import { sendGigInviteEmail } from '@services/client-side/emails';
@@ -57,10 +58,19 @@ export function ArtistFillThisSlotTile({
       .finally(() => setCrmLoading(false));
   }, [user?.uid]);
 
+  const linkForInvite = useCallback(async (inviteFields = {}) => {
+    if (!bookingLinkUrl) return '';
+    if (!gig?.private) return bookingLinkUrl;
+    const res = await createGigInvite({ gigId, ...inviteFields });
+    const inviteId = res?.inviteId ?? res?.data?.inviteId;
+    return inviteId ? `${bookingLinkUrl}?inviteId=${inviteId}` : bookingLinkUrl;
+  }, [bookingLinkUrl, gig?.private, gigId]);
+
   const copyBookingLink = useCallback(async () => {
     if (!bookingLinkUrl) return;
     try {
-      await navigator.clipboard.writeText(bookingLinkUrl);
+      const link = await linkForInvite();
+      await navigator.clipboard.writeText(link);
       setLinkCopied(true);
       window.setTimeout(() => setLinkCopied(false), 2000);
       toast.success('Link copied to clipboard');
@@ -68,7 +78,7 @@ export function ArtistFillThisSlotTile({
       console.error(err);
       toast.error("Couldn't copy link");
     }
-  }, [bookingLinkUrl]);
+  }, [bookingLinkUrl, linkForInvite]);
 
   const inviteContactToGig = useCallback(async (entry) => {
     if (!entry?.id || !gigId || !canInvite) return;
@@ -90,6 +100,9 @@ export function ArtistFillThisSlotTile({
           bandProfile: false,
           userId: artistProfile.userId,
         };
+        if (gig?.private) {
+          await createGigInvite({ gigId, artistId: entry.artistId, artistName: artistProfile.name });
+        }
         const res = await inviteToGig({ gigId, musicianProfile: musicianProfilePayload });
         if (!res?.success) {
           toast.error('Failed to invite artist.');
@@ -111,12 +124,13 @@ export function ArtistFillThisSlotTile({
           toast.error('This contact has no email. Add one in My Contacts.');
           return;
         }
+        const gigLink = await linkForInvite({ crmEntryId: entry.id, artistName: entry.name });
         await sendGigInviteEmail({
           to: email,
           userName: user?.name || venueDisplayName,
           venueName: gig?.venue?.venueName || venueDisplayName,
           date: gigDateLabel,
-          gigLink: bookingLinkUrl,
+          gigLink,
           expiresAt: null,
         });
         toast.success(`Invitation sent to ${entry.name || email}`);
@@ -129,7 +143,7 @@ export function ArtistFillThisSlotTile({
     } finally {
       setInvitingContactId(null);
     }
-  }, [gigId, canInvite, gig, venueProfile, venueDisplayName, gigDateLabel, user?.uid, user?.name, bookingLinkUrl, refreshGigs]);
+  }, [gigId, canInvite, gig, venueProfile, venueDisplayName, gigDateLabel, user?.uid, user?.name, linkForInvite, refreshGigs]);
 
   const sendInviteByEmail = useCallback(async () => {
     const email = (emailInviteInput || '').trim().toLowerCase();
@@ -148,12 +162,13 @@ export function ArtistFillThisSlotTile({
     setEmailInviteError('');
     setEmailInviteSending(true);
     try {
+      const gigLink = await linkForInvite({ artistName: email });
       await sendGigInviteEmail({
         to: email,
         userName: user?.name || venueDisplayName,
         venueName: gig?.venue?.venueName || venueDisplayName,
         date: gigDateLabel,
-        gigLink: bookingLinkUrl,
+        gigLink,
         expiresAt: null,
       });
       toast.success(`Invitation sent to ${email}`);
@@ -165,7 +180,7 @@ export function ArtistFillThisSlotTile({
     } finally {
       setEmailInviteSending(false);
     }
-  }, [emailInviteInput, canInvite, user?.name, venueDisplayName, gig?.venue?.venueName, gigDateLabel, bookingLinkUrl, refreshGigs]);
+  }, [emailInviteInput, canInvite, user?.name, venueDisplayName, gig?.venue?.venueName, gigDateLabel, linkForInvite, refreshGigs]);
 
   const saveManualArtist = useCallback(async () => {
     const name = (manualArtistName || '').trim();
