@@ -41,3 +41,11 @@ Questions to settle: what does Jez see after a merge (profile page vs guest deta
 - C: weaker matches (same email/act name, no token) -> "merge?" prompt to Jez. Never auto-merge on name alone.
 - Source prevention: on guest submit, reuse an existing contact with the same email; if email matches an existing Gigin account, ask them to log in.
 - Do before Jez has many guest contacts.
+
+## Status: BUILT, pending test results
+
+Built on `jez-mode` (2026-10-01):
+- B: `POST /api/guest-applications/:token/link` sets `userId` and `linkedArtistId` on the guest applicant (the guest id stays, so history stays) and sets `artistId` on the venue contact. The private manage token is the only proof. If the artist profile does not exist yet, the link is retried when the profile is created.
+- C: Contacts shows "This looks like <name>: merge?" for the same email or the same act name. Nothing merges until the venue confirms.
+- Source prevention: a guest submit reuses a contact with the same email, and an email that already belongs to a Gigin account is told to log in.
+- Display choice: the contact keeps guest-supplied details as a fallback and the linked profile is what `artistId` points at. Past guest applications stay on the guest id and gain `linkedArtistId`.

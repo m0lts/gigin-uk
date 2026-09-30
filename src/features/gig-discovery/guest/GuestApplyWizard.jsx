@@ -69,7 +69,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
   }, [draft, step, gig.gigId, invite?.inviteId]);
 
   const patch = (partial) => setDraft((current) => ({ ...current, ...partial }));
-  const whoOk = draft.actName.trim() && draft.contactName.trim() && (draft.email.trim() || draft.phone.trim() || draft.instagram.trim()) && draft.slotGigIds.length > 0;
+  const whoOk = draft.actName.trim() && draft.contactName.trim() && (draft.email.trim() || draft.phone.trim() || draft.instagram.trim()) && draft.slotGigIds.length > 0 && !draft.accountBlocked;
 
   const submit = async () => {
     if (!navigator.onLine) {

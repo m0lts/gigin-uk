@@ -38,6 +38,10 @@ export function linkGuestApplication(gigId, token) {
   return httpClient.post(`/guest-applications/${encodeURIComponent(token)}/link`, { body: { gigId } });
 }
 
+export function checkGuestEmailAccount(email) {
+  return httpClient.post('/guest-applications/account-check', { auth: false, body: { email } });
+}
+
 export function decideGuestApplication({ applicationId, status }) {
   return httpClient.post('/guest-applications/decision', { body: { applicationId, status } });
 }

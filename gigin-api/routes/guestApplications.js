@@ -196,10 +196,13 @@ async function upsertVenueContact({ userId, crmEntryId, actName, contactName, em
     const snap = await col.limit(400).get();
     const emailKey = emailNorm(email);
     const phoneKey = phoneNorm(phone);
-    const match = snap.docs.find((doc) => {
-      const data = doc.data() || {};
-      return (emailKey && emailNorm(data.email) === emailKey) || (phoneKey && phoneNorm(data.phone) === phoneKey);
-    });
+    const byEmail = emailKey
+      ? snap.docs.find((doc) => emailNorm(doc.data()?.email) === emailKey)
+      : null;
+    const byPhone = !byEmail && phoneKey
+      ? snap.docs.find((doc) => phoneNorm(doc.data()?.phone) === phoneKey)
+      : null;
+    const match = byEmail || byPhone;
     if (match) ref = match.ref;
   }
   const fields = {
@@ -208,13 +211,13 @@ async function upsertVenueContact({ userId, crmEntryId, actName, contactName, em
     phone: phone || null,
     instagram: instagram || null,
     contactType: "artist",
-    artistId: null,
     updatedAt: FieldValue.serverTimestamp(),
   };
   if (!ref) {
     ref = col.doc();
     await ref.set({
       ...fields,
+      artistId: null,
       notes: contactName ? `Contact: ${contactName}` : "",
       tags: ["guest"],
       createdAt: FieldValue.serverTimestamp(),
@@ -222,7 +225,12 @@ async function upsertVenueContact({ userId, crmEntryId, actName, contactName, em
   } else {
     const current = (await ref.get()).data() || {};
     const tags = Array.from(new Set([...(current.tags || []), "guest"]));
-    await ref.set({ ...fields, tags, notes: current.notes || (contactName ? `Contact: ${contactName}` : "") }, { merge: true });
+    await ref.set({
+      ...fields,
+      artistId: current.artistId || null,
+      tags,
+      notes: current.notes || (contactName ? `Contact: ${contactName}` : ""),
+    }, { merge: true });
   }
   return ref.id;
 }
@@ -398,6 +406,15 @@ router.post("/", asyncHandler(async (req, res) => {
   });
   if (gig.applicationsOpen === false || closedTarget) {
     return res.status(409).json({ error: "Applications for this gig are closed." });
+  }
+  const accountEmail = emailNorm(body.contacts?.email);
+  if (accountEmail) {
+    try {
+      await admin.auth().getUserByEmail(accountEmail);
+      return res.status(409).json({ error: "This email already has a Gigin account. Log in to apply." });
+    } catch (err) {
+      if (err?.code !== "auth/user-not-found") throw err;
+    }
   }
 
   const group = groupForClose;
@@ -615,18 +632,46 @@ router.post("/:token/withdraw", asyncHandler(async (req, res) => {
   return res.json(publicApplication(next, found.gig.data));
 }));
 
+router.post("/account-check", asyncHandler(async (req, res) => {
+  const email = emailNorm(req.body?.email);
+  if (!email) return res.json({ hasAccount: false });
+  try {
+    await admin.auth().getUserByEmail(email);
+    return res.json({ hasAccount: true });
+  } catch (err) {
+    if (err?.code === "auth/user-not-found") return res.json({ hasAccount: false });
+    throw err;
+  }
+}));
+
 router.post("/:token/link", requireAuth, asyncHandler(async (req, res) => {
   const gigId = req.body?.gigId || req.query.gigId;
   const found = await findByToken(gigId, req.params.token);
   if (!found) return res.status(404).json({ error: "This link is not valid." });
+  const profileSnap = await db.collection("artistProfiles").where("userId", "==", req.auth.uid).limit(1).get();
+  const profile = profileSnap.empty ? null : { id: profileSnap.docs[0].id, ...(profileSnap.docs[0].data() || {}) };
   for (const doc of found.docs) {
     const applicants = Array.isArray(doc.data.applicants) ? doc.data.applicants : [];
     if (!applicants.some((entry) => entry?.id === found.applicant.id)) continue;
     await doc.ref.update({
-      applicants: applicants.map((entry) => entry?.id === found.applicant.id ? { ...entry, userId: req.auth.uid } : entry),
+      applicants: applicants.map((entry) => entry?.id === found.applicant.id
+        ? { ...entry, userId: req.auth.uid, ...(profile ? { linkedArtistId: profile.id } : {}) }
+        : entry),
     });
   }
-  return res.json({ ok: true });
+  let artistLinked = false;
+  if (profile && found.applicant.crmEntryId && found.gig.data?.venueId) {
+    const venueSnap = await db.doc(`venueProfiles/${found.gig.data.venueId}`).get();
+    const ownerId = venueSnap.exists ? (venueSnap.data()?.createdBy || venueSnap.data()?.userId) : null;
+    if (ownerId) {
+      await db.doc(`users/${ownerId}/artistCRM/${found.applicant.crmEntryId}`).set({
+        artistId: profile.id,
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      artistLinked = true;
+    }
+  }
+  return res.json({ ok: true, artistLinked });
 }));
 
 export default router;

@@ -105,6 +105,20 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
     // createdAt and updatedAt are blocked by Firestore rules - must be set server-side
   }, { merge: false });
 
+  try {
+    const stored = sessionStorage.getItem('guestApplicationLink') || '';
+    const splitAt = stored.indexOf(':');
+    const gigId = splitAt > 0 ? stored.slice(0, splitAt) : '';
+    const token = splitAt > 0 ? stored.slice(splitAt + 1) : '';
+    if (gigId && token) {
+      const { linkGuestApplication } = await import('@services/client-side/guestApplications');
+      const result = await linkGuestApplication(gigId, token);
+      if (result?.artistLinked) sessionStorage.removeItem('guestApplicationLink');
+    }
+  } catch {
+    /* linking can be retried from the application link */
+  }
+
   return profileId;
 };
 

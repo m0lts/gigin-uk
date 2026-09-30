@@ -29,6 +29,7 @@ import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { createGigInvite } from '@services/api/gigInvites';
 import { AddContactModal } from './AddContactModal';
+import { ContactMergeSuggestions } from './ContactMergeSuggestions';
 import { EditContactModal } from './EditContactModal';
 import { VenueCRMContactCard, PreviouslyBookedContactCard } from './VenueCRMContactCard';
 import {
@@ -1123,6 +1124,7 @@ export const ArtistCRM = ({ user, venues }) => {
 
             {showCrmList ? (
               <div className="contacts-card-list">
+                <ContactMergeSuggestions onMerged={refreshCRM} />
                 {filteredCrmEntries.length === 0 ? (
                   <p style={{ color: '#666' }}>No contacts match this filter.</p>
                 ) : (

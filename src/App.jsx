@@ -146,10 +146,12 @@ export default function App() {
     const token = splitAt > 0 ? stored.slice(splitAt + 1) : '';
     if (!gigId || !token) return undefined;
     linkGuestApplication(gigId, token)
-      .catch(() => {})
-      .finally(() => {
-        try { sessionStorage.removeItem('guestApplicationLink'); } catch { /* ignore */ }
-      });
+      .then((result) => {
+        if (result?.artistLinked) {
+          try { sessionStorage.removeItem('guestApplicationLink'); } catch { /* ignore */ }
+        }
+      })
+      .catch(() => {});
     return undefined;
   }, [user]);
 

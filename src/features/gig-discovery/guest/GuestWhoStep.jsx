@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { lookupGuestApplication, sendGuestMagicLink } from '@services/client-side/guestApplications';
+import { lookupGuestApplication, sendGuestMagicLink, checkGuestEmailAccount } from '@services/client-side/guestApplications';
 import { formatClock, slotEnd } from './guestFormat';
 
 export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, showErrors }) {
   const [duplicate, setDuplicate] = useState(null);
+  const [accountExists, setAccountExists] = useState(false);
   const [linkSent, setLinkSent] = useState(false);
   const missingContact = showErrors && !draft.email && !draft.phone && !draft.instagram;
 
@@ -15,6 +16,21 @@ export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, show
       setDuplicate(result?.exists ? result : null);
     } catch {
       setDuplicate(null);
+    }
+    const email = String(draft.email || '').trim();
+    if (!email) {
+      setAccountExists(false);
+      patch({ accountBlocked: false });
+      return;
+    }
+    try {
+      const account = await checkGuestEmailAccount(email);
+      const blocked = Boolean(account?.hasAccount);
+      setAccountExists(blocked);
+      patch({ accountBlocked: blocked });
+    } catch {
+      setAccountExists(false);
+      patch({ accountBlocked: false });
     }
   };
 
@@ -34,10 +50,13 @@ export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, show
       <div className="ga-label">How can {bookerName} reach you?</div>
       {missingContact && <p className="ga-error">Add at least one so {bookerName} can get back to you.</p>}
       <div className={`ga-contact-rows${missingContact ? ' is-invalid' : ''}`}>
-        <label><span>Email</span><input type="email" inputMode="email" value={draft.email} onChange={(event) => patch({ email: event.target.value })} onBlur={checkDuplicate} /></label>
+        <label><span>Email</span><input type="email" inputMode="email" value={draft.email} onChange={(event) => { patch({ email: event.target.value, accountBlocked: false }); setAccountExists(false); }} onBlur={checkDuplicate} /></label>
         <label><span>Phone</span><input type="tel" inputMode="tel" value={draft.phone} onChange={(event) => patch({ phone: event.target.value })} onBlur={checkDuplicate} /></label>
         <label><span>Instagram</span><input value={draft.instagram} placeholder="@name" onChange={(event) => patch({ instagram: event.target.value })} /></label>
       </div>
+      {accountExists && (
+        <p className="ga-error">This email already has a Gigin account. Log in to apply.</p>
+      )}
       {duplicate && !draft.ignoreDuplicate && (
         <div className="ga-soft">
           <strong>You've already applied with this email</strong>
