@@ -23,6 +23,7 @@ import venueHireOpportunitiesRoutes from "./routes/venueHireOpportunities.js";
 import guestApplicationRoutes from "./routes/guestApplications.js";
 import gigMediaRoutes from "./routes/gigMedia.js";
 import contactLinkRoutes from "./routes/contactLinks.js";
+import linkPreviewRoutes from "./routes/linkPreview.js";
 // Initialize Firebase Admin (must be done before importing routes that use it)
 initializeAdmin();
 
@@ -184,6 +185,7 @@ app.use("/api/venueHireOpportunities", venueHireOpportunitiesRoutes);
 app.use("/api/guest-applications", guestApplicationRoutes);
 app.use("/api/gig-media", gigMediaRoutes);
 app.use("/api/contact-links", contactLinkRoutes);
+app.use("/api/link-preview", linkPreviewRoutes);
 
 // 404 handler (must come after all routes)
 app.use((req, res) => {

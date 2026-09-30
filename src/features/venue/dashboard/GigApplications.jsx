@@ -2886,7 +2886,8 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     <>
                         {skipHeader && !useCardLayout && (
                             <div className="venue-gig-internal-notes" style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid var(--gn-grey-300)', borderRadius: '8px', background: 'var(--gn-off-white)' }}>
-                                <h4 style={{ margin: '0 0 0.75rem 0', fontWeight: 600, fontSize: '1rem' }}>Internal notes</h4>
+                                <h4 style={{ margin: '0 0 0.75rem 0', fontWeight: 600, fontSize: '1rem' }}>Listing note</h4>
+                                <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.85rem', color: 'var(--gn-grey-600)' }}>Separate from additional notes. Only your venue can see it.</p>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--gn-grey-600)', marginBottom: '0.25rem' }}>Notes</label>
                                     <textarea

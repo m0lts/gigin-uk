@@ -1138,7 +1138,7 @@ function ArtistBookingConsoleRail({
       </section>
 
       <section className="venue-gig-rail__card">
-        <h3 className="venue-gig-rail__title">Notes</h3>
+        <h3 className="venue-gig-rail__title">Additional notes</h3>
         {notesEditing ? (
           <textarea
             className="venue-gig-rail__notes-input"
