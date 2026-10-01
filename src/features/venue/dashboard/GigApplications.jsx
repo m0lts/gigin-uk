@@ -2569,14 +2569,24 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                     View
                                 </button>
                                 {canAcceptRunningOrderApplicant(profile, slotGig) ? (
-                                    <button
-                                        type="button"
-                                        className="venue-gig-running__accept"
-                                        disabled={eventLoading}
-                                        onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGig.gigId)}
-                                    >
-                                        Accept
-                                    </button>
+                                    <>
+                                        <button
+                                            type="button"
+                                            className="venue-gig-running__accept"
+                                            disabled={eventLoading}
+                                            onClick={(event) => handleAccept(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGig.gigId)}
+                                        >
+                                            Accept
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn danger venue-gig-running__decline"
+                                            disabled={eventLoading}
+                                            onClick={(event) => handleReject(profile.id, event, profile.proposedFee, profile.email, profile.name, slotGig.gigId)}
+                                        >
+                                            Decline
+                                        </button>
+                                    </>
                                 ) : null}
                             </span>
                         </div>
