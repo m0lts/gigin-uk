@@ -272,6 +272,10 @@ async function sendExpiryEmail({ recipientEmail, gigName, venueName, gigDateLabe
     </table>
   `;
 
+  if (typeof recipientEmail !== "string" || !recipientEmail.includes("@")) {
+    console.warn("Skipped mail document: missing to address");
+    return;
+  }
   await db.collection("mail").add({
     to: recipientEmail,
     message: { subject, text, html },

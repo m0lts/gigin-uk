@@ -15,6 +15,7 @@ import {
   splitGigUpdate,
   venueGuestView,
 } from "../lib/gigPrivacy.js";
+import { queueMail } from "../lib/queueMail.js";
 
 const router = express.Router();
 
@@ -212,8 +213,7 @@ async function emailGuest(gigId, applicant, { subject, text }) {
     const priv = await loadGuestPrivate(gigId, applicant.id);
     to = priv?.email || null;
   }
-  if (!to) return;
-  await db.collection("mail").add({
+  await queueMail({
     to,
     message: {
       subject,

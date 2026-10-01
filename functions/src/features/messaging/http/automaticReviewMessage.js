@@ -96,8 +96,16 @@ export const automaticReviewMessage = httpRaw(
         baseUrl: "https://giginmusic.com",
       });
 
-      await mailRef.add({ to: musicianEmail, message: musicianMessage });
-      await mailRef.add({ to: venueEmail, message: venueMessage });
+      if (typeof musicianEmail === "string" && musicianEmail.includes("@")) {
+        await mailRef.add({ to: musicianEmail, message: musicianMessage });
+      } else {
+        console.warn("Skipped mail document: missing to address");
+      }
+      if (typeof venueEmail === "string" && venueEmail.includes("@")) {
+        await mailRef.add({ to: venueEmail, message: venueMessage });
+      } else {
+        console.warn("Skipped mail document: missing to address");
+      }
 
       console.log("Review message sent successfully.");
       res.status(200).send({ success: true });

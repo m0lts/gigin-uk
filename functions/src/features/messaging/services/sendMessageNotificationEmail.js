@@ -100,6 +100,10 @@ export const sendMessageNotificationEmail = async ({
   const html = htmlBase(subject, inner);
 
   // Write to mail collection (Trigger Email extension will handle sending)
+  if (typeof recipientEmail !== "string" || !recipientEmail.includes("@")) {
+    console.warn("Skipped mail document: missing to address");
+    return;
+  }
   const mailRef = db.collection("mail");
   await mailRef.add({
     to: recipientEmail,

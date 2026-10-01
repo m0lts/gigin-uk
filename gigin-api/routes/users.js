@@ -4,6 +4,7 @@ import { asyncHandler } from "../middleware/errorHandler.js";
 import { requireAuth } from "../middleware/auth.js";
 import { admin, db, FieldValue } from "../config/admin.js";
 import { getStripe } from "../lib/stripeClient.js";
+import { queueMail } from "../lib/queueMail.js";
 
 const router = express.Router();
 
@@ -150,7 +151,7 @@ router.post("/sendVerificationEmail", requireAuth, asyncHandler(async (req, res)
 
   const html = htmlShell("Verify your email");
 
-  await db.collection("mail").add({
+  await queueMail({
     to: userRecord.email,
     message: { subject, text, html },
   });

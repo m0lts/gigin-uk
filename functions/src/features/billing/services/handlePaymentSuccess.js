@@ -356,7 +356,9 @@ export const handlePaymentSuccess = async (paymentIntent) => {
         gigTime,
         calendarLink,
       });
-      await mailRef.add({
+      if (typeof musicianEmail !== "string" || !musicianEmail.includes("@")) {
+        console.warn("Skipped mail document: missing to address");
+      } else await mailRef.add({
         to: musicianEmail,
         message: mailMessage,
     });

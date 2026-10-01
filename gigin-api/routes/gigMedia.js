@@ -8,6 +8,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 import { loadGuestPrivates, loadPrivateDetails, mergeApplicants, savePrivateDetails } from "../lib/gigPrivacy.js";
+import { queueMail } from "../lib/queueMail.js";
 
 const router = express.Router();
 
@@ -261,7 +262,7 @@ router.post("/:gigId/share/email", requireAuth, asyncHandler(async (req, res) =>
   const title = String(gig.gigName || "your gig").replace(/\s*\(Set\s+\d+\)\s*$/, "");
   const emails = await confirmedActEmails(gig);
   for (const to of emails) {
-    await db.collection("mail").add({
+    await queueMail({
       to,
       message: {
         subject: `Your photos and videos from ${title}`,

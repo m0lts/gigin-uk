@@ -319,6 +319,10 @@ export const clearPendingFee = httpRaw(
       // Send emails
       const mailRef = db.collection("mail");
       for (const { email, name } of emailsToSend) {
+        if (typeof email !== "string" || !email.includes("@")) {
+          console.warn("Skipped mail document: missing to address");
+          continue;
+        }
         const mailMessage = gigFeeReleasedEmail(name, venueName);
         await mailRef.add({ to: email, message: mailMessage });
       }
