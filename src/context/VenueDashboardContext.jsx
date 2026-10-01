@@ -52,9 +52,11 @@ export const VenueDashboardProvider = ({ user, children }) => {
     const unsubGigs = subscribeToUpcomingOrRecentGigs(venueIds, (updatedGigs) => {
       setGigs(updatedGigs.filter(g => g.complete !== false));
     });
-    const unsubHire = subscribeToVenueHireOpportunities(venueIds, (updated) => {
-      setVenueHireOpportunities(updated || []);
-    });
+    const unsubHire = FEATURES.venueHire
+      ? subscribeToVenueHireOpportunities(venueIds, (updated) => {
+        setVenueHireOpportunities(updated || []);
+      })
+      : () => {};
     return () => {
       unsubGigs();
       unsubHire();
@@ -169,10 +171,8 @@ export const VenueDashboardProvider = ({ user, children }) => {
   const refreshGigs = async () => {
     try {
       const venueIds = venueProfiles.map(v => v.venueId);
-      const [gigsRes, hireRes] = await Promise.all([
-        getGigsByVenueIds(venueIds),
-        getVenueHireOpportunitiesByVenueIds(venueIds),
-      ]);
+      const gigsRes = await getGigsByVenueIds(venueIds);
+      const hireRes = FEATURES.venueHire ? await getVenueHireOpportunitiesByVenueIds(venueIds) : [];
       applyGigs(gigsRes);
       setVenueHireOpportunities(hireRes || []);
     } catch (err) {
