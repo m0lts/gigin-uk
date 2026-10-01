@@ -6,6 +6,10 @@ export function postMultipleGigs({ venueId, gigDocuments }) {
   return post('/gigs/postMultipleGigs', { body: { venueId, gigDocuments } });
 }
 
+export function getGigPrivateBundle(gigIds) {
+  return post('/gigs/privateBundle', { body: { gigIds } });
+}
+
 export function updateGigDocument({ gigId, action, updates }) {
   return post('/gigs/updateGigDocument', { body: { gigId, action, updates } });
 }

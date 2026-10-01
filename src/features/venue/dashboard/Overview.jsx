@@ -10,6 +10,7 @@ import {
     Legend,
 } from 'chart.js';
 import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
+import { getGigPrivateBundle } from '@services/api/gigs';
 
 function isGuestApplicant(applicant) {
     return applicant?.guest === true || applicant?.type === 'guest';
@@ -86,7 +87,9 @@ export const Overview = ({ gigs, loadingGigs, venues, setShowAddGigsModal, setAd
             const confirmedApplicant = nextGig.applicants.find(applicant => applicant.status === 'confirmed');
             if (!confirmedApplicant) return;
             if (isGuestApplicant(confirmedApplicant)) {
-                setNextGigMusician(guestAsMusician(confirmedApplicant));
+                const bundle = await getGigPrivateBundle([nextGig.gigId]).catch(() => null);
+                const extra = bundle?.gigs?.[nextGig.gigId]?.guests?.[confirmedApplicant.id] || {};
+                setNextGigMusician(guestAsMusician({ ...confirmedApplicant, ...extra }));
                 return;
             }
             try {
@@ -103,9 +106,14 @@ export const Overview = ({ gigs, loadingGigs, venues, setShowAddGigsModal, setAd
                 gigsToReview.map(async (gig) => {
                   const confirmedApplicant = gig.applicants.find((app) => app.status === 'confirmed');
                   if (!confirmedApplicant) return null;
-                  const musicianProfile = isGuestApplicant(confirmedApplicant)
-                    ? guestAsMusician(confirmedApplicant)
-                    : await getMusicianProfileByMusicianId(confirmedApplicant.id);
+                  let musicianProfile;
+                  if (isGuestApplicant(confirmedApplicant)) {
+                    const bundle = await getGigPrivateBundle([gig.gigId]).catch(() => null);
+                    const extra = bundle?.gigs?.[gig.gigId]?.guests?.[confirmedApplicant.id] || {};
+                    musicianProfile = guestAsMusician({ ...confirmedApplicant, ...extra });
+                  } else {
+                    musicianProfile = await getMusicianProfileByMusicianId(confirmedApplicant.id);
+                  }
                   return {
                     ...gig,
                     musicianProfile,

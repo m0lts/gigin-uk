@@ -5,7 +5,7 @@ import Portal from '@features/shared/components/Portal';
 import { useAuth } from '@hooks/useAuth';
 import { createArtistCRMEntry, getArtistCRMEntries } from '@services/client-side/artistCRM';
 import { getArtistProfileById } from '@services/client-side/artists';
-import { updateGigDocument } from '@services/api/gigs';
+import { getGigPrivateBundle, updateGigDocument } from '@services/api/gigs';
 import { updateVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
@@ -418,6 +418,27 @@ export function GigDetailsPanel({
   const [soundEngineerDraft, setSoundEngineerDraft] = useState(null);
   const [soundEngineerSaving, setSoundEngineerSaving] = useState(false);
   const [soundEngineerComposing, setSoundEngineerComposing] = useState(false);
+  const [privateBundle, setPrivateBundle] = useState(null);
+  const privateSlotKey = [rawGig?.gigId, ...(Array.isArray(rawGig?.gigSlots) ? rawGig.gigSlots : [])].filter(Boolean).join(',');
+
+  useEffect(() => {
+    const ids = privateSlotKey ? privateSlotKey.split(',') : [];
+    if (!ids.length) {
+      setPrivateBundle(null);
+      return undefined;
+    }
+    let cancelled = false;
+    getGigPrivateBundle(ids).then((result) => {
+      if (cancelled) return;
+      const gigs = result?.gigs || {};
+      const guests = {};
+      Object.values(gigs).forEach((entry) => Object.assign(guests, entry?.guests || {}));
+      setPrivateBundle({ ...(gigs[rawGig?.gigId] || {}), guests });
+    }).catch((err) => {
+      console.error(err);
+    });
+    return () => { cancelled = true; };
+  }, [privateSlotKey, rawGig?.gigId]);
   const [showConfirmManualModal, setShowConfirmManualModal] = useState(false);
   const [confirmManualName, setConfirmManualName] = useState('');
   const [confirmManualAddToContacts, setConfirmManualAddToContacts] = useState(false);
@@ -761,7 +782,12 @@ export function GigDetailsPanel({
       } else {
         return;
       }
-      setGigInfo?.((prev) => (prev ? { ...prev, ...updates } : null));
+      setPrivateBundle((prev) => ({
+        ...(prev || {}),
+        soundEngineerName: name || null,
+        soundEngineerContact: contact || null,
+        soundEngineerLastEdited: now,
+      }));
       refreshGigs?.();
       setSoundEngineerDraft(null);
       setSoundEngineerComposing(false);
@@ -871,8 +897,8 @@ export function GigDetailsPanel({
   };
 
   const renderSoundEngineerTileBody = () => {
-    const savedName = rawGig?.soundEngineerName != null ? String(rawGig.soundEngineerName) : '';
-    const savedContact = rawGig?.soundEngineerContact != null ? String(rawGig.soundEngineerContact) : '';
+    const savedName = privateBundle?.soundEngineerName != null ? String(privateBundle.soundEngineerName) : '';
+    const savedContact = privateBundle?.soundEngineerContact != null ? String(privateBundle.soundEngineerContact) : '';
     const hasSaved = savedName.trim().length > 0 || savedContact.trim().length > 0;
     const draft = soundEngineerDraft || { name: '', contact: '' };
 
@@ -949,9 +975,9 @@ export function GigDetailsPanel({
       <>
         <p className="gig-details-tile__readonly">{savedName || '—'}</p>
         {savedContact ? <p className="gig-details-tile__readonly">{savedContact}</p> : null}
-        {rawGig?.soundEngineerLastEdited ? (
+        {privateBundle?.soundEngineerLastEdited ? (
           <p className="gig-details-tile__edited">
-            Last edited {formatDate(rawGig.soundEngineerLastEdited, 'short')}
+            Last edited {formatDate(privateBundle.soundEngineerLastEdited, 'short')}
           </p>
         ) : null}
         <div className="gig-details-tile__notes-actions">
@@ -2197,9 +2223,10 @@ export function GigDetailsPanel({
             onSlotBodyMount={setRunningOrderSlotEl}
           />
           {renderConfirmedActRequirements()}
-          <GigMediaPanel gigId={rawGig?.gigId} media={rawGig?.media} hasShareLink={Boolean(rawGig?.mediaShareTokenHash)} canUpdate={canUpdate} />
+          <GigMediaPanel gigId={rawGig?.gigId} media={privateBundle?.media || []} hasShareLink={Boolean(privateBundle?.hasShareLink)} canUpdate={canUpdate} />
           <GigApplications
             rawGig={rawGig}
+            guestPrivate={privateBundle?.guests || {}}
             setGigInfo={setGigInfo}
             skipHeader
             useCardLayout

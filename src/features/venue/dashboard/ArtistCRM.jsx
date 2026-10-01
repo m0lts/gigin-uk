@@ -19,7 +19,7 @@ import {
   isArtistSavedInCRM,
 } from '@services/client-side/artistCRM';
 import { getArtistProfileById } from '@services/client-side/artists';
-import { inviteToGig } from '@services/api/gigs';
+import { getGigPrivateBundle, inviteToGig } from '@services/api/gigs';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { sendGigInvitationMessage } from '@services/client-side/messages';
 import { fetchMyVenueMembership } from '@services/client-side/venues';
@@ -870,10 +870,11 @@ export const ArtistCRM = ({ user, venues }) => {
               if (!applicant.id || guestBooked.some((entry) => entry.id === applicant.id)) return;
               guestBooked.push({
                 id: applicant.id,
+                gigId: gig.gigId,
                 name: applicant.name || applicant.artistName || 'Guest',
-                email: applicant.email || '',
-                phone: applicant.phone || '',
-                photoUrl: applicant.photoUrl || applicant.photo?.url || '',
+                email: '',
+                phone: '',
+                photoUrl: '',
                 guest: true,
               });
               return;
@@ -887,6 +888,18 @@ export const ArtistCRM = ({ user, venues }) => {
             }
           });
         });
+
+        const guestGigIds = [...new Set(guestBooked.map((entry) => entry.gigId).filter(Boolean))];
+        if (guestGigIds.length) {
+          const bundle = await getGigPrivateBundle(guestGigIds).catch(() => null);
+          guestBooked.forEach((entry) => {
+            const extra = bundle?.gigs?.[entry.gigId]?.guests?.[entry.id];
+            if (!extra) return;
+            entry.email = extra.email || '';
+            entry.phone = extra.phone || '';
+            entry.photoUrl = extra.photoUrl || extra.photo?.url || '';
+          });
+        }
 
         const savedArtistIds = new Set(crmEntries.map((entry) => entry.artistId).filter(Boolean));
         const artistIdsToFetch = Array.from(uniqueArtistIds).filter((id) => !savedArtistIds.has(id));

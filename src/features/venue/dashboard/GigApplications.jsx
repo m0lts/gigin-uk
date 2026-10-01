@@ -317,6 +317,7 @@ export const GigApplications = ({
     sendGigDetailsPortalNightFullyBooked,
     /** When set, each slot's open/booked body portals into the running-order card and the old applications list is not rendered. */
     runningOrderSlotTargets = null,
+    guestPrivate = null,
 }) => {
 
     const {isMdUp, isLgUp} = useBreakpoint();
@@ -653,8 +654,16 @@ export const GigApplications = ({
             });
           });
           guestApplicants.forEach((app) => {
+            const extra = guestPrivate?.[app.id] || {};
             profiles.push({
-              ...guestViewFromApplicant(app),
+              ...guestViewFromApplicant({
+                ...app,
+                ...extra,
+                id: app.id,
+                status: app.status,
+                name: app.name || app.artistName,
+                userId: app.userId || null,
+              }),
               applicationSlotGigId: app.slotGigId,
               applicationSlotGigName: app.slotGigName,
               applicationSlotStartTime: app.slotStartTime,
@@ -667,7 +676,7 @@ export const GigApplications = ({
           console.error("Error fetching profiles:", e);
         }
       }
-    }, [gigInfo, relatedSlots, runningOrderSlotTargets]);
+    }, [gigInfo, relatedSlots, runningOrderSlotTargets, guestPrivate]);
 
     const formatDate = (timestamp) => {
         if (!timestamp) return "—";
