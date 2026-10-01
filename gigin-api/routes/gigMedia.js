@@ -142,13 +142,32 @@ router.post("/upload-url", requireAuth, asyncHandler(async (req, res) => {
   if (used + bytes > TOTAL_LIMIT) return res.status(400).json({ error: "This gig's photos and videos are over the 250 MB limit." });
   const path = `gig-media/${gigId}/${crypto.randomUUID()}-${safeName(name)}`;
   const bucket = admin.storage().bucket();
+  if (process.env.STORAGE_EMULATOR_HOST) {
+    const host = req.get("host");
+    const uploadUrl = `${req.protocol}://${host}/api/gig-media/emulator-upload?path=${encodeURIComponent(path)}`;
+    return res.json({ uploadUrl, path, contentType: type, method: "POST" });
+  }
   const [uploadUrl] = await bucket.file(path).getSignedUrl({
     version: "v4",
     action: "write",
     expires: Date.now() + 15 * 60 * 1000,
     contentType: type,
   });
-  return res.json({ uploadUrl, path, contentType: type });
+  return res.json({ uploadUrl, path, contentType: type, method: "PUT" });
+}));
+
+router.post("/emulator-upload", requireAuth, express.raw({ type: "*/*", limit: "50mb" }), asyncHandler(async (req, res) => {
+  if (!process.env.STORAGE_EMULATOR_HOST) return res.status(404).json({ error: "Not found." });
+  const path = String(req.query.path || "");
+  if (!path.startsWith("gig-media/") || path.includes("..")) {
+    return res.status(400).json({ error: "Upload path is not valid." });
+  }
+  const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || []);
+  if (!body.length) return res.status(400).json({ error: "Upload was empty." });
+  await admin.storage().bucket().file(path).save(body, {
+    contentType: String(req.get("content-type") || "application/octet-stream").split(";")[0],
+  });
+  return res.json({ ok: true });
 }));
 
 router.post("/commit", requireAuth, asyncHandler(async (req, res) => {
