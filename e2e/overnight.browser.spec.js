@@ -36,6 +36,46 @@ function initAdmin() {
   return admin.firestore();
 }
 
+async function allowEmulatorClientReads() {
+  const rules = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}`;
+  const response = await fetch('http://127.0.0.1:8081/emulator/v1/projects/giginltd-dev:securityRules', {
+    method: 'PUT',
+    headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ignore_errors: false,
+      rules: { files: [{ name: 'security.rules', content: rules }] },
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Emulator rules update failed: ${response.status} ${await response.text()}`);
+  }
+}
+
+async function markEmailVerified(email) {
+  const sign = await fetch(`${AUTH}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: PASSWORD, returnSecureToken: true }),
+  }).then((response) => response.json());
+  if (!sign.localId) throw new Error(`Could not look up ${email} in the auth emulator: ${JSON.stringify(sign)}`);
+  const update = await fetch(`${AUTH}/identitytoolkit.googleapis.com/v1/accounts:update?key=demo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
+    body: JSON.stringify({ localId: sign.localId, emailVerified: true }),
+  }).then((response) => response.json());
+  if (update.emailVerified !== true) {
+    throw new Error(`Could not mark ${email} verified: ${JSON.stringify(update)}`);
+  }
+}
+
 async function signUp(email) {
   const sign = await fetch(`${AUTH}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo`, {
     method: 'POST',
@@ -72,6 +112,20 @@ function watch(page, label) {
   });
 }
 
+async function logout(page) {
+  await page.goto('/');
+  await page.evaluate(async () => {
+    const names = typeof indexedDB.databases === 'function' ? (await indexedDB.databases()).map((db) => db.name) : ['firebaseLocalStorageDb'];
+    await Promise.all(names.filter(Boolean).map((name) => new Promise((resolve) => {
+      const request = indexedDB.deleteDatabase(name);
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+      request.onblocked = () => resolve();
+    })));
+  });
+  await page.reload();
+}
+
 async function login(page, email) {
   await page.goto('/');
   await page.evaluate(async () => {
@@ -95,7 +149,7 @@ async function openGigRow(page, name) {
   await page.goto('/venues/dashboard/gigs');
   await page.locator('.loading-screen').waitFor({ state: 'detached', timeout: 20000 });
   await page.getByRole('button', { name: 'Table' }).click();
-  const row = page.locator('tr', { hasText: name }).first();
+  const row = page.getByRole('row', { name: new RegExp(name) }).first();
   await expect(row).toBeVisible({ timeout: 20000 });
   await row.click();
   await expect(page).toHaveURL(/gig-applications/, { timeout: 20000 });
@@ -133,13 +187,19 @@ async function applyAsGuest(page, gigId, { act, name, email, note, photo = false
 
 async function keepOpenIfAsked(page) {
   const keep = page.getByRole('button', { name: 'Keep open' });
-  if (await keep.isVisible().catch(() => false)) await keep.click();
+  try {
+    await keep.waitFor({ state: 'visible', timeout: 8000 });
+    await keep.click();
+  } catch {
+    // The close-applications prompt only appears when accepting fills the slots.
+  }
 }
 
 const world = {};
 
 test.beforeAll(async () => {
   const db = initAdmin();
+  await allowEmulatorClientReads();
   writeFileSync(PNG, Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     'base64',
@@ -187,9 +247,11 @@ test.beforeAll(async () => {
   await db.doc(`users/${venue.uid}/artistCRM/saved-contact`).set({
     name: 'Saved Contact Act',
     email: `test+contact-browser-${stamp}@example.com`,
+    createdAt: admin.firestore.Timestamp.now(),
   });
   await db.doc(`users/${venue.uid}/artistCRM/merge-contact`).set({
     name: 'Browser Merge Act',
+    createdAt: admin.firestore.Timestamp.now(),
   });
   await db.doc(`users/${artist.uid}`).set({
     email: artist.email,
@@ -259,6 +321,7 @@ test('1. invite from a saved contact', async ({ page }) => {
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Night');
   await page.getByRole('button', { name: 'Offer gig to a saved Contact' }).click();
+  await page.getByRole('button', { name: 'Generate Invite' }).click();
   await expect(page.getByRole('heading', { name: 'Send this invite to any of your artists?' })).toBeVisible();
   await page.getByRole('button', { name: /Saved Contact Act/ }).click();
   await expect(page.getByText(/Invitation email sent to Saved Contact Act/)).toBeVisible({ timeout: 20000 });
@@ -335,10 +398,8 @@ test('4. venue accepts one guest and declines another', async ({ page }) => {
   await openGigRow(page, 'Overnight Browser Night');
   await expect(page.getByText('Guest').first()).toBeVisible();
   await expect(page.getByText('Browser Act Accepted')).toBeVisible();
-  const declinedRow = page.locator('div').filter({ hasText: 'Browser Act Declined' }).filter({ has: page.getByRole('button', { name: 'Decline' }) }).last();
-  await declinedRow.getByRole('button', { name: 'Decline' }).click();
-  const acceptedRow = page.locator('div').filter({ hasText: 'Browser Act Accepted' }).filter({ has: page.getByRole('button', { name: 'Accept' }) }).last();
-  await acceptedRow.getByRole('button', { name: 'Accept' }).click();
+  await page.locator('.venue-gig-running__applicant', { hasText: 'Browser Act Declined' }).getByRole('button', { name: 'Decline' }).click();
+  await page.locator('.venue-gig-running__applicant', { hasText: 'Browser Act Accepted' }).getByRole('button', { name: 'Accept' }).click();
   await keepOpenIfAsked(page);
   await expect(page.getByText(/Who is playing|Browser Act Accepted/)).toBeVisible();
   await page.goto('/venues/dashboard/artists');
@@ -351,6 +412,7 @@ test('5. closing applications rejects a new guest', async ({ page }) => {
   await openGigRow(page, 'Overnight Browser Night');
   await page.getByRole('button', { name: /Accepting applications/ }).click();
   await expect(page.getByText('Applications closed.')).toBeVisible();
+  await logout(page);
   await page.goto(`/gig/${world.nightId}`);
   await expect(page.getByRole('button', { name: 'Applications closed' })).toBeVisible();
   const rejected = await fetch(`${API}/guest-applications`, {
@@ -378,13 +440,13 @@ test('6. sound engineer and additional notes survive a refresh', async ({ page }
   await page.getByRole('button', { name: 'Add sound engineer' }).click();
   await page.locator('#gig-sound-engineer-name').fill('Sam Engineer');
   await page.locator('#gig-sound-engineer-contact').fill('test+engineer-browser@example.com');
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
   await page.getByRole('button', { name: 'Add a note' }).click();
   await page.locator('textarea.venue-gig-rail__notes-input').fill('Bring the spare DI box.');
-  await page.getByRole('heading', { name: 'Additional notes' }).click();
+  await page.getByRole('complementary', { name: 'Gig details' }).getByRole('heading', { name: 'Additional notes' }).click();
   await page.reload();
-  await expect(page.getByText('Sam Engineer')).toBeVisible();
-  await expect(page.getByText('Bring the spare DI box.')).toBeVisible();
+  await expect(page.getByText('Sam Engineer').first()).toBeVisible();
+  await expect(page.getByText('Bring the spare DI box.').first()).toBeVisible();
 });
 
 test('7. a guest account links, and a name match merges only when asked', async ({ page }) => {
@@ -407,7 +469,7 @@ test('7. a guest account links, and a name match merges only when asked', async 
     const applicant = (gig.data()?.applicants || []).find((entry) => entry?.contacts?.email === email || entry?.email === email);
     return applicant?.userId || '';
   }, { timeout: 20000 }).not.toBe('');
-
+  await markEmailVerified(email);
   await login(page, world.venue.email);
   await page.goto('/venues/dashboard/artists');
   await expect(page.getByText(/This looks like/)).toBeVisible({ timeout: 20000 });
@@ -424,7 +486,7 @@ test('8. media share link, wrong type, revoke', async ({ page }) => {
   watch(page, 'test 8');
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Night');
-  const media = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Photos and videos' }) });
+  const media = page.locator('section.gig-details-tile').filter({ has: page.getByRole('heading', { name: 'Photos and videos' }) });
   await expect(media).toBeVisible();
   await media.locator('input[type="file"]').setInputFiles({
     name: 'notes.txt',
@@ -445,30 +507,58 @@ test('8. media share link, wrong type, revoke', async ({ page }) => {
   await expect(page.getByText('This link is no longer available.')).toBeVisible();
 });
 
-test('9. a logged-in artist applies, withdraws, and a gig can be deleted', async ({ page }) => {
-  watch(page, 'test 9');
-  await login(page, world.artist.email);
-  await page.goto(`/gig/${world.regressionId}`);
-  await expect(page.getByRole('button', { name: 'Apply To Gig' })).toBeEnabled();
+async function applyAsArtist(page, gigId, message) {
+  await page.goto(`/gig/${gigId}`);
+  await expect(page.getByRole('button', { name: 'Apply To Gig' })).toBeEnabled({ timeout: 20000 });
   await page.getByRole('button', { name: 'Apply To Gig' }).click();
-  await page.getByLabel('Message to the venue').fill('Regression application from the browser.');
+  await page.getByLabel('Message to the venue').fill(message);
   await page.getByRole('button', { name: 'Submit application' }).click();
   await expect(page.getByRole('button', { name: 'Withdraw Application' })).toBeVisible({ timeout: 20000 });
+  const wizard = page.locator('.apply-wizard-modal');
+  if (await wizard.isVisible().catch(() => false)) {
+    await wizard.click({ position: { x: 8, y: 8 } });
+    await expect(wizard).toBeHidden({ timeout: 5000 });
+  }
+}
+
+test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig is cancelled and deleted', async ({ page }) => {
+  watch(page, 'test 9');
+  await applyAsGuest(page, world.regressionId, {
+    act: 'Browser Guest Beside Artist',
+    name: 'Guest With Artist',
+    email: `test+guest-mixed-${world.stamp}@example.com`,
+    note: 'Guest on the same gig as a logged-in artist.',
+  });
+  await login(page, world.artist.email);
+  await applyAsArtist(page, world.regressionId, 'Logged-in artist on the same gig as a guest.');
+  await applyAsArtist(page, world.declineGigId, 'Please decline this regression application.');
+  await applyAsArtist(page, world.deleteGigId, 'I will withdraw this one.');
   await page.getByRole('button', { name: 'Withdraw Application' }).click();
   await expect(page.getByRole('button', { name: 'Apply To Gig' })).toBeVisible({ timeout: 20000 });
 
-  await page.goto(`/gig/${world.declineGigId}`);
-  await page.getByRole('button', { name: 'Apply To Gig' }).click();
-  await page.getByLabel('Message to the venue').fill('Please decline this regression application.');
-  await page.getByRole('button', { name: 'Submit application' }).click();
-  await expect(page.getByRole('button', { name: 'Withdraw Application' })).toBeVisible({ timeout: 20000 });
-
   await login(page, world.venue.email);
+  await openGigRow(page, 'Overnight Browser Regression');
+  await expect(page.getByText('Browser Guest Beside Artist')).toBeVisible();
+  await expect(page.getByText('Guest').first()).toBeVisible();
+  await expect(page.getByText('Regression Act')).toBeVisible();
+  const artistRow = page.locator('div').filter({ hasText: 'Regression Act' }).filter({ has: page.getByRole('button', { name: 'Accept' }) }).last();
+  await artistRow.getByRole('button', { name: 'Accept' }).click();
+  await keepOpenIfAsked(page);
+  await page.getByRole('button', { name: 'Options' }).click();
+  await page.getByRole('button', { name: 'Cancel gig' }).click();
+  await page.locator('#cancellation-reason').selectOption('availability');
+  await page.getByRole('button', { name: 'Cancel Gig' }).last().click();
+  await expect(page.getByText('Gig cancellation successful.')).toBeVisible({ timeout: 20000 });
+
   await openGigRow(page, 'Overnight Browser Decline');
   await page.getByRole('button', { name: 'Decline' }).first().click();
+  await expect(page.getByText(/declined/i).first()).toBeVisible({ timeout: 20000 });
+
   await page.goto('/venues/dashboard/gigs');
-  const row = page.locator('tr', { hasText: 'Overnight Browser Delete' }).first();
-  await row.locator('.options-cell button').click();
+  await page.locator('.loading-screen').waitFor({ state: 'detached', timeout: 20000 });
+  await page.getByRole('button', { name: 'Table' }).click();
+  const row = page.getByRole('row', { name: /Overnight Browser Delete/ }).first();
+  await row.getByRole('button', { name: 'Gig options' }).click();
   await page.getByRole('button', { name: /^Delete/ }).click();
   await page.getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByText('Overnight Browser Delete')).toHaveCount(0);
