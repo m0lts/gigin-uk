@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { auth } from '@lib/firebase';
 import {
   commitGigMedia,
   createGigMediaShare,
@@ -43,9 +44,13 @@ export function GigMediaPanel({ gigId, media = [], hasShareLink = false, canUpda
         name: file.name,
         size: file.size,
       });
+      const headers = { 'Content-Type': file.type };
+      if (signed.method === 'POST' && auth.currentUser) {
+        headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+      }
       const put = await fetch(signed.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
+        method: signed.method || 'PUT',
+        headers,
         body: file,
       });
       if (!put.ok) throw new Error('Upload failed');
