@@ -39,31 +39,91 @@ Browser results below are from a fresh API on port 8099 after a leftover `node s
 | 5 | Close applications, guest page, server reject | Pass | The switch toasted "Applications closed." Logged out, the public page showed Applications closed. A late guest POST returned 409. Reopen was not clicked. |
 | 6 | Sound engineer and additional notes persist | Pass | After refresh, Sam Engineer and "Bring the spare DI box." were both on the page. |
 | 7 | Token link and manual merge | Pass | The new account was marked `emailVerified` on the Auth emulator (`accounts:update` with Bearer owner). Merge was not automatic. After Merge, the contact gained `artistId`. About 3.8s. |
-| 8 | Wrong type, private link, revoke | Pass | A text file toasted "Use a photo or video". The private link opened. After revoke, the old link said it was no longer available. A real photo upload, single download, zip, and an oversize file were not in this browser test. |
-| 9 | Logged-in artist apply, accept, decline, withdraw, cancel, delete, mixed gig | Fail, stopped | A guest and Regression Act were both on one gig, the artist was accepted (the gig showed Confirmed), and a separate application was withdrawn. Clicking Cancel gig left the gig page for the calendar. The reason select never appeared, and Confirmed stayed at 1. Decline of the second artist and delete of the empty gig were not reached. Stopped after that. |
+| 8 | Wrong type, private link, revoke, file and zip | Pass | A text file toasted "Use a photo or video". The private link opened. After revoke, the old link said it was no longer available. A separate check uploaded `overnight-browser-pixel.png`, downloaded that file through the private link, downloaded the zip, and found one entry named `1-overnight-browser-pixel.png`. An oversize file was not tried in the browser. |
+| 9 | Logged-in artist apply, accept, decline, withdraw, cancel, delete, mixed gig | Pass | A guest and Regression Act were both on one gig. The artist was accepted, the gig was cancelled with reason Availability, and the gig document was deleted. A second artist's application was stored as declined. The withdrawn gig was deleted. No error toast. |
 | 10 | Console and server logs | Pass | No unexpected browser error was collected. |
 
 ## What was tried
 
 1. Instrumented `fetchAllData` on the emulator. With repo rules, the user snapshot was denied and `fetchAllData` never logged a start. With emulator rules and every feature flag false, both profiles logged membership, gigs, requests, templates, `payments flag false`, and `fetchAllData finished`. The logs were removed.
 2. A second browser run still hit the old API on 8099 (`EADDRINUSE`). Guest applies returned "Too many attempts." That process was `node server.js`, elapsed about eight hours. It was stopped. The next run used a new server.
-3. Test 9, cancel: the menu item is "Cancel gig". The first click was covered by "Close applications now?". Waiting for Keep open cleared that. The next click did not open `#cancellation-reason`; the calendar was showing, Confirmed 1. Not tried again.
+3. Test 9, cancel: the menu item is "Cancel gig". The first click was covered by "Close applications now?". Waiting for Keep open cleared that. The next click did not open `#cancellation-reason`; the calendar was showing, Confirmed 1.
+
+## Cancel gig
+
+The gig-page Options item "Cancel gig" does the same thing with every `VITE_FEATURE_*` flag false and with every flag true. It does not open a reason list. It tells the venue to use the Options menu on the Gigs list and navigates to `/venues/dashboard/gigs`. The reason select `#cancellation-reason` is the confirm dialog on that list. On the calendar, More actions then "Cancel gig" opens it when the booking is confirmed. Both flag builds did that. Flags true also requested `/api/billing/getCustomerData`, which 404s on this API; the dashboard still finished loading. That billing miss is not what sends Cancel gig back to the calendar.
+
+The test now follows that calendar path, chooses Availability, and clicks Confirm. Confirm was a no-op until the cancellation message stopped reading `gig.venue.venueName`. Gigs created by the API only store `venueId`. That read threw, the dialog stayed open, and there was no success toast. The message now uses the venue profile name when the gig has no nested venue. After that, the mixed guest-and-artist gig cancelled and deleted, the second artist was declined, and the withdrawn gig was deleted.
+
+## Rules
+
+Checked-in `firestore.rules` and `storage.rules` were loaded by the emulator. They were not edited and not deployed. A venue user was seeded the way a real one is shaped: `users/{uid}` with `venueProfiles`, a completed `venueProfiles/{id}`, an owner `members/{uid}` doc with `role: owner` and `status: active`, and an `artistCRM` entry with `createdAt`. The rules file does not read any of those fields. The only allow is a public read of `venueHireOpportunities`. Everything else is denied.
+
+Observed in the browser, flags false:
+
+- Venue dashboard, gig list, and Contacts: `User snapshot error: FirebaseError: No matching allow statements`. The loading screen stayed up. Contacts never reached the CRM query.
+- Public gig page, logged out and as the artist: `[Firestore Error] getGigById: FirebaseError: No matching allow statements`. Apply did not render. The page also logged `Rendered fewer hooks than expected` after that denial.
+
+Client reads and writes the overnight features make from the browser:
+
+| Call | Where | Rules |
+| --- | --- | --- |
+| `getDocs` `users/{uid}/artistCRM` ordered by `createdAt` | Invite modal, Contacts | Denied. No match for `users`. |
+| `getDoc` / `getDocs` `gigs/{id}` | Guest manage page and the public gig page | Denied. No match for `gigs`. |
+| Guest press-photo upload | `fetch` to a URL from `POST /api/guest-applications/upload-url` | Not a Storage SDK call, so `storage.rules` are not consulted. On this emulator the URL is never issued: Admin `getSignedUrl` throws `Cannot sign data without client_email`. |
+| Gig media upload | Production: `PUT` to a v4 signed URL, then `POST /api/gig-media/commit`. Emulator: `POST /api/gig-media/emulator-upload`, which the API writes with the Admin SDK | The signed URL is not judged by `storage.rules`. The emulator route exists only when `STORAGE_EMULATOR_HOST` is set, so it cannot send the file to Cloud Storage. |
+| Close applications, sound engineer, additional notes | `updateGigDocument` on the API | Not a client Firestore write. |
+| Accept, decline, cancel, delete, merge, share token, artist apply | API | Not client Firestore or Storage writes. The artist page still needs the `gigs/{id}` read above before Apply is shown. |
+
+`storage.rules` allow any signed-in user to read and write every path. The new media feature does not use the client Storage SDK, so nothing in that file blocked it. No storage rule change is required for the private link.
+
+Proposed Firestore rules, for review only. Not applied:
+
+```
+match /users/{uid} {
+  allow read: if request.auth != null && request.auth.uid == uid;
+  match /artistCRM/{entryId} {
+    allow read, write: if request.auth != null && request.auth.uid == uid;
+  }
+}
+match /venueProfiles/{venueId} {
+  allow read: if request.auth != null;
+  match /members/{memberId} {
+    allow read: if request.auth != null && request.auth.uid == memberId;
+  }
+}
+match /gigs/{gigId} {
+  allow read: if true;
+  allow write: if false;
+}
+match /artistProfiles/{profileId} {
+  allow read: if request.auth != null;
+  match /members/{memberId} {
+    allow read: if request.auth != null && request.auth.uid == memberId;
+  }
+}
+```
+
+Writes for gigs, applications, media metadata, and merges stay on the API. The public `gigs` read is what the logged-out guest page needs. These snippets do not replace a full production ruleset; the checked-in file is still only the venue-hire read.
 
 ## Fixes
 
 - `GigApplications.jsx`: the running-order row had Accept and View, and no Decline. Decline now calls the same `handleReject` as the older application tiles.
-- `e2e/overnight.browser.spec.js`: emulator rules, verified signup, CRM `createdAt`, the console row (not a `tr`), and the selectors the gig page actually renders. No change to `firestore.rules`.
+- `Gigs.jsx`: cancelling a confirmed artist no longer reads `gig.venue.venueName` when the gig only has `venueId`. The message uses the venue profile name.
+- `gigin-api/config/admin.js`: the Admin app is given `{projectId}.firebasestorage.app` as its bucket, and the storage emulator host when the other emulators are on.
+- `gigin-api/routes/gigMedia.js` and `GigMediaPanel.jsx`: on the storage emulator, the browser posts the file to the API and the API writes it. Production still returns a signed `PUT` URL. `firestore.rules` and `storage.rules` were not changed.
+- `e2e/overnight.browser.spec.js`: calendar cancel, the file and zip download, and the selectors above. No change to the rules files.
 
 ## Still unproven
 
 - Overview, NextGig, and EditGigTimeModal after a confirmed guest.
 - Reopening applications in the browser.
-- Test 9 from cancel onward: decline of the logged-in artist, deleting the withdrawn gig, and a completed cancellation. Apply, accept, a mixed guest-and-artist gig, and withdraw did run.
-- A gig media file upload, single download, zip, and an oversize rejection in the browser. The API test still covers wrong type, 60 MB, share, and revoke. Signed URLs on Cloud Run are still unproven.
+- An oversize media file in the browser. Guest press-photo upload still cannot get a signed URL on the emulator (`Cannot sign data without client_email`). Gig media on the emulator uses the API write above. A signed `PUT` to Cloud Storage, on Cloud Run, is still unproven.
 - Open Graph as a crawler would see it. Hosting still serves one `index.html` for every path.
+- The public gig page throws `Rendered fewer hooks than expected` when `getGigById` is denied. That was seen only under the checked-in rules.
 - Issue 1 in `docs/open_issues_jez_mode.md` is still unresolved. Do not merge to `main` on the strength of this run.
 
-`npm run build` passed (`vite build`, about 6.5s). The existing chunk-size warning is unchanged.
+`npm run build` passed (`vite build`, about 9.4s). The existing chunk-size warning is unchanged.
 
 ## Defaults
 
