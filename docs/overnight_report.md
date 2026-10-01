@@ -12,50 +12,58 @@ Branch: `jez-mode`. Nothing was pushed, deployed, or merged. Firebase project us
 | 4. Guest linking | Done | Private-token link sets `userId` and `linkedArtistId` on the guest applicant and `artistId` on the venue contact. The guest id is kept. Same email reuses one contact and no longer clears an existing `artistId`. An email that already belongs to a Gigin account is told to log in. Contacts shows "This looks like &lt;name&gt;: merge?" and merges only after a click. |
 | 5. Notes and link previews | Done | Sidebar "Notes" is now "Additional notes" (same `internalNotes` field as the main tile). The old box that saves `notes` is labelled "Listing note" and is not on the card layout. Open Graph HTML is `GET /api/link-preview/gig/:gigId`. |
 
+## Loading screen
+
+Verdict: test setup, not an application bug, and not the feature flags.
+
+`Dashboard.jsx` shows `LoadingScreen` while `VenueDashboardContext` has `loading === true`. That flag starts true and is cleared in `fetchAllData`'s `finally`. `fetchAllData` runs only after `useAuth` has set a user.
+
+With the checked-in `firestore.rules`, the signed-in venue's `users/{uid}` listener failed immediately: `User snapshot error: FirebaseError: No matching allow statements`. `useAuth` then set auth loading to false and did not set a user, so `fetchAllData` never started. The dashboard chrome was on screen (Gigs, calendar, All 0) with the loading screen over it. No dashboard promise was stuck. The only failed request in that session was an aborted Stripe script. There was no console error from `getGigsByVenueIds`, Mapbox, or Cloud Functions.
+
+Control, same emulator, every `VITE_FEATURE_*` false (payments included, which is how production builds them): a thin completed venue and a fully populated venue both finished `fetchAllData`. Membership loaded, then `getGigsByVenueIds` and `getVenueRequestsByVenueIds`, then `getTemplatesByVenueIds`. Payments was false, so billing was skipped. The loading screen came off and the list showed All 1.
+
+The browser spec now publishes read-open, signed-in-write rules to the running emulator only. `firestore.rules` was not edited.
+
 ## Test results
 
-`gigin-api/test/overnight.test.js` was run with `firebase emulators:exec --only auth,firestore,storage --project giginltd-dev`. The API listened on port 8099 because 8080 was already taken. The suite is one Node test. It passed (about 2.2s). A second run in this follow-up also passed. That test uses the Admin SDK, so the checked-in `firestore.rules` (which deny almost every client read) do not apply to it.
+The Node suite `gigin-api/test/overnight.test.js` still passed earlier on the emulators (about 2.2s). It uses the Admin SDK.
 
-Browser tests are in `e2e/overnight.browser.spec.js`. They were not in the repo, so they were written for this run. They use the Vite dev server, the local API, and the emulators. Addresses are `test+…@example.com` only.
+Browser results below are from a fresh API on port 8099 after a leftover `node server.js` (eight hours old, same port) was stopped. That leftover process was answering health checks and returning 429 from the guest-application limiter, which made an earlier re-run look like product failures.
 
 | # | Check | Result | Why |
 | --- | --- | --- | --- |
-| 1 | Two-slot gig and invite from Contacts | Fail | The gig was created through the same API the form uses. The venue dashboard opened, then stayed under the loading screen with "All 0" gigs, so the contact invite was never clicked. Two attempts, then stopped. |
-| 2 | Guest apply, photo, mail, manage, withdraw, no duplicate contact | Pass | In the browser: press photo, note, private-link edit, withdraw, and a second gig with the same email left one contact. The API test also queued the confirmation in `mail`. |
-| 3 | Existing Gigin email told to log in | Pass | The guest form showed "This email already has a Gigin account. Log in to apply." and stayed on "Who are you?". The API test returns the same 409. |
-| 4 | Guest tag, accept, decline, emails, Overview / NextGig / list / Contacts / EditGigTimeModal | Fail | Both guest applications were sent. Accept, decline, and the other surfaces sit on the venue dashboard, which never left the loading screen. |
-| 5 | Close prompt, manual close and reopen, server reject | Fail in the browser. Pass on the API | The browser never reached the switch. The API test closes applications and the next guest apply returns 409. Reopen was not clicked. |
-| 6 | Sound engineer and additional notes persist | Fail in the browser. Pass on the API | The browser never reached the fields. The API test writes both and reads them back. |
-| 7 | Token link and manual merge | Fail | Signup from the guest page reached "Verify your email". The next venue login could not see the form because that screen was still up, so Merge was not clicked. The API test does link the contact and merge only after an explicit call. |
-| 8 | Upload, private link, download, zip, revoke, oversize and wrong type | Fail in the browser. Partial on the API | The media panel is on the venue gig page, which did not load. The API test rejects a wrong type and a 60 MB file, creates a share, and gets 404 after revoke. A real file upload, single download, and zip were not executed. The guest press photo in test 2 did upload. |
-| 9 | Logged-in artist apply, accept, decline, withdraw, delete, mixed gig | Fail | After sign-in the gig page still showed the logged-out "Apply to play" button, so the artist session was not ready. The API test covers artist apply, withdraw, and delete. |
-| 10 | Console and server logs | Pass | The pages that loaded did not report an unexpected browser error or unhandled rejection. The API log for the passing Node test had no unhandled error. A revoked share correctly returned 404. |
+| 1 | Two-slot gig and invite from Contacts | Pass | Dashboard loaded. Generate Invite, then Saved Contact Act. Toast: invitation email sent. A `gigInvites` doc existed. The contact needed `createdAt` or the CRM query (`orderBy createdAt`) omitted it. |
+| 2 | Guest apply, photo, mail, manage, withdraw, no duplicate contact | Pass | Press photo, note, private-link edit, withdraw, second gig, one contact. About 4s. |
+| 3 | Existing Gigin email told to log in | Pass | The log-in sentence showed and the form stayed on "Who are you?". |
+| 4 | Guest tag, accept, decline, Contacts | Pass | Both guests showed the Guest tag. Decline and Accept were clicked. The accepted act was on My Contacts. Overview, NextGig, and EditGigTimeModal were not opened. |
+| 5 | Close applications, guest page, server reject | Pass | The switch toasted "Applications closed." Logged out, the public page showed Applications closed. A late guest POST returned 409. Reopen was not clicked. |
+| 6 | Sound engineer and additional notes persist | Pass | After refresh, Sam Engineer and "Bring the spare DI box." were both on the page. |
+| 7 | Token link and manual merge | Pass | The new account was marked `emailVerified` on the Auth emulator (`accounts:update` with Bearer owner). Merge was not automatic. After Merge, the contact gained `artistId`. About 3.8s. |
+| 8 | Wrong type, private link, revoke | Pass | A text file toasted "Use a photo or video". The private link opened. After revoke, the old link said it was no longer available. A real photo upload, single download, zip, and an oversize file were not in this browser test. |
+| 9 | Logged-in artist apply, accept, decline, withdraw, cancel, delete, mixed gig | Fail, stopped | A guest and Regression Act were both on one gig, the artist was accepted (the gig showed Confirmed), and a separate application was withdrawn. Clicking Cancel gig left the gig page for the calendar. The reason select never appeared, and Confirmed stayed at 1. Decline of the second artist and delete of the empty gig were not reached. Stopped after that. |
+| 10 | Console and server logs | Pass | No unexpected browser error was collected. |
 
-## What was tried, and what was not changed
+## What was tried
 
-No product file was changed in this follow-up. The failures were in the browser harness, and the second attempt on the venue dashboard did not clear it.
-
-1. The gigs page opens on the calendar, not the table. The spec now clicks Table. That was not enough: a full-page loading screen stayed on top and the count stayed at 0.
-2. `firestore.rules` in the repo only allows public read of venue-hire documents. The guest page then crashed to "Oops! The app hit a snag." Updating rules inside the running emulator (not in the repo) let tests 2 and 3 pass, and the venue list queries never finished, so the loading screen stayed. A follow-up that would have written allow-all rules into `firestore.rules` was not done. That file is unchanged.
-
-The login helper now waits for the auth-emulator response and clears IndexedDB before the next sign-in, so a verify-email screen cannot block the venue login. That helper was not re-run after the rules change was dropped.
+1. Instrumented `fetchAllData` on the emulator. With repo rules, the user snapshot was denied and `fetchAllData` never logged a start. With emulator rules and every feature flag false, both profiles logged membership, gigs, requests, templates, `payments flag false`, and `fetchAllData finished`. The logs were removed.
+2. A second browser run still hit the old API on 8099 (`EADDRINUSE`). Guest applies returned "Too many attempts." That process was `node server.js`, elapsed about eight hours. It was stopped. The next run used a new server.
+3. Test 9, cancel: the menu item is "Cancel gig". The first click was covered by "Close applications now?". Waiting for Keep open cleared that. The next click did not open `#cancellation-reason`; the calendar was showing, Confirmed 1. Not tried again.
 
 ## Fixes
 
-None in application code. The new browser spec, Playwright config, and dev dependency are the only additions.
+- `GigApplications.jsx`: the running-order row had Accept and View, and no Decline. Decline now calls the same `handleReject` as the older application tiles.
+- `e2e/overnight.browser.spec.js`: emulator rules, verified signup, CRM `createdAt`, the console row (not a `tr`), and the selectors the gig page actually renders. No change to `firestore.rules`.
 
 ## Still unproven
 
-- Invite from Contacts in the browser.
-- Accept, decline, the close-applications switch, sound engineer, and additional notes in the browser.
-- Overview, NextGig, Contacts, and EditGigTimeModal after a confirmed guest.
-- Merge clicked in Contacts. The API merge is proven; the prompt is not.
-- Logged-in artist apply, withdraw, and delete in the browser.
-- A gig media upload, single download, and zip. Signed URLs against Cloud Run are still unproven. The guest press photo upload did succeed against the emulator.
-- Open Graph as a crawler would see it. The API test checks `og:title`. Hosting still serves one `index.html` for every path.
+- Overview, NextGig, and EditGigTimeModal after a confirmed guest.
+- Reopening applications in the browser.
+- Test 9 from cancel onward: decline of the logged-in artist, deleting the withdrawn gig, and a completed cancellation. Apply, accept, a mixed guest-and-artist gig, and withdraw did run.
+- A gig media file upload, single download, zip, and an oversize rejection in the browser. The API test still covers wrong type, 60 MB, share, and revoke. Signed URLs on Cloud Run are still unproven.
+- Open Graph as a crawler would see it. Hosting still serves one `index.html` for every path.
 - Issue 1 in `docs/open_issues_jez_mode.md` is still unresolved. Do not merge to `main` on the strength of this run.
 
-`npm run build` passed after the browser spec was added.
+`npm run build` passed (`vite build`, about 6.5s). The existing chunk-size warning is unchanged.
 
 ## Defaults
 
@@ -75,7 +83,7 @@ None in application code. The new browser spec, Playwright config, and dev depen
 - WhatsApp and iMessage will not show the per-gig preview until hosting sends those crawlers to `GET /api/link-preview/gig/:gigId` (include `inviteId` when the link is private). Hosting still serves one `index.html` for every path. Do not add that rewrite until you are ready to deploy. Set `PUBLIC_APP_URL` on the API to the site origin.
 - The Trigger Email extension on a live project will send whatever is written to `mail`. Tests used `test+…@example.com` and read the `mail` collection on the emulator.
 - Dev versus prod: this work is not deployed. Prod data and Stripe live keys were not used.
-- The checked-in Firestore rules are a stub. A normal dev session that is not using the emulators is unaffected. Emulator UI tests cannot read gigs until those rules match the rules you actually deploy.
+- The checked-in Firestore rules are still a stub. The browser spec publishes a wider ruleset to the emulator process only. A normal dev session that is not using the emulators is unaffected.
 
 ## Files that were already dirty
 
@@ -84,5 +92,5 @@ Untracked `gigin-api/exec -l --version/` was left untracked. No older uncommitte
 ## Still open
 
 - Issue 1 in `docs/open_issues_jez_mode.md` (logged-in artist regression on real prod-shaped data) is still unresolved.
-- Issue 2 is built. The API test covers link and merge. The browser merge was not reached.
+- Issue 2 is built. The browser test linked the guest account and merged only after Merge was clicked.
 - A gig can still be closed with `status: "closed"` from the older close-gig action. That path was left as it was.
