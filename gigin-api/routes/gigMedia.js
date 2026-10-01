@@ -7,6 +7,7 @@ import { db, admin, FieldValue } from "../config/admin.js";
 import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { assertVenuePerm } from "../utils/permissions.js";
+import { loadGuestPrivates, loadPrivateDetails, mergeApplicants, savePrivateDetails } from "../lib/gigPrivacy.js";
 
 const router = express.Router();
 
@@ -65,7 +66,13 @@ async function loadGigForCaller(gigId, caller) {
     error.statusCode = 404;
     throw error;
   }
-  const gig = { gigId: snap.id, ...snap.data() };
+  const details = await loadPrivateDetails(snap.id);
+  const gig = {
+    gigId: snap.id,
+    ...snap.data(),
+    media: Array.isArray(details.media) ? details.media : [],
+    mediaShareTokenHash: details.mediaShareTokenHash || null,
+  };
   if (!gig.venueId) {
     const error = new Error("Gig is missing a venue.");
     error.statusCode = 400;
@@ -78,10 +85,22 @@ async function loadGigForCaller(gigId, caller) {
 async function gigByShareToken(token) {
   const raw = String(token || "");
   if (!/^[a-f0-9]{64}$/.test(raw)) return null;
-  const snap = await db.collection("gigs").where("mediaShareTokenHash", "==", hashToken(raw)).limit(1).get();
+  const snap = await db.collectionGroup("private").where("mediaShareTokenHash", "==", hashToken(raw)).limit(1).get();
   if (snap.empty) return null;
-  const doc = snap.docs[0];
-  return { ref: doc.ref, gig: { gigId: doc.id, ...doc.data() } };
+  const details = snap.docs[0].data() || {};
+  const gigRef = snap.docs[0].ref.parent.parent;
+  if (!gigRef) return null;
+  const gigSnap = await gigRef.get();
+  if (!gigSnap.exists) return null;
+  return {
+    ref: gigSnap.ref,
+    gig: {
+      gigId: gigSnap.id,
+      ...gigSnap.data(),
+      media: Array.isArray(details.media) ? details.media : [],
+      mediaShareTokenHash: details.mediaShareTokenHash || null,
+    },
+  };
 }
 
 function safeOrigin(value) {
@@ -97,7 +116,8 @@ function safeOrigin(value) {
 const BOOKED = new Set(["confirmed", "accepted", "paid", "payment processing"]);
 
 async function confirmedActEmails(gig) {
-  const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+  const privates = await loadGuestPrivates(gig.gigId);
+  const applicants = mergeApplicants(gig.applicants, privates);
   const emails = new Set();
   for (const applicant of applicants) {
     if (!BOOKED.has(String(applicant?.status || "").toLowerCase())) continue;
@@ -198,17 +218,17 @@ router.post("/commit", requireAuth, asyncHandler(async (req, res) => {
     path,
     uploadedAt: new Date().toISOString(),
   };
-  await ref.update({ media: FieldValue.arrayUnion(item) });
+  await savePrivateDetails(gig.gigId, { media: [...existing, item] });
   return res.json({ media: [...existing, item].map(publicMedia) });
 }));
 
 router.delete("/item/:gigId/:mediaId", requireAuth, asyncHandler(async (req, res) => {
   const { gigId, mediaId } = req.params;
-  const { ref, gig } = await loadGigForCaller(gigId, req.auth.uid);
+  const { gig } = await loadGigForCaller(gigId, req.auth.uid);
   const existing = mediaList(gig);
   const item = existing.find((entry) => entry.id === mediaId);
   if (!item) return res.status(404).json({ error: "File not found." });
-  await ref.update({ media: existing.filter((entry) => entry.id !== mediaId) });
+  await savePrivateDetails(gigId, { media: existing.filter((entry) => entry.id !== mediaId) });
   if (item.path && String(item.path).startsWith(`gig-media/${gigId}/`)) {
     try { await admin.storage().bucket().file(item.path).delete({ ignoreNotFound: true }); } catch { /* keep metadata removal */ }
   }
@@ -216,15 +236,15 @@ router.delete("/item/:gigId/:mediaId", requireAuth, asyncHandler(async (req, res
 }));
 
 router.post("/:gigId/share", requireAuth, asyncHandler(async (req, res) => {
-  const { ref } = await loadGigForCaller(req.params.gigId, req.auth.uid);
+  await loadGigForCaller(req.params.gigId, req.auth.uid);
   const token = newToken();
-  await ref.update({ mediaShareTokenHash: hashToken(token) });
+  await savePrivateDetails(req.params.gigId, { mediaShareTokenHash: hashToken(token) });
   return res.json({ token });
 }));
 
 router.delete("/:gigId/share", requireAuth, asyncHandler(async (req, res) => {
-  const { ref } = await loadGigForCaller(req.params.gigId, req.auth.uid);
-  await ref.update({ mediaShareTokenHash: FieldValue.delete() });
+  await loadGigForCaller(req.params.gigId, req.auth.uid);
+  await savePrivateDetails(req.params.gigId, { mediaShareTokenHash: FieldValue.delete() });
   return res.json({ ok: true });
 }));
 

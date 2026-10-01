@@ -5,6 +5,16 @@ import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { db, admin, FieldValue, Timestamp, GeoPoint } from "../config/admin.js";
 import { assertVenuePerm, assertArtistPerm } from "../utils/permissions.js";
+import {
+  loadGuestPrivate,
+  loadGuestPrivates,
+  loadPrivateDetails,
+  publicMediaItem,
+  sanitiseApplicants,
+  savePrivateDetails,
+  splitGigUpdate,
+  venueGuestView,
+} from "../lib/gigPrivacy.js";
 
 const router = express.Router();
 
@@ -196,8 +206,12 @@ function applicantIsGuest(applicant) {
   return applicant?.type === "guest" || applicant?.guest === true;
 }
 
-async function emailGuest(applicant, { subject, text }) {
-  const to = applicant?.email;
+async function emailGuest(gigId, applicant, { subject, text }) {
+  let to = applicant?.email;
+  if (!to && gigId && applicant?.id) {
+    const priv = await loadGuestPrivate(gigId, applicant.id);
+    to = priv?.email || null;
+  }
   if (!to) return;
   await db.collection("mail").add({
     to,
@@ -440,8 +454,44 @@ router.post("/updateGigDocument", requireAuth, asyncHandler(async (req, res) => 
     if (dateTs) normalizedUpdates.date = dateTs;
   }
   
-  await gigRef.update(normalizedUpdates);
+  const { publicUpdates, privatePatch } = splitGigUpdate(normalizedUpdates);
+  if (Object.keys(privatePatch).length) await savePrivateDetails(gigId, privatePatch);
+  if (Object.keys(publicUpdates).length) await gigRef.update(publicUpdates);
   return res.json({ data: { success: true } });
+}));
+
+router.post("/privateBundle", requireAuth, asyncHandler(async (req, res) => {
+  const ids = Array.isArray(req.body?.gigIds)
+    ? [...new Set(req.body.gigIds.filter((id) => typeof id === "string" && id))].slice(0, 40)
+    : [];
+  const caller = req.auth.uid;
+  const gigs = {};
+  for (const gigId of ids) {
+    const snap = await db.doc(`gigs/${gigId}`).get();
+    if (!snap.exists) continue;
+    const gig = snap.data() || {};
+    if (!gig.venueId) continue;
+    try {
+      await assertVenuePerm(db, caller, gig.venueId, "gigs.read");
+    } catch {
+      continue;
+    }
+    const details = await loadPrivateDetails(gigId);
+    const privates = await loadGuestPrivates(gigId);
+    const guests = {};
+    privates.forEach((data, id) => {
+      guests[id] = venueGuestView(data);
+    });
+    gigs[gigId] = {
+      soundEngineerName: details.soundEngineerName || null,
+      soundEngineerContact: details.soundEngineerContact || null,
+      soundEngineerLastEdited: details.soundEngineerLastEdited || null,
+      media: Array.isArray(details.media) ? details.media.map(publicMediaItem) : [],
+      hasShareLink: Boolean(details.mediaShareTokenHash),
+      guests,
+    };
+  }
+  return res.json({ gigs });
 }));
 
 // POST /api/gigs/applyToGig
@@ -896,7 +946,7 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
   // With maxApplicants > 1 we keep them open until the slot list fills up.
   const shouldCloseOnAccept = (nonPayableGig || gigData?.kind === "Ticketed Gig") && willHitMax;
   const gigUpdate = {
-    applicants: updatedApplicants,
+    applicants: sanitiseApplicants(updatedApplicants),
     agreedFee: `${agreedFee}`,
     paid: !!nonPayableGig,
     status: shouldCloseOnAccept ? "closed" : "open",
@@ -911,7 +961,7 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
   if (!guestAccept) await declineArtistOnOtherSetsInGroup(gigData.gigId, musicianProfileId);
 
   if (guestAccept) {
-    await emailGuest(acceptedApplicant, {
+    await emailGuest(gigData.gigId, acceptedApplicant, {
       subject: `You're booked to play ${gigData.gigName || "the gig"}`,
       text: `Your application to play at ${gigData.venue?.venueName || "the venue"} has been accepted. We'll only email you about this.`,
     });
@@ -1061,10 +1111,10 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
   const confirmedAfterOM = confirmedBeforeOM + 1;
   const omShouldClose = maxApplicantsOM != null && confirmedAfterOM >= maxApplicantsOM;
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
-  await gigRef.update({ applicants: updatedApplicants, paid: true, status: omShouldClose ? "closed" : "open" });
+  await gigRef.update({ applicants: sanitiseApplicants(updatedApplicants), paid: true, status: omShouldClose ? "closed" : "open" });
   const acceptedApplicant = applicantsToProcess.find((applicant) => applicant?.id === musicianProfileId);
   if (applicantIsGuest(acceptedApplicant)) {
-    await emailGuest(acceptedApplicant, {
+    await emailGuest(gigData.gigId, acceptedApplicant, {
       subject: `You're booked to play ${gigData.gigName || "the gig"}`,
       text: `Your application to play at ${gigData.venue?.venueName || "the venue"} has been accepted. We'll only email you about this.`,
     });
@@ -1133,9 +1183,9 @@ router.post("/declineGigApplication", requireAuth, asyncHandler(async (req, res)
   const declinedApplicant = applicants.find((applicant) => applicant?.id === musicianProfileId);
   const updatedApplicants = applicants.map((a) => a.id === musicianProfileId ? { ...a, status: "declined" } : { ...a });
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
-  await gigRef.update({ applicants: updatedApplicants });
+  await gigRef.update({ applicants: sanitiseApplicants(updatedApplicants) });
   if (applicantIsGuest(declinedApplicant)) {
-    await emailGuest(declinedApplicant, {
+    await emailGuest(gigData.gigId, declinedApplicant, {
       subject: `Update on your application for ${gigData.gigName || "the gig"}`,
       text: `The venue won't be booking you for this gig. We'll only email you about this.`,
     });
@@ -1605,7 +1655,7 @@ router.post("/markApplicantsViewed", requireAuth, asyncHandler(async (req, res) 
       ? new Set(applicantIds)
       : new Set(applicants.map((a) => a?.id).filter(Boolean));
     const nextApplicants = applicants.map((a) => (a && targetSet.has(a.id)) ? { ...a, viewed: true } : a);
-    tx.update(gigRef, { applicants: nextApplicants, updatedAt: FieldValue.serverTimestamp() });
+    tx.update(gigRef, { applicants: sanitiseApplicants(nextApplicants), updatedAt: FieldValue.serverTimestamp() });
   });
   return res.json({ data: { ok: true } });
 }));

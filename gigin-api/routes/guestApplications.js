@@ -5,6 +5,13 @@ import rateLimit from "express-rate-limit";
 import { db, admin, FieldValue } from "../config/admin.js";
 import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
+import {
+  guestPrivate,
+  guestStub,
+  loadGuestPrivates,
+  mergeApplicants,
+  sanitiseApplicants,
+} from "../lib/gigPrivacy.js";
 const router = express.Router();
 
 const guestLimiter = rateLimit({
@@ -126,13 +133,22 @@ function guestsOn(gig) {
   return (Array.isArray(gig?.applicants) ? gig.applicants : []).filter(isGuest);
 }
 
+async function mergedGuests(doc) {
+  const map = await loadGuestPrivates(doc.id);
+  return mergeApplicants(guestsOn(doc.data), map);
+}
+
 async function findByToken(gigId, token) {
   if (!gigId || !token) return null;
   const manageTokenHash = hashToken(token);
   const docs = await loadGroup(gigId);
   for (const doc of docs) {
-    const applicant = guestsOn(doc.data).find((entry) => entry.manageTokenHash === manageTokenHash);
-    if (applicant) return { gig: doc, applicant, docs };
+    const snap = await db.collection(`gigs/${doc.id}/guestApplicants`).where("manageTokenHash", "==", manageTokenHash).limit(1).get();
+    if (snap.empty) continue;
+    const priv = snap.docs[0].data() || {};
+    const stub = guestsOn(doc.data).find((entry) => entry.id === snap.docs[0].id)
+      || { id: snap.docs[0].id, type: "guest", guest: true, status: "pending" };
+    return { gig: doc, applicant: { ...priv, ...stub, id: stub.id }, docs };
   }
   return null;
 }
@@ -237,13 +253,17 @@ async function upsertVenueContact({ userId, crmEntryId, actName, contactName, em
 
 async function writeApplicant(gigId, applicant, remove) {
   const ref = db.collection("gigs").doc(gigId);
+  const privRef = applicant?.id ? db.doc(`gigs/${gigId}/guestApplicants/${applicant.id}`) : null;
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) return;
     const current = Array.isArray(snap.data().applicants) ? snap.data().applicants : [];
     const next = current.filter((entry) => entry?.id !== applicant.id);
-    if (!remove) next.push(applicant);
-    tx.update(ref, { applicants: next });
+    if (!remove) next.push(guestStub({ ...applicant, gigId }));
+    tx.update(ref, { applicants: sanitiseApplicants(next) });
+    if (!privRef) return;
+    if (remove) tx.delete(privRef);
+    else tx.set(privRef, guestPrivate(applicant, gigId), { merge: true });
   });
 }
 
@@ -309,7 +329,8 @@ router.post("/lookup", asyncHandler(async (req, res) => {
   const docs = await loadGroup(gigId);
   let match = null;
   for (const doc of docs) {
-    match = guestsOn(doc.data).find((entry) => {
+    const guests = await mergedGuests(doc);
+    match = guests.find((entry) => {
       if (entry.status === "withdrawn") return false;
       return (email && emailNorm(entry.email) === email) || (phone && phoneNorm(entry.phone) === phone);
     });
@@ -331,7 +352,8 @@ router.post("/magic-link", asyncHandler(async (req, res) => {
   const docs = gigId ? await loadGroup(gigId) : [];
   let match = null;
   for (const doc of docs) {
-    match = guestsOn(doc.data).find((entry) => (email && emailNorm(entry.email) === email) || (phone && phoneNorm(entry.phone) === phone));
+    const guests = await mergedGuests(doc);
+    match = guests.find((entry) => (email && emailNorm(entry.email) === email) || (phone && phoneNorm(entry.phone) === phone));
     if (match) break;
   }
   if (match?.email) {
@@ -340,9 +362,11 @@ router.post("/magic-link", asyncHandler(async (req, res) => {
     for (const doc of docs) {
       const applicants = Array.isArray(doc.data.applicants) ? doc.data.applicants : [];
       if (!applicants.some((entry) => entry?.id === match.id)) continue;
-      await doc.ref.update({
-        applicants: applicants.map((entry) => entry?.id === match.id ? { ...entry, manageTokenHash } : entry),
-      });
+      await db.doc(`gigs/${doc.id}/guestApplicants/${match.id}`).set({
+        manageTokenHash,
+        gigId: doc.id,
+        applicantId: match.id,
+      }, { merge: true });
     }
     const url = `${process.env.BASE_URL || "https://giginmusic.com"}/gig/${match.gigId || gigId}/application/${manageToken}`;
     await sendMail({
@@ -421,7 +445,15 @@ router.post("/", asyncHandler(async (req, res) => {
   const manageTokenHash = hashToken(body.manageToken);
   const already = group.flatMap((doc) => doc.data.applicants || []).find((entry) => entry?.id === body.applicationId);
   if (already) {
-    if (already.manageTokenHash === manageTokenHash) {
+    let storedHash = null;
+    for (const doc of group) {
+      const priv = await db.doc(`gigs/${doc.id}/guestApplicants/${already.id}`).get();
+      if (priv.exists && priv.data()?.manageTokenHash) {
+        storedHash = priv.data().manageTokenHash;
+        break;
+      }
+    }
+    if (storedHash === manageTokenHash) {
       return res.json({ ok: true, applicationId: body.applicationId, already: true });
     }
     return res.status(409).json({ error: "This application already exists." });
@@ -654,9 +686,9 @@ router.post("/:token/link", requireAuth, asyncHandler(async (req, res) => {
     const applicants = Array.isArray(doc.data.applicants) ? doc.data.applicants : [];
     if (!applicants.some((entry) => entry?.id === found.applicant.id)) continue;
     await doc.ref.update({
-      applicants: applicants.map((entry) => entry?.id === found.applicant.id
+      applicants: sanitiseApplicants(applicants.map((entry) => entry?.id === found.applicant.id
         ? { ...entry, userId: req.auth.uid, ...(profile ? { linkedArtistId: profile.id } : {}) }
-        : entry),
+        : entry)),
     });
   }
   let artistLinked = false;
