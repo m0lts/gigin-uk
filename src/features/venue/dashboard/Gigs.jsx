@@ -824,10 +824,11 @@ export const Gigs = ({
                 musicianId: musician.id || musician.profileId || musician.musicianId,
                 profileId: musician.id || musician.profileId || musician.musicianId,
               };
+              const venueName = gigData?.venue?.venueName || venueProfile?.name || 'The venue';
               const { conversationId } = await getOrCreateConversation({ musicianProfile: normalizedProfile, gigData: gigData, venueProfile, type: 'cancellation' });
               await postCancellationMessage(
-                { conversationId, senderId: user.uid, message: `${gigData.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
-                  cancellationReason
+                { conversationId, senderId: user.uid, message: `${venueName} has unfortunately had to cancel because ${formatCancellationReason(
+                  cancellationReason.reason
                 )}. We apologise for any inconvenience caused.`, cancellingParty: 'venue' }
               );
               const musicianId = normalizedProfile.musicianId;
