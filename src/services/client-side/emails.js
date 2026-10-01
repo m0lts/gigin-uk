@@ -97,6 +97,7 @@ export const sendGigApplicationEmail = async ({
   profileType = 'musician',
   nonPayableGig = false,
 }) => {
+  if (!to || typeof to !== 'string') return;
   const isBand = profileType === 'band';
 
   const subject = isBand
@@ -597,7 +598,8 @@ export const sendGigAcceptedEmail = async ({
   } else {
     // For venue role, send to all active members of the artist/musician profile
     const profileId = musicianProfile?.id || musicianProfile?.profileId || musicianProfile?.musicianId;
-    recipientEmails = await getMusicianRecipientEmails(musicianProfile, profileId);
+    const found = await getMusicianRecipientEmails(musicianProfile, profileId);
+    recipientEmails = (Array.isArray(found) ? found : []).filter((email) => typeof email === 'string' && email.includes('@'));
   }
 
   // Skip sending email if no recipient emails are available
@@ -647,6 +649,11 @@ export const sendGigDeclinedEmail = async ({
   declineType = 'application',
   profileType,
 }) => {
+  if (gigData) {
+    const venueName = gigData.venue?.venueName || gigData.venueName || 'the venue';
+    if (!gigData.venue) gigData.venue = { venueName };
+    else if (!gigData.venue.venueName) gigData.venue.venueName = venueName;
+  }
   const jSDate = toJsDate(gigData.startDateTime);
   const formattedDate = jSDate.toLocaleDateString('en-UK', {
     day: 'numeric',
@@ -876,7 +883,8 @@ export const sendGigDeclinedEmail = async ({
   } else {
     // For venue role, send to all active members of the artist/musician profile
     const profileId = musicianProfile?.id || musicianProfile?.profileId || musicianProfile?.musicianId;
-    recipientEmails = await getMusicianRecipientEmails(musicianProfile, profileId);
+    const found = await getMusicianRecipientEmails(musicianProfile, profileId);
+    recipientEmails = (Array.isArray(found) ? found : []).filter((email) => typeof email === 'string' && email.includes('@'));
   }
 
   // Skip sending email if no recipient emails are available
