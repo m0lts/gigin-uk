@@ -22,7 +22,7 @@ With the checked-in `firestore.rules`, the signed-in venue's `users/{uid}` liste
 
 Control, same emulator, every `VITE_FEATURE_*` false (payments included, which is how production builds them): a thin completed venue and a fully populated venue both finished `fetchAllData`. Membership loaded, then `getGigsByVenueIds` and `getVenueRequestsByVenueIds`, then `getTemplatesByVenueIds`. Payments was false, so billing was skipped. The loading screen came off and the list showed All 1.
 
-The browser spec now publishes read-open, signed-in-write rules to the running emulator only. `firestore.rules` was not edited.
+That emulator-only override has been removed. Browser runs now use the checked-in rules, which were replaced with the live production rules and committed as `Sync firestore.rules with live production rules`. Those rules were not deployed.
 
 ## Test results
 
@@ -104,7 +104,7 @@ match /artistProfiles/{profileId} {
 }
 ```
 
-Writes for gigs, applications, media metadata, and merges stay on the API. The public `gigs` read is what the logged-out guest page needs. These snippets do not replace a full production ruleset; the checked-in file is still only the venue-hire read.
+Writes for gigs, applications, media metadata, and merges stay on the API. The public `gigs` read is what the logged-out guest page needs. The checked-in file is now the live production rules. The snippets above were the earlier proposal against the stub and were not applied. The private-subcollection proposal is in `docs/proposed_rules_changes.md`.
 
 ## Fixes
 
@@ -120,7 +120,7 @@ Writes for gigs, applications, media metadata, and merges stay on the API. The p
 - Reopening applications in the browser.
 - An oversize media file in the browser. Guest press-photo upload still cannot get a signed URL on the emulator (`Cannot sign data without client_email`). Gig media on the emulator uses the API write above. A signed `PUT` to Cloud Storage, on Cloud Run, is still unproven.
 - Open Graph as a crawler would see it. Hosting still serves one `index.html` for every path.
-- The public gig page throws `Rendered fewer hooks than expected` when `getGigById` is denied. That was seen only under the checked-in rules.
+- The public gig page threw `Rendered fewer hooks than expected` when `getGigById` was denied. That was the stub rules. `gigs/{id}` is publicly readable in the live rules, and the guest page loaded in the later runs.
 - Issue 1 in `docs/open_issues_jez_mode.md` is still unresolved. Do not merge to `main` on the strength of this run.
 
 `npm run build` passed (`vite build`, about 9.4s). The existing chunk-size warning is unchanged.
@@ -139,11 +139,11 @@ Writes for gigs, applications, media metadata, and merges stay on the API. The p
 
 ## Check by hand
 
-- Cloud Run service account for the API needs permission to sign Storage URLs: `iam.serviceAccounts.signBlob` (Service Account Token Creator on itself) and permission to create objects in the dev bucket. Confirm a gig media upload on giginltd-dev. The guest press photo did upload in the browser test against the emulator.
+- Cloud Run service account for the API needs permission to sign Storage URLs: `iam.serviceAccounts.signBlob` (Service Account Token Creator on itself) and permission to create objects in the dev bucket. Confirm a gig media upload on giginltd-dev. Guest press-photo upload on the emulator still returns 500 (`Cannot sign data without client_email`). Gig media on the emulator goes through the API.
 - WhatsApp and iMessage will not show the per-gig preview until hosting sends those crawlers to `GET /api/link-preview/gig/:gigId` (include `inviteId` when the link is private). Hosting still serves one `index.html` for every path. Do not add that rewrite until you are ready to deploy. Set `PUBLIC_APP_URL` on the API to the site origin.
 - The Trigger Email extension on a live project will send whatever is written to `mail`. Tests used `test+…@example.com` and read the `mail` collection on the emulator.
 - Dev versus prod: this work is not deployed. Prod data and Stripe live keys were not used.
-- The checked-in Firestore rules are still a stub. The browser spec publishes a wider ruleset to the emulator process only. A normal dev session that is not using the emulators is unaffected.
+- The checked-in `firestore.rules` is now the live production text. It was not deployed. The browser spec no longer publishes a wider ruleset onto the emulator.
 
 ## Files that were already dirty
 
@@ -154,3 +154,64 @@ Untracked `gigin-api/exec -l --version/` was left untracked. No older uncommitte
 - Issue 1 in `docs/open_issues_jez_mode.md` (logged-in artist regression on real prod-shaped data) is still unresolved.
 - Issue 2 is built. The browser test linked the guest account and merged only after Merge was clicked.
 - A gig can still be closed with `status: "closed"` from the older close-gig action. That path was left as it was.
+
+## Live rules and private gig data
+
+`firestore.rules` was replaced with the live production rules and committed. Nothing was deployed. The first browser run on those rules, before sensitive fields were moved, used the real file (the emulator-only allow-all publish was removed).
+
+| # | Result |
+| --- | --- |
+| 1 invite | Pass |
+| 2 guest apply | Pass |
+| 3 existing account | Pass |
+| 4 accept and decline | Pass |
+| 5 close applications | Pass |
+| 6 sound engineer and notes | Pass |
+| 7 link and merge | Pass |
+| 8b private-link download | Pass |
+| 8 share link, wrong type, revoke | Fail. Test 8b had already created a link, so the button read "New private link" and the test waited for "Create private link". |
+| 9 artist apply, cancel, decline, delete | Pass |
+| 10 console | Fail. `venueHireOpportunities` has no match in the live rules, so the dashboard listener is denied. Declining an artist also threw in `sendGigDeclinedEmail` because `gig.venue` was missing, and `mail` documents were written with `to: undefined`. |
+
+`venueHireOpportunities` is not in the live rules. The listener error is ignored in the browser spec. The rules file was not edited to add it.
+
+### Where sensitive fields were stored
+
+All of these were on the world-readable `gigs/{id}` document, either as top-level fields or inside `applicants[]`.
+
+| Field | Written | Read |
+| --- | --- | --- |
+| Guest email, phone, instagram | `guestApplications.js` `applicantRecord` / `writeApplicant`; magic-link and edit rewrite the same array | Guest manage and withdraw, lookup, CRM upsert, accept and decline emails in `gigs.js`, `confirmedActEmails` in `gigMedia.js`, venue guest panel in `GigApplications.jsx`, confirmed-act notes in `GigDetailsPanel.jsx`, `Overview.jsx` `guestAsMusician`, `ArtistCRM.jsx` previously-booked guests |
+| Links, note, tech needs (`needs`, `bringOwn`), members, assets | Same guest write | Guest manage page, venue guest panel, confirmed-act requirements |
+| Press photo URL and photo path | Same guest write, after `publicDownloadUrl` | Venue guest panel and booked tiles |
+| `manageTokenHash` | Guest create, and magic-link rewrote it onto `applicants[]` | `findByToken` scanned `applicants[]` |
+| Sound engineer name, contact, last edited | `GigDetailsPanel` `saveSoundEngineer` via `POST /api/gigs/updateGigDocument` | Gig details tile, from the client gig snapshot |
+| `media[]` paths and `mediaShareTokenHash` | `gigMedia.js` commit, share, revoke | Media panel from the gig snapshot; public share routes queried `gigs` where `mediaShareTokenHash` matched |
+| `internalNotes` | `GigDetailsPanel` and the gig sidebar via `updateGigDocument` | Notes tile. Left on the public gig. |
+
+### What moved
+
+Guest email, phone, instagram, links, note, tech needs, press photo, assets, members, and `manageTokenHash` now go to `gigs/{gigId}/guestApplicants/{applicantId}`. The `applicants[]` stub keeps id, type `guest`, status, display name, set ids, `userId` and `linkedArtistId` when linked, timestamps, and the non-contact fields the running order already uses (`viewed`, `invited`, `guest`, `sentBy`, `fee`).
+
+Sound engineer name and contact, `media[]`, and `mediaShareTokenHash` go to `gigs/{gigId}/private/details`. Share-token lookup is a collection-group query on `private`. The venue gig page, Overview, and previously-booked Contacts load those fields from `POST /api/gigs/privateBundle`. Accept, decline, and CRM upsert read the private guest document. Client writes of `applicants` are stripped back to the stub before they are saved.
+
+`internalNotes` is still on `gigs/{id}`. That document is publicly readable, so the notes are a public-read risk.
+
+`system/metadata` allows anyone to create, read, and update it, and nobody to delete it. The only caller is `incrementProClicks` in `src/services/client-side/reports.js`, which creates the document and increments `proClicks`.
+
+Proposed rules for `guestApplicants` and `private` are in `docs/proposed_rules_changes.md` only. `firestore.rules` was not edited for them and nothing was deployed.
+
+### After the move
+
+`gigin-api/test/overnight.test.js` passed (1 test, about 8.8s). A signed-out read is the Admin SDK read of the public gig document in that test, plus the browser spec's unauthenticated emulator REST read. Neither contains the guest email, the manage token, the sound-engineer contact, or a `gig-media/` path.
+
+Second browser run, same live rules, all `VITE_FEATURE_*` false:
+
+| # | Result |
+| --- | --- |
+| 1–7, 8b, 8, 9 | Pass. Test 9 includes the mixed guest and artist gig, calendar cancel, decline, and delete. |
+| 10 | Fail. Test 2 logged a 500 from `POST /api/guest-applications/upload-url` (`Cannot sign data without client_email`). The guest application still completed. Test 8 logged a 404 for `GET /api/gig-media/share/:token` after Revoke, which is the response the test asserts as "This link is no longer available." |
+
+`npm run build` passed (`vite build`, about 73s). The existing chunk-size warning is unchanged.
+
+A second full browser run was the retry. Test 10 failed again, for the two console lines above, so it was left there.
