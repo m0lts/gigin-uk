@@ -18,6 +18,37 @@ import { TextLogo } from '../../features/shared/ui/logos/Logos';
 import { toJsDate } from '../utils/dates';
 import { getArtistProfileMembers } from './artists';
 
+async function queueMail(payload) {
+  const to = payload?.to;
+  if (typeof to !== 'string' || !to.includes('@')) {
+    console.warn('Skipped mail document: missing to address');
+    return;
+  }
+  await addDoc(collection(firestore, 'mail'), payload);
+}
+
+async function resolveVenueName(gigData, venueProfile) {
+  const named = gigData?.venue?.venueName || gigData?.venueName || venueProfile?.name || venueProfile?.venueName;
+  if (named) return named;
+  const venueId = gigData?.venueId || venueProfile?.venueId || venueProfile?.id;
+  if (venueId) {
+    try {
+      const snap = await getDoc(doc(firestore, 'venueProfiles', venueId));
+      const data = snap.exists() ? snap.data() : null;
+      if (data?.name || data?.venueName) return data.name || data.venueName;
+    } catch (error) {
+      console.warn('Could not look up venue name', venueId, error);
+    }
+  }
+  return 'the venue';
+}
+
+function stampVenueName(gigData, venueName) {
+  if (!gigData) return;
+  if (!gigData.venue || typeof gigData.venue !== 'object') gigData.venue = { venueName };
+  else if (!gigData.venue.venueName) gigData.venue.venueName = venueName;
+}
+
 /**
  * Sends an email using the Firestore 'mail' collection.
  *
@@ -29,8 +60,7 @@ import { getArtistProfileMembers } from './artists';
  * @returns {Promise<void>}
  */
 export const sendEmail = async ({ to, subject, text, html }) => {
-  const mailRef = collection(firestore, 'mail');
-  await addDoc(mailRef, {
+  await queueMail({
     to,
     message: {
       subject,
@@ -236,8 +266,7 @@ export const sendGigApplicationEmail = async ({
 
   const html = htmlBase(isBand ? htmlBandInner : htmlSoloInner);
 
-  const mailRef = collection(firestore, 'mail');
-  await addDoc(mailRef, {
+  await queueMail({
     to,
     message: {
       subject,
@@ -379,8 +408,7 @@ export const sendNegotiationEmail = async ({
 
   const html = htmlBase(inner);
 
-  const mailRef = collection(firestore, 'mail');
-  await addDoc(mailRef, {
+  await queueMail({
     to,
     message: { subject, text, html },
   });
@@ -409,7 +437,8 @@ export const sendGigAcceptedEmail = async ({
   isNegotiated = false,
   nonPayableGig = false,
 }) => {
-  const venueName = gigData.venue?.venueName ?? venueProfile?.name ?? 'the venue';
+  const venueName = await resolveVenueName(gigData, venueProfile);
+  stampVenueName(gigData, venueName);
   const jSDate = toJsDate(gigData.startDateTime);
   const formattedDate = jSDate.toLocaleDateString('en-UK', {
     day: 'numeric',
@@ -614,10 +643,9 @@ export const sendGigAcceptedEmail = async ({
   }
 
   // Send email to all recipients
-  const mailRef = collection(firestore, 'mail');
   await Promise.all(
     recipientEmails.map(email =>
-      addDoc(mailRef, {
+      queueMail({
         to: email,
         message: {
           subject: subjectMap[userRole],
@@ -649,18 +677,13 @@ export const sendGigDeclinedEmail = async ({
   declineType = 'application',
   profileType,
 }) => {
-  if (gigData) {
-    const venueName = gigData.venue?.venueName || gigData.venueName || 'the venue';
-    if (!gigData.venue) gigData.venue = { venueName };
-    else if (!gigData.venue.venueName) gigData.venue.venueName = venueName;
-  }
+  stampVenueName(gigData, await resolveVenueName(gigData, venueProfile));
   const jSDate = toJsDate(gigData.startDateTime);
   const formattedDate = jSDate.toLocaleDateString('en-UK', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
-  const mailRef = collection(firestore, 'mail');
   // Use profileType if provided, otherwise check musicianProfile (which may be null for artist profiles)
   const isBand = profileType === 'band' || (musicianProfile?.bandProfile === true);
   const musicianName = musicianProfile?.name || 'Artist';
@@ -900,7 +923,7 @@ export const sendGigDeclinedEmail = async ({
   // Send email to all recipients
   await Promise.all(
     recipientEmails.map(email =>
-      addDoc(mailRef, {
+      queueMail({
         to: email,
         message: {
           subject: subjectMap[userRole][declineType],
@@ -932,13 +955,13 @@ export const sendCounterOfferEmail = async ({
   newFee,
   profileType,
 }) => {
+  stampVenueName(gigData, await resolveVenueName(gigData, venueProfile));
   const jSDate = toJsDate(gigData.startDateTime);
   const formattedDate = jSDate.toLocaleDateString('en-UK', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
-  const mailRef = collection(firestore, 'mail');
   // Use profileType if provided, otherwise check musicianProfile (which may be null for artist profiles)
   const isBand = profileType === 'band' || (musicianProfile?.bandProfile === true);
   const name = musicianProfile?.name || 'Artist';
@@ -1117,7 +1140,7 @@ export const sendCounterOfferEmail = async ({
   // Send email to all recipients
   await Promise.all(
     recipientEmails.map(email =>
-      addDoc(mailRef, {
+      queueMail({
         to: email,
         message: { subject, text, html },
       })
@@ -1150,6 +1173,7 @@ export const sendInvitationAcceptedEmailToVenue = async ({
   nonPayableGig = false,
   baseUrl,
 }) => {
+  stampVenueName(gigData, await resolveVenueName(gigData, venueProfile));
   const origin =
     baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
 
@@ -1286,8 +1310,7 @@ export const sendInvitationAcceptedEmailToVenue = async ({
 
   const html = htmlBase(subject, inner);
 
-  const mailRef = collection(firestore, 'mail');
-  await addDoc(mailRef, {
+  await queueMail({
     to: venueEmail,
     message: { subject, text, html },
   });
@@ -1412,8 +1435,7 @@ export const sendBandInviteEmail = async ({ to, band, link, baseUrl }) => {
   const html = htmlBase(`You're invited to join ${band.name} on Gigin`, inner);
 
   // Queue the email for the Trigger Email extension
-  const mailRef = collection(firestore, 'mail');
-  await addDoc(mailRef, {
+  await queueMail({
     to,
     message: { subject, text, html },
   });
@@ -1538,8 +1560,7 @@ export const sendVenueInviteEmail = async ({ to, venue, link, baseUrl }) => {
   const html = htmlBase(`You're invited to join ${venue.name} on Gigin`, inner);
 
   // Queue the email for the Trigger Email extension
-  const mailRef = collection(firestore, 'mail');
-  await addDoc(mailRef, {
+  await queueMail({
     to,
     message: { subject, text, html },
   });
@@ -1652,8 +1673,7 @@ export const sendArtistInviteEmail = async ({ to, artistProfile, link }) => {
 
   const html = htmlBase(`You're invited to join ${artistProfile.name} on Gigin`, inner);
 
-  const mailRef = collection(firestore, "mail");
-  await addDoc(mailRef, {
+  await queueMail({
     to,
     message: { subject, text, html },
   });
@@ -1776,8 +1796,7 @@ export const sendGigInviteEmail = async ({ to, userName, venueName, date, gigLin
 
   const html = htmlBase(`${userName} has invited you to play at ${venueName}`, inner);
 
-  const mailRef = collection(firestore, "mail");
-  await addDoc(mailRef, {
+  await queueMail({
     to,
     message: { subject, text, html },
   });
@@ -1916,8 +1935,7 @@ export const sendTestimonialRequestEmail = async ({
   const html = htmlBase(`Gigin Testimonial Request From ${musicianName}`, inner);
 
   // Queue the email for the Trigger Email extension
-  const mailRef = collection(firestore, 'mail');
-  await addDoc(mailRef, {
+  await queueMail({
     to,
     message: { subject, text, html },
   });
@@ -2077,10 +2095,9 @@ export const sendDisputeLoggedEmail = async ({ musicianProfile, gigData, baseUrl
   }
 
   // Send email to all recipients
-  const mailRef = collection(firestore, 'mail');
   await Promise.all(
     recipientEmails.map(email =>
-      addDoc(mailRef, {
+      queueMail({
         to: email,
         message: { subject, text, html },
       })
@@ -2237,8 +2254,7 @@ We’ve received your report regarding ${musicianProfile.name} for the gig at ${
 
   const html = htmlBase(subject, inner);
 
-  const mailRef = collection(firestore, 'mail');
-  await addDoc(mailRef, {
+  await queueMail({
     to: venueProfile.email,
     message: { subject, text, html },
   });

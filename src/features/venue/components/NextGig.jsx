@@ -122,7 +122,7 @@ export const NextGig = ({ nextGig, musicianProfile, setNextGigModal }) => {
             const handleMusicianCancellation = async (musician) => {
                 const { conversationId } = await getOrCreateConversation({ musicianProfile: musician, gigData: nextGig, venueProfile, type: 'cancellation' });
                 await postCancellationMessage(
-                  { conversationId, senderId: user.uid, message: `${nextGig.venue.venueName} has unfortunately had to cancel because ${formatCancellationReason(
+                  { conversationId, senderId: user.uid, message: `${nextGig?.venue?.venueName || venueProfile?.name || 'The venue'} has unfortunately had to cancel because ${formatCancellationReason(
                     cancellationReason
                   )}. We apologise for any inconvenience caused.`, cancellingParty: 'venue' }
                 );
