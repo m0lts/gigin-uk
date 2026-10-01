@@ -131,6 +131,17 @@ test('guest apply, close applications, linking, and media share', async () => {
   });
   assert.equal(applied.status, 200, JSON.stringify(applied.json));
 
+  const publicGig = (await db.doc(`gigs/${slotA}`).get()).data();
+  const publicText = JSON.stringify(publicGig);
+  assert.equal(publicText.includes(guestEmail), false);
+  assert.equal(publicText.includes('07000000000'), false);
+  assert.equal(publicText.includes(manageToken), false);
+  assert.equal(publicGig.soundEngineerContact, undefined);
+  assert.equal(publicGig.mediaShareTokenHash, undefined);
+  const privateGuest = (await db.doc(`gigs/${slotA}/guestApplicants/${applicationId}`).get()).data();
+  assert.equal(privateGuest.email, guestEmail);
+  assert.equal(privateGuest.manageTokenHash.length, 64);
+
   const mail = await db.collection('mail').where('to', '==', guestEmail).get();
   assert.ok(mail.size >= 1, 'confirmation email should be queued in mail');
 
@@ -236,8 +247,12 @@ test('guest apply, close applications, linking, and media share', async () => {
     },
   });
   const saved = (await db.doc(`gigs/${slotA}`).get()).data();
-  assert.equal(saved.soundEngineerName, 'Sam');
+  assert.equal(saved.soundEngineerName, undefined);
+  assert.equal(saved.soundEngineerContact, undefined);
   assert.equal(saved.internalNotes, 'Bring a spare lead');
+  const privateDetails = (await db.doc(`gigs/${slotA}/private/details`).get()).data();
+  assert.equal(privateDetails.soundEngineerName, 'Sam');
+  assert.equal(privateDetails.soundEngineerContact, '07000000001');
 
   const guestUser = await signUp(guestEmail);
   const guestProfile = `artist-${crypto.randomUUID()}`;

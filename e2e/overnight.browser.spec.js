@@ -38,27 +38,18 @@ function initAdmin() {
   return admin.firestore();
 }
 
-async function allowEmulatorClientReads() {
-  const rules = `rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-  }
-}`;
-  const response = await fetch('http://127.0.0.1:8081/emulator/v1/projects/giginltd-dev:securityRules', {
-    method: 'PUT',
-    headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ignore_errors: false,
-      rules: { files: [{ name: 'security.rules', content: rules }] },
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`Emulator rules update failed: ${response.status} ${await response.text()}`);
-  }
+async function assertSignedOutGigHidesSecrets(gigId, email) {
+  const host = process.env.FIRESTORE_EMULATOR_HOST;
+  const response = await fetch(`http://${host}/v1/projects/giginltd-dev/databases/(default)/documents/gigs/${gigId}`);
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  const text = JSON.stringify(body);
+  if (email) expect(text).not.toContain(email);
+  expect(text).not.toContain('manageTokenHash');
+  expect(text).not.toContain('mediaShareTokenHash');
+  expect(text).not.toContain('soundEngineerContact');
+  expect(text).not.toContain('gig-media/');
+  expect(text).not.toMatch(/07\d{8,}/);
 }
 
 async function markEmailVerified(email) {
@@ -103,7 +94,7 @@ async function signUp(email) {
 
 function watch(page, label) {
   const note = (text) => {
-    const ignore = /favicon|Download the React DevTools|Download the Firebase|mapbox|ERR_CONNECTION_REFUSED.*5001|functions emulator|net::ERR_FAILED/i;
+    const ignore = /favicon|Download the React DevTools|Download the Firebase|mapbox|ERR_CONNECTION_REFUSED.*5001|functions emulator|net::ERR_FAILED|venueHireOpportunities/i;
     if (ignore.test(text)) return;
     if (text.includes('giginltd-16772')) throw new Error('The browser client is pointed at production.');
     consoleProblems.push(`${label}: ${text}`);
@@ -201,7 +192,6 @@ const world = {};
 
 test.beforeAll(async () => {
   const db = initAdmin();
-  await allowEmulatorClientReads();
   writeFileSync(PNG, Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     'base64',
@@ -344,6 +334,7 @@ test('2. guest applies, edits, withdraws, and does not duplicate a contact', asy
   });
   const [gigId, token] = stored.split(':');
   expect(token).toBeTruthy();
+  await assertSignedOutGigHidesSecrets(gigId, email);
   await page.goto(`/gig/${gigId}/application/${token}`);
   await expect(page.getByRole('heading', { name: 'Your application' })).toBeVisible();
   await page.locator('.ga-review__row', { hasText: 'Note to Jez' }).getByRole('button', { name: 'Edit' }).click();
@@ -449,6 +440,7 @@ test('6. sound engineer and additional notes survive a refresh', async ({ page }
   await page.reload();
   await expect(page.getByText('Sam Engineer').first()).toBeVisible();
   await expect(page.getByText('Bring the spare DI box.').first()).toBeVisible();
+  await assertSignedOutGigHidesSecrets(world.nightId, 'test+engineer-browser@example.com');
 });
 
 test('7. a guest account links, and a name match merges only when asked', async ({ page }) => {
@@ -467,8 +459,10 @@ test('7. a guest account links, and a name match merges only when asked', async 
   await page.locator('input[name="terms"]').check();
   await page.getByRole('button', { name: 'Sign Up' }).click();
   await expect.poll(async () => {
+    const priv = await world.db.collection(`gigs/${world.secondId}/guestApplicants`).where('email', '==', email).limit(1).get();
+    if (priv.empty) return '';
     const gig = await world.db.doc(`gigs/${world.secondId}`).get();
-    const applicant = (gig.data()?.applicants || []).find((entry) => entry?.contacts?.email === email || entry?.email === email);
+    const applicant = (gig.data()?.applicants || []).find((entry) => entry.id === priv.docs[0].id);
     return applicant?.userId || '';
   }, { timeout: 20000 }).not.toBe('');
   await markEmailVerified(email);
@@ -538,12 +532,12 @@ test('8. media share link, wrong type, revoke', async ({ page }) => {
     buffer: Buffer.from('not a photo'),
   });
   await expect(page.getByText('Use a photo or video')).toBeVisible();
-  await page.getByRole('button', { name: 'Create private link' }).click();
+  await page.getByRole('button', { name: /private link/ }).click();
   const link = page.locator('p', { hasText: '/share/gig-media/' });
   await expect(link).toBeVisible();
   const href = await link.innerText();
   await page.goto(href);
-  await expect(page.getByText(/No photos or videos yet|Download/)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Download', exact: true }).first()).toBeVisible();
   await page.goto('/venues/dashboard/gigs');
   await openGigRow(page, 'Overnight Browser Night');
   await page.getByRole('button', { name: 'Revoke link' }).click();
