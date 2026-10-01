@@ -5,7 +5,9 @@
  */
 import { test, expect } from '@playwright/test';
 import { createRequire } from 'node:module';
-import { writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -401,7 +403,7 @@ test('4. venue accepts one guest and declines another', async ({ page }) => {
   await page.locator('.venue-gig-running__applicant', { hasText: 'Browser Act Declined' }).getByRole('button', { name: 'Decline' }).click();
   await page.locator('.venue-gig-running__applicant', { hasText: 'Browser Act Accepted' }).getByRole('button', { name: 'Accept' }).click();
   await keepOpenIfAsked(page);
-  await expect(page.getByText(/Who is playing|Browser Act Accepted/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Who is playing' })).toBeVisible();
   await page.goto('/venues/dashboard/artists');
   await expect(page.getByText('Browser Act Accepted')).toBeVisible({ timeout: 20000 });
 });
@@ -475,11 +477,53 @@ test('7. a guest account links, and a name match merges only when asked', async 
   await expect(page.getByText(/This looks like/)).toBeVisible({ timeout: 20000 });
   const before = await world.db.doc('users/' + world.venue.uid + '/artistCRM/merge-contact').get();
   expect(before.data()?.artistId || null).toBeFalsy();
-  await page.getByRole('button', { name: 'Merge' }).click();
+  await page.getByRole('button', { name: 'Merge', exact: true }).click();
   await expect.poll(async () => {
     const after = await world.db.doc(`users/${world.venue.uid}/artistCRM/merge-contact`).get();
     return after.exists ? after.data()?.artistId || '' : 'deleted';
   }).not.toBe('');
+});
+
+test('8b. private link downloads one file and a zip of that file', async ({ page }) => {
+  watch(page, 'test 8b');
+  let remoteUpload = '';
+  page.on('request', (request) => {
+    if (request.method() !== 'PUT') return;
+    const host = new URL(request.url()).hostname;
+    if (host !== '127.0.0.1' && host !== 'localhost' && host !== '::1') remoteUpload = host;
+  });
+  await page.route('**/*', (route) => {
+    const request = route.request();
+    if (request.method() === 'PUT') {
+      const host = new URL(request.url()).hostname;
+      if (host !== '127.0.0.1' && host !== 'localhost' && host !== '::1') return route.abort();
+    }
+    return route.continue();
+  });
+  await login(page, world.venue.email);
+  await openGigRow(page, 'Overnight Browser Night');
+  const media = page.locator('section.gig-details-tile').filter({ has: page.getByRole('heading', { name: 'Photos and videos' }) });
+  await media.locator('input[type="file"]').setInputFiles(PNG);
+  if (remoteUpload) throw new Error(`Refusing to upload to ${remoteUpload}`);
+  await expect(page.getByText('Uploaded.')).toBeVisible({ timeout: 20000 });
+  await page.getByRole('button', { name: 'Create private link' }).click();
+  const href = await page.locator('p', { hasText: '/share/gig-media/' }).innerText();
+  await page.goto(href);
+  const fileHref = await page.getByRole('link', { name: 'Download', exact: true }).first().getAttribute('href');
+  const file = await page.request.get(fileHref);
+  expect(file.ok()).toBeTruthy();
+  expect(file.headers()['content-disposition'] || '').toContain('overnight-browser-pixel.png');
+  expect((await file.body()).length).toBeGreaterThan(8);
+  const zipHref = await page.getByRole('link', { name: 'Download all as zip' }).getAttribute('href');
+  const zip = await page.request.get(zipHref);
+  expect(zip.ok()).toBeTruthy();
+  const dir = mkdtempSync(path.join(tmpdir(), 'gig-media-'));
+  const zipPath = path.join(dir, 'media.zip');
+  writeFileSync(zipPath, await zip.body());
+  const listing = execFileSync('python3', ['-c', 'import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); print(len(z.namelist())); print("\\n".join(z.namelist()))', zipPath], { encoding: 'utf8' });
+  const [count, ...names] = listing.trim().split('\n');
+  expect(count).toBe('1');
+  expect(names).toEqual(['1-overnight-browser-pixel.png']);
 });
 
 test('8. media share link, wrong type, revoke', async ({ page }) => {
@@ -521,6 +565,17 @@ async function applyAsArtist(page, gigId, message) {
   }
 }
 
+async function deleteGigFromTable(page, name) {
+  await page.goto('/venues/dashboard/gigs');
+  await page.locator('.loading-screen').waitFor({ state: 'detached', timeout: 20000 });
+  await page.getByRole('button', { name: 'Table' }).click();
+  const row = page.getByRole('row', { name: new RegExp(name) }).first();
+  await row.getByRole('button', { name: 'Gig options' }).click();
+  await page.getByRole('button', { name: /^Delete/ }).click();
+  await page.locator('.modal').getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByText(name)).toHaveCount(0);
+}
+
 test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig is cancelled and deleted', async ({ page }) => {
   watch(page, 'test 9');
   await applyAsGuest(page, world.regressionId, {
@@ -546,22 +601,27 @@ test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig
   await keepOpenIfAsked(page);
   await page.getByRole('button', { name: 'Options' }).click();
   await page.getByRole('button', { name: 'Cancel gig' }).click();
+  await expect(page).toHaveURL(/\/venues\/dashboard\/gigs\/?$/);
+  await page.getByRole('button', { name: /Overnight Browser Regression/ }).first().click();
+  await page.getByRole('button', { name: 'More actions' }).click();
+  const cancel = page.getByRole('button', { name: 'Cancel gig' });
+  await expect(cancel).toBeEnabled();
+  await cancel.click();
   await page.locator('#cancellation-reason').selectOption('availability');
-  await page.getByRole('button', { name: 'Cancel Gig' }).last().click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(page.getByText('Gig cancellation successful.')).toBeVisible({ timeout: 20000 });
+  await deleteGigFromTable(page, 'Overnight Browser Regression');
+  const cancelled = await world.db.doc(`gigs/${world.regressionId}`).get();
+  expect(cancelled.exists).toBe(false);
 
   await openGigRow(page, 'Overnight Browser Decline');
-  await page.getByRole('button', { name: 'Decline' }).first().click();
-  await expect(page.getByText(/declined/i).first()).toBeVisible({ timeout: 20000 });
+  await page.locator('.venue-gig-running__applicant').getByRole('button', { name: 'Decline' }).click();
+  await expect.poll(async () => {
+    const doc = await world.db.doc(`gigs/${world.declineGigId}`).get();
+    return (doc.data()?.applicants || []).some((entry) => entry.status === 'declined');
+  }).toBe(true);
 
-  await page.goto('/venues/dashboard/gigs');
-  await page.locator('.loading-screen').waitFor({ state: 'detached', timeout: 20000 });
-  await page.getByRole('button', { name: 'Table' }).click();
-  const row = page.getByRole('row', { name: /Overnight Browser Delete/ }).first();
-  await row.getByRole('button', { name: 'Gig options' }).click();
-  await page.getByRole('button', { name: /^Delete/ }).click();
-  await page.getByRole('button', { name: 'Delete' }).click();
-  await expect(page.getByText('Overnight Browser Delete')).toHaveCount(0);
+  await deleteGigFromTable(page, 'Overnight Browser Delete');
 });
 
 test('10. no unexpected browser errors', async () => {
