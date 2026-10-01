@@ -12,6 +12,7 @@ import {
   mergeApplicants,
   sanitiseApplicants,
 } from "../lib/gigPrivacy.js";
+import { queueMail } from "../lib/queueMail.js";
 const router = express.Router();
 
 const guestLimiter = rateLimit({
@@ -277,8 +278,14 @@ async function publicDownloadUrl(path) {
 }
 
 async function sendMail({ to, subject, text, html }) {
-  if (!to) return;
-  await db.collection("mail").add({ to, message: { subject, text, html } });
+  await queueMail({ to, message: { subject, text, html } });
+}
+
+let directStorageUpload = Boolean(process.env.STORAGE_EMULATOR_HOST);
+
+function directUploadUrl(req, path) {
+  const host = req.get("host");
+  return `${req.protocol}://${host}/api/guest-applications/direct-upload?path=${encodeURIComponent(path)}`;
 }
 
 function emailShell({ title, inner, buttonLabel, buttonUrl, footer }) {
@@ -311,14 +318,42 @@ router.post("/upload-url", asyncHandler(async (req, res) => {
   }
   const safe = String(name || "file").replace(/[^\w.\-]+/g, "-").slice(0, 80);
   const path = `guest-applications/${applicationId}/${kind === "photo" ? "photo" : crypto.randomUUID()}-${safe}`;
-  const bucket = admin.storage().bucket();
-  const [uploadUrl] = await bucket.file(path).getSignedUrl({
-    version: "v4",
-    action: "write",
-    expires: Date.now() + 15 * 60 * 1000,
-    contentType: type,
-  });
-  return res.json({ uploadUrl, path });
+  if (directStorageUpload) {
+    return res.json({ uploadUrl: directUploadUrl(req, path), path, method: "POST" });
+  }
+  try {
+    const [uploadUrl] = await admin.storage().bucket().file(path).getSignedUrl({
+      version: "v4",
+      action: "write",
+      expires: Date.now() + 15 * 60 * 1000,
+      contentType: type,
+    });
+    return res.json({ uploadUrl, path, method: "PUT" });
+  } catch (error) {
+    if (!/client_email/.test(String(error?.message || ""))) throw error;
+    directStorageUpload = true;
+    return res.json({ uploadUrl: directUploadUrl(req, path), path, method: "POST" });
+  }
+}));
+
+router.post("/direct-upload", express.raw({ type: "*/*", limit: "20mb" }), asyncHandler(async (req, res) => {
+  if (!directStorageUpload) return res.status(404).json({ error: "Not found." });
+  const path = String(req.query.path || "");
+  if (!/^guest-applications\/[a-zA-Z0-9-]{16,80}\/[^/]+$/.test(path) || path.includes("..")) {
+    return res.status(400).json({ error: "Upload path is not valid." });
+  }
+  const fileName = path.split("/").pop();
+  const isPhoto = fileName.startsWith("photo");
+  const type = String(req.get("content-type") || "").split(";")[0].toLowerCase();
+  const allowed = isPhoto ? IMAGE_TYPES : ASSET_TYPES;
+  const limit = isPhoto ? IMAGE_LIMIT : ASSET_LIMIT;
+  if (!allowed.has(type)) return res.status(400).json({ error: isPhoto ? "Use a JPG or PNG." : "Files must be 20 MB or smaller." });
+  const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || []);
+  if (!body.length || body.length > limit) {
+    return res.status(400).json({ error: isPhoto ? "Photos must be 10 MB or smaller." : "Files must be 20 MB or smaller." });
+  }
+  await admin.storage().bucket().file(path).save(body, { contentType: type });
+  return res.json({ ok: true });
 }));
 
 router.post("/lookup", asyncHandler(async (req, res) => {

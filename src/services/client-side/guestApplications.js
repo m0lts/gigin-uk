@@ -58,7 +58,7 @@ export async function uploadGuestFile({ applicationId, file, kind }) {
     },
   });
   const response = await fetch(signed.uploadUrl, {
-    method: 'PUT',
+    method: signed.method || 'PUT',
     headers: { 'Content-Type': file.type || 'application/octet-stream' },
     body: file,
   });
