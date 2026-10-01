@@ -93,15 +93,34 @@ async function signUp(email) {
 }
 
 function watch(page, label) {
+  let revokedShare404 = 0;
+  page.on('response', (response) => {
+    try {
+      const pathname = new URL(response.url()).pathname;
+      if (response.status() === 404 && /\/api\/gig-media\/share\/[a-f0-9]+$/.test(pathname)) revokedShare404 += 1;
+    } catch {
+      /* not a URL */
+    }
+  });
   const note = (text) => {
-    const ignore = /favicon|Download the React DevTools|Download the Firebase|mapbox|ERR_CONNECTION_REFUSED.*5001|functions emulator|net::ERR_FAILED|venueHireOpportunities/i;
+    const ignore = /favicon|Download the React DevTools|Download the Firebase|mapbox|ERR_CONNECTION_REFUSED.*5001|functions emulator|net::ERR_FAILED/i;
     if (ignore.test(text)) return;
+    if (/status of 404/.test(text) && revokedShare404 > 0) {
+      revokedShare404 -= 1;
+      return;
+    }
     if (text.includes('giginltd-16772')) throw new Error('The browser client is pointed at production.');
     consoleProblems.push(`${label}: ${text}`);
   };
   page.on('pageerror', (error) => note(error.message));
   page.on('console', (message) => {
-    if (message.type() === 'error') note(message.text());
+    if (message.type() !== 'error') return;
+    const text = message.text();
+    if (/status of 404/.test(text)) {
+      setTimeout(() => note(text), 300);
+      return;
+    }
+    note(text);
   });
 }
 
@@ -532,7 +551,12 @@ test('8. media share link, wrong type, revoke', async ({ page }) => {
     buffer: Buffer.from('not a photo'),
   });
   await expect(page.getByText('Use a photo or video')).toBeVisible();
-  await page.getByRole('button', { name: /private link/ }).click();
+  const revoke = page.getByRole('button', { name: 'Revoke link' });
+  if (await revoke.count()) {
+    await revoke.click();
+    await expect(page.getByRole('button', { name: 'Create private link' })).toBeVisible();
+  }
+  await page.getByRole('button', { name: 'Create private link' }).click();
   const link = page.locator('p', { hasText: '/share/gig-media/' });
   await expect(link).toBeVisible();
   const href = await link.innerText();
@@ -616,6 +640,29 @@ test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig
   }).toBe(true);
 
   await deleteGigFromTable(page, 'Overnight Browser Delete');
+});
+
+test('privacy. a signed-out read hides guest secrets and a non-owner cannot read private docs', async ({ page }) => {
+  watch(page, 'privacy');
+  const email = `test+guest-a-${world.stamp}@example.com`;
+  const stored = await world.db.collection(`gigs/${world.nightId}/guestApplicants`).where('email', '==', email).limit(1).get();
+  expect(stored.empty).toBe(false);
+  const applicationId = stored.docs[0].id;
+  await assertSignedOutGigHidesSecrets(world.nightId, email);
+
+  await login(page, world.artist.email);
+  const host = process.env.FIRESTORE_EMULATOR_HOST;
+  const headers = { Authorization: `Bearer ${world.artist.token}` };
+  const guestRead = await page.request.get(
+    `http://${host}/v1/projects/giginltd-dev/databases/(default)/documents/gigs/${world.nightId}/guestApplicants/${applicationId}`,
+    { headers },
+  );
+  const privateRead = await page.request.get(
+    `http://${host}/v1/projects/giginltd-dev/databases/(default)/documents/gigs/${world.nightId}/private/details`,
+    { headers },
+  );
+  expect(guestRead.status()).toBe(403);
+  expect(privateRead.status()).toBe(403);
 });
 
 test('10. no unexpected browser errors', async () => {

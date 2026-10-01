@@ -21,7 +21,7 @@ if (process.env.GCLOUD_PROJECT === 'giginltd-16772' || process.env.GOOGLE_CLOUD_
 }
 
 if (!admin.apps.length) {
-  admin.initializeApp({ projectId: PROJECT });
+  admin.initializeApp({ projectId: PROJECT, storageBucket: `${PROJECT}.firebasestorage.app` });
 }
 const db = admin.firestore();
 
@@ -141,6 +141,40 @@ test('guest apply, close applications, linking, and media share', async () => {
   const privateGuest = (await db.doc(`gigs/${slotA}/guestApplicants/${applicationId}`).get()).data();
   assert.equal(privateGuest.email, guestEmail);
   assert.equal(privateGuest.manageTokenHash.length, 64);
+
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const photoId = crypto.randomUUID();
+  const signed = await api('/guest-applications/upload-url', {
+    method: 'POST',
+    body: { applicationId: photoId, kind: 'photo', contentType: 'image/png', name: 'pixel.png', size: png.length },
+  });
+  assert.equal(signed.status, 200, JSON.stringify(signed.json));
+  assert.equal(signed.json.method, 'POST');
+  assert.match(signed.json.uploadUrl, /\/guest-applications\/direct-upload\?/);
+  const uploaded = await fetch(signed.json.uploadUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'image/png' },
+    body: png,
+  });
+  assert.equal(uploaded.status, 200, await uploaded.text());
+  const [photoExists] = await admin.storage().bucket().file(signed.json.path).exists();
+  assert.equal(photoExists, true);
+  const rejectedType = await api('/guest-applications/upload-url', {
+    method: 'POST',
+    body: { applicationId: photoId, kind: 'photo', contentType: 'text/plain', name: 'notes.txt', size: 4 },
+  });
+  assert.equal(rejectedType.status, 400);
+
+  const outsider = await signUp(`test+outsider-${Date.now()}@example.com`);
+  const host = process.env.FIRESTORE_EMULATOR_HOST;
+  const deniedGuest = await fetch(`http://${host}/v1/projects/${PROJECT}/databases/(default)/documents/gigs/${slotA}/guestApplicants/${applicationId}`, {
+    headers: { Authorization: `Bearer ${outsider.token}` },
+  });
+  const deniedPrivate = await fetch(`http://${host}/v1/projects/${PROJECT}/databases/(default)/documents/gigs/${slotA}/private/details`, {
+    headers: { Authorization: `Bearer ${outsider.token}` },
+  });
+  assert.equal(deniedGuest.status, 403);
+  assert.equal(deniedPrivate.status, 403);
 
   const mail = await db.collection('mail').where('to', '==', guestEmail).get();
   assert.ok(mail.size >= 1, 'confirmation email should be queued in mail');
