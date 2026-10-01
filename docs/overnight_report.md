@@ -215,3 +215,19 @@ Second browser run, same live rules, all `VITE_FEATURE_*` false:
 `npm run build` passed (`vite build`, about 73s). The existing chunk-size warning is unchanged.
 
 A second full browser run was the retry. Test 10 failed again, for the two console lines above, so it was left there.
+
+## Follow-up fixes
+
+Guest press photos now use the same local path as gig media. On the storage emulator, or if signing throws because there is no service-account `client_email`, `POST /api/guest-applications/upload-url` returns a `POST` to `/api/guest-applications/direct-upload` and the API writes the bytes. Production still returns a signed `PUT`. The 10 MB photo and 20 MB asset limits, and the same content types, are checked again on that write. The API suite uploads a one-pixel PNG and checks the object exists, and rejects `text/plain`.
+
+Accept, decline, counter-offer, and invitation-accepted emails look up `venueProfiles/{venueId}` when `gig.venue.venueName` is missing, and fall back to "the venue". Cancel messages in `GigApplications.jsx` and `NextGig.jsx` use the venue profile name the same way.
+
+Every write to `mail` in the web app, the API, and the Cloud Functions skips the document and logs when `to` is missing or not an email address.
+
+The venue-hire listener and the refresh fetch run only when `FEATURES.venueHire` is on. With the flag false, the dashboard no longer queries `venueHireOpportunities`.
+
+Test 8 revokes an existing share link before it creates one, so it does not depend on test 8b. The console check ignores a 404 only after a `GET /api/gig-media/share/:token` 404, which is the revoked link. Other console errors still fail test 10.
+
+The API suite passed, including a signed-in non-owner read of `guestApplicants` and `private/details` returning 403. The browser suite passed all 12 tests (1–10, 8b, and the privacy check). Regression test 9 passed. `npm run build` passed in about 22s. The chunk-size warning is unchanged.
+
+`docs/proposed_rules_changes.md` is not needed for this design. The live rules deny every path they do not mention, so `gigs/{id}/guestApplicants` and `gigs/{id}/private` are already unreadable in the browser. The venue loads that data through the API, and the Admin SDK bypasses rules. Extra rules would only matter if the browser read those documents itself.
