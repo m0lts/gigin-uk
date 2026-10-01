@@ -34,6 +34,9 @@ gigin-api/dist
 gigin-api/dist-ssr
 gigin-api/*.local
 gigin-api/.env
+/test-results/
+/playwright-report/
+/blob-report/
 MIGRATION_GUIDE.md
 scripts/service-account.dev.json
 scripts/service-account.prod.json
