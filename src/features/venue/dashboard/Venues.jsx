@@ -4,6 +4,7 @@ import { VenueIconSolid } from '@icons';
 import { getCityFromAddress } from '@services/utils/misc';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { VenuePage } from './VenuePage';
+import { ApplicationEmailToggle } from '../home/ApplicationEmailToggle';
 
 export const Venues = ({ venues, user, setVenues }) => {
     const navigate = useNavigate();
@@ -25,6 +26,7 @@ export const Venues = ({ venues, user, setVenues }) => {
                 )}
             </div>
 
+            <ApplicationEmailToggle user={user} />
             <div className='body venues'>
                 {venues.map((venue, index) => (
                     <div className='venue-card' key={index} onClick={() => handleOpenVenuePage(venue)}>

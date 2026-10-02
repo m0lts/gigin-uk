@@ -8,6 +8,9 @@ import { updateVenueHireOpportunity } from '@services/client-side/venueHireOppor
 import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
 import { getArtistProfileById, getMusicianProfileByMusicianId } from '@services/client-side/artists';
 import { AddressBookIcon, CoinsIcon, EditIcon, InviteIcon, InviteIconSolid, MicrophoneIcon, TickIcon, TicketIcon } from '@features/shared/ui/extras/Icons';
+import { QrCodeIcon } from '../../home/icons';
+import { useShareLink } from '../../home/shareLinkContext';
+import { acceptingApplicationsPatch } from '../../home/nights';
 import { getLocalGigDateTime } from '@services/utils/filtering';
 import { gigSlotHasConfirmedArtist } from '../utils/multiSlotGigGroup';
 import {
@@ -907,6 +910,7 @@ function ArtistBookingConsoleRail({
   const [notesDraft, setNotesDraft] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
   const [toggleSaving, setToggleSaving] = useState(false);
+  const { openShare } = useShareLink();
   const nightSlots = Array.isArray(slots) && slots.length ? slots : (rawGig ? [rawGig] : []);
   const bookedCount = nightSlots.filter(slotCountsAsBooked).length;
   const gigDate = rawGig ? getLocalGigDateTime(rawGig) : null;
@@ -1019,11 +1023,27 @@ function ArtistBookingConsoleRail({
             ))}
           </div>
           <div className="venue-gig-rail__share">
-            <span className="venue-gig-rail__label">Offer the gig to artist</span>
+            <span className="venue-gig-rail__label-row">
+              <span className="venue-gig-rail__label">Offer the gig to artist</span>
+              {!accepting && (
+                <span className="venue-gig-rail__closed">
+                  <i />
+                  Applications closed
+                </span>
+              )}
+            </span>
             <div className="venue-gig-rail__link">
               <span className="venue-gig-rail__url">{gigLinkUrl || (rawGig?.gigId ? `${window.location.origin}/gig/${rawGig.gigId}` : '')}</span>
               <button type="button" className="venue-gig-rail__copy" onClick={copyLink}>
                 {linkCopied ? 'Copied' : 'Copy'}
+              </button>
+              <button
+                type="button"
+                className="venue-gig-rail__share-btn"
+                onClick={() => openShare({ slots: nightSlots, venueName: rawGig?.venueName || '' })}
+              >
+                <QrCodeIcon />
+                Share
               </button>
             </div>
             {typeof onInviteFromContacts === 'function' ? (
@@ -1057,7 +1077,7 @@ function ArtistBookingConsoleRail({
                 className="venue-gig-rail__toggle"
                 disabled={toggleSaving}
                 onClick={() => updateSlots(
-                  { applicationsOpen: !accepting },
+                  acceptingApplicationsPatch(accepting),
                   accepting ? 'Applications closed.' : 'Applications open.',
                   'gigs.applications.manage'
                 )}

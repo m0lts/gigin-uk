@@ -2558,7 +2558,8 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     const meta = runningOrderApplicantMeta(profile);
                     const fee = runningOrderFeeLabel(profile.proposedFee || profile.fee);
                     return (
-                        <div key={`${profile.id}-${slotGig.gigId}`} className="venue-gig-running__applicant">
+                        <div key={`${profile.id}-${slotGig.gigId}`} className={`venue-gig-running__applicant${unviewed ? ' is-unviewed' : ''}`}>
+                            {unviewed ? <span className="venue-gig-running__fresh" aria-label="New application" /> : null}
                             <button type="button" className="venue-gig-running__avatar-btn" onClick={(event) => { markRunningOrderApplicantViewed(slotGig, profile.id); openApplicant(profile.id, event.currentTarget); }} aria-label={`View ${profile.name} profile`}>
                                 {renderRunningOrderAvatar(profile.name, profile.heroMedia?.url, 'venue-gig-running__avatar--sm')}
                             </button>
@@ -2566,7 +2567,6 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                 <button type="button" className="venue-gig-running__who-name" onClick={(event) => { markRunningOrderApplicantViewed(slotGig, profile.id); openApplicant(profile.id, event.currentTarget); }}>
                                     {profile.name}
                                     {(profile.guest || profile.type === 'guest') && <span className="ga-guest-tag">Guest</span>}
-                                    {unviewed ? <span className="venue-gig-running__fresh" aria-label="New application" /> : null}
                                 </button>
                                 {meta ? <span className="venue-gig-running__who-meta">{meta}</span> : null}
                             </span>

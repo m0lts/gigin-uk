@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { dateLabel } from './gigPresent';
+import { useVenueDashboard } from '@context/VenueDashboardContext';
+import { useShareLink } from '../../home/shareLinkContext';
+import { QrCodeIcon } from '../../home/icons';
 
 const NIGHTS = [
   { label: 'Mon', day: 1 },
@@ -153,6 +156,10 @@ function SelectedGig({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const { openShare } = useShareLink();
+  const { venueProfiles } = useVenueDashboard();
+  const shareSlots = gig.group?.allGigs?.length ? gig.group.allGigs : [gig.group?.primaryGig].filter(Boolean);
+  const venueName = venueProfiles?.find((venue) => venue.venueId === gig.group?.primaryGig?.venueId)?.name || '';
   useEffect(() => {
     if (!menuOpen) return undefined;
     const close = (event) => {
@@ -214,7 +221,15 @@ function SelectedGig({
               <div className="gigs-cal__link">
                 <span>{typeof window !== 'undefined' ? `${window.location.host}/gig/${gig.group.primaryGig.gigId}` : ''}</span>
                 <button type="button" onClick={onCopy}>{copied ? 'Copied' : 'Copy'}</button>
+                <button type="button" className="gigs-cal__share-btn" onClick={() => openShare({ slots: shareSlots, venueName })}>
+                  <QrCodeIcon /> Share
+                </button>
               </div>
+            )}
+            {gig.private && (
+              <button type="button" className="gigs-cal__share-btn gigs-cal__share-btn--solo" onClick={() => openShare({ slots: shareSlots, venueName })}>
+                <QrCodeIcon /> Share
+              </button>
             )}
             <button type="button" className="gigs-cal__invite" disabled={!canInvite} onClick={onInvite}>
               <FontAwesomeIcon icon={faEnvelope} /> Offer gig to artist

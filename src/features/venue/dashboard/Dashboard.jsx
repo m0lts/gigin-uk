@@ -2,7 +2,7 @@ import { Route, Routes, useLocation, Link, useNavigate, Navigate, useParams } fr
 import { FEATURES } from '../../../config/features';
 import { FinderListingSettings } from '../../keep-profile/FinderPages';
 import { Sidebar } from './Sidebar'
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { AddGigsModal } from './AddGigsModal';
 import { useAuth } from '@hooks/useAuth';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
@@ -10,7 +10,6 @@ import { Gigs } from './Gigs';
 import '@styles/host/host-dashboard.styles.css'
 import { Venues } from './Venues';
 import { VenueGigPageShell } from '../gigs/pages/VenueGigPageShell';
-import { Overview } from './Overview';
 import { Finances } from './Finances';
 import { SavedArtists } from './SavedArtists';
 import { FindArtists } from './FindArtists';
@@ -29,7 +28,10 @@ import { listenToUserConversations } from '@services/client-side/conversations';
 import Portal from '../../shared/components/Portal';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
-import { Header } from '../components/Header';
+import { VenueHome } from '../home/VenueHome';
+import { ShareLinkProvider } from '../home/shareLinkContext';
+import { VenueMobileChrome } from '../home/VenueMobileChrome';
+import { readLastNewGigRoute } from './new-gig/useNewGigDraft';
 
 function FinderListingRoute() {
   const { venueId } = useParams();
@@ -68,6 +70,7 @@ export const VenueDashboard = ({ user }) => {
     const [gigToReview, setGigToReview] = useState(null);
     const [gigsToReview, setGigsToReview] = useState([]);
     const [newMessages, setNewMessages] = useState(false);
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [conversations, setConversations] = useState([]);
     // "Build for musician" context, sourced from location.state when deep-linking
     // from ArtistCRM / MusicianProfile / ArtistProfile / RequestCard /
@@ -152,9 +155,30 @@ export const VenueDashboard = ({ user }) => {
       return unsubscribe;
     }, [user]);
 
+    const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
+    const openNewGig = (route) => {
+        setAddGigsEditData(null);
+        setAddGigsInitialDateIso(null);
+        setAddGigsMode('bookNew');
+        setNewGigRoute(route || readLastNewGigRoute() || 'full');
+        setNewGigEntry('menu');
+        setShowAddGigsModal(true);
+    };
+
     return (
-        <>  
+        <ShareLinkProvider>
             {loading && <LoadingScreen />}
+            {!isMdUp && (
+              <VenueMobileChrome
+                user={user}
+                newMessages={newMessages}
+                gigs={gigs}
+                venues={venueProfiles}
+                open={mobileNavOpen}
+                onOpen={() => setMobileNavOpen(true)}
+                onClose={closeMobileNav}
+              />
+            )}
             {isMdUp && (
               <Sidebar
                 user={user}
@@ -189,8 +213,8 @@ export const VenueDashboard = ({ user }) => {
               )}
                 <div className="output">
                     <Routes>
-                        {/* <Route index element={<Overview gigs={gigs} loadingGigs={loading} venues={venueProfiles} setShowAddGigsModal={setShowAddGigsModal} setAddGigsMode={setAddGigsMode} user={user} gigsToReview={gigsToReview} setGigsToReview={setGigsToReview} requests={requests} />} /> */}
-                        <Route index path='gigs' element={<Gigs gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsInitialDateIso={setAddGigsInitialDateIso} setAddGigsMode={setAddGigsMode} setNewGigRoute={setNewGigRoute} setNewGigEntry={setNewGigEntry} setAddGigsBookNewTemplate={setAddGigsBookNewTemplate} requests={requests} setRequests={setRequests} user={user} refreshGigs={refreshGigs} templates={templates} refreshTemplates={refreshTemplates} />} />
+                        <Route index element={<VenueHome user={user} gigs={gigs} venues={venueProfiles} onNewGig={openNewGig} />} />
+                        <Route path='gigs' element={<Gigs gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsInitialDateIso={setAddGigsInitialDateIso} setAddGigsMode={setAddGigsMode} setNewGigRoute={setNewGigRoute} setNewGigEntry={setNewGigEntry} setAddGigsBookNewTemplate={setAddGigsBookNewTemplate} requests={requests} setRequests={setRequests} user={user} refreshGigs={refreshGigs} templates={templates} refreshTemplates={refreshTemplates} />} />
                         <Route path='gigs/gig-applications' element={<VenueGigPageShell setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsMode={setAddGigsMode} gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} user={user} refreshStripe={refreshStripe} customerDetails={customerDetails} refreshGigs={refreshGigs} />} />
                         <Route path='messages' element={FEATURES.chat ? <MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} requests={requests} setRequests={setRequests} setShowAddGigsModal={setShowAddGigsModal} setAddGigsMode={setAddGigsMode} setBuildingForMusician={setBuildingForMusician} setBuildingForMusicianData={setBuildingForMusicianData} setRequestId={setRequestId} setPreferredDate={setPreferredDate} refreshGigs={refreshGigs} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} setVenues={setVenueProfiles} />} />
@@ -267,6 +291,6 @@ export const VenueDashboard = ({ user }) => {
                 />
               </Portal>
             )}
-        </>
+        </ShareLinkProvider>
     )
 }

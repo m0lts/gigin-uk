@@ -22,6 +22,7 @@ import { getConnectAccountStatus, deleteStripeConnectAccount, getStripeBalance, 
 import { updateStripeConnectId } from '@services/api/users';
 import { useStripeConnect } from '@hooks/useStripeConnect';
 import { toast } from 'sonner';
+import { ApplicationEmailToggle } from '../venue/home/ApplicationEmailToggle';
 import Portal from '../shared/components/Portal';
 import {
   CameraIcon,
@@ -772,6 +773,7 @@ export const Account = () => {
                             </button>
                         </div>
                     </div>
+                    <ApplicationEmailToggle user={user} />
                     {FEATURES.chat && (
                     <div className='password-settings'>
                         <h3>Email Notifications:</h3>

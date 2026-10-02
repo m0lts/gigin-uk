@@ -11,6 +11,7 @@
 .na-tabs button { min-height: 42px; background: none; border: 0; border-bottom: 2px solid transparent; color: #6B7280; font-size: 15px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 .na-tabs button.is-on { color: #0F1115; font-weight: 600; border-bottom-color: #0F1115; }
 .na-tabs b { background: #FFEDE7; color: #B5462C; border-radius: 999px; padding: 1px 7px; font-size: 12px; }
+.na-new { font-size: 11.5px; font-weight: 600; color: #B5462C; background: #FFEDE7; border-radius: 4px; padding: 2px 6px; }
 .na-tabs em { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 .na-toolbar { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
 .na-seg { display: inline-flex; background: #ECEDF0; border-radius: 9px; padding: 3px; gap: 2px; width: fit-content; flex-wrap: wrap; }
@@ -21,7 +22,9 @@
 .na-filters button { min-height: 32px; border-radius: 999px; border: 0; background: #F3F4F6; padding: 0 12px; cursor: pointer; }
 .na-filters button.is-on { background: #111317; color: #fff; }
 .na-list { display: flex; flex-direction: column; gap: 12px; }
-.na-app { display: grid; grid-template-columns: 64px 1fr; gap: 16px; background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px 18px; }
+.na-app { position: relative; display: grid; grid-template-columns: 64px 1fr; gap: 16px; background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px 18px; }
+.na-app.is-unviewed { padding-left: 28px; }
+.na-app__dot { position: absolute; left: 10px; top: 42px; width: 8px; height: 8px; border-radius: 50%; background: #FF6C4B; }
 .na-app.is-muted .na-photo, .na-app.is-muted header strong, .na-app.is-muted .na-name { opacity: 0.55; }
 .na-photo { width: 64px; height: 64px; border-radius: 10px; background: #EDEEF1 center/cover; display: grid; place-items: center; font-weight: 600; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; }
 .na-name { border: 0; background: none; padding: 0; cursor: pointer; font: inherit; font-size: 16px; font-weight: 600; color: inherit; text-align: left; }

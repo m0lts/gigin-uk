@@ -1,0 +1,35 @@
+.dashboard .sidebar.sidebar--console .menu-item .sidebar__count {
+  margin-left: auto;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--gn-orange);
+  color: #fff;
+  font-family: var(--gn-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  flex: none;
+}
+
+.dashboard .sidebar.sidebar--console .menu-item .sidebar__nav-icon {
+  position: relative;
+}
+
+.dashboard .sidebar.sidebar--console .menu-item .sidebar__count-dot {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gn-orange);
+  box-shadow: 0 0 0 2px #111317;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item.active .sidebar__count-dot {
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--gn-orange);
+}

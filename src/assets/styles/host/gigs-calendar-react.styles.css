@@ -687,6 +687,26 @@
     font-weight: 500;
 }
 .gigs-cal__link button { border-left: 1px solid var(--gn-line); padding: 0 12px; border-radius: 0; }
+.gigs-cal__link .gigs-cal__share-btn,
+.gigs-cal__share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 0;
+  border-left: 1px solid var(--gn-line);
+  background: #FFF7F4;
+  color: var(--gn-new-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.gigs-cal__share-btn--solo {
+  height: 36px;
+  border: 1px solid var(--gn-line);
+  border-radius: 8px;
+  justify-content: center;
+}
 .gigs-cal__invite {
     display: flex;
     align-items: center;

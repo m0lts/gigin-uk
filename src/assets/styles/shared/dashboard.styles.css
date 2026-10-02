@@ -88,8 +88,8 @@
 
 @media (--bp-md) {
     .dashboard {
-        height: calc(100vh - 60px);
-        max-height: calc(100vh - 60px);
+        height: 100vh;
+        max-height: 100vh;
     }
     .dashboard .window {
         width:100%;

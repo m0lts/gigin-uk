@@ -1,0 +1,107 @@
+.venue-mobile-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 16px;
+  background: var(--gn-dark, #111317);
+  color: #fff;
+}
+
+.venue-mobile-bar__wordmark {
+  font-family: var(--gn-logo-font);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+  text-decoration: none;
+}
+
+.venue-mobile-bar__dot {
+  color: var(--gn-orange);
+}
+
+.venue-mobile-bar__tools {
+  display: flex;
+  align-items: center;
+}
+
+.venue-mobile-bar__icon {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.venue-mobile-bar__count {
+  position: absolute;
+  top: 6px;
+  right: 5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--gn-orange);
+  color: #fff;
+  font-family: var(--gn-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  box-shadow: 0 0 0 2px #111317;
+}
+
+.venue-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+
+.venue-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(15, 17, 21, 0.5);
+  cursor: pointer;
+}
+
+.venue-drawer__panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 288px;
+  max-width: calc(100% - 48px);
+  background: #111317;
+}
+
+.venue-drawer__panel .sidebar.sidebar--console {
+  width: 100%;
+  height: 100%;
+}
+
+.dashboard .venue-drawer .sidebar.sidebar--console .menu-item {
+  height: 44px;
+}
+
+.dashboard .venue-drawer .sidebar.sidebar--console .sidebar__collapse {
+  width: 44px;
+  height: 44px;
+}
+
+@media (max-width: 767.98px) {
+  .dashboard .window.venues {
+    padding-top: 56px;
+  }
+}

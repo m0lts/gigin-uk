@@ -198,7 +198,8 @@ export function VenueGigPageShell({
   const linkedGigIdsKey = linkedGigIdsFromNav?.length
     ? [...linkedGigIdsFromNav].sort().join(',')
     : '';
-  const queryGigId = new URLSearchParams(location.search).get('gig') || '';
+  const queryParams = new URLSearchParams(location.search);
+  const queryGigId = queryParams.get('gig') || queryParams.get('gigId') || '';
   const gigId = stateGig?.gigId || queryGigId;
   const isVenueHireFromState = stateGig?.itemType === 'venue_hire';
   const [gigInfo, setGigInfo] = useState(null);

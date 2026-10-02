@@ -20,7 +20,9 @@ import { useVenueDashboard } from '@context/VenueDashboardContext';
 import '@assets/fonts/fonts.css';
 import { toast } from 'sonner';
 import { FEATURES } from '../../../config/features';
-import { unreviewedApplicationCount } from '../gigs/utils/multiSlotGigGroup';
+import { countNewApplications } from '../home/nights';
+import { CloseIcon as HomeCloseIcon, HomeIcon } from '../home/icons';
+import '../home/sidebar-badges.css';
 
 function SidebarPanelIcon() {
   return (
@@ -51,7 +53,7 @@ function nameInitials(name) {
   return '?';
 }
 
-export const Sidebar = ({ user, newMessages }) => {
+export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -79,12 +81,6 @@ export const Sidebar = ({ user, newMessages }) => {
   };
 
   useEffect(() => {
-    if (location.pathname === '/venues/dashboard' || location.pathname === '/venues/dashboard/') {
-      navigate('/venues/dashboard/gigs');
-    }
-  }, [location, navigate]);
-
-  useEffect(() => {
     if (!venueMenuOpen && !showDropdown) return undefined;
     const onPointerDown = (event) => {
       if (venueMenuRef.current && !venueMenuRef.current.contains(event.target)) {
@@ -98,17 +94,25 @@ export const Sidebar = ({ user, newMessages }) => {
     return () => window.removeEventListener('pointerdown', onPointerDown);
   }, [venueMenuOpen, showDropdown]);
 
-  const unreviewedGigs = unreviewedApplicationCount(
+  const collapsed = sidebarCollapsed && !forceExpanded;
+  const newApplications = countNewApplications(
     selectedVenueId ? (gigs || []).filter((gig) => gig.venueId === selectedVenueId) : gigs,
   );
 
   const menuItems = [
     {
+      path: '/venues/dashboard',
+      label: 'Home',
+      exact: true,
+      icon: <HomeIcon />,
+      iconActive: <HomeIcon />,
+    },
+    {
       path: '/venues/dashboard/gigs',
       label: 'Gigs',
       icon: <CalendarIconLight />,
       iconActive: <CalendarIconSolid />,
-      count: unreviewedGigs,
+      count: newApplications,
     },
     ...(FEATURES.chat ? [{
       path: '/venues/dashboard/messages',
@@ -140,6 +144,7 @@ export const Sidebar = ({ user, newMessages }) => {
   const navigateTo = (path) => {
     const venue = searchParams.get('venue');
     navigate(venue ? { pathname: path, search: `?venue=${encodeURIComponent(venue)}` } : path);
+    onClose?.();
   };
 
   const selectVenue = (venueId) => {
@@ -153,24 +158,30 @@ export const Sidebar = ({ user, newMessages }) => {
   const venueCountLabel = `${venues.length} venue${venues.length === 1 ? '' : 's'}`;
 
   return (
-    <div className={`sidebar sidebar--console${sidebarCollapsed ? ' sidebar--collapsed' : ''}`}>
+    <div className={`sidebar sidebar--console${collapsed ? ' sidebar--collapsed' : ''}`}>
       <div className="sidebar__logo-row">
-        <Link to="/venues/dashboard/gigs" className="sidebar__wordmark" aria-label="Gigin" aria-hidden={sidebarCollapsed || undefined} tabIndex={sidebarCollapsed ? -1 : undefined}>
+        <Link to="/venues/dashboard/gigs" className="sidebar__wordmark" aria-label="Gigin" aria-hidden={collapsed || undefined} tabIndex={collapsed ? -1 : undefined}>
           gigin<span className="sidebar__wordmark-dot">.</span>
         </Link>
-        <button
-          type="button"
-          className="sidebar__collapse"
-          onClick={() => {
-            setVenueMenuOpen(false);
-            setShowDropdown(false);
-            setSidebarCollapsed((collapsed) => !collapsed);
-          }}
-          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <SidebarPanelIcon />
-        </button>
+        {onClose ? (
+          <button type="button" className="sidebar__collapse" onClick={onClose} aria-label="Close menu">
+            <HomeCloseIcon />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="sidebar__collapse"
+            onClick={() => {
+              setVenueMenuOpen(false);
+              setShowDropdown(false);
+              setSidebarCollapsed((value) => !value);
+            }}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <SidebarPanelIcon />
+          </button>
+        )}
       </div>
 
       {venues.length > 0 && (
@@ -182,7 +193,7 @@ export const Sidebar = ({ user, newMessages }) => {
               aria-expanded={venueMenuOpen}
               aria-haspopup="listbox"
               aria-label={displayedVenue?.name || 'All venues'}
-              title={sidebarCollapsed ? (displayedVenue?.name || 'All venues') : undefined}
+              title={collapsed ? (displayedVenue?.name || 'All venues') : undefined}
               onClick={() => {
                 setShowDropdown(false);
                 setVenueMenuOpen((open) => !open);
@@ -195,7 +206,7 @@ export const Sidebar = ({ user, newMessages }) => {
               <span className="sidebar__chevron" aria-hidden="true"><DownChevronIcon /></span>
             </button>
           ) : (
-            <div className="sidebar__venue" title={sidebarCollapsed ? venues[0].name : undefined}>
+            <div className="sidebar__venue" title={collapsed ? venues[0].name : undefined}>
               <span className="sidebar__venue-copy">
                 <span className="sidebar__venue-name">{venues[0].name}</span>
                 <span className="sidebar__venue-meta">{venueCountLabel}</span>
@@ -227,25 +238,30 @@ export const Sidebar = ({ user, newMessages }) => {
         </div>
       )}
 
-      <span className="sidebar__section" aria-hidden={sidebarCollapsed || undefined}>Manage</span>
+      <span className="sidebar__section" aria-hidden={collapsed || undefined}>Manage</span>
 
       <ul className="menu">
         {menuItems.map(({ path, label, icon, iconActive, exact, notification, count }) => {
-          const isActive = exact ? pathname === path : pathname.includes(path);
+          const isActive = exact ? pathname === path || pathname === `${path}/` : pathname.includes(path);
+          const collapsedTitle = count > 0 ? `${label} · ${count} new application${count === 1 ? '' : 's'}` : label;
+          const shown = count > 99 ? '99+' : count;
           return (
             <li
               key={path}
               className={`menu-item${isActive ? ' active' : ''}`}
               onClick={() => navigateTo(path)}
-              title={sidebarCollapsed ? label : undefined}
+              title={collapsed ? collapsedTitle : undefined}
             >
               <span className="body">
-                <span className="sidebar__nav-icon">{isActive ? iconActive : icon}</span>
+                <span className="sidebar__nav-icon">
+                  {isActive ? iconActive : icon}
+                  {count > 0 && collapsed ? <span className="sidebar__count-dot" aria-label={`${count} new applications`} /> : null}
+                </span>
                 <span className="sidebar__nav-label">{label}</span>
               </span>
-              {count > 0 ? (
-                <span className="notification notification--count" aria-label={`${count} unreviewed applications`}>{count}</span>
-              ) : notification && !sidebarCollapsed ? (
+              {count > 0 && !collapsed ? (
+                <span className="sidebar__count" aria-label={`${count} new applications`}>{shown}</span>
+              ) : notification && !collapsed ? (
                 <span className="notification"><DotIcon /></span>
               ) : notification ? (
                 <span className="notification notification--dot"><DotIcon /></span>
@@ -261,12 +277,12 @@ export const Sidebar = ({ user, newMessages }) => {
         <button
           type="button"
           className="sidebar__account"
-          title={sidebarCollapsed ? 'Account' : undefined}
+          title={collapsed ? 'Account' : undefined}
           aria-expanded={showDropdown}
           aria-haspopup="menu"
           onClick={() => {
             setVenueMenuOpen(false);
-            if (sidebarCollapsed) {
+            if (collapsed) {
               setSidebarCollapsed(false);
               setShowDropdown(true);
             } else {
@@ -281,7 +297,7 @@ export const Sidebar = ({ user, newMessages }) => {
           </span>
           <span className="sidebar__chevron" aria-hidden="true"><DownChevronIcon /></span>
         </button>
-        {showDropdown && !sidebarCollapsed && (
+        {showDropdown && !collapsed && (
           <div className="sidebar__popover sidebar__account-menu" role="menu">
             <button
               type="button"

@@ -328,6 +328,9 @@ export function NightApplyReview({
             <button type="button" className={tab === 'applications' ? 'is-on' : ''} onClick={() => setTab('applications')}>
               Applications
               {waiting.length > 0 && <b>{waiting.length}</b>}
+              {applications.filter((app) => app.viewed !== true && app.invited !== true).length > 0 && (
+                <span className="na-new">{applications.filter((app) => app.viewed !== true && app.invited !== true).length} new</span>
+              )}
             </button>
             <button type="button" className={tab === 'order' ? 'is-on' : ''} onClick={() => setTab('order')}>
               Running order
@@ -533,10 +536,12 @@ function ApplicantCard({
   const tech = techLine(app, venue);
   const assigned = ordered.find((slot) => (slot.gigId || slot.id) === app.assignedSlotGigId);
   const withdrawn = app.status === 'withdrawn';
+  const unviewed = app.viewed !== true && app.invited !== true;
   const status = statusChip(app, assigned, ordered, oneSet);
   const members = (app.members || []).filter((member) => member?.name || member?.instruments?.length);
   return (
-    <article className={`na-app${withdrawn ? ' is-muted' : ''}`}>
+    <article className={`na-app${withdrawn ? ' is-muted' : ''}${unviewed ? ' is-unviewed' : ''}`}>
+      {unviewed ? <span className="na-app__dot" aria-label="New application" /> : null}
       <button type="button" className="na-photo" aria-label={`View ${actName(app)} profile`} style={app.photoUrl ? { backgroundImage: `url(${app.photoUrl})` } : undefined} onClick={(event) => onOpenProfile?.(app.id, event.currentTarget)}>{app.photoUrl ? '' : initials(actName(app))}</button>
       <div>
         <header>
