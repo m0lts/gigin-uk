@@ -21,6 +21,8 @@ import {
 } from 'firebase/firestore';
 import { distanceBetween } from 'geofire-common';
 import { PERM_DEFAULTS, sanitizePermissions } from '../utils/permissions';
+import { FEATURES } from '../../config/features';
+import { canCreateVenue } from '../../config/venueAccess';
 
 /*** CREATE OPERATIONS ***/
 
@@ -32,6 +34,18 @@ import { PERM_DEFAULTS, sanitizePermissions } from '../utils/permissions';
  *   * Ensures a single owner member exists (does not recreate).
  * - After completion (completed === true): requires owner or venue.update permission.
  */
+/** Writes the ownership document Storage rules require before the first venue upload. */
+export const claimVenueForUpload = async (venueId, userId) => {
+  if (!venueId || !userId) throw new Error('claimVenueForUpload: venueId and userId are required');
+  const venueRef = doc(firestore, 'venueProfiles', venueId);
+  const snap = await getDoc(venueRef);
+  if (snap.exists()) return;
+  if (!canCreateVenue(FEATURES, { exists: false })) {
+    throw new Error('VENUE_CREATION_CLOSED');
+  }
+  await setDoc(venueRef, { createdBy: userId, userId, completed: false });
+};
+
 export const createVenueProfile = async (venueId, data, userId) => {
   try {
     const venueRef  = doc(firestore, "venueProfiles", venueId);
@@ -41,6 +55,10 @@ export const createVenueProfile = async (venueId, data, userId) => {
     const exists    = venueSnap.exists();
     const venueData = exists ? (venueSnap.data() || {}) : {};
     const isInitialSetup = !exists || venueData.completed === false;
+
+    if (!exists && !canCreateVenue(FEATURES, { exists: false })) {
+      throw new Error('VENUE_CREATION_CLOSED');
+    }
 
     if (isInitialSetup) {
       // Only the creator (or no createdBy yet) may perform initial setup

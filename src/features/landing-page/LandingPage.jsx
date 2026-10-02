@@ -387,7 +387,7 @@ function FinderCard() {
   );
 }
 
-function AccessCard() {
+export function AccessCard() {
   const [values, setValues] = useState(EMPTY_ACCESS);
   const [errors, setErrors] = useState({});
   const [showErrors, setShowErrors] = useState(false);

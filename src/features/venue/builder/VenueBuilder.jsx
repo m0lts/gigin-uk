@@ -9,7 +9,7 @@ import { AdditionalDetails } from './AdditionalDetails';
 import '@styles/host/venue-builder.styles.css'
 import { UploadingProfile } from './UploadingProfile';
 import { arrayUnion, arrayRemove, GeoPoint, deleteField } from 'firebase/firestore';
-import { createVenueProfile, deleteVenueProfile } from '@services/client-side/venues';
+import { claimVenueForUpload, createVenueProfile, deleteVenueProfile } from '@services/client-side/venues';
 import { BuildingIcon, ErrorIcon, MobileIcon, SavedIcon, TickIcon, VenueBuilderIcon } from '../../shared/ui/extras/Icons';
 import { uploadImageArrayWithFallback, uploadFileWithFallback, uploadFileWithProgress } from '../../../services/storage';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
@@ -22,6 +22,10 @@ import { useAuth } from '../../../hooks/useAuth';
 import { clearUserArrayField, updateUserArrayField } from '@services/api/users';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { FEATURES } from '../../../config/features';
+import { canCreateVenue } from '../../../config/venueAccess';
+import { AccessCard } from '../../landing-page/LandingPage';
+import '../../landing-page/landing.css';
 
 export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType }) => {
 
@@ -30,6 +34,10 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     const location = useLocation();
     const { isSmUp, isLgUp } = useBreakpoint();
     const { venue } = location.state || {};
+    const editingExisting = Boolean(venue?.venueId || venue?.id);
+    const hasDraft = Array.isArray(user?.venueProfiles)
+      && user.venueProfiles.some((profile) => profile && profile.completed === false);
+    const creationClosed = !canCreateVenue(FEATURES, { exists: editingExisting || hasDraft });
     const [showErrorModal, setShowErrorModal] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -65,6 +73,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     });
 
     useEffect(() => {
+        if (creationClosed) return;
         if (!user) {
             setAuthModal(true);
             setAuthClosable(false);
@@ -73,7 +82,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         if (user?.musicianProfile) {
             setShowErrorModal(true);
         }
-    }, [user])
+    }, [user, creationClosed])
 
     useEffect(() => {
         if (venue) {
@@ -164,6 +173,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         setUploadText(`Creating your Dashboard and Venue Page`);
         setUploadingProfile(true);
         try {
+            await claimVenueForUpload(formData.venueId, user.uid);
             // Validate and upload images
             const imageFiles = formData.photos || [];
             let imageUrls = [];
@@ -324,7 +334,8 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         }
         try {
             setSaving(true);
-            
+            await claimVenueForUpload(formData.venueId, user.uid);
+
             // Always process photos FIRST to convert wrapped objects back to URLs
             // This ensures existing URLs are preserved when editing
             let imageUrls = [];
@@ -685,6 +696,18 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
       ].filter(Boolean).length;
     
     const percentComplete = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
+
+    if (creationClosed) {
+        return (
+            <div className='venue-builder'>
+                <div className='body' style={{ maxWidth: 640, margin: '0 auto', padding: '48px 20px' }}>
+                    <h2>Venues are invite-only for now</h2>
+                    <p>Ask the venue to send you an invite, or tell us about your nights and the founder will be in touch. The request form below is open to anyone.</p>
+                    <AccessCard />
+                </div>
+            </div>
+        );
+    }
 
     if (!isSmUp) {
         return (

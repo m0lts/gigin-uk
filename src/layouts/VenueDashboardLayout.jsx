@@ -4,6 +4,7 @@ import '@styles/shared/dashboard.styles.css'
 import { useNavigate } from 'react-router-dom';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useVenueDashboard } from '../context/VenueDashboardContext';
+import { FEATURES } from '../config/features';
 
 export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user, setAuthClosable }) => {
 
@@ -19,7 +20,7 @@ export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user
             setAuthClosable(false);
         }
         if (user && !user.venueProfiles) {
-            if (isMdUp) {
+            if (!FEATURES.openVenueCreation || isMdUp) {
                 navigate('/venues/add-venue');
             } else {
                 navigate('/');

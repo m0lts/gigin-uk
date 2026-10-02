@@ -66,8 +66,12 @@ service cloud.firestore {
     match /venueProfiles/{venueId} {
       allow read: if true;
 
-      allow create: if request.auth != null
-        && request.resource.data.createdBy == request.auth.uid;
+      // Self-serve creation is closed. A signed-in stranger cannot open a venue.
+      // Invites join through the API (Admin SDK), which does not use this rule.
+      // Restore the old line when VITE_FEATURE_OPEN_VENUE_CREATION is turned on
+      // and these rules are deliberately deployed:
+      // allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid;
+      allow create: if false;
         
       allow update: if request.auth != null
         && (
