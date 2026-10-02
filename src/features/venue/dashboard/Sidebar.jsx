@@ -20,6 +20,7 @@ import { useVenueDashboard } from '@context/VenueDashboardContext';
 import '@assets/fonts/fonts.css';
 import { toast } from 'sonner';
 import { FEATURES } from '../../../config/features';
+import { unreviewedApplicationCount } from '../gigs/utils/multiSlotGigGroup';
 
 function SidebarPanelIcon() {
   return (
@@ -55,7 +56,7 @@ export const Sidebar = ({ user, newMessages }) => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { logout } = useAuth();
-  const { sidebarCollapsed, setSidebarCollapsed, venueProfiles } = useVenueDashboard();
+  const { sidebarCollapsed, setSidebarCollapsed, venueProfiles, gigs } = useVenueDashboard();
   const pathname = useMemo(() => location.pathname, [location.pathname]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [venueMenuOpen, setVenueMenuOpen] = useState(false);
@@ -97,12 +98,17 @@ export const Sidebar = ({ user, newMessages }) => {
     return () => window.removeEventListener('pointerdown', onPointerDown);
   }, [venueMenuOpen, showDropdown]);
 
+  const unreviewedGigs = unreviewedApplicationCount(
+    selectedVenueId ? (gigs || []).filter((gig) => gig.venueId === selectedVenueId) : gigs,
+  );
+
   const menuItems = [
     {
       path: '/venues/dashboard/gigs',
       label: 'Gigs',
       icon: <CalendarIconLight />,
       iconActive: <CalendarIconSolid />,
+      count: unreviewedGigs,
     },
     ...(FEATURES.chat ? [{
       path: '/venues/dashboard/messages',
@@ -224,7 +230,7 @@ export const Sidebar = ({ user, newMessages }) => {
       <span className="sidebar__section" aria-hidden={sidebarCollapsed || undefined}>Manage</span>
 
       <ul className="menu">
-        {menuItems.map(({ path, label, icon, iconActive, exact, notification }) => {
+        {menuItems.map(({ path, label, icon, iconActive, exact, notification, count }) => {
           const isActive = exact ? pathname === path : pathname.includes(path);
           return (
             <li
@@ -237,7 +243,9 @@ export const Sidebar = ({ user, newMessages }) => {
                 <span className="sidebar__nav-icon">{isActive ? iconActive : icon}</span>
                 <span className="sidebar__nav-label">{label}</span>
               </span>
-              {notification && !sidebarCollapsed ? (
+              {count > 0 ? (
+                <span className="notification notification--count" aria-label={`${count} unreviewed applications`}>{count}</span>
+              ) : notification && !sidebarCollapsed ? (
                 <span className="notification"><DotIcon /></span>
               ) : notification ? (
                 <span className="notification notification--dot"><DotIcon /></span>

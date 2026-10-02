@@ -347,6 +347,18 @@
     color: var(--gn-orange);
 }
 
+.dashboard .sidebar .menu-item .notification--count {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--gn-orange);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 18px;
+}
+
 .dashboard .sidebar .menu-item:first-of-type {
     margin-top: 0;
 }

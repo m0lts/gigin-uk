@@ -565,12 +565,15 @@ export const GigApplications = ({
     useEffect(() => {
       if (!gigInfo) return;
     
-      // Only mark if there are unviewed applicants
-      const hasUnviewed = Array.isArray(gigInfo.applicants) &&
-        gigInfo.applicants.some(a => a?.viewed !== true);
+      const nightSlots = [gigInfo, ...relatedSlots].filter((slot) => slot?.gigId);
+      const unviewedSlots = nightSlots.filter((slot) => (
+        Array.isArray(slot.applicants)
+        && slot.applicants.some((applicant) => applicant?.viewed !== true)
+        && !markedRef.current.has(slot.gigId)
+      ));
     
       // Don’t call again for the same gig this session
-      if (runningOrderSlotTargets || !hasUnviewed || markedRef.current.has(gigInfo.gigId)) {
+      if (runningOrderSlotTargets || unviewedSlots.length === 0) {
         // still run musician profiles fetch
         fetchProfiles();
         return;
@@ -578,8 +581,11 @@ export const GigApplications = ({
     
       (async () => {
         try {
-          await markApplicantsViewed({ venueId: gigInfo.venueId, gigId: gigInfo.gigId });
-          markedRef.current.add(gigInfo.gigId);
+          for (const slot of unviewedSlots) {
+            await markApplicantsViewed({ venueId: slot.venueId || gigInfo.venueId, gigId: slot.gigId });
+            markedRef.current.add(slot.gigId);
+          }
+          refreshGigs?.();
         } catch (err) {
           console.error("Error marking applicants viewed:", err);
         } finally {
@@ -676,7 +682,7 @@ export const GigApplications = ({
           console.error("Error fetching profiles:", e);
         }
       }
-    }, [gigInfo, relatedSlots, runningOrderSlotTargets, guestPrivate]);
+    }, [gigInfo, relatedSlots, runningOrderSlotTargets, guestPrivate, refreshGigs]);
 
     const formatDate = (timestamp) => {
         if (!timestamp) return "—";

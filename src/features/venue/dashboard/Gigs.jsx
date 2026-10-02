@@ -31,6 +31,7 @@ import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/api/gigs';
 import { GigInvitesModal } from '../components/GigInvitesModal';
+import { unreviewedApplicationCount } from '../gigs/utils/multiSlotGigGroup';
 import { GigsCalendarReact } from './GigsCalendarReact';
 import { GigsConsole } from './GigsConsole';
 import { getCalendarFeedUrl } from '@services/api/calendar';
@@ -1667,6 +1668,7 @@ export const Gigs = ({
                 {sortedGigs.length > 0 ? (
                   sortedGigs.map((group, index) => {
                     const gig = group.primaryGig;
+                    const unreviewed = unreviewedApplicationCount(group.allGigs || [gig]);
                     const isFirstPreviousGig =
                       index > 0 &&
                       gig.dateTime < now &&
@@ -1713,11 +1715,9 @@ export const Gigs = ({
                               <td></td>
                           )} */}
                           <td className='time-and-date'>
-                            {!isLgUp && gig?.applicants && gig?.applicants?.length && gig?.applicants.some(app => !app.viewed && app.invited !== true) ? (
-                              <span className="notification-dot" />
-                            ) : (
-                              null
-                            )}
+                            {unreviewed > 0 ? (
+                              <span className="unreviewed-count" aria-label={`${unreviewed} unreviewed applications`}>{unreviewed}</span>
+                            ) : null}
                             {gig.dateObj ? (
                               <div className="date-time-container">
                                 <div>

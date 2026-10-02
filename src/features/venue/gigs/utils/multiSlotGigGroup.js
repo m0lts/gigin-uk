@@ -42,6 +42,32 @@ export function gigSlotHasConfirmedArtist(slotGig) {
   );
 }
 
+/** A new application the booker has not opened yet. Confirmed and withdrawn rows do not count. */
+export function isUnreviewedApplication(app) {
+  if (!app || app.invited === true) return false;
+  const status = String(app.status || 'pending').toLowerCase();
+  if (status !== 'pending' && status !== 'sent') return false;
+  return app.viewed !== true;
+}
+
+/** Unreviewed applications across a night, counted once when the same act is on more than one slot. */
+export function unreviewedApplicationCount(gigs) {
+  const seen = new Set();
+  let count = 0;
+  for (const gig of gigs || []) {
+    for (const app of gig?.applicants || []) {
+      if (!isUnreviewedApplication(app)) continue;
+      const id = app.id != null ? String(app.id) : '';
+      if (id) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+      }
+      count += 1;
+    }
+  }
+  return count;
+}
+
 /** True when this slot has applicants not yet marked viewed (set-tab notification dot). */
 export function gigSlotHasUnviewedApplicants(slotGig) {
   if (!slotGig || !Array.isArray(slotGig.applicants) || slotGig.applicants.length === 0) {
