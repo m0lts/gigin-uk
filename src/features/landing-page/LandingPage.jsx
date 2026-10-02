@@ -1,1157 +1,564 @@
-import { useNavigate, Link } from 'react-router-dom';
-import { TextLogo, TextLogoLink } from '@features/shared/ui/logos/Logos';
-import '@styles/shared/landing-page.styles.css'
-import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { useState, useEffect, useRef } from 'react';
-import { RightArrowIcon, MicrophoneLinesIcon, AlbumCollectionIcon, FileUserIcon, SuccessIcon, HamburgerMenuIcon, CloseIcon, ShareIcon } from '../shared/ui/extras/Icons';
-import TechRiderImage from '@assets/images/landing_page/artist/tech_rider.png';
-import UploadMediaImage from '@assets/images/landing_page/artist/upload_media.png';
-import Ap1Image from '@assets/images/landing_page/artist/ap_1.png';
-import Ap2Image from '@assets/images/landing_page/artist/ap_2.png';
-import { Footer } from '../shared/components/Footer';
-import mapboxgl from 'mapbox-gl';
-import { fetchNearbyVenues } from '../../services/client-side/venues';
-import { fetchNearbyGigs } from '../../services/client-side/gigs';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { MobileMenu } from '../shared/components/MobileMenu';
-import Portal from '../shared/components/Portal';
-import { incrementProClicks } from '../../services/client-side/reports';
-import { TextLogoArtistLandingPage } from '../shared/ui/logos/Logos';
 import { FEATURES } from '../../config/features';
-import { artistDestination } from '../../config/artistDestination';
-
-const toLngLat = (venue) => {
-    if (venue?.geopoint?.longitude != null && venue?.geopoint?.latitude != null) {
-        return [venue.geopoint.longitude, venue.geopoint.latitude]; // [lng, lat]
-    }
-    if (Array.isArray(venue?.coordinates) && venue.coordinates.length === 2) {
-        return venue.coordinates; // [lng, lat]
-    }
-    return null;
-};
-
-const toFeatureCollection = (list) => ({
-    type: 'FeatureCollection',
-    features: (list || [])
-        .map((v) => {
-            const coords = toLngLat(v);
-            if (!coords) return null;
-            return {
-                type: 'Feature',
-                properties: { id: v.id, name: v.name },
-                geometry: { type: 'Point', coordinates: coords },
-            };
-        })
-        .filter(Boolean),
-});
-
-const labelForGig = (g) =>
-    ((g.budget === '£' || g.budget === 'No Fee') && (g.kind === 'Ticketed Gig' || g.kind === 'Open Mic'))
-        ? g.kind
-        : (g.budget !== 'No Fee' ? g.budget : 'No Fee');
-
-const toGigFeatureCollection = (list) => {
-    const features = (list || [])
-        .map((gig) => {
-            let coordinates;
-            if (gig.coordinates && Array.isArray(gig.coordinates) && gig.coordinates.length === 2) {
-                coordinates = gig.coordinates;
-            } else if (gig.geopoint) {
-                const lat = gig.geopoint.latitude ?? gig.geopoint._latitude;
-                const lng = gig.geopoint.longitude ?? gig.geopoint._longitude;
-                if (typeof lat === 'number' && typeof lng === 'number') {
-                    coordinates = [lng, lat];
-                }
-            }
-            if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
-                return null;
-            }
-            return {
-                type: 'Feature',
-                properties: {
-                    gigId: gig.gigId || gig.id,
-                    budget: gig.budget,
-                    kind: gig.kind,
-                    label: labelForGig(gig),
-                },
-                geometry: { type: 'Point', coordinates },
-            };
-        })
-        .filter(Boolean);
-    return {
-        type: 'FeatureCollection',
-        features,
-    };
-};
-
-export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal, setInitialEmail }) => {
-    const navigate = useNavigate();
-    const { isXlUp, isMdUp } = useBreakpoint();
-    const { user, logout } = useAuth();
-    const [heroEmail, setHeroEmail] = useState('');
-    const [activeEpkFeature, setActiveEpkFeature] = useState('profile'); // Default to profile
-    const [isImageTransitioning, setIsImageTransitioning] = useState(false);
-    const [userInteracted, setUserInteracted] = useState(false);
-    const slideshowIntervalRef = useRef(null);
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    
-    // Hero section map state
-    const heroMapContainerRef = useRef(null);
-    const heroMapRef = useRef(null);
-    const heroVenuesRef = useRef([]);
-    const [heroLoading, setHeroLoading] = useState(true);
-    
-    // Discovery section map state (venues)
-    const discoveryMapContainerRef = useRef(null);
-    const discoveryMapRef = useRef(null);
-    const discoveryVenuesRef = useRef([]);
-    const [discoveryVenues, setDiscoveryVenues] = useState([]);
-    const [discoveryLoading, setDiscoveryLoading] = useState(true);
-    
-    // Gigs map state (for bottom section)
-    const gigsMapContainerRef = useRef(null);
-    const gigsMapRef = useRef(null);
-    const gigsRef = useRef([]);
-    const [gigsLoading, setGigsLoading] = useState(true);
-    
-    const cambridgeLocation = { latitude: 52.2053, longitude: 0.1218 }; // Cambridge UK
-    
-    // Map EPK features to images
-    const epkImages = {
-        profile: Ap1Image,
-        gigs: UploadMediaImage,
-        'tech-rider': Ap2Image
-    };
-
-    // Array of features in order for slideshow
-    const epkFeatures = ['profile', 'gigs', 'tech-rider'];
-
-    const handleEpkFeatureChange = (feature) => {
-        setUserInteracted(true);
-        setIsImageTransitioning(true);
-        setActiveEpkFeature(feature);
-        setTimeout(() => {
-            setIsImageTransitioning(false);
-        }, 500); // Match animation duration
-    };
-
-    // Auto-slideshow effect
-    useEffect(() => {
-        // Only start slideshow if user hasn't interacted
-        if (!userInteracted) {
-            slideshowIntervalRef.current = setInterval(() => {
-                setActiveEpkFeature((current) => {
-                    const currentIndex = epkFeatures.indexOf(current);
-                    const nextIndex = (currentIndex + 1) % epkFeatures.length;
-                    return epkFeatures[nextIndex];
-                });
-            }, 7000); // 7 seconds
-        }
-
-        return () => {
-            if (slideshowIntervalRef.current) {
-                clearInterval(slideshowIntervalRef.current);
-            }
-        };
-    }, [userInteracted]);
-
-    const handleCreateArtistProfile = () => {
-        if (!user) {
-            // User not logged in - navigate to artist profile example page (don't show auth modal)
-            navigate(artistDestination(user, FEATURES));
-        } else {
-            navigate(artistDestination(user, FEATURES));
-        }
-    };
-
-    const handleLogin = () => {
-        if (!user) {
-            setAuthType('login');
-            setAuthModal(true);
-        } else {
-            // If user is logged in, redirect based on profile
-            if (hasArtistProfile) {
-                navigate(artistDestination(user, FEATURES));
-            } else if (hasVenueProfile) {
-                navigate('/venues/dashboard/gigs');
-            }
-        }
-    };
-
-    const handleLogout = async () => {
-        try {
-            await logout();
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    // Check if user is logged in but has no profiles
-    const hasNoProfiles = user && 
-        (!user.venueProfiles || user.venueProfiles.length === 0) && 
-        (!user.artistProfiles || user.artistProfiles.length === 0);
-    
-    const hasArtistProfile = user && user.artistProfiles && user.artistProfiles.length > 0;
-    const hasVenueProfile = user && user.venueProfiles && user.venueProfiles.length > 0;
-
-    // Auto-redirect if user has venue profile
-    useEffect(() => {
-        if (hasVenueProfile) {
-            navigate('/venues/dashboard/gigs');
-        }
-    }, [hasVenueProfile, navigate]);
-
-    // Auto-redirect if user has artist profile (and no venue profile)
-    useEffect(() => {
-        if (hasArtistProfile && !hasVenueProfile) {
-            navigate(artistDestination(user, FEATURES));
-        }
-    }, [hasArtistProfile, hasVenueProfile, navigate, user]);
-
-    // Fetch venues for hero and discovery sections
-    useEffect(() => {
-        let cancelled = false;
-        const fetchVenues = async () => {
-            setHeroLoading(true);
-            setDiscoveryLoading(true);
-            try {
-                const { venues: newVenues } = await fetchNearbyVenues({
-                    location: cambridgeLocation,
-                    radiusInKm: 50,
-                    lastDoc: null,
-                });
-                if (!cancelled) {
-                    const venues = newVenues || [];
-                    setDiscoveryVenues(venues);
-                    discoveryVenuesRef.current = venues;
-                    heroVenuesRef.current = venues;
-                }
-            } catch (err) {
-                console.error('Error fetching venues:', err);
-            } finally {
-                if (!cancelled) {
-                    setHeroLoading(false);
-                    setDiscoveryLoading(false);
-                }
-            }
-        };
-        fetchVenues();
-        return () => { cancelled = true; };
-    }, []);
-
-    // Fetch gigs for bottom map section
-    useEffect(() => {
-        let cancelled = false;
-        const fetchGigs = async () => {
-            setGigsLoading(true);
-            try {
-                const { gigs: newGigs } = await fetchNearbyGigs({
-                    location: cambridgeLocation,
-                    radiusInKm: 50,
-                    limitCount: 100,
-                    lastDoc: null,
-                    filters: {},
-                });
-                if (!cancelled) {
-                    const gigs = newGigs || [];
-                    gigsRef.current = gigs;
-                }
-            } catch (err) {
-                console.error('Error fetching gigs:', err);
-            } finally {
-                if (!cancelled) {
-                    setGigsLoading(false);
-                }
-            }
-        };
-        fetchGigs();
-        return () => { cancelled = true; };
-    }, []);
-
-    // Initialize discovery map
-    useEffect(() => {
-        if (!discoveryMapContainerRef.current || discoveryMapRef.current) return;
-        mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
-
-        const map = new mapboxgl.Map({
-            container: discoveryMapContainerRef.current,
-            style: 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
-            center: [cambridgeLocation.longitude, cambridgeLocation.latitude],
-            zoom: 10,
-        });
-
-        const sourceId = 'discovery-venues';
-
-        map.on('load', () => {
-            map.addSource(sourceId, {
-                type: 'geojson',
-                data: toFeatureCollection(discoveryVenuesRef.current),
-                cluster: true,
-                clusterMaxZoom: 14,
-                clusterRadius: 50,
-            });
-
-            map.addLayer({
-                id: 'clusters-shadow',
-                type: 'circle',
-                source: sourceId,
-                filter: ['has', 'point_count'],
-                paint: {
-                    'circle-color': 'rgba(0, 0, 0, 0.07)',
-                    'circle-radius': ['step', ['get', 'point_count'], 16, 5, 20, 10, 24, 25, 28],
-                    'circle-blur': 1.2,
-                },
-            });
-
-            map.addLayer({
-                id: 'clusters',
-                type: 'circle',
-                source: sourceId,
-                filter: ['has', 'point_count'],
-                paint: {
-                    'circle-color': '#1A1A1A',
-                    'circle-radius': ['step', ['get', 'point_count'], 12, 5, 16, 10, 20, 25, 24],
-                    'circle-stroke-width': 0,
-                },
-            });
-
-            map.addLayer({
-                id: 'cluster-count',
-                type: 'symbol',
-                source: sourceId,
-                filter: ['has', 'point_count'],
-                layout: {
-                    'text-field': ['concat', ['get', 'point_count_abbreviated'], ' Venues'],
-                    'text-font': ['DM Sans Bold'],
-                    'text-size': 13,
-                    'text-anchor': 'center',
-                },
-                paint: {
-                    'text-color': '#FFFFFF',
-                    'text-halo-color': '#1A1A1A',
-                    'text-halo-width': 1.5,
-                },
-            });
-
-            map.addLayer({
-                id: 'unclustered-point',
-                type: 'circle',
-                source: sourceId,
-                filter: ['!', ['has', 'point_count']],
-                paint: {
-                    'circle-color': '#FF6C4B',
-                    'circle-radius': 8,
-                    'circle-blur': 0.3,
-                    'circle-opacity': 1,
-                    'circle-stroke-width': 0,
-                },
-            });
-
-            map.addLayer({
-                id: 'unclustered-point-label',
-                type: 'symbol',
-                source: sourceId,
-                filter: ['!', ['has', 'point_count']],
-                layout: {
-                    'text-field': ['get', 'name'],
-                    'text-font': ['DM Sans Bold'],
-                    'text-size': 14,
-                    'text-anchor': 'top',
-                    'text-offset': [0, 0.5],
-                },
-                paint: {
-                    'text-color': '#111111',
-                    'text-halo-color': '#FFFFFF',
-                    'text-halo-width': 1,
-                    'text-halo-blur': 0.5,
-                },
-            });
-
-            map.addLayer({
-                id: 'unclustered-hit',
-                type: 'circle',
-                source: sourceId,
-                filter: ['!', ['has', 'point_count']],
-                paint: {
-                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 18, 10, 22, 14, 26],
-                    'circle-color': '#fff',
-                    'circle-opacity': 0,
-                },
-            });
-
-            const handleUnclusteredClick = (e) => {
-                const padding = 10;
-                const p1 = new mapboxgl.Point(e.point.x - padding, e.point.y - padding);
-                const p2 = new mapboxgl.Point(e.point.x + padding, e.point.y + padding);
-                const features = map.queryRenderedFeatures([p1, p2], {
-                    layers: ['unclustered-point', 'unclustered-hit', 'unclustered-point-label'],
-                });
-                if (!features.length) return;
-                const ids = new Set(features.map((f) => f.properties?.id).filter(Boolean));
-                const match = discoveryVenuesRef.current.find((v) => ids.has(v.id));
-                if (match) {
-                    if (user?.musicianProfile) {
-                        window.open(`/venues/${match.id}?musicianId=${user.musicianProfile.id}`, '_blank', 'noopener,noreferrer');
-                    } else {
-                        window.open(`/venues/${match.id}`, '_blank', 'noopener,noreferrer');
-                    }
-                }
-            };
-
-            map.on('click', 'unclustered-hit', handleUnclusteredClick);
-            ['unclustered-point', 'unclustered-hit'].forEach((l) => {
-                map.on('mouseenter', l, () => (map.getCanvas().style.cursor = 'pointer'));
-                map.on('mouseleave', l, () => (map.getCanvas().style.cursor = ''));
-            });
-
-            map.on('mouseenter', 'clusters', () => (map.getCanvas().style.cursor = 'pointer'));
-            map.on('mouseleave', 'clusters', () => (map.getCanvas().style.cursor = ''));
-
-            map.on('click', 'clusters', (e) => {
-                const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-                if (!features.length) return;
-                const clusterId = features[0].properties.cluster_id;
-                const source = map.getSource(sourceId);
-                source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-                    if (err) return;
-                    map.easeTo({
-                        center: features[0].geometry.coordinates,
-                        zoom: zoom,
-                    });
-                });
-            });
-        });
-
-        discoveryMapRef.current = map;
-        return () => { 
-            if (discoveryMapRef.current) {
-                discoveryMapRef.current.remove();
-                discoveryMapRef.current = null;
-            }
-        };
-    }, []);
-
-    // Initialize hero map
-    useEffect(() => {
-        if (!heroMapContainerRef.current || heroMapRef.current) return;
-        mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
-
-        const map = new mapboxgl.Map({
-            container: heroMapContainerRef.current,
-            style: 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
-            center: [cambridgeLocation.longitude, cambridgeLocation.latitude],
-            zoom: 12,
-        });
-
-        const sourceId = 'hero-venues';
-
-        map.on('load', () => {
-            map.addSource(sourceId, {
-                type: 'geojson',
-                data: toFeatureCollection(heroVenuesRef.current),
-                cluster: true,
-                clusterMaxZoom: 14,
-                clusterRadius: 50,
-            });
-
-            map.addLayer({
-                id: 'clusters-shadow',
-                type: 'circle',
-                source: sourceId,
-                filter: ['has', 'point_count'],
-                paint: {
-                    'circle-color': 'rgba(0, 0, 0, 0.07)',
-                    'circle-radius': ['step', ['get', 'point_count'], 16, 5, 20, 10, 24, 25, 28],
-                    'circle-blur': 1.2,
-                },
-            });
-
-            map.addLayer({
-                id: 'clusters',
-                type: 'circle',
-                source: sourceId,
-                filter: ['has', 'point_count'],
-                paint: {
-                    'circle-color': '#1A1A1A',
-                    'circle-radius': ['step', ['get', 'point_count'], 12, 5, 16, 10, 20, 25, 24],
-                    'circle-stroke-width': 0,
-                },
-            });
-
-            map.addLayer({
-                id: 'cluster-count',
-                type: 'symbol',
-                source: sourceId,
-                filter: ['has', 'point_count'],
-                layout: {
-                    'text-field': ['concat', ['get', 'point_count_abbreviated'], ' Venues'],
-                    'text-font': ['DM Sans Bold'],
-                    'text-size': 13,
-                    'text-anchor': 'center',
-                },
-                paint: {
-                    'text-color': '#FFFFFF',
-                    'text-halo-color': '#1A1A1A',
-                    'text-halo-width': 1.5,
-                },
-            });
-
-            map.addLayer({
-                id: 'unclustered-point',
-                type: 'circle',
-                source: sourceId,
-                filter: ['!', ['has', 'point_count']],
-                paint: {
-                    'circle-color': '#FF6C4B',
-                    'circle-radius': 8,
-                    'circle-blur': 0.3,
-                    'circle-opacity': 1,
-                    'circle-stroke-width': 0,
-                },
-            });
-
-            map.addLayer({
-                id: 'unclustered-point-label',
-                type: 'symbol',
-                source: sourceId,
-                filter: ['!', ['has', 'point_count']],
-                layout: {
-                    'text-field': ['get', 'name'],
-                    'text-font': ['DM Sans Bold'],
-                    'text-size': 14,
-                    'text-anchor': 'top',
-                    'text-offset': [0, 0.5],
-                },
-                paint: {
-                    'text-color': '#111111',
-                    'text-halo-color': '#FFFFFF',
-                    'text-halo-width': 1,
-                    'text-halo-blur': 0.5,
-                },
-            });
-
-            map.addLayer({
-                id: 'unclustered-hit',
-                type: 'circle',
-                source: sourceId,
-                filter: ['!', ['has', 'point_count']],
-                paint: {
-                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 18, 10, 22, 14, 26],
-                    'circle-color': '#fff',
-                    'circle-opacity': 0,
-                },
-            });
-
-            const handleUnclusteredClick = (e) => {
-                const padding = 10;
-                const p1 = new mapboxgl.Point(e.point.x - padding, e.point.y - padding);
-                const p2 = new mapboxgl.Point(e.point.x + padding, e.point.y + padding);
-                const features = map.queryRenderedFeatures([p1, p2], {
-                    layers: ['unclustered-point', 'unclustered-hit', 'unclustered-point-label'],
-                });
-                if (!features.length) return;
-                const ids = new Set(features.map((f) => f.properties?.id).filter(Boolean));
-                const match = heroVenuesRef.current.find((v) => ids.has(v.id));
-                if (match) {
-                    if (user?.musicianProfile) {
-                        window.open(`/venues/${match.id}?musicianId=${user.musicianProfile.id}`, '_blank', 'noopener,noreferrer');
-                    } else {
-                        window.open(`/venues/${match.id}`, '_blank', 'noopener,noreferrer');
-                    }
-                }
-            };
-
-            map.on('click', 'unclustered-hit', handleUnclusteredClick);
-            ['unclustered-point', 'unclustered-hit'].forEach((l) => {
-                map.on('mouseenter', l, () => (map.getCanvas().style.cursor = 'pointer'));
-                map.on('mouseleave', l, () => (map.getCanvas().style.cursor = ''));
-            });
-
-            map.on('mouseenter', 'clusters', () => (map.getCanvas().style.cursor = 'pointer'));
-            map.on('mouseleave', 'clusters', () => (map.getCanvas().style.cursor = ''));
-
-            map.on('click', 'clusters', (e) => {
-                const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-                if (!features.length) return;
-                const clusterId = features[0].properties.cluster_id;
-                const source = map.getSource(sourceId);
-                source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-                    if (err) return;
-                    map.easeTo({
-                        center: features[0].geometry.coordinates,
-                        zoom: zoom,
-                    });
-                });
-            });
-        });
-
-        heroMapRef.current = map;
-        return () => { 
-            if (heroMapRef.current) {
-                heroMapRef.current.remove();
-                heroMapRef.current = null;
-            }
-        };
-    }, []);
-
-    // Update map data when venues change
-    useEffect(() => {
-        if (!discoveryMapRef.current) return;
-        const src = discoveryMapRef.current.getSource('discovery-venues');
-        if (src) {
-            src.setData(toFeatureCollection(discoveryVenues));
-        }
-    }, [discoveryVenues]);
-
-    useEffect(() => {
-        if (!heroMapRef.current) return;
-        const src = heroMapRef.current.getSource('hero-venues');
-        if (src) {
-            src.setData(toFeatureCollection(heroVenuesRef.current));
-        }
-    }, [heroVenuesRef]);
-
-    // Initialize gigs map
-    useEffect(() => {
-        if (!gigsMapContainerRef.current || gigsMapRef.current) return;
-        mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
-
-        const map = new mapboxgl.Map({
-            container: gigsMapContainerRef.current,
-            style: 'mapbox://styles/gigin/clp5jayun01l901pr6ivg5npf',
-            center: [cambridgeLocation.longitude, cambridgeLocation.latitude],
-            zoom: 12,
-        });
-
-        const sourceId = 'gigs-map';
-
-        map.on('load', () => {
-            map.addSource(sourceId, {
-                type: 'geojson',
-                data: toGigFeatureCollection(gigsRef.current),
-                cluster: true,
-                clusterMaxZoom: 14,
-                clusterRadius: 50,
-            });
-
-            map.addLayer({
-                id: 'clusters-shadow',
-                type: 'circle',
-                source: sourceId,
-                filter: ['has', 'point_count'],
-                paint: {
-                    'circle-color': 'rgba(0, 0, 0, 0.07)',
-                    'circle-radius': ['step', ['get', 'point_count'], 16, 5, 20, 10, 24, 25, 28],
-                    'circle-blur': 1.2,
-                },
-            });
-
-            map.addLayer({
-                id: 'clusters',
-                type: 'circle',
-                source: sourceId,
-                filter: ['has', 'point_count'],
-                paint: {
-                    'circle-color': '#1A1A1A',
-                    'circle-radius': ['step', ['get', 'point_count'], 12, 5, 16, 10, 20, 25, 24],
-                    'circle-stroke-width': 0,
-                },
-            });
-
-            map.addLayer({
-                id: 'cluster-count',
-                type: 'symbol',
-                source: sourceId,
-                filter: ['has', 'point_count'],
-                layout: {
-                    'text-field': ['concat', ['get', 'point_count_abbreviated'], ' Gigs'],
-                    'text-font': ['DM Sans Bold'],
-                    'text-size': 13,
-                    'text-anchor': 'center',
-                },
-                paint: {
-                    'text-color': '#FFFFFF',
-                    'text-halo-color': '#1A1A1A',
-                    'text-halo-width': 1.5,
-                },
-            });
-
-            map.addLayer({
-                id: 'unclustered-point',
-                type: 'circle',
-                source: sourceId,
-                filter: ['!', ['has', 'point_count']],
-                paint: {
-                    'circle-color': '#FF6C4B',
-                    'circle-radius': 8,
-                    'circle-blur': 0.3,
-                    'circle-opacity': 1,
-                    'circle-stroke-width': 0,
-                },
-            });
-
-            map.addLayer({
-                id: 'unclustered-point-label',
-                type: 'symbol',
-                source: sourceId,
-                filter: ['!', ['has', 'point_count']],
-                layout: {
-                    'text-field': ['get', 'label'],
-                    'text-font': ['DM Sans Bold'],
-                    'text-size': 14,
-                    'text-anchor': 'top',
-                    'text-offset': [0, 0.5],
-                },
-                paint: {
-                    'text-color': '#111111',
-                    'text-halo-color': '#FFFFFF',
-                    'text-halo-width': 1,
-                    'text-halo-blur': 0.5,
-                },
-            });
-
-            map.addLayer({
-                id: 'unclustered-hit',
-                type: 'circle',
-                source: sourceId,
-                filter: ['!', ['has', 'point_count']],
-                paint: {
-                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 18, 10, 22, 14, 26],
-                    'circle-color': '#fff',
-                    'circle-opacity': 0,
-                },
-            });
-
-            const handleUnclusteredClick = (e) => {
-                const padding = 10;
-                const p1 = new mapboxgl.Point(e.point.x - padding, e.point.y - padding);
-                const p2 = new mapboxgl.Point(e.point.x + padding, e.point.y + padding);
-                const features = map.queryRenderedFeatures([p1, p2], {
-                    layers: ['unclustered-point', 'unclustered-hit', 'unclustered-point-label'],
-                });
-                if (!features.length) return;
-                const gigId = features[0].properties?.gigId;
-                if (gigId) {
-                    window.open(`/gig/${gigId}`, '_blank', 'noopener,noreferrer');
-                }
-            };
-
-            map.on('click', 'unclustered-hit', handleUnclusteredClick);
-            ['unclustered-point', 'unclustered-hit'].forEach((l) => {
-                map.on('mouseenter', l, () => (map.getCanvas().style.cursor = 'pointer'));
-                map.on('mouseleave', l, () => (map.getCanvas().style.cursor = ''));
-            });
-
-            map.on('mouseenter', 'clusters', () => (map.getCanvas().style.cursor = 'pointer'));
-            map.on('mouseleave', 'clusters', () => (map.getCanvas().style.cursor = ''));
-
-            map.on('click', 'clusters', (e) => {
-                const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-                if (!features.length) return;
-                const clusterId = features[0].properties.cluster_id;
-                const source = map.getSource(sourceId);
-                source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-                    if (err) return;
-                    map.easeTo({
-                        center: features[0].geometry.coordinates,
-                        zoom: zoom,
-                    });
-                });
-            });
-        });
-
-        gigsMapRef.current = map;
-        return () => { 
-            if (gigsMapRef.current) {
-                gigsMapRef.current.remove();
-                gigsMapRef.current = null;
-            }
-        };
-    }, []);
-
-    // Update gigs map data when gigs change
-    useEffect(() => {
-        if (!gigsMapRef.current || gigsLoading) return;
-        const src = gigsMapRef.current.getSource('gigs-map');
-        if (src) {
-            src.setData(toGigFeatureCollection(gigsRef.current));
-        }
-    }, [gigsLoading]);
-
-
-    const handleStartNow = () => {
-        // Set initial email if provided, then show signup modal
-        if (setInitialEmail && heroEmail) {
-            setInitialEmail(heroEmail);
-        }
-        setAuthType('signup');
-        setAuthModal(true);
-    };
-
-    const handlePricingClick = () => {
-        const pricingSection = document.getElementById('pricing-section');
-        if (pricingSection) {
-            pricingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    };
-
-    return (
-        <div className="landing-page">
-            <nav className="landing-navbar">
-                <div className={`navbar-container ${isXlUp ? 'constrained' : ''}`}>
-                    <div className="navbar-left">
-                        <TextLogoArtistLandingPage />
-                        {isMdUp && (
-                            <>
-                                <button className="nav-link" onClick={() => navigate('/find-a-gig')}>
-                                    Find Gig
-                                </button>
-                                <button className="nav-link" onClick={() => navigate('/find-venues')}>
-                                    Find Venue
-                                </button>
-                            </>
-                        )}
-                    </div>
-                    {isMdUp ? (
-                        <div className="navbar-right">
-                            {!hasArtistProfile && (
-                                <button className="btn tertiary" onClick={() => navigate('/venues')}>
-                                    I'm a Venue
-                                </button>
-                            )}
-                            {hasArtistProfile ? (
-                                <button className="btn artist-profile" onClick={() => navigate(artistDestination(user, FEATURES))}>
-                                    My Artist Profile
-                                </button>
-                            ) : FEATURES.legacyArtist ? (
-                                <button className="btn artist-profile" onClick={handleCreateArtistProfile}>
-                                    Create Artist Profile
-                                </button>
-                            ) : null}
-                            <h6 className="or-separator">
-                                OR
-                            </h6>
-                            {user ? (
-                                <button className="btn secondary" onClick={handleLogout}>
-                                    Log Out
-                                </button>
-                            ) : (
-                                <button className="btn secondary" onClick={handleLogin}>
-                                    Log In
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="navbar-right">
-                            <button 
-                                className="btn icon hamburger-menu-btn"
-                                aria-label={mobileMenuOpen ? 'Close Menu' : 'Open Menu'}
-                                aria-expanded={mobileMenuOpen}
-                                onClick={(e) => {
-                                    setMobileMenuOpen(!mobileMenuOpen);
-                                    e.stopPropagation();
-                                }}
-                            >
-                                {mobileMenuOpen ? <CloseIcon /> : <HamburgerMenuIcon />}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </nav>
-            {!isMdUp && mobileMenuOpen && (
-                <Portal>
-                    <nav className='mobile-menu' style={{ right: '2rem', top: '8%' }}>
-                        {!user ? (
-                            <>
-                                <Link className='link item no-margin' to='/venues' onClick={() => setMobileMenuOpen(false)}>
-                                    I'm a Venue
-                                </Link>
-                                {FEATURES.discovery && (
-                                <Link className='link item no-margin' to='/find-a-gig' onClick={() => setMobileMenuOpen(false)}>
-                                    Find a Gig
-                                </Link>
-                                )}
-                                {FEATURES.discovery && (
-                                <Link className='link item no-margin' to='/find-venues' onClick={() => setMobileMenuOpen(false)}>
-                                    Find a Venue
-                                </Link>
-                                )}
-                                <div className="two-buttons">
-                                    <button className='btn secondary' onClick={() => { setAuthType('login'); setAuthModal(true); setMobileMenuOpen(false); }}>
-                                        Log In
-                                    </button>
-                                    <button className='btn primary' onClick={() => { setAuthType('signup'); setAuthModal(true); setMobileMenuOpen(false); }}>
-                                        Sign Up
-                                    </button>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                {!hasArtistProfile && (
-                                    <Link className='link item no-margin' to='/venues' onClick={() => setMobileMenuOpen(false)}>
-                                        I'm a Venue
-                                    </Link>
-                                )}
-                                {FEATURES.discovery && (
-                                <Link className='link item no-margin' to='/find-a-gig' onClick={() => setMobileMenuOpen(false)}>
-                                    Find a Gig
-                                </Link>
-                                )}
-                                {FEATURES.discovery && (
-                                <Link className='link item no-margin' to='/find-venues' onClick={() => setMobileMenuOpen(false)}>
-                                    Find a Venue
-                                </Link>
-                                )}
-                                {hasArtistProfile ? (
-                                    <Link className='link item no-margin' to={artistDestination(user, FEATURES)} onClick={() => setMobileMenuOpen(false)}>
-                                        My Artist Profile
-                                    </Link>
-                                ) : FEATURES.legacyArtist ? (
-                                    <button className='link item no-margin' onClick={() => { handleCreateArtistProfile(); setMobileMenuOpen(false); }}>
-                                        Create Artist Profile
-                                    </button>
-                                ) : null}
-                                <div className="two-buttons">
-                                    <button className='btn secondary' onClick={() => { handleLogout(); setMobileMenuOpen(false); }}>
-                                        Log Out
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </nav>
-                </Portal>
-            )}
-            <div className={`landing-content ${isXlUp ? 'constrained' : ''}`}>
-                <section className="hero-section">
-                    {!isMdUp && (
-                        <div className="hero-right-mobile">
-                            <div className="hero-map-container">
-                                <div ref={heroMapContainerRef} className="hero-map" />
-                                {heroLoading && (
-                                    <div className="hero-map-loading">
-                                        <span>Loading venues...</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    <div className="hero-left">
-                        <h1>Find gigs to play, without the hassle.</h1>
-                        <h4>Find venues, exclusive gig opportunities, and build a re-usable professional Artist Page in minutes.</h4>
-                        <div className="hero-cta">
-                            <input
-                                type="email"
-                                className="hero-email-input"
-                                placeholder="Email address"
-                                value={heroEmail}
-                                onChange={(e) => setHeroEmail(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        handleStartNow();
-                                    }
-                                }}
-                            />
-                            <button className="btn artist-profile" onClick={handleStartNow} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                Start Now <RightArrowIcon />
-                            </button>
-                        </div>
-                    </div>
-                    {isMdUp && (
-                        <div className="hero-right">
-                            <div className="hero-map-container">
-                                <div ref={heroMapContainerRef} className="hero-map" />
-                                {heroLoading && (
-                                    <div className="hero-map-loading">
-                                        <span>Loading venues...</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </section>
-                <section className="epk-section">
-                    <h2>Your Artist Profile: The Key to Unlocking Gigs</h2>
-                    {isMdUp ? (
-                        <>
-                            <div className="epk-features">
-                                <div className="epk-feature">
-                                    <button 
-                                        className={`epk-icon-circle ${activeEpkFeature === 'profile' ? 'active' : ''}`}
-                                        onClick={() => handleEpkFeatureChange('profile')}
-                                    >
-                                        <AlbumCollectionIcon />
-                                    </button>
-                                    <h4>Profile</h4>
-                                </div>
-                                <div className="epk-connector"></div>
-                                <div className="epk-feature">
-                                    <button 
-                                        className={`epk-icon-circle ${activeEpkFeature === 'gigs' ? 'active' : ''}`}
-                                        onClick={() => handleEpkFeatureChange('gigs')}
-                                    >
-                                        <MicrophoneLinesIcon />
-                                    </button>
-                                    <h4>Gigs</h4>
-                                </div>
-                                <div className="epk-connector"></div>
-                                <div className="epk-feature">
-                                    <button 
-                                        className={`epk-icon-circle ${activeEpkFeature === 'tech-rider' ? 'active' : ''}`}
-                                        onClick={() => handleEpkFeatureChange('tech-rider')}
-                                    >
-                                        <FileUserIcon />
-                                    </button>
-                                    <h4>Tech Rider</h4>
-                                </div>
-                            </div>
-                            <section className="artist-profile-section">
-                                <div className="artist-profile-image-container">
-                                    <img 
-                                        src={epkImages[activeEpkFeature]} 
-                                        alt="Artist profile example" 
-                                        className="artist-profile-screenshot"
-                                        key={activeEpkFeature}
-                                    />
-                                </div>
-                            </section>
-                        </>
-                    ) : (
-                        <div className="epk-mobile-features">
-                            {epkFeatures.map((feature) => (
-                                <div key={feature} className="epk-mobile-feature">
-                                    <div className="epk-mobile-header">
-                                        <div className="epk-icon-circle">
-                                            {feature === 'profile' && <AlbumCollectionIcon />}
-                                            {feature === 'gigs' && <MicrophoneLinesIcon />}
-                                            {feature === 'tech-rider' && <FileUserIcon />}
-                                        </div>
-                                        <h4>
-                                            {feature === 'profile' && 'Profile'}
-                                            {feature === 'gigs' && 'Gigs'}
-                                            {feature === 'tech-rider' && 'Tech Rider'}
-                                        </h4>
-                                    </div>
-                                    <div className="artist-profile-image-container">
-                                        <img 
-                                            src={epkImages[feature]} 
-                                            alt={`${feature} example`}
-                                            className="artist-profile-screenshot"
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
-                <section className="profile-link-section">
-                    <h2>Build it once. Use it everywhere.</h2>
-                    <div className="profile-link-input">
-                        <span className="profile-link-text">giginmusic.com/Cardboard-rocket</span>
-                        <button className="profile-link-share" aria-label="Share profile link">
-                            <ShareIcon />
-                        </button>
-                    </div>
-                    <button className="btn artist-profile" onClick={handleCreateArtistProfile} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        Make my Profile <RightArrowIcon />
-                    </button>
-                    <span className="small-text">Set up time: 5 Minutes</span>
-                </section>
-                <section className="discovery-section">
-                    <div className="discovery-content">
-                        <div className="discovery-text">
-                            <h2>A simple tech rider</h2>
-                            <p>
-                            Put your lineup on stage and what you need for a gig, reduce the back and forths, and make it easy for bookers to say yes.
-                            </p>
-                        </div>
-                        <div className="discovery-image">
-                            <img src={TechRiderImage} alt="Tech rider" />
-                        </div>
-                    </div>
-                    <div className="discovery-content reverse">
-                        <div className="discovery-image">
-                            <img src={UploadMediaImage} alt="Upload media" />
-                        </div>
-                        <div className="discovery-text">
-                            <h2>Upload media, and link your socials</h2>
-                            <p>
-                            An evolving page for your sound, videos, and story, always ready to send.
-                            </p>
-                        </div>
-                    </div>
-                </section>
-                <section className="discovery-section">
-                    <div className="discovery-content">
-                        <div className="discovery-text">
-                            <h2>Start booking now</h2>
-                            <p>
-                                Contact venues and bookers directly and find exclusive gigs. Let’s get you on stage.
-                            </p>
-                            <button className="btn artist-profile" onClick={() => navigate('/find-a-gig')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content' }}>
-                                Start searching for gigs <RightArrowIcon />
-                            </button>
-                        </div>
-                        <div className="discovery-map-container">
-                            <div ref={gigsMapContainerRef} className="discovery-map" />
-                            {gigsLoading && (
-                                <div className="discovery-map-loading">
-                                    <span>Loading gigs...</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </section>
-                <section id="pricing-section" className="pricing-section">
-                    <h2>We have two pricing tiers to suit your needs</h2>
-                    <div className="pricing-cards">
-                        <div className="pricing-card">
-                            <h2 className="pricing-price">Free</h2>
-                            <h3>Starter</h3>
-                            <h4>Best for artists just starting out.</h4>
-                            <ul className="pricing-features">
-                                <li className="black"><SuccessIcon /> 2 artist profiles</li>
-                                <li className="black"><SuccessIcon /> Gig booking system</li>
-                                <li className="black"><SuccessIcon /> Tech rider</li>
-                                <li className="black"><SuccessIcon /> 100MB media storage</li>
-                            </ul>
-                            <button className="btn primary" onClick={handleCreateArtistProfile}>Get Started <RightArrowIcon /></button>
-                        </div>
-                        <div className="pricing-card pricing-card-pro">
-                            <h2 className="pricing-price">
-                                <span className="pricing-amount">£5.99</span>
-                                <span className="pricing-period"> / month</span>
-                            </h2>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <h3>Gigin</h3>
-                                <div className="pro-badge white">
-                                    <span>Pro</span>
-                                </div>
-                            </div>
-                            <h4>Best for artists looking to grow their career.</h4>
-                            <ul className="pricing-features">
-                                <li><SuccessIcon /> All features from the Free tier</li>
-                                <li><SuccessIcon /> 3GB media storage</li>
-                                <li><SuccessIcon /> Increased profile visibility</li>
-                                <li><SuccessIcon /> Add band members to profile</li>
-                                <li><SuccessIcon /> Split gig earnings with band members</li>
-                            </ul>
-                            <button className="btn secondary" onClick={async () => { 
-                                await incrementProClicks();
-                            }}>Get Started <RightArrowIcon /></button>
-                        </div>
-                        <div className="pricing-card venue-card">
-                            <h3>Are you a venue?</h3>
-                            <h4>Take a look at our venue pricing.</h4>
-                            <button className="btn tertiary" onClick={() => navigate('/venues')}>
-                                Get Started <RightArrowIcon />
-                            </button>
-                        </div>
-                    </div>
-                </section>
-            </div>
-            <Footer />
-        </div>
-    )
+import { PROOF } from './landing.config';
+import { submitAccessRequest } from '../../services/api/accessRequests';
+import { requestManageLinks } from '../../services/api/manageLinks';
+import {
+  EmailScreen,
+  GalleryScreen,
+  HomeScreen,
+  LinkScreen,
+  ReviewScreen,
+  SetsScreen,
+} from './LandingScreens';
+import './landing.css';
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const STEPS = [
+  {
+    n: '01',
+    title: 'One application link per night',
+    body: 'Create the night, copy its link and post it wherever acts find you: Instagram, WhatsApp groups, a poster by the bar. Every application lands in one list, and acts don\u2019t need an account to apply.',
+    screen: LinkScreen,
+  },
+  {
+    n: '02',
+    title: 'Review every act on one page',
+    body: 'Each application shows the act\u2019s photo, music links, band and tech needs, and which set they\u2019d like. Listen without leaving the page, then accept or decline.',
+    screen: ReviewScreen,
+  },
+  {
+    n: '03',
+    title: 'Give each act a set',
+    body: 'Drag accepted acts onto the night\u2019s sets. Gigin shows who asked for which set, keeps the running order and tells each act their set time.',
+    screen: SetsScreen,
+  },
+  {
+    n: '04',
+    title: 'Emails go out for you, with time to undo',
+    body: 'Acts hear back automatically when you accept them, decline them or change their set. Every action has an Undo, and a decline waits five minutes before it sends.',
+    screen: EmailScreen,
+  },
+  {
+    n: '05',
+    title: 'A private gallery after the gig',
+    body: 'Upload photos and videos from the night and send the acts a private link to see and download them. Nothing is public, and you can revoke the link any time.',
+    screen: GalleryScreen,
+  },
+];
+
+function collapse(value) {
+  return String(value ?? '').replace(/\s+/g, ' ').trim();
 }
 
+function accessErrors(values) {
+  const errors = {};
+  const name = collapse(values.name);
+  const venueName = collapse(values.venueName);
+  const city = collapse(values.city);
+  const email = collapse(values.email);
+  const message = collapse(values.message);
+  const nightsRaw = String(values.nightsPerMonth ?? '').trim();
+  const nights = Number(nightsRaw);
+  if (name.length > 80) errors.name = 'Keep your name under 80 characters.';
+  else if (name.length < 2) errors.name = 'Enter your name.';
+  if (venueName.length > 120) errors.venueName = 'Keep the venue name under 120 characters.';
+  else if (venueName.length < 2) errors.venueName = "Enter your venue's name.";
+  if (city.length < 2 || city.length > 80) errors.city = 'Enter the town or city.';
+  if (!/^\d+$/.test(nightsRaw)) errors.nightsPerMonth = 'Enter roughly how many nights a month.';
+  else if (!Number.isInteger(nights) || nights < 1 || nights > 31) errors.nightsPerMonth = 'Enter a number from 1 to 31.';
+  if (!email) errors.email = 'Enter your email address.';
+  else if (email.length > 160 || !EMAIL.test(email)) errors.email = 'Enter an email address like name@yourvenue.co.uk.';
+  if (message.length > 2000) errors.message = 'Keep your message under 2,000 characters.';
+  return errors;
+}
+
+const FIELD_ORDER = ['name', 'venueName', 'city', 'nightsPerMonth', 'email', 'message'];
+
+const EMPTY_ACCESS = {
+  name: '',
+  venueName: '',
+  city: '',
+  nightsPerMonth: '',
+  email: '',
+  message: '',
+  company: '',
+};
+
+function setMeta(selector, attr, name, content) {
+  let tag = document.head.querySelector(selector);
+  if (!tag) {
+    tag = document.createElement('meta');
+    tag.setAttribute(attr, name);
+    document.head.appendChild(tag);
+  }
+  const previous = tag.getAttribute('content');
+  tag.setAttribute('content', content);
+  return () => {
+    if (previous == null) tag.remove();
+    else tag.setAttribute('content', previous);
+  };
+}
+
+function useLandingHead() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = 'Gigin · Run your gig nights without the inbox chaos';
+    const restore = [
+      setMeta('meta[name="description"]', 'name', 'description', 'One application link per night, every act in one place, sets and emails handled. Invite-only for venues, starting in Cambridge.'),
+      setMeta('meta[property="og:title"]', 'property', 'og:title', 'Gigin · Run your gig nights without the inbox chaos'),
+      setMeta('meta[property="og:description"]', 'property', 'og:description', 'One application link per night, every act in one place, sets and emails handled. Invite-only for venues, starting in Cambridge.'),
+      setMeta('meta[property="og:url"]', 'property', 'og:url', 'https://giginmusic.com/'),
+      setMeta('meta[property="og:image"]', 'property', 'og:image', 'https://giginmusic.com/og/landing.svg'),
+      setMeta('meta[property="og:image:width"]', 'property', 'og:image:width', '1200'),
+      setMeta('meta[property="og:image:height"]', 'property', 'og:image:height', '630'),
+      setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', 'Gigin · Run your gig nights without the inbox chaos'),
+      setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', 'One application link per night, every act in one place, sets and emails handled. Invite-only for venues, starting in Cambridge.'),
+      setMeta('meta[name="twitter:image"]', 'name', 'twitter:image', 'https://giginmusic.com/og/landing.svg'),
+    ];
+    const canonical = document.querySelector('link[rel="canonical"]');
+    const previousCanonical = canonical?.getAttribute('href');
+    if (canonical) canonical.setAttribute('href', 'https://giginmusic.com/');
+    return () => {
+      document.title = previousTitle;
+      restore.forEach((undo) => undo());
+      if (canonical && previousCanonical) canonical.setAttribute('href', previousCanonical);
+    };
+  }, []);
+}
+
+function scrollToSection(id, focusId) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!focusId) return;
+  window.setTimeout(() => {
+    const field = document.getElementById(focusId);
+    field?.focus();
+  }, 350);
+}
+
+export const LandingPage = ({ setAuthModal, setAuthType }) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const hasVenueProfile = Boolean(user?.venueProfiles?.length);
+  useLandingHead();
+
+  useEffect(() => {
+    if (hasVenueProfile) navigate('/venues/dashboard/gigs');
+  }, [hasVenueProfile, navigate]);
+
+  const openLogin = () => {
+    setAuthType?.('login');
+    setAuthModal?.(true);
+  };
+
+  const showProof = FEATURES.landingProof && PROOF.names.length > 0;
+  const showProfile = FEATURES.keepProfile && FEATURES.publicProfile;
+  const showFinder = FEATURES.venueFinder;
+
+  return (
+    <div className="lp">
+      <header className="lp-header">
+        <div className="lp-wrap lp-header__bar">
+          <Link to="/" className="lp-wordmark" aria-label="Gigin">gigin<span>.</span></Link>
+          <div className="lp-header__actions">
+            <button type="button" className="lp-login" onClick={openLogin}>Log in</button>
+            <button type="button" className="lp-btn lp-btn--dark lp-btn--header" onClick={() => scrollToSection('request-access', 'access-name')}>
+              Request access
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section className="lp-hero">
+          <div className="lp-wrap lp-hero__copy">
+            <p className="lp-eyebrow">FOR VENUES THAT RUN GIG NIGHTS</p>
+            <h1>Run your gig nights without the inbox chaos</h1>
+            <p className="lp-hero__sub">One application link for each night. Acts apply in one place, you pick the line-up and give each act a set, and Gigin sends the emails.</p>
+            <div className="lp-hero__actions">
+              <button type="button" className="lp-btn lp-btn--orange" onClick={() => scrollToSection('request-access', 'access-name')}>
+                Request access
+              </button>
+              <button type="button" className="lp-quiet" onClick={() => scrollToSection('artists')}>I&apos;m an artist →</button>
+            </div>
+            <p className="lp-small">Invite-only while we set up the first venues.</p>
+          </div>
+          <div className="lp-hero__screen">
+            <HomeScreen />
+          </div>
+        </section>
+
+        {showProof ? (
+          <section className="lp-proof" aria-label={PROOF.label}>
+            <div className="lp-wrap lp-proof__row">
+              <span>{PROOF.label.toUpperCase()}</span>
+              {PROOF.names.map((name) => <b key={name}>{name}</b>)}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="lp-how" id="how">
+          <div className="lp-wrap">
+            <p className="lp-eyebrow">HOW IT WORKS</p>
+            <h2>From one link to a full line-up</h2>
+            <p className="lp-lead">The same screens you&apos;ll use on the night. Everything for a gig lives on its own page.</p>
+            {STEPS.map((step, index) => {
+              const Screen = step.screen;
+              return (
+                <div className={`lp-step${index % 2 ? ' is-flip' : ''}`} key={step.n}>
+                  <div className="lp-step__text">
+                    <span>{step.n}</span>
+                    <h3>{step.title}</h3>
+                    <p>{step.body}</p>
+                  </div>
+                  <Screen />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="lp-artists" id="artists">
+          <div className="lp-wrap">
+            <p className="lp-eyebrow">FOR ARTISTS</p>
+            <h2>Playing a night booked on Gigin?</h2>
+            <p className="lp-lead">You apply to a night from the venue&apos;s link as a guest. There&apos;s no account to make first.</p>
+            <div className="lp-cards">
+              <ManageCard />
+              {showProfile ? <ProfileCard pressKit={FEATURES.pressKit} onLogin={openLogin} /> : null}
+              {showFinder ? <FinderCard /> : null}
+            </div>
+          </div>
+        </section>
+
+        <section className="lp-request" id="request-access">
+          <div className="lp-wrap lp-request__grid">
+            <div>
+              <p className="lp-eyebrow">FOR VENUES</p>
+              <h2>Request access</h2>
+              <p className="lp-lead">Gigin is invite-only for now. We&apos;re setting up a small number of venues by hand, starting in Cambridge. Tell us about your nights and the founder will be in touch.</p>
+              <p className="lp-already">Already invited? <button type="button" onClick={openLogin}>Log in</button></p>
+            </div>
+            <AccessCard />
+          </div>
+        </section>
+      </main>
+
+      <footer className="lp-footer">
+        <div className="lp-wrap lp-footer__bar">
+          <div>
+            <span className="lp-wordmark lp-wordmark--footer">gigin<span>.</span></span>
+            <p>© 2026 Gigin · giginmusic.com</p>
+          </div>
+          <nav>
+            <Link to="/terms-and-conditions">Terms</Link>
+            <Link to="/privacy-policy">Privacy</Link>
+            <button type="button" onClick={openLogin}>Log in</button>
+          </nav>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+function ManageCard() {
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+  const [phase, setPhase] = useState('form');
+  const [sentTo, setSentTo] = useState('');
+  const inputId = useId();
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const value = email.trim();
+    if (!value) {
+      setError('Enter the email address you applied with.');
+      return;
+    }
+    if (!EMAIL.test(value)) {
+      setError('Enter an email address like name@example.com.');
+      return;
+    }
+    setError('');
+    setPhase('sending');
+    try {
+      await requestManageLinks(value);
+      setSentTo(value);
+      setPhase('sent');
+    } catch (err) {
+      console.error(err);
+      setPhase('form');
+      setError('Something went wrong. Try again in a moment.');
+    }
+  };
+
+  if (phase === 'sent') {
+    return (
+      <article className="lp-artist-card">
+        <h3>Check your inbox</h3>
+        <p>If {sentTo} has applied to a night on Gigin, we&apos;ve sent a fresh link for each application. It can take a minute to arrive.</p>
+        <button
+          type="button"
+          className="lp-textbtn"
+          onClick={() => {
+            setPhase('form');
+            setEmail('');
+            setSentTo('');
+          }}
+        >
+          Use a different email
+        </button>
+      </article>
+    );
+  }
+
+  return (
+    <article className="lp-artist-card">
+      <h3>Applied to a night? Manage your application</h3>
+      <p>Lost the email with your private link? Enter the address you applied with and we&apos;ll send a fresh one. You can change your details, check your set time or withdraw.</p>
+      <form className="lp-manage" noValidate onSubmit={submit}>
+        <label htmlFor={inputId}>Email you applied with</label>
+        <input
+          id={inputId}
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          aria-invalid={error ? 'true' : undefined}
+          disabled={phase === 'sending'}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            if (error) setError('');
+          }}
+        />
+        {error ? <p className="lp-field-error" role="alert">{error}</p> : null}
+        <button type="submit" className="lp-btn lp-btn--light" disabled={phase === 'sending'}>
+          {phase === 'sending' ? 'Sending…' : 'Email me a fresh link'}
+        </button>
+      </form>
+    </article>
+  );
+}
+
+function ProfileCard({ pressKit, onLogin }) {
+  return (
+    <article className="lp-artist-card">
+      <h3>{pressKit ? 'Keep your profile, tech rider and press kit in one shareable link' : 'Keep your profile and tech rider in one shareable link'}</h3>
+      <p>After you apply, you can keep what you sent as a free Gigin profile, with one link to send to any venue. Choose Keep my profile on the confirmation screen. You only set a password if you want one.</p>
+      <div className="lp-profile" aria-hidden="true">
+        <span>FT</span>
+        <div>
+          <strong>The Fen Street Trio</strong>
+          <p>Jazz trio · Cambridge</p>
+          <div>
+            <em>Spotify</em>
+            <em>Tech rider</em>
+            {pressKit ? <em>Press kit</em> : null}
+          </div>
+          <code>giginmusic.com/artist/fen-street-trio</code>
+        </div>
+      </div>
+      <p className="lp-already">Already kept a profile? <button type="button" onClick={onLogin}>Log in</button></p>
+    </article>
+  );
+}
+
+function FinderCard() {
+  return (
+    <article className="lp-artist-card">
+      <span className="lp-soon">COMING SOON</span>
+      <h3>Find venues</h3>
+      <p>See which venues near you put on live music, what each one has (a PA, the capacity, how they book) and send them your profile. Starting in Cambridge.</p>
+      <div className="lp-finder" aria-hidden="true">
+        <div>
+          <strong>Venue on Gigin</strong>
+          <span>PA · 120 capacity · Books by link</span>
+        </div>
+        <div>
+          <strong>Listed venue</strong>
+          <span>No PA listed · 80 capacity</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function AccessCard() {
+  const [values, setValues] = useState(EMPTY_ACCESS);
+  const [errors, setErrors] = useState({});
+  const [showErrors, setShowErrors] = useState(false);
+  const [banner, setBanner] = useState('');
+  const [phase, setPhase] = useState('form');
+  const [sentEmail, setSentEmail] = useState('');
+  const thanksRef = useRef(null);
+  const summaryId = useId();
+
+  useEffect(() => {
+    if (phase === 'success') thanksRef.current?.focus();
+  }, [phase]);
+
+  const update = (key, value) => {
+    const next = { ...values, [key]: value };
+    setValues(next);
+    if (banner) setBanner('');
+    if (showErrors) {
+      const fresh = accessErrors(next);
+      setErrors(fresh);
+    }
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const fresh = accessErrors(values);
+    setErrors(fresh);
+    setShowErrors(true);
+    const keys = FIELD_ORDER.filter((key) => fresh[key]);
+    if (keys.length) {
+      document.getElementById(`access-${keys[0]}`)?.focus();
+      return;
+    }
+    setPhase('sending');
+    setBanner('');
+    try {
+      await submitAccessRequest({
+        name: values.name,
+        venueName: values.venueName,
+        city: values.city,
+        nightsPerMonth: values.nightsPerMonth,
+        email: values.email,
+        message: values.message,
+        company: values.company,
+      });
+      setSentEmail(collapse(values.email));
+      setPhase('success');
+    } catch (error) {
+      setPhase('form');
+      if (error?.status === 400 && Array.isArray(error?.payload?.fields)) {
+        const local = accessErrors(values);
+        const mapped = { ...local };
+        error.payload.fields.forEach((field) => {
+          if (!mapped[field]) {
+            mapped[field] = field === 'message'
+              ? 'Keep your message under 2,000 characters.'
+              : (local[field] || 'Check this field.');
+          }
+        });
+        setErrors(mapped);
+        setShowErrors(true);
+        const first = FIELD_ORDER.find((key) => mapped[key]);
+        if (first) document.getElementById(`access-${first}`)?.focus();
+        return;
+      }
+      setBanner(error?.status === 429 ? 'limit' : 'server');
+    }
+  };
+
+  if (phase === 'success') {
+    return (
+      <div className="lp-access lp-access--done">
+        <span className="lp-check" aria-hidden="true" />
+        <h3 ref={thanksRef} tabIndex={-1}>Thanks, the founder will be in touch shortly.</h3>
+        <p>We&apos;ve emailed a copy of your request to {sentEmail}.</p>
+        <button
+          type="button"
+          className="lp-textbtn"
+          onClick={() => {
+            setValues(EMPTY_ACCESS);
+            setErrors({});
+            setShowErrors(false);
+            setBanner('');
+            setPhase('form');
+            setSentEmail('');
+          }}
+        >
+          Send another request
+        </button>
+      </div>
+    );
+  }
+
+  const visible = showErrors ? errors : {};
+  const count = FIELD_ORDER.filter((key) => visible[key]).length;
+  const messageLength = values.message.length;
+
+  return (
+    <form className={`lp-access${phase === 'sending' ? ' is-sending' : ''}`} onSubmit={submit} noValidate>
+      {count > 0 ? (
+        <p className="lp-summary" id={summaryId} role="alert">
+          {count === 1 ? 'Check the field highlighted below.' : `Check the ${count} fields highlighted below.`}
+        </p>
+      ) : null}
+      <div className="lp-fields">
+        <Field label="Your name" name="name" autoComplete="name" value={values.name} error={visible.name} disabled={phase === 'sending'} onChange={update} />
+        <Field label="Venue name" name="venueName" autoComplete="organization" value={values.venueName} error={visible.venueName} disabled={phase === 'sending'} onChange={update} />
+        <Field label="Town or city" name="city" autoComplete="address-level2" value={values.city} error={visible.city} disabled={phase === 'sending'} onChange={update} />
+        <Field label="Gig nights a month" name="nightsPerMonth" inputMode="numeric" placeholder="e.g. 4" value={values.nightsPerMonth} error={visible.nightsPerMonth} disabled={phase === 'sending'} onChange={update} />
+        <Field label="Email" name="email" type="email" autoComplete="email" wide value={values.email} error={visible.email} disabled={phase === 'sending'} onChange={update} />
+        <div className="lp-field lp-field--wide">
+          <label htmlFor="access-message">Anything we should know? <span>Optional</span></label>
+          <textarea
+            id="access-message"
+            rows={4}
+            placeholder="The kind of nights you run, how you book acts now"
+            value={values.message}
+            disabled={phase === 'sending'}
+            aria-invalid={visible.message ? 'true' : undefined}
+            aria-describedby={visible.message ? 'access-message-error' : undefined}
+            onChange={(event) => update('message', event.target.value)}
+          />
+          {messageLength > 1500 ? <span className="lp-count">{messageLength} / 2000</span> : null}
+          {visible.message ? <p id="access-message-error" className="lp-field-error">{visible.message}</p> : null}
+        </div>
+      </div>
+      <div className="lp-hp" aria-hidden="true">
+        <label htmlFor="access-company">Company</label>
+        <input
+          id="access-company"
+          name="company"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          value={values.company}
+          onChange={(event) => update('company', event.target.value)}
+        />
+      </div>
+      {banner === 'server' ? (
+        <p className="lp-banner" role="alert"><strong>Your request didn&apos;t send.</strong> Something went wrong on our side. Your details are still here, so try again in a moment.</p>
+      ) : null}
+      {banner === 'limit' ? (
+        <p className="lp-banner" role="alert"><strong>Too many requests.</strong> We&apos;ve had several requests from this connection. Try again in an hour. Your details are still here.</p>
+      ) : null}
+      <button type="submit" className="lp-btn lp-btn--orange lp-btn--block" disabled={phase === 'sending'}>
+        {phase === 'sending' ? 'Sending…' : 'Request access'}
+      </button>
+      <p className="lp-fine">We&apos;ll only use these details to get in touch about Gigin. <Link to="/privacy-policy">Privacy policy</Link></p>
+    </form>
+  );
+}
+
+function Field({ label, name, type = 'text', autoComplete, inputMode, placeholder, value, error, disabled, onChange, wide = false }) {
+  const errorId = `access-${name}-error`;
+  return (
+    <div className={`lp-field${wide ? ' lp-field--wide' : ''}`}>
+      <label htmlFor={`access-${name}`}>{label}</label>
+      <input
+        id={`access-${name}`}
+        name={name}
+        type={type}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        placeholder={placeholder}
+        value={value}
+        disabled={disabled}
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={error ? errorId : undefined}
+        onChange={(event) => onChange(name, event.target.value)}
+      />
+      {error ? <p id={errorId} className="lp-field-error">{error}</p> : null}
+    </div>
+  );
+}

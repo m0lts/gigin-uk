@@ -18,4 +18,5 @@ export const FEATURES = {
   legacyArtist: readFlag(import.meta.env.VITE_FEATURE_LEGACY_ARTIST),
   venueFinder: readFlag(import.meta.env.VITE_FEATURE_VENUE_FINDER),
   pressKit: readFlag(import.meta.env.VITE_FEATURE_PRESS_KIT),
+  landingProof: readFlag(import.meta.env.VITE_FEATURE_LANDING_PROOF),
 };

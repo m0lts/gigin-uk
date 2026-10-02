@@ -13,6 +13,8 @@ import {
   sanitiseApplicants,
 } from "../lib/gigPrivacy.js";
 import { queueMail } from "../lib/queueMail.js";
+import { MAIL_FROM } from "../lib/accessRequest.js";
+import { applicationDateLabel, createWindowLimiter, isUpcomingOrRecent, manageLinksText } from "../lib/manageLinks.js";
 import { preferencePhrase, readNight } from "../lib/nightApplications.js";
 import {
   emailForAct,
@@ -33,7 +35,15 @@ const guestLimiter = rateLimit({
   message: { error: "Too many attempts. Please wait a few minutes and try again.", captchaRequired: true },
 });
 
-if (!process.env.FIRESTORE_EMULATOR_HOST) router.use(guestLimiter);
+if (!process.env.FIRESTORE_EMULATOR_HOST) {
+  router.use((req, res, next) => {
+    if (req.path === "/manage-links") return next();
+    return guestLimiter(req, res, next);
+  });
+}
+
+const manageLinkIpLimit = createWindowLimiter({ max: 5 });
+const manageLinkEmailLimit = createWindowLimiter({ max: 3 });
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 const ASSET_TYPES = new Set([...IMAGE_TYPES, "application/pdf"]);
@@ -453,6 +463,101 @@ router.post("/magic-link", asyncHandler(async (req, res) => {
   }
   return res.json({ sent: true });
 }));
+
+function escapeMail(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+router.post("/manage-links", asyncHandler(async (req, res) => {
+  const email = emailNorm(req.body?.email);
+  const ip = req.ip || req.socket?.remoteAddress || "unknown";
+  if (!manageLinkIpLimit.allow(ip) || !email || !manageLinkEmailLimit.allow(email)) {
+    return res.json({ sent: true });
+  }
+  try {
+    await sendFreshManageLinks(email);
+  } catch (error) {
+    console.error("manage links failed", error);
+  }
+  return res.json({ sent: true });
+}));
+
+async function sendFreshManageLinks(email) {
+  const snap = await db.collectionGroup("guestApplicants").where("email", "==", email).limit(40).get();
+  const seen = new Set();
+  const rows = [];
+  for (const doc of snap.docs) {
+    const data = doc.data() || {};
+    const applicantId = data.applicantId || doc.id;
+    if (!applicantId || seen.has(applicantId)) continue;
+    seen.add(applicantId);
+    const gigId = data.gigId || doc.ref.parent?.parent?.id;
+    if (!gigId) continue;
+    const docs = await loadGroup(gigId);
+    const stubs = docs.flatMap((slot) => (
+      (Array.isArray(slot.data.applicants) ? slot.data.applicants : []).filter((entry) => entry?.id === applicantId)
+    ));
+    if (!stubs.length) continue;
+    if (stubs.some((entry) => String(entry?.status || "").toLowerCase() === "withdrawn")) continue;
+    const dated = docs
+      .map((slot) => ({ slot, when: gigDate(slot.data) }))
+      .filter((item) => item.when)
+      .sort((a, b) => a.when - b.when);
+    const when = dated[0]?.when || null;
+    if (!isUpcomingOrRecent(when)) continue;
+    const token = crypto.randomBytes(32).toString("hex");
+    const manageTokenHash = hashToken(token);
+    let wrote = false;
+    for (const slot of docs) {
+      const applicants = Array.isArray(slot.data.applicants) ? slot.data.applicants : [];
+      if (!applicants.some((entry) => entry?.id === applicantId)) continue;
+      await db.doc(`gigs/${slot.id}/guestApplicants/${applicantId}`).set({
+        manageTokenHash,
+        gigId: slot.id,
+        applicantId,
+      }, { merge: true });
+      wrote = true;
+    }
+    if (!wrote) continue;
+    const primary = dated[0]?.slot?.data || docs[0]?.data || {};
+    const gigName = String(primary.eventName || primary.gigName || data.gigName || "Gig").replace(/\s*\(Set\s+\d+\)\s*$/i, "").trim() || "Gig";
+    let venueName = data.venueName || primary.venueName || "";
+    if (!venueName && primary.venueId) {
+      const venue = await db.collection("venueProfiles").doc(primary.venueId).get();
+      venueName = venue.exists ? (venue.data()?.name || "") : "";
+    }
+    const rootId = primary.applicationsRootGigId || gigId;
+    rows.push({
+      gigName,
+      venueName: venueName || "the venue",
+      dateLabel: applicationDateLabel(when),
+      url: `${process.env.BASE_URL || "https://giginmusic.com"}/gig/${rootId}/application/${token}`,
+    });
+    if (rows.length >= 12) break;
+  }
+  if (!rows.length) return;
+  const button = (url) => `<a href="${escapeMail(url)}" style="display:inline-block;background:#111317;color:#fff;text-decoration:none;font-family:Geist,Inter,Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 16px;border-radius:10px;">View my application</a>`;
+  const inner = `<p style="margin:0 0 16px;">Here are the private links for your applications on Gigin.</p>${rows.map((row) => `
+    <p style="margin:0 0 6px;color:#0F1115;font-weight:600;">${escapeMail(row.gigName)} · ${escapeMail(row.venueName)} · ${escapeMail(row.dateLabel)}</p>
+    <p style="margin:0 0 18px;">${button(row.url)}</p>`).join("")}`;
+  await queueMail({
+    to: email,
+    from: MAIL_FROM,
+    message: {
+      subject: "Your Gigin applications",
+      text: manageLinksText(rows),
+      html: emailShell({
+        title: "Your Gigin applications",
+        inner,
+        footer: "These links are private. Don't forward them. If you didn't ask for this, you can ignore this email.",
+      }),
+    },
+  });
+}
 
 router.post("/claim", asyncHandler(async (req, res) => {
   const { inviteId, applicationId } = req.body || {};
