@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { FEATURES } from '../../../config/features';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom'
+import { ApplicantProfileModal, useApplicantQuery } from '@features/venue/gigs/components/ApplicantProfileModal';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { 
     ClockIcon,
@@ -323,6 +324,7 @@ export const GigApplications = ({
     const {isMdUp, isLgUp} = useBreakpoint();
     const location = useLocation();
     const navigate = useNavigate();
+    const { applicantId, openApplicant, moveApplicant, closeApplicant, focusRef } = useApplicantQuery();
     const { user } = useAuth();
     const now = useMemo(() => new Date(), []);
 
@@ -378,13 +380,11 @@ export const GigApplications = ({
     const [closeApplicationsGigIds, setCloseApplicationsGigIds] = useState([]);
     const [watchPaymentIntentId, setWatchPaymentIntentId] = useState(null);
     const [gigLinkCopied, setGigLinkCopied] = useState(false);
-    const [hoveredRowId, setHoveredRowId] = useState(null);
     const [cancellationReason, setCancellationReason] = useState({
         reason: '',
         extraDetails: '',
       });
     const [eventLoading, setEventLoading] = useState(false);
-    const [guestDetail, setGuestDetail] = useState(null);
     const [editingNotes, setEditingNotes] = useState(false);
     const [notesValue, setNotesValue] = useState('');
     const [savingNotes, setSavingNotes] = useState(false);
@@ -1304,6 +1304,21 @@ export const GigApplications = ({
     };
 
     // Sorted slots for card layout (main gig + related slots by start time)
+    const profileApplicants = useMemo(() => {
+        const seen = new Set();
+        const list = [];
+        musicianProfiles.forEach((profile) => {
+            if (!profile?.id || seen.has(profile.id)) return;
+            seen.add(profile.id);
+            list.push(profile);
+        });
+        return list;
+    }, [musicianProfiles]);
+
+    const venueForProfile = useMemo(() => (
+        (venues || []).find((entry) => entry.venueId === gigInfo?.venueId) || gigInfo?.venue || null
+    ), [venues, gigInfo]);
+
     const sortedSlots = useMemo(() => {
         const byId = new Map();
         [gigInfo, ...relatedSlots].filter(Boolean).forEach((g) => {
@@ -1667,12 +1682,14 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                 <td>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                         {profile.heroMedia?.url && (
-                                            <img src={profile.heroMedia.url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+                                            <button type="button" onClick={(e) => { e.stopPropagation(); openApplicant(profile.id, e.currentTarget); }} style={{ border: 0, padding: 0, background: 'transparent', cursor: 'pointer' }} aria-label={`View ${profile.name} profile`}>
+                                                <img src={profile.heroMedia.url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+                                            </button>
                                         )}
                                         <div>
                                             <button type="button" className="btn text" style={{ padding: 0, fontWeight: 600 }} onClick={(e) => {
-                                                if (isGuestApplicant(profile)) { e.stopPropagation(); setGuestDetail(profile); return; }
-                                                openInNewTab(`/artist/${profile.id}`, e);
+                                                e.stopPropagation();
+                                                openApplicant(profile.id, e.currentTarget);
                                             }}>
                                                 {profile.name}
                                                 {isGuestApplicant(profile) && <span className="ga-guest-tag">Guest</span>}
@@ -2217,39 +2234,29 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     const applicant = slotGig?.applicants?.find((a) => a.id === profile.id);
                     return (
                         <div key={`${profile.id}-${slotGigId}`} className="venue-hire-application-tile">
-                            <div className="venue-hire-application-tile__photo">
+                            <button type="button" className="venue-hire-application-tile__photo" onClick={() => openApplicant(profile.id, null)} aria-label={`View ${profile.name} profile`} style={{ border: 0, padding: 0, cursor: 'pointer' }}>
                                 {photoUrl ? (
                                     <img src={photoUrl} alt="" className="venue-hire-application-tile__img" />
                                 ) : (
                                     <MicrophoneIcon />
                                 )}
-                            </div>
+                            </button>
                             <div className="venue-hire-application-tile__main">
                                 <div className="venue-hire-application-tile__identity">
-                                    <span className="venue-hire-application-tile__name">
+                                    <button type="button" className="venue-hire-application-tile__name" onClick={(e) => openApplicant(profile.id, e.currentTarget)} style={{ border: 0, background: 'transparent', padding: 0, cursor: 'pointer', font: 'inherit', fontWeight: 600 }}>
                                         {profile.name}
                                         {isGuestApplicant(profile) && <span className="ga-guest-tag">Guest</span>}
-                                    </span>
+                                    </button>
                                 </div>
                                 <div className="venue-hire-application-tile__actions">
-                                    {isGuestApplicant(profile) ? (
-                                        <button
-                                            type="button"
-                                            className="btn secondary venue-hire-application-tile__btn"
-                                            onClick={() => setGuestDetail(applicant || profile)}
-                                        >
-                                            Contact
-                                        </button>
-                                    ) : (
-                                    <>
                                     <button
                                         type="button"
                                         className="btn tertiary venue-hire-application-tile__btn"
-                                        onClick={(e) => openInNewTab(`/artist/${profile.id}`, e)}
+                                        onClick={(e) => openApplicant(profile.id, e.currentTarget)}
                                     >
-                                        <NewTabIcon /> View profile
+                                        View profile
                                     </button>
-                                    {profile.userId || profile.id ? (
+                                    {!isGuestApplicant(profile) && (profile.userId || profile.id) ? (
                                         <button
                                             type="button"
                                             className="btn secondary venue-hire-application-tile__btn"
@@ -2258,8 +2265,6 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                             Message
                                         </button>
                                     ) : null}
-                                    </>
-                                    )}
                                     {renderSlotApplicationTileSecondaryActions(profile, slotGig, slotGigId)}
                                 </div>
                                 <ApplicantSubmittedNotesSection
@@ -2303,12 +2308,14 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                 <td>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                         {profile.heroMedia?.url && (
-                                            <img src={profile.heroMedia.url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+                                            <button type="button" onClick={(e) => { e.stopPropagation(); openApplicant(profile.id, e.currentTarget); }} style={{ border: 0, padding: 0, background: 'transparent', cursor: 'pointer' }} aria-label={`View ${profile.name} profile`}>
+                                                <img src={profile.heroMedia.url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+                                            </button>
                                         )}
                                         <div>
                                             <button type="button" className="btn text" style={{ padding: 0, fontWeight: 600 }} onClick={(e) => {
-                                                if (isGuestApplicant(profile)) { e.stopPropagation(); setGuestDetail(applicant || profile); return; }
-                                                openInNewTab(`/artist/${profile.id}`, e);
+                                                e.stopPropagation();
+                                                openApplicant(profile.id, e.currentTarget);
                                             }}>
                                                 {profile.name}
                                                 {isGuestApplicant(profile) && <span className="ga-guest-tag">Guest</span>}
@@ -2546,13 +2553,15 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     const fee = runningOrderFeeLabel(profile.proposedFee || profile.fee);
                     return (
                         <div key={`${profile.id}-${slotGig.gigId}`} className="venue-gig-running__applicant">
-                            {renderRunningOrderAvatar(profile.name, profile.heroMedia?.url, 'venue-gig-running__avatar--sm')}
+                            <button type="button" className="venue-gig-running__avatar-btn" onClick={(event) => { markRunningOrderApplicantViewed(slotGig, profile.id); openApplicant(profile.id, event.currentTarget); }} aria-label={`View ${profile.name} profile`}>
+                                {renderRunningOrderAvatar(profile.name, profile.heroMedia?.url, 'venue-gig-running__avatar--sm')}
+                            </button>
                             <span className="venue-gig-running__who">
-                                <span className="venue-gig-running__who-name">
+                                <button type="button" className="venue-gig-running__who-name" onClick={(event) => { markRunningOrderApplicantViewed(slotGig, profile.id); openApplicant(profile.id, event.currentTarget); }}>
                                     {profile.name}
                                     {(profile.guest || profile.type === 'guest') && <span className="ga-guest-tag">Guest</span>}
                                     {unviewed ? <span className="venue-gig-running__fresh" aria-label="New application" /> : null}
-                                </span>
+                                </button>
                                 {meta ? <span className="venue-gig-running__who-meta">{meta}</span> : null}
                             </span>
                             <RunningOrderQuote
@@ -2568,11 +2577,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                     className="venue-gig-running__view"
                                     onClick={(event) => {
                                         markRunningOrderApplicantViewed(slotGig, profile.id);
-                                        if (profile.guest || profile.type === 'guest') {
-                                            setGuestDetail(profile);
-                                            return;
-                                        }
-                                        openInNewTab(`/artist/${profile.id}`, event);
+                                        openApplicant(profile.id, event.currentTarget);
                                     }}
                                 >
                                     View
@@ -2630,7 +2635,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
     };
 
     const renderRunningOrderPortals = () => {
-        if (!runningOrderSlotTargets) return guestDetail ? createPortal(<GuestApplicantPanel applicant={guestDetail} onClose={() => setGuestDetail(null)} />, document.body) : null;
+        if (!runningOrderSlotTargets) return null;
         return <>
         {sortedSlots.map((slotGig) => {
             const target = runningOrderSlotTargets[slotGig.gigId];
@@ -2640,7 +2645,6 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                 target
             );
         })}
-        {guestDetail && createPortal(<GuestApplicantPanel applicant={guestDetail} onClose={() => setGuestDetail(null)} />, document.body)}
         </>
     };
 
@@ -3335,10 +3339,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                                 <button
                                                                     className='btn tertiary'
-                                                                    onClick={(e) => {
-                                                                        if (isGuestApplicant(confirmedArtist)) { setGuestDetail(confirmedArtist); return; }
-                                                                        openInNewTab(`/artist/${confirmedArtist.id}`, e);
-                                                                    }}
+                                                                    onClick={(e) => openApplicant(confirmedArtist.id, e.currentTarget)}
                                                                 >
                                                                     Profile
                                                                 </button>
@@ -3443,10 +3444,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                         <button
                                                             className='btn tertiary'
-                                                            onClick={(e) => {
-                                                                if (isGuestApplicant(confirmedArtist)) { setGuestDetail(confirmedArtist); return; }
-                                                                openInNewTab(`/artist/${confirmedArtist.id}`, e);
-                                                            }}
+                                                            onClick={(e) => openApplicant(confirmedArtist.id, e.currentTarget)}
                                                         >
                                                             Profile
                                                         </button>
@@ -3515,20 +3513,13 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                         : null;
                                     
                                     return (
-                                        <tr key={`${profile.id}-${slotGigId}-${index}`} className='applicant' onClick={(e) => {
-                                            if (isGuestApplicant(profile)) { setGuestDetail(applicant || profile); return; }
-                                            openInNewTab(`/artist/${profile.id}`, e);
-                                        }} onMouseEnter={() => setHoveredRowId(profile.id)}
-                                        onMouseLeave={() => setHoveredRowId(null)}>
+                                        <tr key={`${profile.id}-${slotGigId}-${index}`} className='applicant' onClick={(e) => openApplicant(profile.id, e.currentTarget)}>
                                             <td className='musician-name'>
-                                                {hoveredRowId === profile.id && !isGuestApplicant(profile) && (
-                                                    <NewTabIcon />
-                                                )}
                                                 {profile.name}
                                                 {isGuestApplicant(profile) && <span className="ga-guest-tag">Guest</span>}
                                             </td>
                                             <td>{profile?.videos && profile?.videos.length > 0 ? (
-                                                <button className='btn tertiary' onClick={(e) => {e.stopPropagation(); setVideoToPlay(profile.videos[0]);}} onMouseEnter={() => setHoveredRowId(null)} onMouseLeave={() => setHoveredRowId(profile.id)}>
+                                                <button className='btn tertiary' onClick={(e) => {e.stopPropagation(); setVideoToPlay(profile.videos[0]);}}>
                                                     <PlayIcon />
                                                     Play Video
                                                 </button>
@@ -4024,36 +4015,40 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     />
                 </Portal>
             )}
+            {applicantId ? (
+                <ApplicantProfileModal
+                    applicant={profileApplicants.find((item) => item.id === applicantId)}
+                    applicants={profileApplicants}
+                    applications={profileApplicants}
+                    slots={sortedSlots}
+                    gig={gigInfo}
+                    venue={venueForProfile}
+                    venueGigs={gigs}
+                    user={user}
+                    venues={venues}
+                    canUpdate={hasVenuePerm(venues, gigInfo?.venueId, 'gigs.applications.manage')}
+                    busy={eventLoading}
+                    onClose={closeApplicant}
+                    onMove={moveApplicant}
+                    onAccept={(app, slotGigId) => handleAccept(
+                        app.id,
+                        { stopPropagation() {} },
+                        app.proposedFee,
+                        app.email,
+                        app.name,
+                        slotGigId || app.applicationSlotGigId,
+                    )}
+                    onDecline={(app) => handleReject(
+                        app.id,
+                        { stopPropagation() {} },
+                        app.proposedFee,
+                        app.email,
+                        app.name,
+                        app.applicationSlotGigId,
+                    )}
+                    returnFocusEl={focusRef.current}
+                />
+            ) : null}
         </>
     );
 };
-
-function GuestApplicantPanel({ applicant, onClose }) {
-  const phoneDigits = String(applicant.phone || '').replace(/[^\d]/g, '');
-  const waNumber = phoneDigits.startsWith('0') ? `44${phoneDigits.slice(1)}` : phoneDigits;
-  const contacts = [
-    applicant.email && { key: 'email', node: <a href={`mailto:${applicant.email}`}>{applicant.email}</a> },
-    applicant.phone && { key: 'phone', node: <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noreferrer">{applicant.phone}</a> },
-    applicant.instagram && { key: 'instagram', node: applicant.instagram },
-  ].filter((line) => line && (line.key !== 'phone' || waNumber));
-  const links = Object.entries(applicant.links || {}).filter(([, value]) => value);
-  return (
-    <div className="ga-guest-panel-backdrop" onClick={onClose}>
-      <aside className="ga-guest-panel" onClick={(event) => event.stopPropagation()}>
-        <header>
-          <h2>{applicant.name || 'Guest'}</h2>
-          <span className="ga-guest-tag">Guest</span>
-          <button type="button" onClick={onClose} aria-label="Close">×</button>
-        </header>
-        {applicant.photoUrl && <img src={applicant.photoUrl} alt="" />}
-        <p>{applicant.contactName}</p>
-        {contacts.map((line) => <p key={line.key}>{line.key === 'phone' ? 'Phone · ' : line.key === 'email' ? 'Email · ' : 'Instagram · '}{line.node}</p>)}
-        {links.map(([key, value]) => <p key={key}><a href={value} target="_blank" rel="noreferrer">{key}</a></p>)}
-        {applicant.setLabel && <p>{applicant.setLabel}</p>}
-        {applicant.note && <p>{applicant.note}</p>}
-        {!!applicant.needs?.length && <p>Needs {applicant.needs.length} items from the bar.</p>}
-        {!!applicant.bringOwn?.length && <p>Bringing {applicant.bringOwn.join(', ')}.</p>}
-      </aside>
-    </div>
-  );
-}
