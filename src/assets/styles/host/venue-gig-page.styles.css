@@ -147,6 +147,45 @@
   transition: background-color 150ms linear;
 }
 
+@media (max-width: 767.98px) {
+  .venue-gig-page__bar {
+    height: auto;
+    min-height: 64px;
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: 8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .venue-gig-page__crumb {
+    flex: 1 1 100%;
+  }
+
+  .venue-gig-page__back,
+  .venue-gig-page__crumb-link,
+  .venue-gig-page__crumb-chevron {
+    flex-shrink: 0;
+  }
+
+  .venue-gig-page__bar-actions {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 767.98px), (pointer: coarse) {
+  .venue-gig-page__bar-btn,
+  .venue-gig-page__icon-btn {
+    min-height: 44px;
+    height: 44px;
+  }
+
+  .venue-gig-page__icon-btn {
+    width: 44px;
+  }
+}
+
 .venue-gig-page__icon-btn:hover,
 .venue-gig-page__icon-btn.is-open {
   background: var(--gn-hover);
