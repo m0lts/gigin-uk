@@ -2,6 +2,7 @@
 import crypto from "crypto";
 import { db, admin, FieldValue } from "../config/admin.js";
 import { queueMail } from "./queueMail.js";
+import { renderArtistEmail } from "./artistEmails.js";
 import {
   APP_ORIGIN,
   MAIL_FROM,
@@ -298,29 +299,26 @@ async function confirmEmail({ to, actName, venueName, contactName, sections, tok
   const confirmUrl = `${APP_ORIGIN}/profile/confirm/${token}`;
   const chooseUrl = `${APP_ORIGIN}/profile/keep?t=${token}`;
   const list = sections.length ? sections.join(", ") : "Act name";
-  const inner = `<p>Hi ${escapeHtml(firstName(contactName || actName))},</p>
-    <p>You asked to keep the details from your application to ${escapeHtml(venueName || "the venue")} as a Gigin profile. Tap the button, then create a password. Nothing is public until you do.</p>
-    <table role="presentation" width="100%" style="border:1px solid #E5E7EB;border-radius:12px;margin-top:8px;">
-      <tr><td style="padding:12px 14px;font-size:12px;letter-spacing:0.04em;color:#6B7280;">PUBLIC ON YOUR PROFILE</td></tr>
-      <tr><td style="padding:0 14px 12px;font-size:15px;"><strong>${escapeHtml(actName)}</strong> · ${escapeHtml(list)}</td></tr>
-      <tr><td style="padding:0 14px 4px;font-size:12px;letter-spacing:0.04em;color:#6B7280;">PRIVATE</td></tr>
-      <tr><td style="padding:0 14px 12px;font-size:14px;">Your email and phone number. Venues contact you through Gigin.</td></tr>
-    </table>
-    <p>Want to change what's public first? <a href="${chooseUrl}">Choose what's public</a></p>
-    <p style="font-size:12.5px;color:#6B7280;">This link works once and expires in 7 days. On the next screen you create a password and can log in at giginmusic.com. If you didn't ask for this, ignore this email and nothing will be published.</p>`;
-  await sendMail({
-    to,
+  const message = renderArtistEmail({
     subject: `Confirm your Gigin profile for ${actName}`,
-    text: `Hi ${firstName(contactName || actName)}, confirm your Gigin profile: ${confirmUrl}`,
-    html: emailShell({
-      title: `Confirm your Gigin profile for ${actName}`,
-      inner,
-      buttonLabel: "Confirm my profile",
-      buttonUrl: confirmUrl,
-      orange: true,
-      footer: "This link works once and expires in 7 days.",
-    }),
+    preheader: "Tap the link to confirm your email and create a password. Nothing is public until you do.",
+    eyebrow: "CONFIRM YOUR PROFILE",
+    heading: "Confirm your Gigin profile",
+    paras: [
+      `Hi ${escapeHtml(firstName(contactName || actName))},`,
+      `You asked to keep the details from your application to ${escapeHtml(venueName || "the venue")} as a Gigin profile. Tap the button to confirm your email and create a password. Nothing is public until you do.`,
+    ],
+    boxes: [
+      { label: "PUBLIC ON YOUR PROFILE", rows: [[escapeHtml(actName), escapeHtml(list || "Photo, links, band and tech rider")]] },
+      { label: "PRIVATE", rows: [["Contact", "Your email and phone number. Venues contact you through Gigin."]] },
+    ],
+    button: ["Confirm my profile", confirmUrl],
+    orange: true,
+    after: ["Want to change what's public first?", "Choose what's public", chooseUrl],
+    small: "This link works once and expires in 7 days. If you didn't ask for this, ignore this email and nothing will be published.",
+    footer: "You're getting this because you applied to a gig on giginmusic.com and asked to keep your details as a profile.",
   });
+  await sendMail({ to, ...message });
 }
 
 export async function keepProfileForGuest({ guest, gigId, email }) {

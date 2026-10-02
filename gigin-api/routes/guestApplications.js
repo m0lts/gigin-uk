@@ -132,7 +132,10 @@ function publicApplication(applicant, gig, night) {
     artistProfileId: applicant.artistProfileId || null,
     profileSlug: applicant.profileSlug || null,
     keepProfileOffer: applicant.keepProfileOffer || "none",
-    editable: (applicant.status === "pending" || applicant.status === "sent") && !past,
+    setChangedFrom: applicant.setChangedFrom || null,
+    setChangeSeenAt: applicant.setChangeSeenAt || null,
+    gigStatus: gig?.status || null,
+    editable: (applicant.status === "pending" || applicant.status === "sent") && !past && gig?.status !== "cancelled",
   };
 }
 
@@ -782,6 +785,16 @@ router.post("/", asyncHandler(async (req, res) => {
     });
   }
   return res.json({ ok: true, applicationId: body.applicationId });
+}));
+
+router.post("/:token/seen", asyncHandler(async (req, res) => {
+  const found = await findByToken(req.body?.gigId || req.query.gigId, req.params.token);
+  if (!found) return res.status(404).json({ error: "This link is not valid." });
+  const rootId = found.night?.applicationsRootGigId || found.gig?.id;
+  await db.doc(`gigs/${rootId}/guestApplicants/${found.applicant.id}`).set({
+    setChangeSeenAt: new Date().toISOString(),
+  }, { merge: true });
+  return res.json({ ok: true });
 }));
 
 router.get("/:token", asyncHandler(async (req, res) => {

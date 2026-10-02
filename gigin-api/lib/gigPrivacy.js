@@ -30,6 +30,10 @@ const PRIVATE_KEYS = [
   "keepProfileOffer",
   "reminderCount",
   "profileSlug",
+  "setChangedFrom",
+  "setChangeSeenAt",
+  "reminderSentAt",
+  "calendarSequence",
 ];
 
 const DETAILS_FIELDS = [

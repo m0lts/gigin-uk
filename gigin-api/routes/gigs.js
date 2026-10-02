@@ -1492,9 +1492,15 @@ router.post("/revertGigAfterCancellationVenue", requireAuth, asyncHandler(async 
     clearPendingFeeTaskName: FieldValue.delete(),
     automaticMessageTaskName: FieldValue.delete(),
     paid: false,
-    status: "closed",
+    status: "cancelled",
+    applicationsOpen: false,
     cancellationReason: cancellationReason || null,
   });
+  const slotIds = Array.isArray(gigData?.gigSlots) ? gigData.gigSlots : [];
+  await Promise.all(slotIds.filter((id) => id && id !== gigData.gigId).map((id) => db.doc(`gigs/${id}`).set({
+    status: "cancelled",
+    applicationsOpen: false,
+  }, { merge: true })));
 
   // Mark pending fees as cancelled for all applicants of this gig
   // Get all accepted/confirmed applicants to update their pending fees

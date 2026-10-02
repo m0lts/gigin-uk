@@ -12,6 +12,7 @@ import {
 } from "./nightApplications.js";
 import { applicationNoticeMessage, planVenueNotice, shouldNotify } from "./venueApplicationNotice.js";
 import { appendPlayedAt, keepReminderHtml, markBookingCancelled } from "./keepProfile.js";
+import { icsAttachment, icsEvent, renderArtistEmail } from "./artistEmails.js";
 
 const DELAY_MS = 10 * 1000;
 const DECLINE_DELAY_MS = 5 * 60 * 1000;
@@ -115,11 +116,12 @@ function appUrl(gigId, token) {
   return `${base}/gig/${gigId}`;
 }
 
-export async function queueDelayedMail({ to, message, delayMs = DELAY_MS }) {
+export async function queueDelayedMail({ to, from, message, delayMs = DELAY_MS }) {
   if (!to || !String(to).includes("@")) return null;
   const ref = db.collection("mail").doc();
   await ref.set({
     to,
+    ...(from ? { from } : {}),
     message,
     delivery: {
       startTime: Timestamp.fromDate(new Date(Date.now() + delayMs)),
@@ -362,11 +364,15 @@ function doors(gig) {
   return gig?.timingAccessTime || gig?.doorsTime || gig?.doors || "";
 }
 
-function bookingBox({ act, when, line, address, arrivalNotes }) {
-  return `<table role="presentation" width="100%" style="border:1px solid #E5E7EB;border-radius:12px;margin-top:8px;">
-    <tr><td style="padding:12px 14px;font-size:12px;letter-spacing:0.04em;color:#6B7280;">YOUR SET</td></tr>
-    <tr><td style="padding:0 14px 12px;font-size:16px;"><strong>${escapeHtml(act)}</strong><br>${escapeHtml(line)}<br>${escapeHtml([address, arrivalNotes].filter(Boolean).join(". "))}</td></tr>
-  </table>`;
+function slotMoment(gig, slot, end = false) {
+  const day = gigDate(gig);
+  if (!day || !slot?.startTime) return null;
+  const [hours, minutes] = String(slot.startTime).split(":").map(Number);
+  if (!Number.isFinite(hours)) return null;
+  const start = new Date(day);
+  start.setHours(hours, minutes || 0, 0, 0);
+  if (!end) return start;
+  return new Date(start.getTime() + (Number(slot.duration) || 60) * 60000);
 }
 
 export async function emailForAct({ kind, app, slots, venue, gig, token, later, other }) {
@@ -385,87 +391,168 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
   const arrival = venue?.arrivalNotes || "";
   const door = doors(gig);
   const members = Array.isArray(app.members) ? app.members.filter((member) => member?.name).length : 0;
-  let subject = "";
-  let inner = "";
-  let button = "View your booking";
+  const role = venue?.bookerRole || venue?.role || "";
+  const where = [address, arrival].filter(Boolean).join(". ");
+  const venueUrl = `${process.env.BASE_URL || "https://giginmusic.com"}/venues/${venue?.venueId || gig?.venueId || ""}`;
+  const foot = "You're getting this because you applied to a gig on giginmusic.com.";
+  const hi = `Hi ${escapeHtml(first)},`;
+  const assigned = slots.find((slot) => slotGigId(slot) === app.assignedSlotGigId) || null;
+  const setLabel = assigned ? setName(slots, app.assignedSlotGigId) : "";
+  const range = assigned ? clockRange(assigned) : "";
+  const minutes = assigned?.duration ? `${assigned.duration} minutes` : "";
+  const setLine = [setLabel, range].filter(Boolean).join(" · ") + (minutes ? ` (${minutes})` : "");
+  const was = app.setChangedFrom;
+  const rootId = applicationsRootGigId(slots) || gig?.gigId || app.gigId;
+  let rendered = null;
+  let legacy = null;
   if (kind === "received") {
-    subject = `You've applied to play ${name} at ${venueName}`;
-    const setLine = oneSet
+    const setCopy = oneSet
       ? ""
       : (pref
-        ? `Set: you'd prefer ${pref}. ${booker} will confirm which set you're playing.`
-        : `Set: no preference. ${booker} will confirm which set you're playing.`);
-    button = "Change or withdraw your application";
-    inner = `<p>Hi ${escapeHtml(first)},</p>
-      <p>Thanks for applying. ${escapeHtml(booker)} at ${escapeHtml(venueName)} has your application for <strong>${escapeHtml(when)}</strong>, and will get back to you${reach}.</p>
-      <table role="presentation" width="100%" style="border:1px solid #E5E7EB;border-radius:12px;margin-top:8px;">
-        <tr><td style="padding:12px 14px;font-size:12px;letter-spacing:0.04em;color:#6B7280;">YOUR APPLICATION</td></tr>
-        <tr><td style="padding:0 14px 8px;font-size:16px;"><strong>${escapeHtml(act)}</strong></td></tr>
-        ${setLine ? `<tr><td style="padding:0 14px 8px;font-size:14px;">${escapeHtml(setLine)}</td></tr>` : ""}
-        <tr><td style="padding:0 14px 12px;font-size:14px;">${members || "No"} members</td></tr>
-      </table>
-      <p>Need to change something, or can't make it any more? Use your private link:</p>`;
+        ? `You'd prefer ${pref}. ${escapeHtml(booker)} will confirm which set you're playing.`
+        : `No preference. ${escapeHtml(booker)} will confirm which set you're playing.`);
+    rendered = renderArtistEmail({
+      subject: `You've applied to play ${name} at ${venueName}`,
+      preheader: `${escapeHtml(booker)} has your application for ${escapeHtml(when)}.`,
+      eyebrow: "APPLICATION SENT",
+      heading: `${escapeHtml(booker)} has your application`,
+      paras: [hi, `Thanks for applying. ${escapeHtml(booker)} at ${escapeHtml(venueName)} has your application for <b>${escapeHtml(when)}</b>, and will get back to you${reach}.`],
+      boxes: [{ label: "YOUR APPLICATION", rows: [["Act", escapeHtml(act)], setCopy ? ["Set", setCopy] : null, ["Band", `${members || "No"} members`]].filter(Boolean) }],
+      pre: "Need to change something, or can't make it any more? Use your private link:",
+      button: ["Change or withdraw your application", url],
+      small: "This link is private, so don't forward it. It works until 7 days after the gig.",
+      footer: foot,
+    });
   } else if (kind === "accepted-later") {
-    subject = `You're in: ${name} at ${venueName}`;
-    const prefer = pref ? ` (you said you'd prefer ${pref})` : "";
-    inner = `<p>Hi ${escapeHtml(first)},</p>
-      <p>Good news. ${escapeHtml(booker)} has accepted ${escapeHtml(act)} for ${escapeHtml(name)} at ${escapeHtml(venueName)} on <strong>${escapeHtml(when)}</strong>.</p>
-      <p>Your set time is still to be confirmed. ${escapeHtml(booker)} will choose which set you're playing, and we'll email you again as soon as it's set.</p>
-      <table role="presentation" width="100%" style="border:1px solid #E5E7EB;border-radius:12px;margin-top:8px;">
-        <tr><td style="padding:12px 14px;font-size:12px;letter-spacing:0.04em;color:#6B7280;">YOUR BOOKING</td></tr>
-        <tr><td style="padding:0 14px 12px;font-size:15px;"><strong>${escapeHtml(act)} · ${escapeHtml(when)}</strong><br>Set: to be confirmed${escapeHtml(prefer)}<br>Doors ${escapeHtml(door || "to be confirmed")} · ${escapeHtml(address)}</td></tr>
-      </table>
-      <p>Can't make it after all? Let ${escapeHtml(booker)} know from your private link, so the set can go to someone else.</p>`;
+    const prefer = pref ? ` You said you'd prefer ${escapeHtml(pref)}.` : "";
+    rendered = renderArtistEmail({
+      subject: `You're in: ${name} at ${venueName}`,
+      preheader: `Your set time is still to be confirmed.`,
+      eyebrow: "YOU'RE BOOKED",
+      heading: "You're in",
+      paras: [hi, `Good news. ${escapeHtml(booker)} has accepted ${escapeHtml(act)} for ${escapeHtml(name)} at ${escapeHtml(venueName)} on <b>${escapeHtml(when)}</b>.`, `Your set time is still to be confirmed. ${escapeHtml(booker)} will choose which set you're playing, and we'll email you again as soon as it's set.${prefer}`],
+      boxes: [{ label: "YOUR BOOKING", rows: [["Act", escapeHtml(act)], ["When", escapeHtml(when)], ["Set", "To be confirmed"], door ? ["Doors", escapeHtml(door)] : null, where ? ["Where", escapeHtml(where)] : null].filter(Boolean) }],
+      pre: `Can't make it after all? Let ${escapeHtml(booker)} know from your private link, so the set can go to someone else.`,
+      button: ["View your booking", url],
+      footer: foot,
+    });
   } else if (kind === "accepted-set" || kind === "set-later" || kind === "set-changed") {
-    const line = slotLine(slots, app.assignedSlotGigId);
-    const length = slots.find((slot) => slotGigId(slot) === app.assignedSlotGigId)?.duration;
-    subject = kind === "set-changed"
-      ? `Your set time has changed: ${name}`
-      : (oneSet ? `You're playing at ${venueName} on ${short}` : `You're playing ${setName(slots, app.assignedSlotGigId)} at ${venueName} on ${short}`);
-    const lead = kind === "set-changed"
-      ? `${escapeHtml(booker)} has moved ${escapeHtml(act)} to <strong>${escapeHtml(line)}</strong> on ${escapeHtml(when)}.`
+    const changed = kind === "set-changed";
+    const subject = changed
+      ? `Your set has changed: you're now playing ${setLabel} on ${short}`
+      : (oneSet ? `You're playing at ${venueName} on ${short}` : `You're playing ${setLabel} at ${venueName} on ${short}`);
+    const lead = changed
+      ? `${escapeHtml(booker)} has changed the running order for ${escapeHtml(name)}. ${escapeHtml(act)} is now playing <b>${escapeHtml(setLine)} on ${escapeHtml(when)}</b>${was?.label ? `, instead of ${escapeHtml(was.label)}${was.range ? ` at ${escapeHtml(String(was.range).split("–")[0])}` : ""}` : ""}. Everything else stays the same.`
       : (kind === "set-later"
-        ? `${escapeHtml(booker)} has confirmed your set for ${escapeHtml(name)}: you're playing <strong>${escapeHtml(line)} on ${escapeHtml(when)}</strong>.`
-        : `Good news. ${escapeHtml(booker)} has accepted ${escapeHtml(act)} for ${escapeHtml(name)}, and you're playing <strong>${escapeHtml(line)} on ${escapeHtml(when)}</strong>.`);
-    const range = clockRange(slots.find((slot) => slotGigId(slot) === app.assignedSlotGigId) || {});
-    const boxTitle = `${setName(slots, app.assignedSlotGigId)} · ${range}${length ? ` (${length} minutes)` : ""}`;
-    const doorLine = door ? `Doors ${door}` : arrival;
-    inner = `<p>Hi ${escapeHtml(first)},</p><p>${lead}</p>
-      ${bookingBox({ act: boxTitle, when, line: "", address, arrivalNotes: doorLine })}
-      <p>Can't make it after all? Let ${escapeHtml(booker)} know from your private link, so the set can go to someone else.</p>`;
+        ? `${escapeHtml(booker)} has confirmed your set for ${escapeHtml(name)}: you're playing <b>${escapeHtml(setLine)} on ${escapeHtml(when)}</b>.`
+        : `Good news. ${escapeHtml(booker)} has accepted ${escapeHtml(act)} for ${escapeHtml(name)}, and you're playing <b>${escapeHtml(setLine)} on ${escapeHtml(when)}</b>.`);
+    const ics = icsEvent({
+      uid: `gigin-${rootId}-${app.id}@giginmusic.com`,
+      sequence: Number(app.calendarSequence) || 0,
+      summary: `${act} at ${venueName}`,
+      start: slotMoment(gig, assigned, false),
+      end: slotMoment(gig, assigned, true),
+      location: address,
+      description: setLine,
+    });
+    rendered = renderArtistEmail({
+      subject,
+      preheader: changed ? `${escapeHtml(setLine)}. Everything else stays the same.` : `${escapeHtml(setLine)}.${door ? ` Doors ${escapeHtml(door)}.` : ""}`,
+      eyebrow: changed ? "SET CHANGED" : "YOU'RE BOOKED",
+      heading: changed ? `You're now playing ${escapeHtml(setLabel)}` : `You're playing ${escapeHtml(setLabel || "the set")}`,
+      paras: [hi, lead],
+      boxes: [{
+        label: changed ? "YOUR NEW SET" : "YOUR SET",
+        green: true,
+        rows: [
+          ["Set", escapeHtml(setLine)],
+          was?.label ? ["Was", escapeHtml([was.label, was.range].filter(Boolean).join(" · ")), true] : null,
+          door ? ["Doors", escapeHtml(door)] : null,
+          where ? ["Where", escapeHtml(where)] : null,
+          ["Booked by", escapeHtml(role ? `${booker}, ${role}` : booker)],
+        ].filter(Boolean),
+      }],
+      pre: changed
+        ? `If the new time doesn't work, let ${escapeHtml(booker)} know from your private link.`
+        : `Can't make it after all? Let ${escapeHtml(booker)} know from your private link, so the set can go to someone else.`,
+      button: ["View your booking", url],
+      small: changed ? "We've attached an updated calendar file. It replaces the earlier one." : "We've attached a calendar file (gigin-set.ics) with your set time.",
+      footer: foot,
+    });
+    rendered.attachments = icsAttachment(ics);
   } else if (kind === "unset") {
-    subject = `Your set time is to be confirmed: ${name}`;
-    inner = `<p>Hi ${escapeHtml(first)},</p>
-      <p>You're still playing at ${escapeHtml(venueName)} on ${escapeHtml(when)}, but ${escapeHtml(booker)} has changed the running order. We'll email you as soon as your new set time is confirmed.</p>`;
+    rendered = renderArtistEmail({
+      subject: `Your set time is to be confirmed: ${name}`,
+      preheader: `You're still playing at ${venueName}.`,
+      eyebrow: "SET UPDATE",
+      heading: "Your set time is to be confirmed",
+      paras: [hi, `You're still playing at ${escapeHtml(venueName)} on ${escapeHtml(when)}, but ${escapeHtml(booker)} has changed the running order. We'll email you as soon as your new set time is confirmed.`],
+      button: ["View your booking", url],
+      footer: foot,
+    });
   } else if (kind === "declined") {
-    subject = `Your application to ${name}`;
-    button = "See upcoming gigs at the bar";
-    inner = `<p>Hi ${escapeHtml(first)},</p>
-      <p>${escapeHtml(booker)} has picked the line-up for ${escapeHtml(when)} and couldn't fit ${escapeHtml(act)} in this time. Thanks for applying. The bar has your details for future nights.</p>`;
-  } else if (kind === "venue-withdraw") {
-    const open = app._freedSet ? `${app._freedSet} is open again. ` : "";
-    subject = `${act} can't play on ${short}`;
-    inner = `<p>${escapeHtml(act)} has withdrawn from ${escapeHtml(name)}. ${escapeHtml(open)}You can give it to someone you've accepted, or accept someone who's waiting.</p>`;
-    button = "Open the gig";
-  }
-  if (kind === "accepted-later" || kind === "accepted-set" || kind === "declined") {
-    inner += await keepReminderHtml({
+    const nudge = await keepReminderHtml({
       email: app.email,
       artistProfileId: app.artistProfileId,
       keepProfileOffer: app.keepProfileOffer,
-      gigId: app.gigId || applicationsRootGigId(slots),
+      gigId: app.gigId || rootId,
       applicantId: app.id,
       actName: act,
       venueName,
     });
+    const keepUrl = nudge.match(/href="([^"]+)"/)?.[1] || "";
+    rendered = renderArtistEmail({
+      subject: `Update on your application for ${name}`,
+      preheader: `${escapeHtml(booker)} has picked the line-up for ${escapeHtml(when)}.`,
+      eyebrow: "APPLICATION UPDATE",
+      heading: `Thanks for applying to ${escapeHtml(name)}`,
+      paras: [hi, `${escapeHtml(booker)} has picked the line-up for ${escapeHtml(when)} and couldn't fit ${escapeHtml(act)} in this time. Thanks for applying. The bar has your details for future nights.`],
+      button: ["See upcoming gigs at the bar", venueUrl],
+      buttonDark: true,
+      extra: keepUrl ? { title: "Keep your details for next time?", body: "Turn this application into a Gigin profile with a link you can send to other venues. You'll create a password when you confirm.", link: ["Keep my profile", keepUrl] } : null,
+      footer: foot,
+    });
+  } else if (kind === "venue-withdraw") {
+    const open = app._freedSet ? `${escapeHtml(app._freedSet)} is open again. ` : "";
+    legacy = {
+      subject: `${act} can't play on ${short}`,
+      inner: `<p>${escapeHtml(act)} has withdrawn from ${escapeHtml(name)}. ${open}You can give it to someone you've accepted, or accept someone who's waiting.</p>`,
+      button: "Open the gig",
+    };
+  }
+  if ((kind === "accepted-later" || kind === "accepted-set") && rendered) {
+    const nudge = await keepReminderHtml({
+      email: app.email,
+      artistProfileId: app.artistProfileId,
+      keepProfileOffer: app.keepProfileOffer,
+      gigId: app.gigId || rootId,
+      applicantId: app.id,
+      actName: act,
+      venueName,
+    });
+    const keepUrl = nudge.match(/href="([^"]+)"/)?.[1] || "";
+    if (keepUrl) {
+      const block = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="box" style="margin:4px 0 18px;background:#F6F7F9;border:1px solid #F0F1F3;border-radius:12px;"><tr><td style="padding:14px 16px;font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"><div class="ink" style="font-size:15px;line-height:22px;font-weight:600;color:#0F1115;">Keep your details for next time?</div><div class="muted" style="font-size:14px;line-height:21px;color:#4B5160;padding:2px 0 8px;">Turn this application into a Gigin profile with a link you can send to other venues. You'll create a password when you confirm.</div><a class="link" href="${keepUrl}" style="font-size:14.5px;font-weight:600;color:#B5462C;">Keep my profile →</a></td></tr></table>`;
+      rendered.html = rendered.html.replace("</td></tr>\n<tr><td class=\"muted\"", `${block}</td></tr>\n<tr><td class="muted"`);
+      rendered.text += `\n\nKeep your details for next time?\n${keepUrl}\n`;
+    }
+  }
+  const from = "Gigin <noreply@giginmusic.com>";
+  if (legacy) {
+    return {
+      to: null,
+      from,
+      message: {
+        subject: legacy.subject,
+        text: legacy.inner.replace(/<[^>]+>/g, " "),
+        html: emailShell({ title: legacy.subject, inner: legacy.inner, buttonLabel: legacy.button, buttonUrl: reviewUrl(rootId) }),
+      },
+    };
   }
   return {
-    to: kind === "venue-withdraw" ? null : (app.email || null),
-    message: {
-      subject,
-      text: inner.replace(/<[^>]+>/g, " "),
-      html: emailShell({ title: subject, inner, buttonLabel: button, buttonUrl: url }),
-    },
+    to: app.email || null,
+    from,
+    message: rendered || { subject: name, text: "", html: "" },
   };
 }
 
@@ -592,6 +679,18 @@ export async function assignApplication({ gigId, applicantId, slotGigId }) {
     else if (hadSet && hadSet !== app.assignedSlotGigId) kind = "set-changed";
     else if (app !== changed[0]) kind = "set-changed";
     else kind = "set-later";
+    if (kind === "set-changed" && hadSet) {
+      const previousSlot = views.find((slot) => slot.gigId === hadSet);
+      app.setChangedFrom = {
+        slotGigId: hadSet,
+        label: setName(views, hadSet),
+        range: previousSlot ? clockRange(previousSlot) : "",
+      };
+      app.setChangeSeenAt = null;
+      app.calendarSequence = Number(priv.calendarSequence || app.calendarSequence || 0) + 1;
+    } else if (kind === "accepted-set" || kind === "set-later") {
+      app.calendarSequence = Number(priv.calendarSequence || app.calendarSequence || 0);
+    }
     const mailId = await mailAct(kind, { app, slots: views, venue, gig: root.data, token: app.manageToken });
     mailIds.push(mailId);
     if (isGuestApplicant(app)) {

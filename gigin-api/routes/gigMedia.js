@@ -9,6 +9,7 @@ import { asyncHandler } from "../middleware/errorHandler.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 import { loadGuestPrivates, loadPrivateDetails, mergeApplicants, savePrivateDetails } from "../lib/gigPrivacy.js";
 import { queueMail } from "../lib/queueMail.js";
+import { renderArtistEmail } from "../lib/artistEmails.js";
 
 const router = express.Router();
 
@@ -50,14 +51,31 @@ function mediaList(gig) {
   return Array.isArray(gig?.media) ? gig.media : [];
 }
 
-function publicMedia(item) {
+function publicMedia(item, thumbUrl = null) {
   return {
     id: item.id,
     name: item.name,
-    contentType: item.contentType,
-    size: item.size,
+    contentType: item.contentType || "",
+    size: item.size || 0,
+    width: item.width || null,
+    height: item.height || null,
+    durationSec: item.durationSec || null,
     uploadedAt: item.uploadedAt || null,
+    thumbUrl,
   };
+}
+
+async function signedThumb(item) {
+  if (!item?.path || !String(item.contentType || "").startsWith("image/")) return null;
+  try {
+    const [url] = await admin.storage().bucket().file(item.path).getSignedUrl({
+      action: "read",
+      expires: Date.now() + 60 * 60 * 1000,
+    });
+    return url;
+  } catch {
+    return null;
+  }
 }
 
 async function loadGigForCaller(gigId, caller) {
@@ -119,12 +137,16 @@ const BOOKED = new Set(["confirmed", "accepted", "paid", "payment processing"]);
 async function confirmedActEmails(gig) {
   const privates = await loadGuestPrivates(gig.gigId);
   const applicants = mergeApplicants(gig.applicants, privates);
-  const emails = new Set();
+  const emails = new Map();
+  const remember = (email, name) => {
+    const address = String(email || "").trim().toLowerCase();
+    if (!address.includes("@") || emails.has(address)) return;
+    emails.set(address, String(name || "").trim());
+  };
   for (const applicant of applicants) {
     if (!BOOKED.has(String(applicant?.status || "").toLowerCase())) continue;
     if (applicant?.type === "guest" || applicant?.guest === true) {
-      const email = String(applicant.email || "").trim().toLowerCase();
-      if (email.includes("@")) emails.add(email);
+      remember(applicant.email, applicant.contactName || applicant.name);
       continue;
     }
     const profileId = applicant?.id;
@@ -133,20 +155,19 @@ async function confirmedActEmails(gig) {
     const profile = profileSnap.exists ? profileSnap.data() || {} : {};
     const direct = String(profile.email || applicant.email || "").trim().toLowerCase();
     if (direct.includes("@")) {
-      emails.add(direct);
+      remember(direct, profile.name || applicant.name);
       continue;
     }
     if (profile.userId) {
       try {
         const user = await admin.auth().getUser(profile.userId);
-        const authEmail = String(user.email || "").trim().toLowerCase();
-        if (authEmail.includes("@")) emails.add(authEmail);
+        remember(user.email, profile.name || user.displayName);
       } catch {
         /* no auth user */
       }
     }
   }
-  return [...emails];
+  return [...emails.entries()].map(([email, name]) => ({ email, name }));
 }
 
 router.post("/upload-url", requireAuth, asyncHandler(async (req, res) => {
@@ -260,28 +281,44 @@ router.post("/:gigId/share/email", requireAuth, asyncHandler(async (req, res) =>
   if (!origin) return res.status(400).json({ error: "A valid site address is required." });
   const link = `${origin}/share/gig-media/${token}`;
   const title = String(gig.gigName || "your gig").replace(/\s*\(Set\s+\d+\)\s*$/, "");
-  const emails = await confirmedActEmails(gig);
-  for (const to of emails) {
-    await queueMail({
-      to,
-      message: {
-        subject: `Your photos and videos from ${title}`,
-        text: `Photos and videos from ${title} are ready. Open them here: ${link}`,
-        html: `<p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.5;color:#0F1115;">Photos and videos from <strong>${title}</strong> are ready.</p><p><a href="${link}">View and download</a></p>`,
-      },
+  const venueName = gig.venue?.venueName || gig.venueName || "the venue";
+  const files = mediaList(gig);
+  const photos = files.filter((item) => String(item.contentType || "").startsWith("image/")).length;
+  const videos = files.filter((item) => String(item.contentType || "").startsWith("video/")).length;
+  const total = files.reduce((sum, item) => sum + (Number(item.size) || 0), 0);
+  const sizeLabel = total < 1024 * 1024 ? `${Math.max(1, Math.round(total / 1024))} KB` : `${Math.round(total / (1024 * 1024))} MB`;
+  const when = gig.startDateTime?.toDate ? gig.startDateTime.toDate() : (gig.date ? new Date(gig.date) : null);
+  const day = when && !Number.isNaN(when.getTime()) ? when.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) : "the night";
+  const recipients = await confirmedActEmails(gig);
+  for (const recipient of recipients) {
+    const first = String(recipient.name || "there").split(/\s+/)[0];
+    const message = renderArtistEmail({
+      subject: `Your photos and videos from ${title}`,
+      preheader: `${venueName} has shared ${files.length} files from ${day}.`,
+      eyebrow: "PHOTOS AND VIDEOS",
+      heading: `Photos from ${title} are ready`,
+      paras: [`Hi ${first},`, `${venueName} has shared photos and videos from ${day} with the acts who played.`],
+      boxes: [{ label: "IN THE GALLERY", rows: [["Files", `${photos} photos, ${videos} videos`], ["Size", `${sizeLabel} in total`]] }],
+      button: ["View and download", link],
+      small: "This link is private, so only share it with your band. The venue can turn it off at any time.",
+      footer: `You're getting this because you played ${title} at ${venueName}.`,
     });
+    await queueMail({ to: recipient.email, from: "Gigin <noreply@giginmusic.com>", message });
   }
-  return res.json({ sent: emails.length });
+  return res.json({ sent: recipients.length });
 }));
 
 router.get("/share/:token", publicLimiter, asyncHandler(async (req, res) => {
   const found = await gigByShareToken(req.params.token);
   if (!found) return res.status(404).json({ error: "This link is no longer available." });
   const title = String(found.gig.gigName || "Gig").replace(/\s*\(Set\s+\d+\)\s*$/, "");
+  const when = found.gig.startDateTime?.toDate ? found.gig.startDateTime.toDate() : (found.gig.date ? new Date(found.gig.date) : null);
+  const media = await Promise.all(mediaList(found.gig).map(async (item) => publicMedia(item, await signedThumb(item))));
   return res.json({
     title,
     venueName: found.gig.venue?.venueName || found.gig.venueName || "",
-    media: mediaList(found.gig).map(publicMedia),
+    gigDate: when && !Number.isNaN(when.getTime()) ? when.toISOString() : null,
+    media,
   });
 }));
 
@@ -292,8 +329,9 @@ router.get("/share/:token/file/:mediaId", publicLimiter, asyncHandler(async (req
   if (!item?.path || !String(item.path).startsWith(`gig-media/${found.gig.gigId}/`)) {
     return res.status(404).json({ error: "File not found." });
   }
+  const inline = String(req.query.inline || "") === "1";
   res.setHeader("Content-Type", item.contentType || "application/octet-stream");
-  res.setHeader("Content-Disposition", `attachment; filename="${safeName(item.name)}"`);
+  res.setHeader("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${safeName(item.name)}"`);
   admin.storage().bucket().file(item.path).createReadStream().pipe(res);
 }));
 
