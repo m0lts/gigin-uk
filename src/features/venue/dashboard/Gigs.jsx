@@ -199,7 +199,12 @@ export const Gigs = ({
         setOpenOptionsGigId(prev => (prev === gigId ? null : gigId));
         if (anchor?.getBoundingClientRect) {
           const rect = anchor.getBoundingClientRect();
-          setOptionsMenuPos({ top: rect.bottom + 4, left: rect.right });
+          const menuHeight = 320;
+          const spaceBelow = window.innerHeight - rect.bottom;
+          const top = spaceBelow < menuHeight && rect.top > spaceBelow
+            ? Math.max(8, rect.top - menuHeight - 4)
+            : rect.bottom + 4;
+          setOptionsMenuPos({ top, left: rect.right });
         }
     };
 

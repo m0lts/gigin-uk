@@ -60,6 +60,7 @@ import { computeCompatibility } from '../../services/utils/techRiderCompatibilit
 import { findSlotSiblingsFromFlatGigs } from '../venue/gigs/utils/multiSlotGigGroup';
 import { GuestGigPage } from './guest/GuestGigPage';
 import { isGuestApplyGig } from './guest/guestFormat';
+import { readNight } from '@services/utils/nightApplications';
 
 const TECH_SPEC_SOUND_KEYS = new Set(['pa', 'mixingConsole', 'soundEngineer', 'microphones', 'micStands', 'diBoxes', 'stageMonitors']);
 const TECH_SPEC_BACKLINE_KEYS = new Set(['drumKit', 'bassAmp', 'guitarAmp', 'keyboard', 'keyboardStand', 'stageLighting', 'djDecks']);
@@ -214,15 +215,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
         if (otherSlots && Array.isArray(otherSlots) && otherSlots.length > 0) {
             slots.push(...otherSlots);
         }
-        // Sort by startTime
-        return slots.sort((a, b) => {
-            const aTime = a.startTime || '';
-            const bTime = b.startTime || '';
-            if (!aTime || !bTime) return 0;
-            const [aH, aM] = aTime.split(':').map(Number);
-            const [bH, bM] = bTime.split(':').map(Number);
-            return (aH * 60 + aM) - (bH * 60 + bM);
-        });
+        return readNight(slots).slots;
     }, [gigData, otherSlots]);
 
     // Current slot being displayed
@@ -1284,23 +1277,26 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
                   compatibilityStatus: hasNeedsDiscussion ? 'missing_required' : (hiringFromVenue.length > 0 ? 'compatible_with_hired' : 'fully_compatible'),
                 };
               }
-              const { updatedApplicants } = await applyToGig({
+              const preference = allSlots.length > 1 ? [slotGigId] : [];
+              const { updatedApplicants, rootGigId } = await applyToGig({
                 gigId: slotGigId,
                 musicianProfile: normalizedProfile,
                 inviteId,
                 techSetup,
+                preferredSlotGigIds: preference,
                 ...(messageTrimmed ? { applicationMessage: messageTrimmed } : {}),
               });
+              const targetId = rootGigId || slotGigId;
               setGigData(prev => {
-                  if (prev.gigId === slotGigId) {
+                  if (prev.gigId === targetId) {
                       return { ...prev, applicants: updatedApplicants };
                   }
                   return prev;
               });
               setOtherSlots(prev => {
                   if (!prev) return prev;
-                  return prev.map(slot => 
-                      slot.gigId === slotGigId 
+                  return prev.map(slot =>
+                      slot.gigId === targetId
                           ? { ...slot, applicants: updatedApplicants }
                           : slot
                   );

@@ -66,4 +66,22 @@ ${image ? `<meta property="og:image" content="${escapeHtml(image)}">` : ""}
   res.type("html").send(html);
 }));
 
+router.get("/oembed", previewLimiter, asyncHandler(async (req, res) => {
+  const target = String(req.query.url || "");
+  let endpoint = "";
+  if (/open\.spotify\.com|spotify\.com/.test(target)) endpoint = `https://open.spotify.com/oembed?url=${encodeURIComponent(target)}`;
+  else if (/youtu\.be|youtube\.com/.test(target)) endpoint = `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(target)}`;
+  else if (/soundcloud\.com/.test(target)) endpoint = `https://soundcloud.com/oembed?format=json&url=${encodeURIComponent(target)}`;
+  else return res.status(400).json({ error: "That link can't be previewed." });
+  const response = await fetch(endpoint);
+  if (!response.ok) return res.status(404).json({ error: "No preview for that link." });
+  const body = await response.json();
+  res.json({
+    title: body.title || "",
+    provider: body.provider_name || "",
+    thumbnail: body.thumbnail_url || "",
+    html: body.html || "",
+  });
+}));
+
 export default router;

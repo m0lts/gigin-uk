@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { preferenceReview } from './guestFormat';
 
 const DISMISS_KEY = 'guestAccountPromptDismissed';
 
@@ -6,16 +7,20 @@ export function GuestApplied({ draft, dateLabel, bookerName, onClose, onCreateAc
   const [hidden, setHidden] = useState(() => {
     try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; }
   });
-  const channel = 'email';
+  const pref = preferenceReview(draft.slots || [], draft.preferredSlotGigIds || []);
+  const prefer = draft.slots?.length > 1 && (draft.preferredSlotGigIds || []).length
+    ? `, and knows you'd prefer ${pref.replace(/^Prefers /, '')}`
+    : '';
+  const channel = draft.phone && draft.whatsapp ? 'email or WhatsApp' : 'email';
   return (
     <div className="ga-applied">
       <span className="ga-check">✓</span>
       <h2>Application sent to {bookerName}</h2>
-      <p>{bookerName} has your application{draft.slotGigIds.length ? ` for your chosen set` : ''} on {dateLabel}. {draft.email ? `We've emailed a copy to ${draft.email}.` : 'Keep this page if you need the private link.'}</p>
+      <p>{bookerName} has your application for {dateLabel}{prefer}. {draft.email ? `We've emailed a copy to ${draft.email}.` : 'Keep this page if you need the private link.'}</p>
       <ol className="ga-next">
-        <li><span>1</span><div><strong>{bookerName} reviews applications</strong><p>They'll look at who is playing and what you need.</p></div></li>
-        <li><span>2</span><div><strong>You hear back either way</strong><p>By {channel}.</p></div></li>
-        <li><span>3</span><div><strong>Change your mind any time</strong><p>The email has a private link.</p></div></li>
+        <li><span>1</span><div><strong>{bookerName} reviews applications</strong><p>{bookerName} looks at everyone who applied for the night and picks the acts.</p></div></li>
+        <li><span>2</span><div><strong>You hear back either way</strong><p>By {channel}. If you're in, {bookerName} confirms which set you're playing, straight away or a little later.</p></div></li>
+        <li><span>3</span><div><strong>Change your mind any time</strong><p>Use the private link in your email to edit or withdraw.</p></div></li>
       </ol>
       {!hidden && (
         <aside className="ga-account">

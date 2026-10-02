@@ -16,7 +16,9 @@ const PRIVATE_KEYS = [
   "photo",
   "members",
   "manageTokenHash",
+  "manageToken",
   "crmEntryId",
+  "whatsapp",
   "venueId",
   "inviteId",
   "gigName",
@@ -61,6 +63,16 @@ export function guestStub(full = {}) {
   if (full.linkedArtistId) stub.linkedArtistId = full.linkedArtistId;
   if (full.fee != null) stub.fee = full.fee;
   if (full.proposedFee != null) stub.proposedFee = full.proposedFee;
+  if (Array.isArray(full.preferredSlotGigIds)) stub.preferredSlotGigIds = full.preferredSlotGigIds;
+  if (Object.prototype.hasOwnProperty.call(full, "assignedSlotGigId")) {
+    stub.assignedSlotGigId = full.assignedSlotGigId || null;
+  }
+  if (full.withdrawnAfterAccept === true) stub.withdrawnAfterAccept = true;
+  if (full.lastSlotGigId) stub.lastSlotGigId = full.lastSlotGigId;
+  if (full.undo) stub.undo = full.undo;
+  for (const key of ["acceptedAt", "assignedAt", "declinedAt", "withdrawnAt", "declineEmailSendAt"]) {
+    if (full[key]) stub[key] = full[key];
+  }
   return stub;
 }
 
@@ -158,6 +170,8 @@ export function venueGuestView(data = {}) {
     members: data.members || [],
     contactName: data.contactName || "",
     setLabel: data.setLabel || "",
+    crmEntryId: data.crmEntryId || null,
+    whatsapp: data.whatsapp === true || data.contacts?.whatsapp === true,
   };
 }
 

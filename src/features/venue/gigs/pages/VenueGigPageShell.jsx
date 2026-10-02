@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { normaliseGig } from '../utils/normaliseGig';
 import { findSlotSiblingsFromFlatGigs, isArtistBookingNightFullyBooked } from '../utils/multiSlotGigGroup';
 import { BookingSummarySidebar } from '../components/BookingSummarySidebar';
+import { isGuestApplyGig } from '@features/gig-discovery/guest/guestFormat';
 import { GigInvitesModal } from '../../components/GigInvitesModal';
 import { GigOptionsMenu } from '../../components/GigOptionsMenu';
 import { getMainPanelComponent } from './panels';
@@ -561,6 +562,7 @@ export function VenueGigPageShell({
   const isOpenArtistBookingPage = normalisedGig.bookingMode === 'artist_booking' && normalisedGig.status === 'open';
   const isConfirmedArtistBookingPage = normalisedGig.bookingMode === 'artist_booking' && normalisedGig.status === 'confirmed';
   const isArtistBookingPage = isOpenArtistBookingPage || isConfirmedArtistBookingPage;
+  const guestNightReview = isArtistBookingPage && isGuestApplyGig(gigInfo, venueRowForGig);
   const noBookerYet = isVenueHirePage && !hasVenueHireBooker;
   // Both venue-hire-with-no-booker and open artist bookings show the "invite UI" state:
   // an invite/fill-this-slot tile + the applications-visibility toggle. Unifying these
@@ -758,7 +760,7 @@ export function VenueGigPageShell({
         </header>
         )}
 
-        <div className={isArtistBookingPage ? 'venue-gig-page__columns' : 'venue-gig-page__layout'}>
+        <div className={isArtistBookingPage ? `venue-gig-page__columns${guestNightReview ? ' is-night-review' : ''}` : 'venue-gig-page__layout'}>
           <div className={isArtistBookingPage ? 'venue-gig-page__column' : 'venue-gig-page__column-passthrough'}>
           {isArtistBookingPage && (
             <div className="venue-gig-page__page-head">
@@ -834,6 +836,7 @@ export function VenueGigPageShell({
             })()}
           </main>
           </div>
+          {!guestNightReview && (
           <div className={isArtistBookingPage ? 'venue-gig-page__rail' : 'venue-gig-page__column-passthrough'}>
           <BookingSummarySidebar
             normalisedGig={normalisedGig}
@@ -856,6 +859,7 @@ export function VenueGigPageShell({
             }
           />
           </div>
+          )}
         </div>
       </div>
 

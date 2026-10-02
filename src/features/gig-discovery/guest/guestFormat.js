@@ -1,3 +1,7 @@
+import { slotTaken } from '@services/utils/nightApplications';
+
+export { slotTaken };
+
 export function slotDate(slot) {
   const raw = slot?.startDateTime || slot?.date;
   if (!raw) return null;
@@ -42,8 +46,7 @@ export function slotEnd(slot) {
 export function slotState(slot) {
   const date = slotDate(slot);
   if (date && date.getTime() < Date.now()) return 'played';
-  const booked = (slot?.applicants || []).some((applicant) => ['confirmed', 'paid', 'accepted'].includes(applicant?.status));
-  return booked ? 'booked' : 'open';
+  return slotTaken(slot) ? 'booked' : 'open';
 }
 
 export function firstName(name) {
@@ -81,6 +84,60 @@ export function bookerLine(venue, gig) {
     name: venue?.bookerDisplayName || (jesus ? 'Jez' : 'The booker'),
     role: venue?.bookerRole || (jesus ? 'booker' : ''),
   };
+}
+
+export function preferenceReview(slots, ids) {
+  const names = (ids || []).map((id) => {
+    const index = (slots || []).findIndex((slot) => (slot.gigId || slot.id) === id);
+    return index >= 0 ? `Set ${index + 1}` : null;
+  }).filter(Boolean);
+  if (!names.length) return 'No preference';
+  if (names.length === 1) return `Prefers ${names[0]}`;
+  if (names.length === 2) return `Prefers ${names[0]} or ${names[1]}`;
+  return `Prefers ${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
+}
+
+export function setCountLabel(count) {
+  const words = ['', 'One set', 'Two sets', 'Three sets', 'Four sets', 'Five sets'];
+  return words[count] || `${count} sets`;
+}
+
+export function rememberApplication(gigId, token) {
+  const value = `${gigId}:${token}`;
+  try { sessionStorage.setItem('guestApplicationLink', value); } catch { /* ignore */ }
+  try { localStorage.setItem('guestApplicationLink', value); } catch { /* ignore */ }
+}
+
+export function rememberedApplication(gigIds) {
+  let raw = '';
+  try {
+    raw = localStorage.getItem('guestApplicationLink') || sessionStorage.getItem('guestApplicationLink') || '';
+  } catch { /* ignore */ }
+  const splitAt = raw.indexOf(':');
+  if (splitAt < 0) return null;
+  const gigId = raw.slice(0, splitAt);
+  const token = raw.slice(splitAt + 1);
+  if (!token || !(gigIds || []).includes(gigId)) return null;
+  return { gigId, token };
+}
+
+export function icsForSet({ title, start, end, location, description }) {
+  const stamp = (date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const body = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Gigin//EN',
+    'BEGIN:VEVENT',
+    `DTSTAMP:${stamp(new Date())}`,
+    `DTSTART:${stamp(start)}`,
+    `DTEND:${stamp(end)}`,
+    `SUMMARY:${title}`,
+    location ? `LOCATION:${location}` : '',
+    description ? `DESCRIPTION:${description}` : '',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean).join('\r\n');
+  return body;
 }
 
 export function photoUrl(venue) {

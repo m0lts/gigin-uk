@@ -6,7 +6,7 @@ import { GuestAssetsStep } from './GuestAssetsStep';
 import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
 import { GuestWhoStep } from './GuestWhoStep';
-import { bookerLine, clearDraft, formatShortDay, readDraft, writeDraft } from './guestFormat';
+import { bookerLine, clearDraft, formatShortDay, readDraft, rememberApplication, writeDraft } from './guestFormat';
 
 const STEPS = [
   ['who', 'Who you are'],
@@ -26,6 +26,8 @@ function emptyDraft(gig, invite, ids) {
     whatsapp: true,
     instagram: '',
     slotGigIds: [],
+    preferredSlotGigIds: [],
+    noPreference: true,
     photo: null,
     assets: [],
     links: { spotify: '', youtube: '', instagram: '', website: '' },
@@ -54,22 +56,26 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
 
   useEffect(() => {
     if (invite?.prefill && !saved) {
+      const invitedSlot = invite.prefill.slotGigIds?.[0];
+      const stillOpen = invitedSlot && slots.some((slot) => (slot.gigId || slot.id) === invitedSlot && !slot.taken && slot.applicationsOpen !== false);
       setDraft((current) => ({
         ...current,
         contactName: invite.prefill.contactName || current.contactName,
         actName: invite.prefill.actName || current.actName,
         email: invite.prefill.email || current.email,
-        slotGigIds: invite.prefill.slotGigIds?.length ? invite.prefill.slotGigIds : current.slotGigIds,
+        preferredSlotGigIds: stillOpen ? [invitedSlot] : current.preferredSlotGigIds,
+        slotGigIds: stillOpen ? [invitedSlot] : current.slotGigIds,
+        noPreference: stillOpen ? false : current.noPreference,
       }));
     }
-  }, [invite, saved]);
+  }, [invite, saved, slots]);
 
   useEffect(() => {
     writeDraft(gig.gigId, invite?.inviteId, { ...draft, step });
   }, [draft, step, gig.gigId, invite?.inviteId]);
 
   const patch = (partial) => setDraft((current) => ({ ...current, ...partial }));
-  const whoOk = draft.actName.trim() && draft.contactName.trim() && (draft.email.trim() || draft.phone.trim() || draft.instagram.trim()) && draft.slotGigIds.length > 0 && !draft.accountBlocked;
+  const whoOk = draft.actName.trim() && draft.contactName.trim() && (draft.email.trim() || draft.phone.trim() || draft.instagram.trim()) && !draft.accountBlocked;
 
   const submit = async () => {
     if (!navigator.onLine) {
@@ -83,7 +89,8 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         applicationId: draft.applicationId,
         manageToken: draft.manageToken,
         gigId: gig.gigId,
-        slotGigIds: draft.slotGigIds,
+        preferredSlotGigIds: draft.preferredSlotGigIds || [],
+        slotGigIds: draft.preferredSlotGigIds || [],
         inviteId: draft.inviteId || null,
         actName: draft.actName,
         contactName: draft.contactName,
@@ -100,9 +107,10 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         needs: draft.needs,
         bringOwn: draft.bringOwn,
         note: draft.note,
+        anotherAct: draft.ignoreDuplicate === true,
       });
       clearDraft(gig.gigId, invite?.inviteId);
-      try { sessionStorage.setItem('guestApplicationLink', `${gig.gigId}:${draft.manageToken}`); } catch { /* ignore */ }
+      try { rememberApplication(gig.gigId, draft.manageToken); } catch { /* ignore */ }
       setSent(true);
       setOffline(false);
     } catch (error) {
@@ -146,9 +154,9 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
     return (
       <div className="ga-flow">
         <GuestApplied
-          draft={draft}
+          draft={{ ...draft, slots }}
           bookerName={booker.name}
-          dateLabel={formatShortDay(slots.find((slot) => draft.slotGigIds.includes(slot.gigId)) || gig)}
+          dateLabel={formatShortDay(gig)}
           onClose={onClose}
           onCreateAccount={onCreateAccount}
         />

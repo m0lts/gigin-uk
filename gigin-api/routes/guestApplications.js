@@ -13,6 +13,14 @@ import {
   sanitiseApplicants,
 } from "../lib/gigPrivacy.js";
 import { queueMail } from "../lib/queueMail.js";
+import { preferencePhrase, readNight } from "../lib/nightApplications.js";
+import {
+  emailForAct,
+  loadNightSlots,
+  preferenceFromBody,
+  withdrawGuestApplication,
+  writeGuestApplication,
+} from "../lib/nightApplicationOps.js";
 const router = express.Router();
 
 const guestLimiter = rateLimit({
@@ -23,7 +31,7 @@ const guestLimiter = rateLimit({
   message: { error: "Too many attempts. Please wait a few minutes and try again.", captchaRequired: true },
 });
 
-router.use(guestLimiter);
+if (!process.env.FIRESTORE_EMULATOR_HOST) router.use(guestLimiter);
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 const ASSET_TYPES = new Set([...IMAGE_TYPES, "application/pdf"]);
@@ -68,14 +76,26 @@ function publicStatus(status) {
   return status || "sent";
 }
 
-function publicApplication(applicant, gig) {
+function publicApplication(applicant, gig, night) {
   const when = gig ? gigDate(gig) : null;
   const past = when ? when.getTime() < Date.now() : false;
   const status = publicStatus(applicant.status);
+  const preferred = Array.isArray(applicant.preferredSlotGigIds)
+    ? applicant.preferredSlotGigIds
+    : (Array.isArray(applicant.slotGigIds) ? applicant.slotGigIds : []);
   return {
     applicationId: applicant.id,
-    gigId: applicant.gigId || gig?.gigId || "",
-    slotGigIds: applicant.slotGigIds || [],
+    gigId: applicant.gigId || gig?.gigId || night?.applicationsRootGigId || "",
+    applicationsRootGigId: night?.applicationsRootGigId || null,
+    slotGigIds: preferred,
+    preferredSlotGigIds: preferred,
+    assignedSlotGigId: applicant.assignedSlotGigId || null,
+    withdrawnAfterAccept: applicant.withdrawnAfterAccept === true,
+    acceptedAt: applicant.acceptedAt || null,
+    assignedAt: applicant.assignedAt || null,
+    declinedAt: applicant.declinedAt || null,
+    withdrawnAt: applicant.withdrawnAt || null,
+    slots: night?.publicSlots || [],
     venueId: applicant.venueId || gig?.venueId || null,
     actName: applicant.name || applicant.actName || "",
     contactName: applicant.contactName || "",
@@ -139,19 +159,28 @@ async function mergedGuests(doc) {
   return mergeApplicants(guestsOn(doc.data), map);
 }
 
+async function loadNightDocs(gigId) {
+  const docs = await loadGroup(gigId);
+  const slots = [];
+  for (const doc of docs) {
+    const guests = await mergedGuests(doc);
+    const guestIds = new Set(guests.map((entry) => entry.id));
+    const rest = (Array.isArray(doc.data.applicants) ? doc.data.applicants : []).filter((entry) => (
+      !isGuest(entry) && !guestIds.has(entry?.id)
+    ));
+    slots.push({ gigId: doc.id, ...doc.data, applicants: [...rest, ...guests] });
+  }
+  return { docs, night: readNight(slots) };
+}
+
 async function findByToken(gigId, token) {
   if (!gigId || !token) return null;
   const manageTokenHash = hashToken(token);
-  const docs = await loadGroup(gigId);
-  for (const doc of docs) {
-    const snap = await db.collection(`gigs/${doc.id}/guestApplicants`).where("manageTokenHash", "==", manageTokenHash).limit(1).get();
-    if (snap.empty) continue;
-    const priv = snap.docs[0].data() || {};
-    const stub = guestsOn(doc.data).find((entry) => entry.id === snap.docs[0].id)
-      || { id: snap.docs[0].id, type: "guest", guest: true, status: "pending" };
-    return { gig: doc, applicant: { ...priv, ...stub, id: stub.id }, docs };
-  }
-  return null;
+  const { docs, night } = await loadNightDocs(gigId);
+  const applicant = night.applications.find((entry) => entry.manageTokenHash === manageTokenHash);
+  if (!applicant) return null;
+  const gig = docs.find((doc) => doc.id === night.applicationsRootGigId) || docs[0];
+  return { gig, applicant, docs, night };
 }
 
 async function loadGig(gigId) {
@@ -188,7 +217,9 @@ function applicantRecord(body, photoUrl) {
     note: body.note || "",
     applicationMessage: body.note || "",
     manageTokenHash: body.manageTokenHash || null,
-    slotGigIds: body.slotGigIds || [],
+    slotGigIds: body.slotGigIds || body.preferredSlotGigIds || [],
+    preferredSlotGigIds: body.preferredSlotGigIds || body.slotGigIds || [],
+    manageToken: body.manageToken || null,
     gigId: body.gigId || null,
     venueId: body.venueId || null,
     inviteId: body.inviteId || null,
@@ -361,20 +392,17 @@ router.post("/lookup", asyncHandler(async (req, res) => {
   const email = emailNorm(req.body?.email);
   const phone = phoneNorm(req.body?.phone);
   if (!gigId || (!email && !phone)) return res.json({ exists: false });
-  const docs = await loadGroup(gigId);
-  let match = null;
-  for (const doc of docs) {
-    const guests = await mergedGuests(doc);
-    match = guests.find((entry) => {
-      if (entry.status === "withdrawn") return false;
-      return (email && emailNorm(entry.email) === email) || (phone && phoneNorm(entry.phone) === phone);
-    });
-    if (match) break;
-  }
+  const { night } = await loadNightDocs(gigId);
+  const match = night.applications.find((entry) => {
+    if (entry.status === "withdrawn") return false;
+    return (email && emailNorm(entry.email) === email) || (phone && phoneNorm(entry.phone) === phone);
+  });
   if (!match) return res.json({ exists: false });
   return res.json({
     exists: true,
     setLabel: match.setLabel || "a set",
+    preferredSlotGigIds: match.preferredSlotGigIds || [],
+    assignedSlotGigId: match.assignedSlotGigId || null,
     appliedAt: match.appliedAt || null,
     dateLabel: match.dateLabel || "",
   });
@@ -444,7 +472,6 @@ function validateCreate(body) {
   const instagram = String(contacts.instagram || "").trim();
   if (!actName || !contactName) return "Add your act name and your name.";
   if (!email && !phone && !instagram) return "Add at least one way to reach you.";
-  if (!Array.isArray(body.slotGigIds) || body.slotGigIds.length === 0) return "Choose a set.";
   if (!body.applicationId || !body.manageToken || String(body.manageToken).length < 32) return "Application could not be saved.";
   return null;
 }
@@ -477,9 +504,29 @@ router.post("/", asyncHandler(async (req, res) => {
   }
 
   const group = groupForClose;
+  const submittedApplicationId = String(body.applicationId);
+  let updatingExisting = null;
+  if (!body.anotherAct) {
+    const { night } = await loadNightDocs(body.gigId);
+    const email = emailNorm(body.contacts?.email);
+    const phone = phoneNorm(body.contacts?.phone);
+    updatingExisting = night.applications.find((entry) => {
+      const status = String(entry.status || "").toLowerCase();
+      if (status === "withdrawn" || status === "declined") return false;
+      if (String(entry.id) === submittedApplicationId) return false;
+      return (email && emailNorm(entry.email) === email) || (phone && phoneNorm(entry.phone) === phone);
+    }) || null;
+    if (updatingExisting) {
+      const status = String(updatingExisting.status || "").toLowerCase();
+      if (status === "accepted" || status === "confirmed" || status === "paid") {
+        return res.status(409).json({ error: "You've already applied for this gig." });
+      }
+      body.applicationId = updatingExisting.id;
+    }
+  }
   const manageTokenHash = hashToken(body.manageToken);
   const already = group.flatMap((doc) => doc.data.applicants || []).find((entry) => entry?.id === body.applicationId);
-  if (already) {
+  if (already && !updatingExisting) {
     let storedHash = null;
     for (const doc of group) {
       const priv = await db.doc(`gigs/${doc.id}/guestApplicants/${already.id}`).get();
@@ -496,14 +543,14 @@ router.post("/", asyncHandler(async (req, res) => {
 
   let photo = body.photo || null;
   if (photo?.path) {
-    if (!String(photo.path).startsWith(`guest-applications/${body.applicationId}/`)) {
+    if (!String(photo.path).startsWith(`guest-applications/${submittedApplicationId}/`) && !String(photo.path).startsWith(`guest-applications/${body.applicationId}/`)) {
       return res.status(400).json({ error: "Photo path is not valid." });
     }
     photo = { ...photo, url: await publicDownloadUrl(photo.path) };
   }
   const assets = [];
   for (const asset of Array.isArray(body.assets) ? body.assets.slice(0, 5) : []) {
-    if (!asset?.path || !String(asset.path).startsWith(`guest-applications/${body.applicationId}/`)) continue;
+    if (!asset?.path || (!String(asset.path).startsWith(`guest-applications/${submittedApplicationId}/`) && !String(asset.path).startsWith(`guest-applications/${body.applicationId}/`))) continue;
     assets.push({ ...asset, url: await publicDownloadUrl(asset.path) });
   }
 
@@ -527,7 +574,11 @@ router.post("/", asyncHandler(async (req, res) => {
     phone: contacts.phone,
     instagram: contacts.instagram,
   });
-  const setLabel = (body.slotGigIds || []).map((_, index) => `Set ${index + 1}`).join(", ") || "a set";
+  const loadedSlots = await loadNightSlots(body.gigId);
+  const pref = preferenceFromBody(body, loadedSlots.slots);
+  if (pref.error) return res.status(400).json({ error: pref.error });
+  const phrase = preferencePhrase(loadedSlots.slots.map((slot) => ({ gigId: slot.id, ...slot.data })), pref.preferredSlotGigIds);
+  const setLabel = phrase || "no preference";
   const record = {
     applicationId: body.applicationId,
     gigId: body.gigId,
@@ -567,8 +618,19 @@ router.post("/", asyncHandler(async (req, res) => {
     photoUrl: photo?.url || null,
     assets,
   }, photo?.url);
-  for (const slotId of body.slotGigIds) {
-    await writeApplicant(slotId, applicant, false);
+  applicant.preferredSlotGigIds = pref.preferredSlotGigIds;
+  applicant.manageToken = body.manageToken;
+  applicant.whatsapp = Boolean(body.contacts?.whatsapp);
+  let saved;
+  try {
+    saved = await writeGuestApplication({
+      gigId: body.gigId,
+      applicant,
+      preferredSlotGigIds: pref.preferredSlotGigIds,
+    });
+  } catch (error) {
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
+    throw error;
   }
   if (body.inviteId) {
     await db.collection("gigInvites").doc(body.inviteId).set({
@@ -578,24 +640,16 @@ router.post("/", asyncHandler(async (req, res) => {
   }
   const manageUrl = `${process.env.BASE_URL || "https://giginmusic.com"}/gig/${body.gigId}/application/${body.manageToken}`;
   const first = record.contactName.split(/\s+/)[0];
-  if (contacts.email) {
-    await sendMail({
-      to: contacts.email,
-      subject: `You've applied to play ${gigName} at ${venueName}`,
-      text: `Hi ${first}, Jez has your application for ${dateLabel}. Change or withdraw it: ${manageUrl}`,
-      html: emailShell({
-        title: `You've applied to play`,
-        inner: `<p>Hi ${first},</p><p>Jez has your application for ${dateLabel} and will reply by email.</p>
-          <table role="presentation" width="100%" style="border:1px solid #E5E7EB;border-radius:12px;margin-top:8px;">
-            <tr><td style="padding:12px 14px;font-size:14px;"><strong>Act</strong><br>${record.actName}</td></tr>
-            <tr><td style="padding:0 14px 12px;font-size:14px;"><strong>Set</strong><br>${setLabel}</td></tr>
-            <tr><td style="padding:0 14px 12px;font-size:14px;"><strong>Members</strong><br>${record.members.length || "Not added"}</td></tr>
-          </table>`,
-        buttonLabel: "Change or withdraw your application",
-        buttonUrl: manageUrl,
-        footer: "This link is private. Don't forward it. It works until a week after the gig.",
-      }),
+  if (contacts.email && !updatingExisting) {
+    const built = await emailForAct({
+      kind: "received",
+      app: { ...applicant, email: contacts.email, members: record.members, preferredSlotGigIds: pref.preferredSlotGigIds },
+      slots: saved.slots,
+      venue,
+      gig,
+      token: body.manageToken,
     });
+    await sendMail({ to: contacts.email, ...built.message });
   }
   return res.json({ ok: true, applicationId: body.applicationId });
 }));
@@ -606,7 +660,7 @@ router.get("/:token", asyncHandler(async (req, res) => {
   const when = gigDate(found.gig.data);
   const expired = when ? Date.now() > when.getTime() + 7 * 24 * 60 * 60 * 1000 : false;
   if (expired) return res.status(410).json({ error: "This link has expired." });
-  return res.json(publicApplication(found.applicant, found.gig.data));
+  return res.json(publicApplication(found.applicant, found.gig.data, found.night));
 }));
 
 router.patch("/:token", asyncHandler(async (req, res) => {
@@ -645,9 +699,15 @@ router.patch("/:token", asyncHandler(async (req, res) => {
     needs: body.needs || current.needs,
     bringOwn: body.bringOwn || current.bringOwn,
     note: body.note != null ? String(body.note).slice(0, 500) : current.note,
-    slotGigIds: Array.isArray(body.slotGigIds) && body.slotGigIds.length ? body.slotGigIds : current.slotGigIds,
+    slotGigIds: Array.isArray(body.preferredSlotGigIds)
+      ? body.preferredSlotGigIds
+      : (Array.isArray(body.slotGigIds) ? body.slotGigIds : (current.preferredSlotGigIds || current.slotGigIds || [])),
+    preferredSlotGigIds: Array.isArray(body.preferredSlotGigIds)
+      ? body.preferredSlotGigIds
+      : (Array.isArray(body.slotGigIds) ? body.slotGigIds : (current.preferredSlotGigIds || current.slotGigIds || [])),
     status: "pending",
     manageTokenHash: current.manageTokenHash,
+    manageToken: current.manageToken,
     crmEntryId,
     photo: current.photo,
     photoUrl: current.photoUrl,
@@ -660,11 +720,19 @@ router.patch("/:token", asyncHandler(async (req, res) => {
     gigId: current.gigId,
     venueId: current.venueId,
   }, current.photoUrl);
-  const slotIds = new Set([...(current.slotGigIds || []), ...(next.slotGigIds || [])]);
-  for (const slotId of slotIds) {
-    await writeApplicant(slotId, next, !(next.slotGigIds || []).includes(slotId));
+  try {
+    await writeGuestApplication({
+      gigId: current.gigId || gigId,
+      applicant: next,
+      preferredSlotGigIds: next.preferredSlotGigIds || [],
+    });
+  } catch (error) {
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
+    throw error;
   }
-  return res.json(publicApplication(next, found.gig.data));
+  const fresh = await loadNightSlots(current.gigId || gigId);
+  const night = readNight(fresh.slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
+  return res.json(publicApplication(next, found.gig.data, night));
 }));
 
 router.post("/:token/withdraw", asyncHandler(async (req, res) => {
@@ -672,19 +740,10 @@ router.post("/:token/withdraw", asyncHandler(async (req, res) => {
   const found = await findByToken(gigId, req.params.token);
   if (!found) return res.status(404).json({ error: "This link is not valid." });
   const current = found.applicant;
-  if (current.status === "withdrawn") return res.json(publicApplication(current, found.gig.data));
-  if (current.status === "confirmed" || current.status === "accepted") {
-    return res.status(400).json({ error: "This application has already been accepted." });
-  }
-  const next = { ...current, status: "withdrawn", updatedAt: new Date().toISOString() };
-  for (const doc of found.docs) {
-    const applicants = Array.isArray(doc.data.applicants) ? doc.data.applicants : [];
-    if (!applicants.some((entry) => entry?.id === current.id)) continue;
-    await doc.ref.update({
-      applicants: applicants.map((entry) => entry?.id === current.id ? next : entry),
-    });
-  }
-  if (current.email) {
+  if (current.status === "withdrawn") return res.json(publicApplication(current, found.gig.data, found.night));
+  const wasAccepted = current.status === "confirmed" || current.status === "accepted";
+  const next = await withdrawGuestApplication({ gigId, applicant: current });
+  if (current.email && !wasAccepted) {
     await sendMail({
       to: current.email,
       subject: `You withdrew your application for ${current.gigName || "the gig"}`,
@@ -696,7 +755,9 @@ router.post("/:token/withdraw", asyncHandler(async (req, res) => {
       }),
     });
   }
-  return res.json(publicApplication(next, found.gig.data));
+  const fresh = await loadNightSlots(gigId);
+  const night = readNight(fresh.slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
+  return res.json(publicApplication(next, found.gig.data, night));
 }));
 
 router.post("/account-check", asyncHandler(async (req, res) => {

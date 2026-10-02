@@ -2326,6 +2326,17 @@
 .ga-set-list small { display: block; color: var(--gn-muted); font-size: 13px; }
 .ga-set-list b { font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280; border-radius: 999px; padding: 4px 8px; }
 .ga-set-list b.is-open { background: var(--gn-new-bg); color: var(--gn-new-text); }
+.ga-set-list > div.is-taken { background: #F7F8FA; color: var(--gn-muted); }
+.ga-set-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.ga-set-head h2 { margin: 0; }
+.ga-set-head span { color: var(--gn-muted); font-size: 14px; }
+.ga-banner.is-applied { background: #F4F1EA; }
+.ga-banner strong { display: block; margin-bottom: 4px; }
+.ga-banner p { margin: 0 0 8px; }
+.ga-aside-sets { list-style: none; margin: 12px 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ga-aside-sets li { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 14px; }
+.ga-aside-sets b { font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280; border-radius: 999px; padding: 3px 8px; }
+.ga-aside-sets b.is-open { background: var(--gn-new-bg); color: var(--gn-new-text); }
 .ga-kit { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
 .ga-kit > div { border: 1px solid var(--gn-line); border-radius: 10px; padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 2px; }
 .ga-kit span { color: oklch(0.45 0.11 150); }
@@ -2367,9 +2378,28 @@
 .ga-check { display: flex; gap: 10px; align-items: center; min-height: 44px; font-size: 15px; }
 .ga-sets { display: flex; flex-direction: column; gap: 8px; }
 .ga-sets > button, .ga-needs > button { display: grid; grid-template-columns: 26px 1fr; gap: 12px; text-align: left; min-height: 64px; border: 1px solid var(--gn-line); border-radius: 12px; background: #fff; padding: 10px 12px; cursor: pointer; }
+.ga-sets > button { grid-template-columns: 26px 1fr auto; }
 .ga-box { width: 22px; height: 22px; border: 1.5px solid #C9CDD4; border-radius: 6px; display: inline-block; }
 .ga-box.is-on { background: #FF6C4B; border-color: #FF6C4B; }
-.ga-sets em, .ga-sets small { display: block; }
+.ga-sets > button.is-taken, .ga-sets > button:disabled { opacity: 0.55; cursor: not-allowed; background: #F7F8FA; }
+.ga-sets > button.is-on { border-color: #FF6C4B; }
+.ga-sets > button b { justify-self: end; font-size: 12px; color: #6B7280; }
+.ga-box.is-taken { background: #E5E7EB; border-color: #C9CDD4; }
+.ga-booking { border: 1px solid #E5E7EB; border-radius: 14px; overflow: hidden; margin: 16px 0; background: #fff; }
+.ga-booking header { background: oklch(0.97 0.025 150); border-bottom: 1px solid oklch(0.9 0.05 150); padding: 16px; }
+.ga-booking header > span { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.06em; font-size: 12px; color: oklch(0.45 0.11 150); }
+.ga-booking header strong { display: block; font-size: 30px; font-weight: 600; margin-top: 4px; }
+.ga-booking header strong.is-tbc { font-size: 24px; }
+.ga-booking header em, .ga-booking header p { display: block; margin: 4px 0 0; font-size: 16px; }
+.ga-booking dl { margin: 0; }
+.ga-booking dl > div { display: grid; grid-template-columns: 84px 1fr; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--gn-line-soft); }
+.ga-booking dt { color: var(--gn-muted); }
+.ga-booking dd { margin: 0; }
+.ga-booking__sets { list-style: none; margin: 0; padding: 12px 16px; }
+.ga-booking__sets li { display: flex; gap: 10px; align-items: center; min-height: 36px; }
+.ga-booking__sets b { color: #B5462C; font-weight: 600; font-size: 13px; }
+.ga-cant { margin-top: 18px; }
+.ga-cant p { color: var(--gn-muted); }
 .ga-soft { background: var(--gn-warn-soft-bg); border: 1px solid var(--gn-warn-soft-border); border-radius: 12px; padding: 14px; margin: 12px 0; }
 .ga-soft__actions, .ga-actions, .ga-add-own { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .ga-drop, .ga-dashed { width: 100%; min-height: 44px; border: 1.5px dashed #C9CDD4; border-radius: 12px; background: #fff; cursor: pointer; }

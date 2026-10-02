@@ -152,14 +152,17 @@ async function login(page, email) {
   await page.reload();
   await page.getByPlaceholder('e.g. johnsmith@gigin.com').fill(email);
   await page.getByPlaceholder('Password').fill(PASSWORD);
+  const signedIn = page.waitForResponse((response) => response.url().includes('signInWithPassword'), { timeout: 20000 });
   await page.getByRole('button', { name: 'Sign In' }).click();
-  await page.waitForResponse((response) => response.url().includes('signInWithPassword'), { timeout: 20000 });
+  await signedIn;
   await expect(page.getByRole('heading', { name: 'Verify your email' })).toHaveCount(0);
+  await expect(page.getByPlaceholder('e.g. johnsmith@gigin.com')).toHaveCount(0, { timeout: 20000 });
+  await page.waitForTimeout(1000);
 }
 
 async function openGigRow(page, name) {
   await page.goto('/venues/dashboard/gigs');
-  await page.locator('.loading-screen').waitFor({ state: 'detached', timeout: 20000 });
+  await page.locator('.loading-screen').waitFor({ state: 'detached', timeout: 45000 });
   await page.getByRole('button', { name: 'Table' }).click();
   const row = page.getByRole('row', { name: new RegExp(name) }).first();
   await expect(row).toBeVisible({ timeout: 20000 });
@@ -167,8 +170,13 @@ async function openGigRow(page, name) {
   await expect(page).toHaveURL(/gig-applications/, { timeout: 20000 });
 }
 
-async function applyAsGuest(page, gigId, { act, name, email, note, photo = false }) {
+async function applyAsGuest(page, gigId, { act, name, email, note, photo = false, preference = 'set-1' } = {}) {
   await page.goto(`/gig/${gigId}`);
+  await page.evaluate(() => {
+    localStorage.removeItem('guestApplicationLink');
+    sessionStorage.removeItem('guestApplicationLink');
+  });
+  await page.reload();
   await expect(page.getByRole('button', { name: 'Apply to play' })).toBeVisible({ timeout: 15000 });
   await page.getByRole('button', { name: 'Apply to play' }).click();
   await page.getByLabel('Act or band name').fill(act);
@@ -179,7 +187,11 @@ async function applyAsGuest(page, gigId, { act, name, email, note, photo = false
     page.waitForResponse((response) => response.url().includes('account-check')).catch(() => null),
     emailField.blur(),
   ]);
-  await page.getByRole('button', { name: /Set 1/ }).click();
+  const setChoice = page.getByRole('button', { name: /No preference/ });
+  if (await setChoice.count()) {
+    if (preference === 'none') await setChoice.click();
+    else if (preference) await page.getByRole('button', { name: new RegExp(String(preference).replace('set-', 'Set '), 'i') }).first().click();
+  }
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: 'Photo and links' })).toBeVisible();
   if (photo) {
@@ -198,13 +210,16 @@ async function applyAsGuest(page, gigId, { act, name, email, note, photo = false
 }
 
 async function keepOpenIfAsked(page) {
-  const keep = page.getByRole('button', { name: 'Keep open' });
+  const close = page.getByRole('button', { name: 'Close applications' });
   try {
-    await keep.waitFor({ state: 'visible', timeout: 8000 });
-    await keep.click();
+    await close.waitFor({ state: 'visible', timeout: 3000 });
   } catch {
-    // The close-applications prompt only appears when accepting fills the slots.
+    return;
   }
+  await close.click();
+  await expect(page.getByRole('heading', { name: 'Applications closed' })).toBeVisible();
+  await page.getByRole('button', { name: 'Reopen applications' }).click();
+  await expect(page.getByRole('heading', { name: 'Applications closed' })).toHaveCount(0);
 }
 
 const world = {};
@@ -223,6 +238,10 @@ test.beforeAll(async () => {
   const artistId = randomUUID();
   const mergeProfileId = randomUUID();
   const night = [randomUUID(), randomUUID()];
+  const three = [randomUUID(), randomUUID(), randomUUID()];
+  const four = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+  const five = [randomUUID(), randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+  const legacy = [randomUUID(), randomUUID(), randomUUID()];
   const second = randomUUID();
   const regression = randomUUID();
   const declineGig = randomUUID();
@@ -312,6 +331,8 @@ test.beforeAll(async () => {
       gigDocuments: [
         gig(night[0], 'Overnight Browser Night', night),
         { ...gig(night[1], 'Overnight Browser Night', night), startTime: '21:30' },
+        ...three.map((id, index) => ({ ...gig(id, 'Overnight Browser Three', three), startTime: `${20 + index}:00` })),
+        ...legacy.map((id, index) => ({ ...gig(id, 'Overnight Browser Legacy', legacy), startTime: `${19 + index}:15` })),
         gig(second, 'Overnight Browser Second', [second]),
         gig(regression, 'Overnight Browser Regression', [regression]),
         gig(declineGig, 'Overnight Browser Decline', [declineGig]),
@@ -320,9 +341,60 @@ test.beforeAll(async () => {
     }),
   }).then((response) => response.json());
   if (!created?.data?.ok) throw new Error(`Could not seed gigs: ${JSON.stringify(created)}`);
+  const extra = await fetch(`${API}/gigs/postMultipleGigs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${venue.token}` },
+    body: JSON.stringify({
+      venueId,
+      gigDocuments: [
+        ...four.map((id, index) => ({ ...gig(id, 'Overnight Browser Four', four), startTime: `${18 + index}:00` })),
+        ...five.map((id, index) => ({ ...gig(id, 'Overnight Browser Five', five), startTime: `${16 + index}:00` })),
+      ],
+    }),
+  }).then((response) => response.json());
+  if (!extra?.data?.ok) throw new Error(`Could not seed layout gigs: ${JSON.stringify(extra)}`);
+
+  const legacyBooked = {
+    id: 'legacy-booked',
+    name: 'Legacy Booked',
+    artistName: 'Legacy Booked',
+    status: 'confirmed',
+    guest: true,
+    type: 'guest',
+    slotGigIds: [legacy[0], legacy[1]],
+  };
+  const legacyWaiting = {
+    id: 'legacy-waiting',
+    name: 'Legacy Waiting',
+    artistName: 'Legacy Waiting',
+    status: 'pending',
+    guest: true,
+    type: 'guest',
+    slotGigIds: [legacy[1], legacy[2]],
+  };
+  await db.doc(`gigs/${legacy[0]}`).update({
+    applicants: [{ ...legacyBooked, status: 'confirmed' }],
+  });
+  await db.doc(`gigs/${legacy[1]}`).update({
+    applicants: [{ ...legacyBooked, status: 'pending' }, { ...legacyWaiting }],
+  });
+  await db.doc(`gigs/${legacy[2]}`).update({
+    applicants: [{ ...legacyWaiting }],
+  });
+  await db.doc(`gigs/${legacy[0]}/guestApplicants/legacy-waiting`).set({
+    applicantId: 'legacy-waiting',
+    email: `test+legacy-waiting-${stamp}@example.com`,
+    gigId: legacy[0],
+  });
+  await db.doc(`gigs/${legacy[0]}/guestApplicants/legacy-booked`).set({
+    applicantId: 'legacy-booked',
+    email: `test+legacy-booked-${stamp}@example.com`,
+    gigId: legacy[0],
+  });
 
   Object.assign(world, {
-    db, venue, artist, existing, venueId, artistId, nightId: night[0], secondId: second,
+    db, venue, artist, existing, venueId, artistId, nightId: night[0], nightIds: night,
+    threeIds: three, fourIds: four, fiveIds: five, legacyIds: legacy, secondId: second,
     regressionId: regression, declineGigId: declineGig, deleteGigId: deleteGig, stamp,
   });
 });
@@ -331,14 +403,14 @@ test('1. invite from a saved contact', async ({ page }) => {
   watch(page, 'test 1');
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Night');
-  await page.getByRole('button', { name: 'Offer gig to a saved Contact' }).click();
-  await page.getByRole('button', { name: 'Generate Invite' }).click();
-  await expect(page.getByRole('heading', { name: 'Send this invite to any of your artists?' })).toBeVisible();
-  await page.getByRole('button', { name: /Saved Contact Act/ }).click();
-  await expect(page.getByText(/Invitation email sent to Saved Contact Act/)).toBeVisible({ timeout: 20000 });
-  const invites = await world.db.collection('gigInvites').get();
-  const mine = invites.docs.filter((doc) => doc.data().gigId === world.nightId);
-  expect(mine.length).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Invite from My Contacts' }).click();
+  const contact = page.locator('.invite-and-share-modal__row', { hasText: 'Saved Contact Act' });
+  await contact.getByRole('button', { name: 'Invite', exact: true }).click();
+  await expect(page.getByText(/Invitation sent to Saved Contact Act/)).toBeVisible({ timeout: 20000 });
+  const contactEmail = `test+contact-browser-${world.stamp}@example.com`;
+  const sent = await world.db.collection('mail').where('to', '==', contactEmail).get();
+  expect(sent.size).toBeGreaterThan(0);
+  expect(sent.docs.every((doc) => doc.data().to)).toBe(true);
 });
 
 test('2. guest applies, edits, withdraws, and does not duplicate a contact', async ({ page }) => {
@@ -387,7 +459,6 @@ test('3. an existing Gigin email is told to log in', async ({ page }) => {
   await emailField.fill(world.existing.email);
   await emailField.blur();
   await expect(page.getByText('This email already has a Gigin account. Log in to apply.')).toBeVisible();
-  await page.getByRole('button', { name: /Set 1/ }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: 'Who are you?' })).toBeVisible();
 });
@@ -410,10 +481,12 @@ test('4. venue accepts one guest and declines another', async ({ page }) => {
   await openGigRow(page, 'Overnight Browser Night');
   await expect(page.getByText('Guest').first()).toBeVisible();
   await expect(page.getByText('Browser Act Accepted')).toBeVisible();
-  await page.locator('.venue-gig-running__applicant', { hasText: 'Browser Act Declined' }).getByRole('button', { name: 'Decline' }).click();
-  await page.locator('.venue-gig-running__applicant', { hasText: 'Browser Act Accepted' }).getByRole('button', { name: 'Accept' }).click();
-  await keepOpenIfAsked(page);
-  await expect(page.getByRole('heading', { name: 'Who is playing' })).toBeVisible();
+  const declined = page.locator('.na-app', { hasText: 'Browser Act Declined' });
+  await declined.getByRole('button', { name: 'Decline', exact: true }).click();
+  const accepted = page.locator('.na-app', { hasText: 'Browser Act Accepted' });
+  await accepted.getByRole('button', { name: 'Accept', exact: true }).click();
+  await accepted.locator('.na-picker').getByRole('button', { name: /Set 1/ }).click();
+  await expect(page.getByText(/Accepted · Set 1/).first()).toBeVisible();
   await page.goto('/venues/dashboard/artists');
   await expect(page.getByText('Browser Act Accepted')).toBeVisible({ timeout: 20000 });
 });
@@ -422,8 +495,8 @@ test('5. closing applications rejects a new guest', async ({ page }) => {
   watch(page, 'test 5');
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Night');
-  await page.getByRole('button', { name: /Accepting applications/ }).click();
-  await expect(page.getByText('Applications closed.')).toBeVisible();
+  await page.getByRole('button', { name: 'Close applications' }).click();
+  await expect(page.getByRole('heading', { name: 'Applications closed' })).toBeVisible();
   await logout(page);
   await page.goto(`/gig/${world.nightId}`);
   await expect(page.getByRole('button', { name: 'Applications closed' })).toBeVisible();
@@ -449,13 +522,14 @@ test('6. sound engineer and additional notes survive a refresh', async ({ page }
   watch(page, 'test 6');
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Night');
-  await page.getByRole('button', { name: 'Add sound engineer' }).click();
-  await page.locator('#gig-sound-engineer-name').fill('Sam Engineer');
-  await page.locator('#gig-sound-engineer-contact').fill('test+engineer-browser@example.com');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await page.getByRole('button', { name: 'Add a note' }).click();
-  await page.locator('textarea.venue-gig-rail__notes-input').fill('Bring the spare DI box.');
-  await page.getByRole('complementary', { name: 'Gig details' }).getByRole('heading', { name: 'Additional notes' }).click();
+  await page.getByRole('button', { name: '+ Add sound tech' }).click();
+  const sound = page.locator('section.na-card', { has: page.getByRole('heading', { name: 'Sound tech' }) });
+  await sound.getByLabel('Name').fill('Sam Engineer');
+  await sound.getByLabel('Phone').fill('test+engineer-browser@example.com');
+  await sound.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: '+ Add a note' }).click();
+  await page.locator('.na-form textarea').fill('Bring the spare DI box.');
+  await page.getByRole('button', { name: 'Save note' }).click();
   await page.reload();
   await expect(page.getByText('Sam Engineer').first()).toBeVisible();
   await expect(page.getByText('Bring the spare DI box.').first()).toBeVisible();
@@ -571,6 +645,11 @@ test('8. media share link, wrong type, revoke', async ({ page }) => {
 
 async function applyAsArtist(page, gigId, message) {
   await page.goto(`/gig/${gigId}`);
+  await page.evaluate(() => {
+    localStorage.removeItem('guestApplicationLink');
+    sessionStorage.removeItem('guestApplicationLink');
+  });
+  await page.reload();
   await expect(page.getByRole('button', { name: 'Apply To Gig' })).toBeEnabled({ timeout: 20000 });
   await page.getByRole('button', { name: 'Apply To Gig' }).click();
   await page.getByLabel('Message to the venue').fill(message);
@@ -585,7 +664,7 @@ async function applyAsArtist(page, gigId, message) {
 
 async function deleteGigFromTable(page, name) {
   await page.goto('/venues/dashboard/gigs');
-  await page.locator('.loading-screen').waitFor({ state: 'detached', timeout: 20000 });
+  await page.locator('.loading-screen').waitFor({ state: 'detached', timeout: 45000 });
   await page.getByRole('button', { name: 'Table' }).click();
   const row = page.getByRole('row', { name: new RegExp(name) }).first();
   await row.getByRole('button', { name: 'Gig options' }).click();
@@ -614,8 +693,12 @@ test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig
   await expect(page.getByText('Browser Guest Beside Artist')).toBeVisible();
   await expect(page.getByText('Guest').first()).toBeVisible();
   await expect(page.getByText('Regression Act')).toBeVisible();
-  const artistRow = page.locator('div').filter({ hasText: 'Regression Act' }).filter({ has: page.getByRole('button', { name: 'Accept' }) }).last();
-  await artistRow.getByRole('button', { name: 'Accept' }).click();
+  const artistRow = page.locator('.na-app', { hasText: 'Regression Act' });
+  await artistRow.getByRole('button', { name: 'Accept', exact: true }).click();
+  await expect.poll(async () => {
+    const doc = await world.db.doc(`gigs/${world.regressionId}`).get();
+    return doc.data()?.bookedApplicantId || '';
+  }).toBe(world.artistId);
   await keepOpenIfAsked(page);
   await page.getByRole('button', { name: 'Options' }).click();
   await page.getByRole('button', { name: 'Cancel gig' }).click();
@@ -633,7 +716,7 @@ test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig
   expect(cancelled.exists).toBe(false);
 
   await openGigRow(page, 'Overnight Browser Decline');
-  await page.locator('.venue-gig-running__applicant').getByRole('button', { name: 'Decline' }).click();
+  await page.locator('.na-app').getByRole('button', { name: 'Decline', exact: true }).click();
   await expect.poll(async () => {
     const doc = await world.db.doc(`gigs/${world.declineGigId}`).get();
     return (doc.data()?.applicants || []).some((entry) => entry.status === 'declined');
@@ -645,24 +728,262 @@ test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig
 test('privacy. a signed-out read hides guest secrets and a non-owner cannot read private docs', async ({ page }) => {
   watch(page, 'privacy');
   const email = `test+guest-a-${world.stamp}@example.com`;
-  const stored = await world.db.collection(`gigs/${world.nightId}/guestApplicants`).where('email', '==', email).limit(1).get();
-  expect(stored.empty).toBe(false);
-  const applicationId = stored.docs[0].id;
-  await assertSignedOutGigHidesSecrets(world.nightId, email);
+  let applicationId = '';
+  let privateGigId = '';
+  for (const id of [...(world.nightIds || [world.nightId]), world.secondId]) {
+    const gig = await world.db.doc(`gigs/${id}`).get();
+    const applicant = (gig.data()?.applicants || []).find((entry) => entry?.name === 'Browser Act Withdrawn' || entry?.artistName === 'Browser Act Withdrawn');
+    if (!applicant) continue;
+    applicationId = applicant.id;
+    privateGigId = id;
+    break;
+  }
+  expect(applicationId).toBeTruthy();
+  const stored = await world.db.doc(`gigs/${privateGigId}/guestApplicants/${applicationId}`).get();
+  expect(stored.exists).toBe(true);
+  await assertSignedOutGigHidesSecrets(privateGigId, email);
 
   await login(page, world.artist.email);
   const host = process.env.FIRESTORE_EMULATOR_HOST;
   const headers = { Authorization: `Bearer ${world.artist.token}` };
   const guestRead = await page.request.get(
-    `http://${host}/v1/projects/giginltd-dev/databases/(default)/documents/gigs/${world.nightId}/guestApplicants/${applicationId}`,
+    `http://${host}/v1/projects/giginltd-dev/databases/(default)/documents/gigs/${privateGigId}/guestApplicants/${applicationId}`,
     { headers },
   );
   const privateRead = await page.request.get(
-    `http://${host}/v1/projects/giginltd-dev/databases/(default)/documents/gigs/${world.nightId}/private/details`,
+    `http://${host}/v1/projects/giginltd-dev/databases/(default)/documents/gigs/${privateGigId}/private/details`,
     { headers },
   );
   expect(guestRead.status()).toBe(403);
   expect(privateRead.status()).toBe(403);
+
+  const signedOutGig = await page.request.get(
+    `http://${host}/v1/projects/giginltd-dev/databases/(default)/documents/gigs/${privateGigId}`,
+  );
+  const signedOutText = await signedOutGig.text();
+  expect(signedOutText).not.toContain(email);
+  expect(signedOutText).not.toContain('manageToken');
+  expect(signedOutText).not.toContain('soundEngineerContact');
+  const withToken = stored.data();
+  if (withToken?.manageTokenHash) expect(signedOutText).not.toContain(withToken.manageTokenHash);
+});
+
+test('night. one application, one list, mail, close, old data, and the profile popup', async ({ page }) => {
+  test.setTimeout(300000);
+  watch(page, 'night');
+  const email = `test+three-guest-${world.stamp}@example.com`;
+  await applyAsGuest(page, world.threeIds[0], {
+    act: 'Preference Act',
+    name: 'Pref Guest',
+    email,
+    note: 'I would like set two.',
+    preference: 'set-2',
+  });
+  await page.evaluate(() => sessionStorage.clear());
+  const preferenceLink = await applyAsGuest(page, world.threeIds[0], {
+    act: 'Preference Act',
+    name: 'Pref Guest',
+    email,
+    note: 'No preference this time.',
+    preference: 'none',
+  });
+  const root = await world.db.doc(`gigs/${world.threeIds[0]}`).get();
+  const preferenceApps = (root.data()?.applicants || []).filter((entry) => entry.name === 'Preference Act' || entry.artistName === 'Preference Act');
+  expect(preferenceApps).toHaveLength(1);
+  expect(preferenceApps[0].preferredSlotGigIds || []).toEqual([]);
+  const contacts = await world.db.collection(`users/${world.venue.uid}/artistCRM`).where('email', '==', email).get();
+  expect(contacts.size).toBe(1);
+
+  const mailEmail = `test+three-mail-${world.stamp}@example.com`;
+  await page.evaluate(() => sessionStorage.clear());
+  await applyAsGuest(page, world.threeIds[0], {
+    act: 'Mail Act',
+    name: 'Mail Guest',
+    email: mailEmail,
+    note: 'Decline and accept me.',
+    preference: 'none',
+  });
+
+  await login(page, world.artist.email);
+  await applyAsArtist(page, world.threeIds[0], 'Logged-in artist for the three-set night.');
+  const afterArtist = await world.db.doc(`gigs/${world.threeIds[0]}`).get();
+  expect((afterArtist.data()?.applicants || []).filter((entry) => entry.id === world.artistId)).toHaveLength(1);
+
+  await login(page, world.venue.email);
+  await openGigRow(page, 'Overnight Browser Three');
+  await expect(page.locator('.na-app', { hasText: 'Preference Act' })).toHaveCount(1);
+  await expect(page.locator('.na-app', { hasText: 'Regression Act' })).toHaveCount(1);
+
+  const guestCard = page.locator('.na-app', { hasText: 'Preference Act' });
+  await guestCard.getByRole('button', { name: 'Preference Act', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: 'Preference Act' })).toBeVisible();
+  await expect(dialog.locator('.ap-tag', { hasText: 'Guest' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Message' }).focus();
+  await expect(dialog.getByRole('tooltip')).toContainText(/can’t message|can't message/i);
+  await dialog.getByRole('button', { name: 'Next applicant' }).click();
+  await expect(dialog.getByRole('heading', { name: 'Regression Act' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Previous applicant' }).click();
+  await expect(dialog.getByRole('heading', { name: 'Preference Act' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  await guestCard.locator('.na-photo').click();
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Preference Act' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await guestCard.getByRole('button', { name: 'View profile' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  const guestId = preferenceApps[0].id;
+  await page.goto(`${page.url().split('?')[0]}?applicant=${guestId}`);
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Preference Act' })).toBeVisible();
+  const profile = page.getByRole('dialog');
+  await profile.locator('.ap-notes-head').getByRole('button', { name: 'Edit' }).click();
+  await profile.locator('textarea').fill('Great with the late crowd.');
+  await profile.getByRole('button', { name: 'Save note' }).click();
+  await expect.poll(async () => {
+    const saved = await world.db.collection(`users/${world.venue.uid}/artistCRM`).where('email', '==', email).get();
+    return saved.docs.map((doc) => doc.data().notes || '').join('\n');
+  }).toContain('Great with the late crowd.');
+  await profile.getByRole('button', { name: 'Accept', exact: true }).click();
+  await profile.getByRole('button', { name: /Set 2/ }).click();
+  await expect(page.getByText(/Accepted · Set 2/).first()).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await expect(page.locator('.na-todo')).toContainText('1 act accepted');
+  await expect(page.locator('.na-todo')).toContainText('2 sets still to assign');
+  const artistCard = page.locator('.na-app', { hasText: 'Regression Act' });
+  await artistCard.getByRole('button', { name: 'Accept', exact: true }).click();
+  await artistCard.getByRole('button', { name: 'Accept, choose set later' }).click();
+  await expect(page.getByText(/Accepted · no set yet/).first()).toBeVisible();
+  const slotMirror = await world.db.doc(`gigs/${world.threeIds[1]}`).get();
+  expect(slotMirror.data()?.bookedApplicantId).toBe(guestId);
+  expect((slotMirror.data()?.applicants || []).some((entry) => entry.id === guestId && entry.status === 'confirmed')).toBe(true);
+
+  await artistCard.getByRole('button', { name: 'Choose a set' }).click();
+  await artistCard.locator('.na-picker').getByRole('button', { name: /Set 1/ }).click();
+  await expect.poll(async () => (await world.db.doc(`gigs/${world.threeIds[0]}`).get()).data()?.bookedApplicantId || '').toBe(world.artistId);
+  await artistCard.getByRole('button', { name: /Set 1 ▾/ }).click();
+  await artistCard.locator('.na-picker').getByRole('button', { name: /Set 3/ }).click();
+  await expect.poll(async () => {
+    const doc = await world.db.doc(`gigs/${world.threeIds[0]}`).get();
+    return (doc.data()?.applicants || []).find((entry) => entry.id === world.artistId)?.assignedSlotGigId || '';
+  }).toBe(world.threeIds[2]);
+  await artistCard.getByRole('button', { name: /Set 3 ▾/ }).click();
+  await artistCard.locator('.na-picker').getByRole('button', { name: /Set 2/ }).click();
+  await expect.poll(async () => (await world.db.doc(`gigs/${world.threeIds[1]}`).get()).data()?.bookedApplicantId || '').toBe(world.artistId);
+
+  await page.getByRole('heading', { name: 'Close applications for the rest?' }).scrollIntoViewIfNeeded();
+  await page.getByRole('button', { name: 'Close applications' }).click();
+  await expect(page.getByRole('heading', { name: 'Applications closed' })).toBeVisible();
+  await page.getByRole('button', { name: 'Reopen applications' }).click();
+  await expect(page.getByRole('heading', { name: 'Close applications for the rest?' })).toBeVisible();
+
+  await logout(page);
+  await page.goto(`/gig/${world.threeIds[0]}`);
+  const slotList = page.locator('.ga-aside-sets').first();
+  await expect(slotList).toContainText('Taken');
+  await expect(slotList).not.toContainText('Preference Act');
+  await expect(slotList).not.toContainText('Regression Act');
+  await expect(page.locator('body')).not.toContainText(email);
+
+  const [prefGigId, prefToken] = String(preferenceLink).split(':');
+  const withdrawn = await fetch(`${API}/guest-applications/${prefToken}/withdraw`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ gigId: prefGigId }),
+  });
+  expect(withdrawn.ok).toBe(true);
+  await expect.poll(async () => {
+    const docs = await Promise.all(world.threeIds.map((id) => world.db.doc(`gigs/${id}`).get()));
+    return docs.some((doc) => doc.data()?.bookedApplicantId === guestId);
+  }).toBe(false);
+  const venueMail = await world.db.collection('mail').where('to', '==', world.venue.email).get();
+  expect(venueMail.size).toBeGreaterThan(0);
+
+  await login(page, world.venue.email);
+  await openGigRow(page, 'Overnight Browser Three');
+  const declineCard = page.locator('.na-app', { hasText: 'Mail Act' });
+  await declineCard.getByRole('button', { name: 'Decline', exact: true }).click();
+  let delayedDecline = null;
+  await expect.poll(async () => {
+    const declineMail = await world.db.collection('mail').where('to', '==', mailEmail).get();
+    delayedDecline = declineMail.docs.map((doc) => doc.data()).find((row) => row.delivery?.startTime) || null;
+    return Boolean(delayedDecline);
+  }).toBe(true);
+  const declineAt = delayedDecline.delivery.startTime.toDate().getTime();
+  expect(declineAt - Date.now()).toBeGreaterThan(4 * 60 * 1000);
+  await page.locator('.na-toast').getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(async () => (await world.db.collection('mail').where('to', '==', mailEmail).get()).docs.filter((doc) => doc.data().delivery?.startTime).length).toBe(0);
+
+  const acceptCard = page.locator('.na-app', { hasText: 'Mail Act' });
+  await acceptCard.getByRole('button', { name: 'Accept', exact: true }).click();
+  await acceptCard.locator('.na-picker').getByRole('button', { name: /Set 1/ }).click();
+  let delayedAccept = null;
+  await expect.poll(async () => {
+    const acceptMail = await world.db.collection('mail').where('to', '==', mailEmail).get();
+    delayedAccept = acceptMail.docs.map((doc) => ({ delay: doc.data().delivery?.startTime?.toDate()?.getTime() - Date.now() })).find((row) => row.delay > 0 && row.delay < 30000) || null;
+    return Boolean(delayedAccept);
+  }).toBe(true);
+  await page.locator('.na-toast').getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(async () => (await world.db.collection('mail').where('to', '==', mailEmail).get()).docs.filter((doc) => doc.data().delivery?.startTime).length).toBe(0);
+  const stray = await world.db.collection('mail').get();
+  expect(stray.docs.filter((doc) => !doc.data().to)).toHaveLength(0);
+});
+
+test('night layout. four and five sets at 1100, 860, and phone width', async ({ page }) => {
+  test.setTimeout(180000);
+  watch(page, 'layout');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page, world.venue.email);
+  for (const name of ['Overnight Browser Four', 'Overnight Browser Five']) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openGigRow(page, name);
+    for (const width of [1100, 860, 390]) {
+      await page.setViewportSize({ width, height: 800 });
+      await expect(page.getByRole('heading', { name })).toBeVisible();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `${name} at ${width}px`).toBeLessThan(4);
+    }
+  }
+  await logout(page);
+  for (const [gigId, width] of [[world.fourIds[0], 1100], [world.fourIds[0], 860], [world.fiveIds[0], 390]]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(`/gig/${gigId}`);
+    await expect(page.getByRole('button', { name: 'Apply to play' })).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, `artist page at ${width}px`).toBeLessThan(4);
+  }
+});
+
+test('legacy. an old per-set night still accepts, declines, and cancels', async ({ page }) => {
+  test.setTimeout(180000);
+  watch(page, 'legacy');
+  await login(page, world.venue.email);
+  await openGigRow(page, 'Overnight Browser Legacy');
+  await expect(page.locator('.na-app', { hasText: 'Legacy Booked' })).toHaveCount(1);
+  await expect(page.locator('.na-app', { hasText: 'Legacy Waiting' })).toHaveCount(1);
+  await expect(page.getByText(/Accepted · Set 1/).first()).toBeVisible();
+  await page.locator('.na-app', { hasText: 'Legacy Waiting' }).getByRole('button', { name: 'Decline', exact: true }).click();
+  await expect.poll(async () => {
+    const doc = await world.db.doc(`gigs/${world.legacyIds[0]}`).get();
+    return (doc.data()?.applicants || []).find((entry) => entry.id === 'legacy-waiting')?.status || '';
+  }).toBe('declined');
+  const bookedCard = page.locator('.na-app', { hasText: 'Legacy Booked' });
+  await bookedCard.getByRole('button', { name: /Set 1 ▾/ }).click();
+  await bookedCard.locator('.na-picker').getByRole('button', { name: /Set 2/ }).click();
+  await expect.poll(async () => {
+    const doc = await world.db.doc(`gigs/${world.legacyIds[0]}`).get();
+    return (doc.data()?.applicants || []).find((entry) => entry.id === 'legacy-booked')?.assignedSlotGigId || '';
+  }).toBe(world.legacyIds[1]);
+  const cancelled = await fetch(`${API}/gigs/revertGigAfterCancellationVenue`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${world.venue.token}` },
+    body: JSON.stringify({
+      gigData: { gigId: world.legacyIds[0], venueId: world.venueId },
+      cancellationReason: 'availability',
+    }),
+  });
+  expect(cancelled.ok).toBe(true);
 });
 
 test('10. no unexpected browser errors', async () => {

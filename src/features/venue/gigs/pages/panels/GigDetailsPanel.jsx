@@ -27,6 +27,8 @@ import { InviteArtistPromoterTile } from '@features/venue/components/InviteArtis
 import { SendGigDetailsTile } from '@features/venue/components/SendGigDetailsTile';
 import { VenueHireTechSetupMainCard } from '@features/venue/gigs/components/VenueHireTechSetupMainCard';
 import { GigApplications } from '@features/venue/dashboard/GigApplications';
+import { NightApplyReview } from '@features/venue/gigs/components/NightApplyReview';
+import { isGuestApplyGig } from '@features/gig-discovery/guest/guestFormat';
 import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
 import { GigMediaPanel } from '@features/venue/gigs/components/GigMediaPanel';
 import {
@@ -2208,17 +2210,37 @@ export function GigDetailsPanel({
   const status = normalisedGig?.status;
   const isArtistBooking = bookingMode === 'artist_booking' && (status === 'open' || status === 'confirmed');
   if (isArtistBooking) {
+    const nightSlots = sortedArtistBookingSlotGigs.length
+      ? sortedArtistBookingSlotGigs
+      : (artistBookingSlotGigs?.length ? artistBookingSlotGigs : [rawGig]);
+    const guestNight = isGuestApplyGig(rawGig, venueForHire);
 
     return (
       <>
+        {guestNight ? (
+          <>
+            <NightApplyReview
+              rawGig={rawGig}
+              slots={nightSlots}
+              venue={venueForHire}
+              guestPrivate={privateBundle?.guests || {}}
+              soundTech={privateBundle?.soundTech || null}
+              canUpdate={canUpdate}
+              refreshGigs={refreshGigs}
+              onInviteArtist={!isArtistBookingFullyBooked ? onInviteArtist : undefined}
+              onSaveNotes={saveGigPageInternalNotes}
+              notes={rawGig?.internalNotes || rawGig?.notesInternal || ''}
+              user={user}
+              venues={venues}
+              gigs={gigs}
+            />
+            <GigMediaPanel gigId={rawGig?.gigId} media={privateBundle?.media || []} hasShareLink={Boolean(privateBundle?.hasShareLink)} canUpdate={canUpdate} />
+          </>
+        ) : (
         <div className="venue-hire-confirmed-panel gig-details-main">
           <RunningOrder
             rawGig={rawGig}
-            slots={
-              sortedArtistBookingSlotGigs.length
-                ? sortedArtistBookingSlotGigs
-                : (artistBookingSlotGigs?.length ? artistBookingSlotGigs : [rawGig])
-            }
+            slots={nightSlots}
             gigs={gigs}
             onSlotBodyMount={setRunningOrderSlotEl}
           />
@@ -2248,6 +2270,7 @@ export function GigDetailsPanel({
           />
           {renderSoundEngineerAndNotesTiles()}
         </div>
+        )}
 
         {applicationsTechRiderProfile && (
           <ApplicantTechSetupModal

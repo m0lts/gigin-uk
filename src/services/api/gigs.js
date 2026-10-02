@@ -14,8 +14,8 @@ export function updateGigDocument({ gigId, action, updates }) {
   return post('/gigs/updateGigDocument', { body: { gigId, action, updates } });
 }
 
-export function applyToGig({ gigId, musicianProfile, inviteId, techSetup, applicationMessage }) {
-  return post('/gigs/applyToGig', { body: { gigId, musicianProfile, inviteId, techSetup, applicationMessage } });
+export function applyToGig({ gigId, musicianProfile, inviteId, techSetup, applicationMessage, preferredSlotGigIds }) {
+  return post('/gigs/applyToGig', { body: { gigId, musicianProfile, inviteId, techSetup, applicationMessage, preferredSlotGigIds } });
 }
 
 export function inviteToGig({ gigId, musicianProfile }) {
@@ -68,6 +68,38 @@ export function logGigCancellation({ gigId, musicianId = null, venueId = null, r
 
 export function markApplicantsViewed({ venueId, gigId, applicantIds }) {
   return post('/gigs/markApplicantsViewed', { body: { venueId, gigId, applicantIds } });
+}
+
+export function acceptNightApplication({ rootGigId, applicantId, slotGigId = null }) {
+  return post(`/gigs/${rootGigId}/applications/${applicantId}/accept`, { body: { slotGigId } });
+}
+
+export function assignNightApplication({ rootGigId, applicantId, slotGigId = null }) {
+  return post(`/gigs/${rootGigId}/applications/${applicantId}/assign`, { body: { slotGigId } });
+}
+
+export function declineNightApplication({ rootGigId, applicantId }) {
+  return post(`/gigs/${rootGigId}/applications/${applicantId}/decline`, { body: {} });
+}
+
+export function undoNightApplication({ rootGigId, applicantId }) {
+  return post(`/gigs/${rootGigId}/applications/${applicantId}/undo`, { body: {} });
+}
+
+export function closeNightApplications({ rootGigId, declineWaiting = true }) {
+  return post(`/gigs/${rootGigId}/close`, { body: { declineWaiting } });
+}
+
+export function undoCloseNightApplications({ rootGigId }) {
+  return post(`/gigs/${rootGigId}/close/undo`, { body: {} });
+}
+
+export function reopenNightApplications({ rootGigId }) {
+  return post(`/gigs/${rootGigId}/reopen`, { body: {} });
+}
+
+export function saveNightSoundTech({ rootGigId, soundTech }) {
+  return post(`/gigs/${rootGigId}/sound-tech`, { body: { soundTech } });
 }
 
 

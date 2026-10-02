@@ -22,7 +22,7 @@
 }
 
 .dashboard.dashboard--sidebar-collapsed:has(.sidebar.sidebar--console) {
-    grid-template-columns: 68px minmax(0, 1fr);
+    grid-template-columns: 72px minmax(0, 1fr);
 }
 
 .dashboard:has(.sidebar.sidebar--console) .window {

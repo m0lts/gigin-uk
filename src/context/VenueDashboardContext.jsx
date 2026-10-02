@@ -33,6 +33,14 @@ export const VenueDashboardProvider = ({ user, children }) => {
   const [loading, setLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [venueProfiles, setVenueProfiles] = useState([]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1179px)');
+    const apply = () => setSidebarCollapsed(media.matches);
+    apply();
+    media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
+  }, []);
   const [gigs, setGigs] = useState([]);
   const [venueHireOpportunities, setVenueHireOpportunities] = useState([]);
   const [templates, setTemplates] = useState([]);

@@ -16,6 +16,7 @@ import {
   venueGuestView,
 } from "../lib/gigPrivacy.js";
 import { queueMail } from "../lib/queueMail.js";
+import { placeLoggedInApplication, acceptApplication, assignApplication, declineApplication, undoApplication, closeApplications, undoClose, reopenApplications, saveSoundTech } from "../lib/nightApplicationOps.js";
 
 const router = express.Router();
 
@@ -483,6 +484,7 @@ router.post("/privateBundle", requireAuth, asyncHandler(async (req, res) => {
       guests[id] = venueGuestView(data);
     });
     gigs[gigId] = {
+      soundTech: details.soundTech || null,
       soundEngineerName: details.soundEngineerName || null,
       soundEngineerContact: details.soundEngineerContact || null,
       soundEngineerLastEdited: details.soundEngineerLastEdited || null,
@@ -551,10 +553,23 @@ router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
     type: artistSnap.exists ? "artist" : (musicianProfile?.bandProfile ? "band" : "musician"),
     ...(techSetup && typeof techSetup === "object" && Object.keys(techSetup).length > 0 ? { techSetup } : {}),
     ...(applicationMessageStored ? { applicationMessage: applicationMessageStored } : {}),
+    name: musicianProfile?.name || "",
+    artistName: musicianProfile?.name || "",
   };
-  const updatedApplicants = [...(Array.isArray(gig.applicants) ? gig.applicants : []), newApplication];
-  await gigRef.update({ applicants: updatedApplicants });
-  return res.json({ data: { updatedApplicants: updatedApplicants } });
+  try {
+    const placed = await placeLoggedInApplication({
+      gigId,
+      application: newApplication,
+      preferredSlotGigIds: Array.isArray(req.body?.preferredSlotGigIds) ? req.body.preferredSlotGigIds : undefined,
+    });
+    return res.json({ data: { updatedApplicants: placed.applicants, rootGigId: placed.rootGigId } });
+  } catch (error) {
+    if (error.statusCode === 409 && error.code) {
+      return res.status(409).json({ error: error.code, message: error.message });
+    }
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
+    throw error;
+  }
 }));
 
 // POST /api/gigs/inviteToGig
@@ -1893,6 +1908,69 @@ router.delete("/invites/:inviteId", requireAuth, asyncHandler(async (req, res) =
   });
 
   return res.json({ data: { success: true } });
+}));
+
+async function assertGigUpdate(req, gigId) {
+  const snap = await db.doc(`gigs/${gigId}`).get();
+  if (!snap.exists) {
+    const error = new Error("Gig not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+  const gig = snap.data() || {};
+  await assertVenuePerm(db, req.auth.uid, gig.venueId, "gigs.update");
+  return gig;
+}
+
+router.post("/:rootGigId/applications/:id/accept", requireAuth, asyncHandler(async (req, res) => {
+  await assertGigUpdate(req, req.params.rootGigId);
+  res.json(await acceptApplication({
+    gigId: req.params.rootGigId,
+    applicantId: req.params.id,
+    slotGigId: req.body?.slotGigId || null,
+  }));
+}));
+
+router.post("/:rootGigId/applications/:id/assign", requireAuth, asyncHandler(async (req, res) => {
+  await assertGigUpdate(req, req.params.rootGigId);
+  res.json(await assignApplication({
+    gigId: req.params.rootGigId,
+    applicantId: req.params.id,
+    slotGigId: req.body?.slotGigId || null,
+  }));
+}));
+
+router.post("/:rootGigId/applications/:id/decline", requireAuth, asyncHandler(async (req, res) => {
+  await assertGigUpdate(req, req.params.rootGigId);
+  res.json(await declineApplication({ gigId: req.params.rootGigId, applicantId: req.params.id }));
+}));
+
+router.post("/:rootGigId/applications/:id/undo", requireAuth, asyncHandler(async (req, res) => {
+  await assertGigUpdate(req, req.params.rootGigId);
+  res.json(await undoApplication({ gigId: req.params.rootGigId, applicantId: req.params.id }));
+}));
+
+router.post("/:rootGigId/close", requireAuth, asyncHandler(async (req, res) => {
+  await assertGigUpdate(req, req.params.rootGigId);
+  res.json(await closeApplications({
+    gigId: req.params.rootGigId,
+    declineWaiting: req.body?.declineWaiting !== false,
+  }));
+}));
+
+router.post("/:rootGigId/close/undo", requireAuth, asyncHandler(async (req, res) => {
+  await assertGigUpdate(req, req.params.rootGigId);
+  res.json(await undoClose({ gigId: req.params.rootGigId }));
+}));
+
+router.post("/:rootGigId/reopen", requireAuth, asyncHandler(async (req, res) => {
+  await assertGigUpdate(req, req.params.rootGigId);
+  res.json(await reopenApplications({ gigId: req.params.rootGigId }));
+}));
+
+router.post("/:rootGigId/sound-tech", requireAuth, asyncHandler(async (req, res) => {
+  await assertGigUpdate(req, req.params.rootGigId);
+  res.json(await saveSoundTech({ gigId: req.params.rootGigId, soundTech: req.body?.soundTech }));
 }));
 
 export default router;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { lookupGuestApplication, sendGuestMagicLink, checkGuestEmailAccount } from '@services/client-side/guestApplications';
-import { formatClock, slotEnd } from './guestFormat';
+import { formatClock, slotEnd, slotTaken } from './guestFormat';
 
 export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, showErrors }) {
   const [duplicate, setDuplicate] = useState(null);
@@ -72,26 +72,52 @@ export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, show
           )}
         </div>
       )}
-      <div className="ga-label">Which set would you like?</div>
-      <div className="ga-sets">
-        {slots.map((slot, index) => {
-          const id = slot.gigId;
-          const on = draft.slotGigIds.includes(id);
-          return (
-            <button key={id || index} type="button" className={on ? 'is-on' : ''} onClick={() => patch({
-              slotGigIds: on ? draft.slotGigIds.filter((item) => item !== id) : [...draft.slotGigIds, id],
-            })}>
-              <span className={`ga-box${on ? ' is-on' : ''}`} />
+      {slots.length > 1 && (
+        <>
+          <div className="ga-label">Which set would you prefer? <em className="ga-optional">optional</em></div>
+          <p className="ga-sub">{bookerName} will confirm which set you're playing.</p>
+          <div className="ga-sets">
+            <button
+              type="button"
+              className={draft.noPreference !== false && !(draft.preferredSlotGigIds || draft.slotGigIds || []).length ? 'is-on' : ''}
+              onClick={() => patch({ preferredSlotGigIds: [], slotGigIds: [], noPreference: true })}
+            >
+              <span className={`ga-box${draft.noPreference !== false && !(draft.preferredSlotGigIds || draft.slotGigIds || []).length ? ' is-on' : ''}`} />
               <span>
-                <strong>Set {index + 1}</strong>
-                <em className="ga-mono">{formatClock(slot.startTime)}{slotEnd(slot) ? `–${slotEnd(slot)}` : ''}</em>
-                {slot.hint ? <small>{slot.hint}</small> : null}
+                <strong>No preference</strong>
+                <small>Happy to play whichever set {bookerName} picks</small>
               </span>
             </button>
-          );
-        })}
-      </div>
-      {showErrors && draft.slotGigIds.length === 0 && <p className="ga-error">Choose at least one set.</p>}
+            {slots.map((slot, index) => {
+              const id = slot.gigId || slot.id;
+              const taken = slotTaken(slot);
+              const selected = (draft.preferredSlotGigIds || draft.slotGigIds || []).includes(id);
+              return (
+                <button
+                  key={id || index}
+                  type="button"
+                  className={`${selected ? 'is-on' : ''}${taken ? ' is-taken' : ''}`}
+                  disabled={taken}
+                  onClick={() => {
+                    if (taken) return;
+                    const current = draft.preferredSlotGigIds || [];
+                    const next = selected ? current.filter((item) => item !== id) : [...current, id];
+                    patch({ preferredSlotGigIds: next, slotGigIds: next, noPreference: next.length === 0 });
+                  }}
+                >
+                  <span className={`ga-box${selected ? ' is-on' : ''}${taken ? ' is-taken' : ''}`} />
+                  <span>
+                    <strong>Set {index + 1}</strong>
+                    <em className="ga-mono">{formatClock(slot.startTime)}{slotEnd(slot) ? `–${slotEnd(slot)}` : ''}</em>
+                    <small>{taken ? 'Already booked' : (slot.hint || '')}</small>
+                  </span>
+                  {taken && <b>Taken</b>}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -1,8 +1,9 @@
-import { formatClock, slotEnd } from './guestFormat';
+import { preferenceReview } from './guestFormat';
 
 export function GuestReviewStep({ draft, slots, bookerName, patch, onJump, summary = false, readOnly = false }) {
-  const chosen = slots.filter((slot) => draft.slotGigIds.includes(slot.gigId));
-  const setLabel = chosen.map((slot, index) => `Set ${slots.indexOf(slot) + 1} · ${formatClock(slot.startTime)}${slotEnd(slot) ? `–${slotEnd(slot)}` : ''}`).join(', ') || 'No set chosen';
+  const ids = draft.preferredSlotGigIds || draft.slotGigIds || [];
+  const setLabel = preferenceReview(slots, ids);
+  const oneSet = slots.length < 2;
   const linkCount = Object.values(draft.links || {}).filter((value) => String(value || '').trim()).length;
   const photoBits = [
     draft.photo ? 'Press photo' : '',
@@ -19,7 +20,7 @@ export function GuestReviewStep({ draft, slots, bookerName, patch, onJump, summa
       </label>}
       <div className="ga-review">
         <Row readOnly={readOnly} label="Act and contact" value={`${draft.actName || '—'} · ${draft.contactName || '—'}`} onEdit={() => onJump('who')} />
-        <Row readOnly={readOnly} label="Set" value={setLabel} onEdit={() => onJump('who')} />
+        {!oneSet && <Row readOnly={readOnly} label="Set preference" value={setLabel} muted={!ids.length} onEdit={() => onJump('who')} />}
         <Row readOnly={readOnly} label="Photo and links" value={photoBits.length ? photoBits.join(' · ') : 'Skipped'} muted={!photoBits.length} onEdit={() => onJump('assets')} />
         <Row readOnly={readOnly} label="Tech rider" value={`${members.length} member${members.length === 1 ? '' : 's'}, using ${draft.needs.length} of the bar's items, bringing ${draft.bringOwn.length}`} onEdit={() => onJump('tech')} />
       </div>

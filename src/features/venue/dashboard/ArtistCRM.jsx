@@ -220,7 +220,7 @@ async function createGigInviteForOffer({ gig, artist, expiryDateStr }) {
   return inviteId;
 }
 
-const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
+export const InviteToGigModal = ({ artist, onClose, venues, user, gigs }) => {
   const [usersGigs, setUsersGigs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
