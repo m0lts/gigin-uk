@@ -25,6 +25,7 @@ import {
   toPublicProfile,
   toEditorProfile,
   venueContactDecision,
+  listedVenueContact,
   LISTED_VENUE_EMPTY,
 } from "./keepProfileLogic.js";
 import { forgetProfileEmail, profileIdForEmail, rememberProfileEmail } from "./profileEmailIndex.js";
@@ -1091,18 +1092,12 @@ function latLng(location) {
   return null;
 }
 
-function presentVenue({ id, listed, data, signedIn, invited }) {
-  const decision = venueContactDecision({
-    visibility: "signed_in",
+function presentVenue({ id, data, signedIn }) {
+  const contact = listedVenueContact({
+    name: data.name || "",
+    websiteEmail: data.websiteEmail || "",
     signedIn,
-    invited,
-    listed: true,
   });
-  const contact = { state: decision.show, carrot: Boolean(decision.carrot) };
-  if (decision.show === "website" && data.websiteEmail) {
-    contact.email = data.websiteEmail;
-    contact.note = `From ${data.name}'s website. The venue hasn't checked it.`;
-  }
   return {
     id,
     kind: "listed",
@@ -1168,21 +1163,21 @@ async function presentOnGigin(id, data, signedIn, invited) {
 }
 
 export async function venueContactPayload(venue, { signedIn, invited, listed }) {
+  if (listed) {
+    return listedVenueContact({
+      name: venue.name || "",
+      websiteEmail: venue.websiteEmail || "",
+      signedIn,
+    });
+  }
   const decision = venueContactDecision({
     visibility: venue.contactVisibility || "signed_in",
     signedIn,
     invited,
-    listed,
+    listed: false,
   });
-  if (decision.show !== "open" && decision.show !== "website") {
+  if (decision.show !== "open") {
     return { state: decision.show, carrot: Boolean(decision.carrot), visibility: venue.contactVisibility || "signed_in" };
-  }
-  if (listed || decision.show === "website") {
-    return {
-      state: "website",
-      email: venue.websiteEmail || "",
-      note: venue.name ? `From ${venue.name}'s website. The venue hasn't checked it.` : "",
-    };
   }
   const priv = await db.doc(`venueProfiles/${venue.id}/private/finderContact`).get();
   const raw = priv.exists ? priv.data() || {} : {};

@@ -181,6 +181,22 @@ export function venueContactDecision({ visibility = "signed_in", signedIn = fals
   return { show: "placeholder", carrot: true };
 }
 
+/** Listed-venue website email. Included only when the viewer is signed in. */
+export function listedVenueContact({ name = "", websiteEmail = "", signedIn = false } = {}) {
+  const decision = venueContactDecision({
+    visibility: "signed_in",
+    signedIn,
+    invited: false,
+    listed: true,
+  });
+  const contact = { state: decision.show, carrot: Boolean(decision.carrot) };
+  if (decision.show === "website" && websiteEmail) {
+    contact.email = websiteEmail;
+    if (name) contact.note = `From ${name}'s website. The venue hasn't checked it.`;
+  }
+  return contact;
+}
+
 export function reminderEligible({ keepProfileOffer, hasLiveProfile, reminderCount }) {
   const offer = keepProfileOffer || "none";
   if (offer === "confirmed" || offer === "sent") return false;

@@ -768,8 +768,11 @@ service cloud.firestore {
     }
 
     match /listedVenues/{venueId} {
-      allow read: if true;
-      allow write: if false;
+      allow read, write: if false;
+
+      match /private/{docId} {
+        allow read, write: if false;
+      }
     }
 
     match /mail/{mailId} {

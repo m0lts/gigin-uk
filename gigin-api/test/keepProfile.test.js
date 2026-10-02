@@ -13,6 +13,7 @@ import {
   toPublicProfile,
   emailIndexKey,
   venueContactDecision,
+  listedVenueContact,
 } from "../lib/keepProfileLogic.js";
 
 test("slug is unique and kebab-cased", () => {
@@ -83,6 +84,11 @@ test("venue contact values are withheld unless the viewer is allowed", () => {
   assert.equal(venueContactDecision({ visibility: "nobody", signedIn: true, invited: true }).show, "nobody");
   assert.equal(venueContactDecision({ listed: true, signedIn: false }).show, "placeholder");
   assert.equal(venueContactDecision({ listed: true, signedIn: true }).show, "website");
+  const hidden = listedVenueContact({ name: "The Portland", websiteEmail: "book@example.com", signedIn: false });
+  assert.equal(hidden.state, "placeholder");
+  assert.equal(Object.prototype.hasOwnProperty.call(hidden, "email"), false);
+  const shown = listedVenueContact({ name: "The Portland", websiteEmail: "book@example.com", signedIn: true });
+  assert.equal(shown.email, "book@example.com");
 });
 
 test("the quiet reminder is sent at most when the offer was skipped", () => {
