@@ -1,7 +1,9 @@
 // Dependencies
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { FEATURES } from './config/features';
 import { FeatureRedirect } from './config/FeatureRedirect';
+import { artistDestination } from './config/artistDestination';
+import { NotFound } from './features/shared/components/NotFound';
 
 // Styles and extras
 import '@assets/fonts/fonts.css'
@@ -182,10 +184,14 @@ export default function App() {
         <Route path='/'>
           {/* <Route index element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><LandingPage setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} /></MainLayout>} /> */}
           <Route index element={FEATURES.marketingPages ? <LandingPage setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} setInitialEmail={setInitialEmail} /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
-          <Route path='artist-profile/:profileId?/*' element={<ArtistDashboardProvider user={user}><ArtistProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} /></ArtistDashboardProvider>} />
-          <Route path='dashboard/*' element={<ArtistDashboardProvider user={user}><MusicianDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><MusicianDashboard user={user} /></MusicianDashboardLayout></ArtistDashboardProvider>} />
-          <Route path=':musicianId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
-          <Route path=':musicianId/:gigId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+          <Route path='artist-profile/:profileId?/*' element={FEATURES.legacyArtist ? <ArtistDashboardProvider user={user}><ArtistProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} /></ArtistDashboardProvider> : <Navigate to={artistDestination(user, FEATURES)} replace />} />
+          <Route path='dashboard/*' element={FEATURES.legacyArtist ? <ArtistDashboardProvider user={user}><MusicianDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><MusicianDashboard user={user} /></MusicianDashboardLayout></ArtistDashboardProvider> : <Navigate to={artistDestination(user, FEATURES)} replace />} />
+          {FEATURES.legacyArtist && (
+            <>
+              <Route path=':musicianId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+              <Route path=':musicianId/:gigId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+            </>
+          )}
           <Route path='artist/:artistId' element={<ArtistProfileViewer user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         </Route>
 
@@ -204,9 +210,9 @@ export default function App() {
         <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setInitialEmail={setInitialEmail} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  />} />
         <Route path='/hire/:hireId' element={FEATURES.venueHire ? <GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
         <Route path='/account' element={<MainLayout user={user}><Account /></MainLayout>} />
-        <Route path='/testimonials' element={<Testimonials />} />
+        <Route path='/testimonials' element={FEATURES.legacyArtist ? <Testimonials /> : <Navigate to="/" replace />} />
         <Route path='/join-venue' element={<JoinVenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
-        <Route path='/join-artist' element={<JoinArtistPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+        <Route path='/join-artist' element={FEATURES.legacyArtist ? <JoinArtistPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} /> : <Navigate to="/" replace />} />
         <Route path='/terms-and-conditions' element={<TermsAndConditions />} />
         <Route path='/privacy-policy' element={<PrivacyPolicy />} />
         <Route path='/home' element={FEATURES.keepProfile ? <ArtistHome user={user} logout={logout} /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
@@ -219,6 +225,7 @@ export default function App() {
         <Route path='/profile/prefill/:token' element={<PrefillPage />} />
         <Route path='/profile/added' element={<AddedToAccount />} />
         <Route path="/auth/email-verified" element={<EmailActionHandler user={user} />} />
+        <Route path="*" element={<NotFound />} />
         
       </Routes>
       

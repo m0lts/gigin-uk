@@ -25,43 +25,61 @@ export const ArtistProfileViewer = ({ user, setAuthModal, setAuthType }) => {
 
   useEffect(() => {
     let cancelled = false;
-    const run = async () => {
-      try {
-        setLoading(true);
-        const doc = await getArtistProfileById(artistId);
-        if (cancelled) return;
-        if (!doc) {
-          setError('Artist profile not found.');
-        } else {
-          setProfile(doc);
+    if (!artistId) return undefined;
+    setLoading(true);
+    setError(null);
+    setProfile(null);
+    setPublicProfile(null);
+    const load = async () => {
+      const doc = await getArtistProfileById(artistId);
+      if (cancelled) return;
+      if (doc) {
+        if (FEATURES.publicProfile && doc.source === 'guest_keep') {
+          try {
+            const result = await getPublicProfile(doc.slug || artistId);
+            if (cancelled) return;
+            if (result?.profile) {
+              setPublicProfile(result.profile);
+              setLoading(false);
+              return;
+            }
+          } catch {
+            if (cancelled) return;
+          }
         }
-      } catch (err) {
-        if (!cancelled) {
-          console.error('Failed to load artist profile for viewer:', err);
-          setError('Unable to load this artist profile right now.');
+        setProfile(doc);
+        setLoading(false);
+        return;
+      }
+      if (FEATURES.publicProfile) {
+        try {
+          const result = await getPublicProfile(artistId);
+          if (cancelled) return;
+          if (result?.profile) {
+            setPublicProfile(result.profile);
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          if (cancelled) return;
+          if (err?.status !== 404) {
+            setError('Unable to load this artist profile right now.');
+            setLoading(false);
+            return;
+          }
         }
-      } finally {
-        if (!cancelled) setLoading(false);
+      }
+      if (!cancelled) {
+        setError('Artist profile not found.');
+        setLoading(false);
       }
     };
-    if (!artistId) return undefined;
-    if (FEATURES.publicProfile) {
-      getPublicProfile(artistId).then((result) => {
-        if (cancelled) return;
-        if (result?.profile?.source === 'guest_keep') {
-          setPublicProfile(result.profile);
-          setLoading(false);
-        } else run();
-      }).catch((err) => {
-        if (cancelled) return;
-        if (err?.status === 404) {
-          setError('This profile isn\'t available');
-          setLoading(false);
-        } else run();
-      });
-      return () => { cancelled = true; };
-    }
-    run();
+    load().catch((err) => {
+      if (cancelled) return;
+      console.error('Failed to load artist profile for viewer:', err);
+      setError('Unable to load this artist profile right now.');
+      setLoading(false);
+    });
     return () => {
       cancelled = true;
     };
