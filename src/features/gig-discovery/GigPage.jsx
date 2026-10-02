@@ -821,34 +821,6 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
         return cleanObj;
       };
 
-    if (!gigData && !loading) {
-        return (
-            <div className='gig-page'>
-                {user?.venueProfiles?.length > 0 && (!user.artistProfiles?.length) ? (
-                    <VenueHeader
-                        user={user}
-                        setAuthModal={setAuthModal}
-                        setAuthType={setAuthType}
-                        padding={padding}
-                    />
-                ) : (
-                    <MusicianHeader
-                        user={user}
-                        setAuthModal={setAuthModal}
-                        setAuthType={setAuthType}
-                        padding={padding}
-                    />
-                )}
-                <section className='gig-page-body' style={{ width: `${width}`}}>
-                    <div className='loading-state'>
-                        <ErrorIcon />
-                        <h4>Sorry, we can't find that gig right now.</h4>
-                    </div>
-                </section>
-            </div>
-        );
-    }
-
     const handleImageClick = (index) => {
         setFullscreenImage(venueProfile.photos[index]);
         setCurrentImageIndex(index);
@@ -2362,6 +2334,21 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
         );
     };
 
+    if (!gigData && !loading) {
+        return (
+            <div className="ga-page ga-missing">
+                <header className="ga-top"><a className="ga-logo" href="/">gigin.</a></header>
+                <main>
+                    <p className="ga-mono">GIGINMUSIC.COM/GIG/…</p>
+                    <h1>We can&apos;t find this gig</h1>
+                    <p>The link might be missing a few characters, or the venue has taken the gig down. Check the link with whoever sent it to you.</p>
+                    <p>Already applied? Your private link is in the email we sent you. <a href="/#artists">Get a fresh link</a></p>
+                    <a className="ga-dark" href="https://giginmusic.com">Go to giginmusic.com</a>
+                </main>
+            </div>
+        );
+    }
+
     if (!loading && gigData && !user && isGuestApplyGig(gigData, venueProfile)) {
         return (
             <GuestGigPage
@@ -2373,6 +2360,12 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
                 onCreateAccount={(email) => {
                     setInitialEmail?.(email || '');
                     setAuthType?.('signup');
+                    setAuthModal?.(true);
+                }}
+                onLogin={(email) => {
+                    try { sessionStorage.setItem('redirect', `/gig/${gigData.gigId || gigData.id}`); } catch { /* ignore */ }
+                    setInitialEmail?.(email || '');
+                    setAuthType?.('login');
                     setAuthModal?.(true);
                 }}
             />

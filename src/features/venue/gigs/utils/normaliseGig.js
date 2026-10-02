@@ -106,7 +106,7 @@ function inferStatus(gig) {
   // visible. Only treat `closed` as cancelled when there's nothing
   // confirmed on the gig (e.g. venue manually cancelled an empty listing).
   if (hasConfirmed) return 'confirmed';
-  if (gig.status === 'closed') return 'cancelled';
+  if (gig.status === 'cancelled' || gig.status === 'closed') return 'cancelled';
   if (gig.renterName && String(gig.renterName).trim()) return 'confirmed'; // venue hire with renter
   return 'open';
 }

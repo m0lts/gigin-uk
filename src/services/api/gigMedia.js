@@ -30,9 +30,10 @@ export function getSharedGigMedia(token) {
   return httpClient.get(`/gig-media/share/${encodeURIComponent(token)}`, { auth: false });
 }
 
-export function sharedGigMediaFileUrl(token, mediaId) {
+export function sharedGigMediaFileUrl(token, mediaId, { inline = false } = {}) {
   const base = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
-  return `${base}/gig-media/share/${encodeURIComponent(token)}/file/${encodeURIComponent(mediaId)}`;
+  const query = inline ? '?inline=1' : '';
+  return `${base}/gig-media/share/${encodeURIComponent(token)}/file/${encodeURIComponent(mediaId)}${query}`;
 }
 
 export function sharedGigMediaZipUrl(token) {

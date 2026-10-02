@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { auth, firestore, googleProvider } from '@lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
+import { httpClient } from '@services/http/client';
 import { doc, getDoc, setDoc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -244,11 +245,6 @@ export const useAuth = () => {
     }
   };
 
-  const actionCodeSettings = {
-    url: `${window.location.origin}`,
-    handleCodeInApp: false,
-  };
-
   const signup = async (credentials, marketingConsent) => {
     try {
       const user = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
@@ -274,29 +270,16 @@ export const useAuth = () => {
   };
   
 const resetPassword = async (rawEmail) => {
+  const email = (rawEmail || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw { message: 'Enter an email address like name@example.com.', status: 400 };
+  }
   try {
-    const email = (rawEmail || "").trim().toLowerCase();
-    const userDoc = await getEmailAddress({ email });
-    if (!userDoc) {
-      return { sent: false, reason: 'no-account' };
-    }
-    if (userDoc.googleAccount === true) {
-      return { sent: false, reason: 'google-only' };
-    }
-    await sendPasswordResetEmail(auth, email, actionCodeSettings);
-    return { sent: true, reason: 'password-account' };
+    await httpClient.post('/auth/password-reset', { auth: false, body: { email } });
+    return { sent: true };
   } catch (err) {
-    const code = err?.code;
-    if (code === 'auth/invalid-email') {
-      throw { message: 'Please enter a valid email address.', status: 400, code };
-    }
-    if (code === 'auth/too-many-requests') {
-      throw { message: 'Too many attempts. Please try again later.', status: 429, code };
-    }
-    if (code === 'auth/user-disabled') {
-      throw { message: 'This account is disabled.', status: 403, code };
-    }
-    throw { message: err?.message || 'Failed to send reset email.', status: 500, code };
+    if (err?.status === 429) throw { message: 'Too many attempts. Wait a few minutes, or reset your password.', status: 429 };
+    throw { message: 'No connection. Check your signal and try again.', status: err?.status || 500 };
   }
 };
 

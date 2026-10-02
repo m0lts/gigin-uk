@@ -20,9 +20,11 @@ import {
 } from '@services/client-side/keepProfile';
 import { GuestTechStep } from '../gig-discovery/guest/GuestTechStep';
 import { buildGuestTechRider } from '@services/utils/techRiderCompatibility';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '@lib/firebase';
+import { signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
+import { auth, googleProvider } from '@lib/firebase';
+import { passwordStrength, passwordSubmitError } from './passwordStrength';
 import { CopyButton, shareProfile, Sheet, Toggle } from './ui';
+import { httpClient } from '@services/http/client';
 
 function Shell({ children }) {
   return (
@@ -125,6 +127,9 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
   const [slug, setSlug] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [googleError, setGoogleError] = useState('');
+  const [viaGoogle, setViaGoogle] = useState(false);
   const [masked, setMasked] = useState('');
   const [error, setError] = useState('');
   const [methods, setMethods] = useState({ hasPassword: true, hasGoogle: false });
@@ -159,6 +164,11 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
   }, [state, user, email, token, slug]);
   const createAccount = async (event) => {
     event.preventDefault();
+    const problem = passwordSubmitError(password);
+    if (problem) {
+      setError(problem);
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -172,7 +182,7 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
         setMethods({ hasPassword: err?.payload?.hasPassword !== false, hasGoogle: Boolean(err?.payload?.hasGoogle) });
         setState('login');
       } else if (code === 'weak-password') {
-        setError('Use at least 6 characters, with an uppercase letter, a lowercase letter, a number and a symbol.');
+        setError(password.length < 8 ? 'Use at least 8 characters.' : 'Choose a less common password.');
       } else if (code === 'used') {
         setState('used');
       } else {
@@ -198,17 +208,49 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
   }
   if (state === 'resent') return <Shell><h1>Sent. Check {masked}.</h1></Shell>;
   if (state === 'password') {
+    const hint = passwordStrength(password);
     return (
       <Shell>
+        <p className="kp-kicker">✓ EMAIL CONFIRMED</p>
         <h1>Create a password</h1>
-        <p>This puts your profile live and creates your Gigin login for {email}. Next time, log in at giginmusic.com with this email and password.</p>
+        <p>This puts your profile live and creates your Gigin login. Next time, log in at giginmusic.com with this email and password.</p>
         <form onSubmit={createAccount}>
           <label className="kp-field">Email<input value={email} readOnly /></label>
-          <label className="kp-field">Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required /></label>
+          <label className="kp-field">
+            Password
+            <span className="kp-password">
+              <input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" />
+              <button type="button" aria-pressed={showPassword} onClick={() => setShowPassword((current) => !current)}>{showPassword ? 'Hide' : 'Show'}</button>
+            </span>
+          </label>
+          <div className={`kp-strength is-${hint.tone || 'empty'}`}>
+            <span>{[0, 1, 2, 3].map((bar) => <i key={bar} className={bar < hint.level ? 'is-on' : ''} />)}</span>
+            <p>{hint.title ? <strong>{hint.title} </strong> : null}{hint.body}</p>
+          </div>
           {error && <p className="kp-error">{error}</p>}
-          <button type="submit" className="kp-btn" disabled={busy}>{busy ? 'Creating your account…' : 'Create my account'}</button>
+          <button type="submit" className="kp-btn" disabled={busy}>{busy ? 'Saving…' : 'Put my profile live'}</button>
         </form>
-        <p className="kp-fine">Use at least 6 characters, with an uppercase letter, a lowercase letter, a number and a symbol.</p>
+        <p className="kp-or">or</p>
+        <button type="button" className="kp-ghost" onClick={async () => {
+          setGoogleError('');
+          try {
+            const result = await signInWithPopup(auth, googleProvider);
+            const googleEmail = String(result.user?.email || '').toLowerCase();
+            if (googleEmail !== String(email || '').toLowerCase()) {
+              await signOut(auth);
+              setGoogleError(googleEmail);
+              return;
+            }
+            const claimed = await claimProfileAccount(token, {});
+            setSlug(claimed.slug || slug);
+            setViaGoogle(true);
+            setState('live');
+          } catch (err) {
+            setError(err?.message || 'Could not continue with Google.');
+          }
+        }}>Continue with Google</button>
+        <p className="kp-fine">Use the Google account for {email}.</p>
+        {googleError ? <p className="kp-error"><strong>That Google account is {googleError}.</strong> Your profile is for {email}. Choose that Google account, or create a password instead.</p> : null}
       </Shell>
     );
   }
@@ -222,7 +264,7 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
         {methods.hasGoogle && <button type="button" className="kp-ghost" onClick={() => { setAuthType?.('login'); setAuthModal?.(true); }}>Continue with Google</button>}
         {methods.hasPassword && (
           <button type="button" className="kp-ghost" onClick={async () => {
-            await sendPasswordResetEmail(auth, email, { url: window.location.origin, handleCodeInApp: false });
+            await httpClient.post('/auth/password-reset', { auth: false, body: { email } });
             setMasked(email);
             setState('reset');
           }}>Forgot password?</button>
@@ -244,10 +286,10 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
     );
   }
   if (state !== 'live') return <Shell><h1>This link is not valid.</h1></Shell>;
-  return <ProfileLive slug={slug} />;
+  return <ProfileLive slug={slug} google={viaGoogle} />;
 }
 
-export function ProfileLive({ slug }) {
+export function ProfileLive({ slug, google = false }) {
   const url = profileLink(slug);
   const [share, setShare] = useState(false);
   const showLink = FEATURES.publicProfile;
@@ -255,7 +297,9 @@ export function ProfileLive({ slug }) {
     <Shell>
       <span className="kp-check">✓</span>
       <h1>{showLink ? 'Your profile is live' : 'Your profile is saved'}</h1>
-      <p>{showLink ? 'Anyone with the link can see it. Your email and phone number stay private.' : 'Your details are saved for next time. Your email and phone number stay private.'}</p>
+      <p>{showLink
+        ? `Anyone with the link can see it. Your email and phone number stay private. You're signed in, so next time ${google ? 'log in with Google.' : 'log in at giginmusic.com with your email and password.'}`
+        : 'Your details are saved for next time. Your email and phone number stay private.'}</p>
       {showLink && (
         <>
           <p className="kp-kicker">YOUR LINK</p>
@@ -274,7 +318,7 @@ export function ProfileLive({ slug }) {
           <Link className="kp-btn" to="/find-venues" style={{ display: 'grid', placeItems: 'center' }}>Find venues</Link>
         </div>
       )}
-      <p>You're signed in. Next time, log in at giginmusic.com with your email and password. <Link to="/profile/edit">Edit profile</Link></p>
+      <Link className="kp-btn" to="/home">Go to my Gigin home</Link>
       {share && (
         <Sheet title="Share your profile" onClose={() => setShare(false)}>
           <a className="kp-ghost" style={{ display: 'grid', placeItems: 'center' }} href={`https://wa.me/?text=${encodeURIComponent(url)}`}>WhatsApp</a>

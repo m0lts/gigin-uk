@@ -599,7 +599,7 @@ export function VenueGigPageShell({
 
   /* Open + confirmed artist bookings: header invite opens share / ArtistFillThisSlotTile (not only while status is open). */
   const canInviteArtist = isArtistBookingPage && hasVenuePerm(venues, gigInfo?.venueId, 'gigs.invite');
-  const isGigApplicationsClosed = gigInfo?.status === 'closed' || gigInfo?.applicationsOpen === false;
+  const isGigApplicationsClosed = gigInfo?.status === 'closed' || gigInfo?.status === 'cancelled' || gigInfo?.applicationsOpen === false;
   const showArtistInviteInApplications =
     canInviteArtist && !isGigApplicationsClosed && !isArtistBookingFullyBooked;
 

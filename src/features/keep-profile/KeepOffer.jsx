@@ -76,7 +76,7 @@ export function KeepOffer({ draft, bookerName, onLogin }) {
     return (
       <aside className="kp-offer">
         <h3>Check your email</h3>
-        <p>We've sent a link to {sentTo}. Tap it to put your profile live. Nothing is public until you do.</p>
+        <p>We&apos;ve sent a link to {sentTo}. Tap it to confirm and create a password. Nothing is public until you do.</p>
         {savedChoices && <p>✓ Your choices are saved.</p>}
         <button type="button" className="kp-ghost" onClick={() => navigate(`/profile/keep?t=${encodeURIComponent(token)}`)}>
           Choose what's public <em className="kp-muted"> optional</em>
@@ -152,7 +152,7 @@ export function KeepOffer({ draft, bookerName, onLogin }) {
       )}
       {error && <p className="kp-error">{error}</p>}
       <button type="button" className="kp-btn" disabled={busy} onClick={keep}>Keep my profile</button>
-      <p className="kp-fine">We'll email you a link to confirm. Then you'll create a password.</p>
+      <p className="kp-fine">We&apos;ll email you a link to confirm. You&apos;ll create a password when you confirm.</p>
       <button type="button" className="kp-ghost" onClick={async () => {
         setPhase('dismissed');
         try { await dismissKeepOffer(draft.manageToken, draft.gigId); } catch { /* ignore */ }

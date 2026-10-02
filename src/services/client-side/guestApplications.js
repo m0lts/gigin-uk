@@ -22,6 +22,10 @@ export function createGuestApplication(body) {
   return httpClient.post('/guest-applications', { auth, body });
 }
 
+export function markSetChangeSeen(gigId, token) {
+  return httpClient.post(`/guest-applications/${encodeURIComponent(token)}/seen`, { auth, body: { gigId } });
+}
+
 export function getGuestApplication(gigId, token) {
   return httpClient.get(`/guest-applications/${encodeURIComponent(token)}`, { auth, query: { gigId } });
 }

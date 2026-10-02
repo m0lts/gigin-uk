@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '@lib/firebase';
+import { sendSignInLinkToEmail } from 'firebase/auth';
 // Components
-import { SeeIcon, ErrorIcon } from '@features/shared/ui/extras/Icons';
 import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
 import { NoTextLogo } from '@features/shared/ui/logos/Logos';
 // Styles
@@ -11,6 +11,7 @@ import '@styles/forms/forms.styles.css'
 import { GoogleIcon } from '../ui/extras/Icons';
 import { LoadingSpinner } from '../ui/loading/Loading';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { FEATURES } from '../../../config/features';
 import { artistDestination } from '../../../config/artistDestination';
 
@@ -20,10 +21,18 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
   const navigate = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
+  const [linkPhase, setLinkPhase] = useState('');
+  const [linkWait, setLinkWait] = useState(0);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   // Handle redirect after successful login based on user profile type
+  useEffect(() => {
+    if (!linkWait) return undefined;
+    const timer = setTimeout(() => setLinkWait((current) => Math.max(0, current - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [linkWait]);
+
   useEffect(() => {
     if (justLoggedIn && user && !loading) {
       // Close modal immediately if email is verified
@@ -35,10 +44,10 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
       // Wait a bit for user data to fully load before redirecting
       const timer = setTimeout(() => {
         if (user.artistProfiles && user.artistProfiles.length > 0) {
-          navigate(artistDestination(user, FEATURES));
+          navigate(FEATURES.keepProfile ? '/home' : artistDestination(user, FEATURES));
           setJustLoggedIn(false);
         } else if (user.venueProfiles && user.venueProfiles.length > 0) {
-          navigate('/venues/dashboard/gigs');
+          navigate('/venues/dashboard');
           setJustLoggedIn(false);
         } else {
           // User logged in but no profiles - stay on landing page
@@ -70,8 +79,16 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
     e.preventDefault();
     if (loading) return;
 
+    if (!String(credentials.email || '').trim()) {
+      setError({ status: true, input: 'email', message: 'Enter your email address.' });
+      return;
+    }
     if (!validateEmail(credentials.email)) {
-      setError({ status: true, input: 'email', message: '* Please enter a valid email address' });
+      setError({ status: true, input: 'email', message: 'Enter an email address like name@example.com.' });
+      return;
+    }
+    if (!String(credentials.password || '').trim()) {
+      setError({ status: true, input: 'password', message: 'Enter your password.' });
       return;
     }
 
@@ -101,22 +118,15 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
     } catch (err) {
       switch (err.error.code) {
         case 'auth/user-not-found':
-          setError({ status: true, input: '', message: '*There is no user record corresponding with this identifier. The user may have been deleted.' });
-          break;
-        case 'auth/user-disabled':
-          setError({ status: true, input: '', message: '*The user account has been disabled by an administrator.' });
-          break;
-        case 'auth/account-exists-with-different-credential':
-          setError({ status: true, input: '', message: '*An account already exists with the same email address but different sign-in credentials. Sign in using a different associated email address.' });
-          break;
+        case 'auth/wrong-password':
         case 'auth/invalid-credential':
-          setError({ status: true, input: '', message: '*Invalid Credentials.' });
+          setError({ status: true, input: '', message: 'Try again, or reset your password.', title: "That email and password don't match." });
           break;
         case 'auth/too-many-requests':
-          setError({ status: true, input: '', message: '*Too many unsuccessful login attempts. Please reset your password or try again later.' });
+          setError({ status: true, input: '', message: 'Wait a few minutes, or reset your password.', title: 'Too many attempts.' });
           break;
         default:
-          setError({ status: true, input: '', message: err.message });
+          setError({ status: true, input: '', message: 'Check your signal and try again.', title: 'No connection.' });
           break;
       }
     } finally {
@@ -131,14 +141,42 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
   return (
     <div className={`modal-padding auth ${loading ? 'loading' : ''}`} onClick={(e) => e.stopPropagation()}>
     <div className='modal-content auth scrollable'>
-      {!loading && (
+      {!loading && linkPhase !== 'sent' && (
         <div className='head'>
           <NoTextLogo />
-          <h1>Welcome Back</h1>
+          <h1>Log in</h1>
+          <p>For venues, and artists who&apos;ve kept a Gigin profile.</p>
         </div>
       )}
-        <form className='auth-form' onSubmit={handleLogin}>
-          {!loading && (
+        {linkPhase === 'sent' && !loading && (
+          <div className='auth-form'>
+            <h1>Check your email</h1>
+            <p>We&apos;ve sent a sign-in link to {credentials.email}. Open it on this device to log in. It works once, for 1 hour.</p>
+            <p>Nothing there? Check your spam folder.</p>
+            <button
+              type='button'
+              className='btn text'
+              disabled={linkWait > 0}
+              onClick={async () => {
+                if (linkWait > 0) return;
+                try {
+                  await sendSignInLinkToEmail(auth, credentials.email, {
+                    url: `${window.location.origin}/auth/email-link`,
+                    handleCodeInApp: true,
+                  });
+                } catch { /* same answer either way */ }
+                setLinkWait(30);
+                toast('Sent again.');
+              }}
+            >
+              {linkWait > 0 ? `Send again in ${linkWait}s` : 'Send it again'}
+            </button>
+            <button type='button' className='btn text' onClick={() => { setLinkPhase(''); clearCredentials(); }}>Use a different email</button>
+            <button type='button' className='btn text' onClick={() => setLinkPhase('')}>Back to log in</button>
+          </div>
+        )}
+        <form className='auth-form' onSubmit={handleLogin} noValidate hidden={linkPhase === 'sent'}>
+          {!loading && linkPhase !== 'sent' && (
             <>
               <button
                 type="button"
@@ -186,13 +224,12 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                   value={credentials.email}
                   onChange={(e) => { handleChange(e); clearError(); }}
                   placeholder='e.g. johnsmith@gigin.com'
-                  required
                   className={`${error.input === 'email' && 'error'}`}
                 />
               </div>
               <div className='input-group'>
                 <label htmlFor='password'>
-                  Password <button type='button' className='fp-link btn text' onClick={() => setAuthType('forgot-password')} tabIndex='-1'>Forgot password?</button>
+                  Password <button type='button' className='fp-link btn text' onClick={() => { clearError(); setAuthType('forgot-password'); }} tabIndex='-1'>Forgot password?</button>
                 </label>
                 <div className={`password ${passwordFocused ? 'focused' : ''} ${loading ? 'disabled' : ''}`}>
                   <input
@@ -203,21 +240,20 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                     onChange={(e) => { handleChange(e); clearError(); }}
                     placeholder='Password'
                     disabled={loading}
-                    required
                     className={`${error.input === 'password' && 'error'}`}
                     onFocus={handleFocus}
                     onBlur={handleBlur}
                   />
-                  <button type='button' className='btn tertiary' onClick={toggleShowPassword}>
-                    <SeeIcon />
+                  <button type='button' className='btn tertiary' aria-pressed={showPassword} onClick={toggleShowPassword}>
+                    {showPassword ? 'Hide' : 'Show'}
                   </button>
                 </div>
               </div>
             </>
           )}
           {error.status && (
-            <div className='error-box'>
-              <p className='error-msg'>{error.message}</p>
+            <div className='error-box' role='alert'>
+              <p className='error-msg'>{error.title ? <strong>{error.title} </strong> : null}{error.message}</p>
             </div>
           )}
           {loading ? (
@@ -227,10 +263,41 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
               <button
                 type='submit'
                 className='btn primary'
-                disabled={error.status || !credentials.email || !credentials.password}
+                disabled={loading}
               >
-                Sign In
+                {loading ? 'Logging in…' : 'Log in'}
               </button>
+              <button
+                type='button'
+                className='btn text'
+                onClick={async () => {
+                  const address = String(credentials.email || '').trim();
+                  if (!address) {
+                    setError({ status: true, input: 'email', message: "Enter your email first, and we'll send the link there." });
+                    return;
+                  }
+                  if (!validateEmail(address)) {
+                    setError({ status: true, input: 'email', message: 'Enter an email address like name@example.com.' });
+                    return;
+                  }
+                  try {
+                    await sendSignInLinkToEmail(auth, address, {
+                      url: `${window.location.origin}/auth/email-link`,
+                      handleCodeInApp: true,
+                    });
+                  } catch (err) {
+                    if (err?.code !== 'auth/user-not-found') {
+                      /* same answer either way */
+                    }
+                  }
+                  window.localStorage.setItem('emailForSignIn', address);
+                  setLinkPhase('sent');
+                  setLinkWait(30);
+                }}
+              >
+                Email me a sign-in link instead
+              </button>
+              <p>Applied to a gig as a guest? You don&apos;t need to log in. Use the private link in your email, or <a href='/#artists'>get a fresh link</a>.</p>
             </>
           )}
         </form>

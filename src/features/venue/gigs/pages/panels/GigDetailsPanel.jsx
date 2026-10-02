@@ -489,7 +489,7 @@ export function GigDetailsPanel({
   const showConfirmGigManuallyLink = React.useMemo(() => {
     if (normalisedGig?.bookingMode !== 'artist_booking') return false;
     if (!['open', 'confirmed'].includes(normalisedGig?.status || '')) return false;
-    if (rawGig?.status === 'closed') return false;
+    if (rawGig?.status === 'closed' || rawGig?.status === 'cancelled') return false;
     if (!rawGig?.venueId) return false;
     if (!hasVenuePerm(venues, rawGig.venueId, 'gigs.update')) return false;
     if (!hasVenuePerm(venues, rawGig.venueId, 'gigs.applications.manage')) return false;
@@ -501,7 +501,7 @@ export function GigDetailsPanel({
   const showEditManualBookedLink = React.useMemo(() => {
     if (normalisedGig?.bookingMode !== 'artist_booking') return false;
     if (!['open', 'confirmed'].includes(normalisedGig?.status || '')) return false;
-    if (rawGig?.status === 'closed') return false;
+    if (rawGig?.status === 'closed' || rawGig?.status === 'cancelled') return false;
     if (!rawGig?.venueId) return false;
     if (!hasVenuePerm(venues, rawGig.venueId, 'gigs.update')) return false;
     if (!hasVenuePerm(venues, rawGig.venueId, 'gigs.applications.manage')) return false;

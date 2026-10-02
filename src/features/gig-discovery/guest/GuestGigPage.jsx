@@ -25,6 +25,7 @@ export function GuestGigPage({
   inviteId,
   coordinates,
   onCreateAccount,
+  onLogin,
 }) {
   const { isMdUp } = useBreakpoint();
   const navigate = useNavigate();
@@ -36,9 +37,10 @@ export function GuestGigPage({
   const hero = photoUrl(venue);
   const applicationsClosed = slots.every((slot) => slot.applicationsOpen === false) || gig.applicationsOpen === false;
   const allTaken = slots.length > 0 && slots.every((slot) => slotTaken(slot));
+  const cancelled = gig.status === 'cancelled' || gig.status === 'closed' || (slots.length > 0 && slots.every((slot) => slot.status === 'cancelled' || slot.status === 'closed'));
   const openCount = slots.filter((slot) => !slotTaken(slot) && slot.applicationsOpen !== false).length;
-  const past = slots.every((slot) => slotState(slot) === 'played') && slots.length > 0;
-  const closed = applicationsClosed || allTaken;
+  const past = !cancelled && slots.every((slot) => slotState(slot) === 'played') && slots.length > 0;
+  const closed = cancelled || applicationsClosed || allTaken;
   const remembered = rememberedApplication(slots.map((slot) => slot.gigId || slot.id).concat(gig.gigId));
   const venueName = venue?.name || 'the bar';
   const venuePath = `/venues/${venue?.venueId || gig.venueId || ''}`;
@@ -91,6 +93,7 @@ export function GuestGigPage({
         invite={prefill ? { inviteId, prefill } : { inviteId: expired || claimed || notYou ? '' : inviteId }}
         onClose={() => setApplying(false)}
         onCreateAccount={onCreateAccount}
+        onLogin={onLogin}
       />
     );
   }
@@ -110,14 +113,21 @@ export function GuestGigPage({
       <div className="ga-layout">
         <main>
           {past && <div className="ga-banner">This gig has already happened. <button type="button" onClick={() => navigate(venuePath)}>See upcoming gigs at the bar</button></div>}
-          {!past && allTaken && (
+          {cancelled && (
+            <div className="ga-banner is-cancel">
+              <strong>This gig has been cancelled</strong>
+              <p>{venue?.name || 'The venue'} has cancelled {title} on {formatGigDay(gig)}. If you&apos;d applied, your application is closed and there&apos;s nothing you need to do.</p>
+              <button type="button" onClick={() => navigate(venuePath)}>See upcoming gigs at the bar</button>
+            </div>
+          )}
+          {!past && !cancelled && allTaken && (
             <div className="ga-banner is-closed">
               <strong>All sets are filled</strong>
               <p>{booker.name} has booked every set for {formatShortDay(gig)}, so this gig isn't taking applications any more. Follow the bar on Gigin to hear about future nights.</p>
               <button type="button" onClick={() => navigate(venuePath)}>Follow {venueName}</button>
             </div>
           )}
-          {!past && !allTaken && applicationsClosed && (
+          {!past && !cancelled && !allTaken && applicationsClosed && (
             <div className="ga-banner is-closed">
               <strong>Applications have closed</strong>
               <p>{booker.name} has stopped taking applications for {(() => {
@@ -145,9 +155,9 @@ export function GuestGigPage({
               <button type="button" onClick={() => setNotYou(true)}>Not you?</button>
             </div>
           )}
-          <div className="ga-hero" style={hero ? { backgroundImage: `url(${hero})` } : undefined} />
+          <div className={`ga-hero${cancelled ? ' is-cancelled' : ''}`} style={hero ? { backgroundImage: `url(${hero})` } : undefined} />
           <p className="ga-mono ga-date">{formatGigDay(gig)}{doors ? ` · DOORS ${doors}` : ''}</p>
-          <h1>{title}</h1>
+          <h1 className={cancelled ? 'is-cancelled' : ''}>{title}</h1>
           <p className="ga-venue-line">{venue?.name}{city ? ` · ${city}` : ''}</p>
           <section>
             <div className="ga-set-head">
@@ -158,7 +168,7 @@ export function GuestGigPage({
             <div className="ga-set-list">
               {slots.map((slot, index) => {
                 const taken = slotTaken(slot);
-                const state = past ? 'played' : taken ? 'taken' : (applicationsClosed ? 'closed' : 'open');
+                const state = cancelled ? 'cancelled' : past ? 'played' : taken ? 'taken' : (applicationsClosed ? 'closed' : 'open');
                 return (
                   <div key={slot.gigId || index} className={state === 'taken' ? 'is-taken' : ''}>
                     <strong>{slots.length === 1 ? 'The set' : `Set ${index + 1}`}</strong>
@@ -166,7 +176,7 @@ export function GuestGigPage({
                       <em className="ga-mono">{formatClock(slot.startTime)}{slotEnd(slot) ? `–${slotEnd(slot)}` : ''}{slot.duration ? <i> · {slot.duration} min</i> : null}</em>
                       {slot.hint ? <small>{slot.hint}</small> : null}
                     </span>
-                    <b className={state === 'open' ? 'is-open' : ''}>{state === 'played' ? 'Played' : state === 'taken' ? 'Taken' : state === 'closed' ? 'Closed' : 'Open'}</b>
+                    <b className={state === 'open' ? 'is-open' : ''}>{state === 'played' ? 'Played' : state === 'cancelled' ? 'Cancelled' : state === 'taken' ? 'Taken' : state === 'closed' ? 'Closed' : 'Open'}</b>
                   </div>
                 );
               })}
@@ -208,7 +218,7 @@ export function GuestGigPage({
           <ul className="ga-aside-sets">
             {slots.map((slot, index) => {
               const taken = slotTaken(slot);
-              const label = past ? 'Played' : taken ? 'Taken' : (applicationsClosed ? 'Closed' : 'Open');
+              const label = cancelled ? 'Cancelled' : past ? 'Played' : taken ? 'Taken' : (applicationsClosed ? 'Closed' : 'Open');
               return (
                 <li key={slot.gigId || index}>
                   <span>{slots.length === 1 ? 'The set' : `Set ${index + 1}`}</span>
@@ -224,7 +234,7 @@ export function GuestGigPage({
             disabled={(closed || past) && !remembered}
             onClick={() => (remembered ? navigate(`/gig/${remembered.gigId}/application/${remembered.token}`) : setApplying(true))}
           >
-            {past ? 'This gig has happened' : remembered ? 'View my application' : closed ? 'Applications closed' : 'Apply to play'}
+            {cancelled ? 'Gig cancelled' : past ? 'This gig has happened' : remembered ? 'View my application' : allTaken ? 'All sets filled' : applicationsClosed ? 'Applications closed' : 'Apply to play'}
           </button>
           {!closed && !past && !remembered && <small>About 2 minutes · no account needed</small>}
         </aside>
@@ -237,7 +247,7 @@ export function GuestGigPage({
             disabled={(closed || past) && !remembered}
             onClick={() => (remembered ? navigate(`/gig/${remembered.gigId}/application/${remembered.token}`) : setApplying(true))}
           >
-            {past ? 'This gig has happened' : remembered ? 'View my application' : closed ? 'Applications closed' : 'Apply to play'}
+            {cancelled ? 'Gig cancelled' : past ? 'This gig has happened' : remembered ? 'View my application' : allTaken ? 'All sets filled' : applicationsClosed ? 'Applications closed' : 'Apply to play'}
           </button>
           {!closed && !past && !remembered && <small>About 2 minutes · no account needed</small>}
         </div>

@@ -27,8 +27,12 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
     e.preventDefault();
     if (loading) return;
 
+    if (!String(credentials.email || '').trim()) {
+      setError({ status: true, input: 'email', message: 'Enter your email address.' });
+      return;
+    }
     if (!validateEmail(credentials.email)) {
-      setError({ status: true, input: 'email', message: '* Please enter a valid email address' });
+      setError({ status: true, input: 'email', message: 'Enter an email address like name@example.com.' });
       return;
     }
 
@@ -38,9 +42,9 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
     try {
       await resetPassword(credentials.email);
       setShowSuccessMessage(true);
-      setTimer(60);
+      setTimer(30);
     } catch (err) {
-      setError({ status: true, input: 'email', message: '* No accounts associated with that email address.' });
+      setError({ status: true, input: '', message: err?.message || 'Check your signal and try again.', title: err?.message?.includes('connection') ? 'No connection.' : '' });
     } finally {
       setLoading(false);
     }
@@ -51,7 +55,8 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
     setLoading(true);
     try {
       await resetPassword(credentials.email);
-      setTimer(60);
+      setTimer(30);
+      toast('Sent again.');
     } catch (err) {
       console.error('Failed to resend password reset email:', err);
     } finally {
@@ -76,14 +81,16 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
         <>
           <div className='head'>
             <NoTextLogo />
-            <h1>Forgot Password</h1>
+            <h1>Check your email</h1>
           </div>
           <div className='auth-form'>
-            <p style={{ textAlign: 'center' }}>If you have an account with {credentials.email}, you will have received instructions on how to reset your password.</p>
-            <p style={{ textAlign: 'center', marginBottom: '1rem' }}>If you haven't received an email, click the button below to send another link.</p>
+            <p>If {credentials.email} has a Gigin account, we&apos;ve sent a link to choose a new password. It works once, for 1 hour.</p>
+            <p>Nothing there? Check your spam folder.</p>
             <button className='btn text' onClick={handleResendPasswordReset} disabled={timer > 0}>
-              {timer > 0 ? `Re-send forgot password link (${timer}s)` : 'Re-send forgot password link.'}
+              {timer > 0 ? `Send again in ${timer}s` : 'Send it again'}
             </button>
+            <button type='button' className='btn text' onClick={() => { setShowSuccessMessage(false); clearCredentials(); }}>Use a different email</button>
+            <button type='button' className='btn text' onClick={() => setAuthType('login')}>Back to log in</button>
           </div>
           {(!loading && authClosable) && (
             <button className='btn close tertiary' onClick={() => {if (!authClosable) return; setAuthModal(false); setShowSuccessMessage(false); setAuthType('login')}}>
@@ -95,7 +102,8 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
         <>
           <div className='head'>
             <NoTextLogo />
-            <h1>Forgot Password</h1>
+            <h1>Reset your password</h1>
+            <p>Enter the email you log in with and we&apos;ll send a link to choose a new password.</p>
           </div>
           <form className='auth-form' onSubmit={handlePasswordReset}>
             <div className='input-group'>
@@ -106,7 +114,6 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
                 value={credentials.email}
                 onChange={(e) => { handleChange(e); clearError(); }}
                 placeholder='e.g. johnsmith@gigin.com'
-                required
                 className={`${error.input === 'email' && 'error'}`}
               />
             </div>
@@ -122,10 +129,10 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
                 <button
                   type='submit'
                   className='btn primary'
-                  disabled={error.status || !credentials.email}
                 >
-                  Reset Password
+                  Email me a reset link
                 </button>
+                <button type='button' className='btn text' onClick={() => setAuthType('login')}>Back to log in</button>
               </>
             )}
           </form>
@@ -137,10 +144,6 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
         </>
       )}
     </div>
-    <div className="change-auth-type">
-        <h4 className='change-auth-type-text'>Back to </h4>
-        <button className='btn text' type='button' onClick={() => { setAuthType('login'); clearCredentials(); clearError(); setShowSuccessMessage(false) }}>Sign In</button>
-      </div>
     </div>
   );
 };

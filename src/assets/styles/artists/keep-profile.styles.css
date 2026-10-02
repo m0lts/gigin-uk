@@ -144,3 +144,15 @@
   .kp-aside { position: sticky; top: 18px; }
   .kp-settings { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; max-width: 1100px; }
 }
+.kp-password { display: flex; align-items: center; gap: 8px; border: 1px solid var(--gn-line); border-radius: 12px; padding-right: 8px; }
+.kp-password input { border: 0; flex: 1; min-height: 48px; padding: 0 12px; background: transparent; }
+.kp-password button { background: none; border: 0; min-height: 44px; cursor: pointer; font-weight: 600; }
+.kp-strength span { display: flex; gap: 4px; margin: 8px 0 4px; }
+.kp-strength i { display: block; height: 4px; flex: 1; border-radius: 99px; background: #E5E7EB; }
+.kp-strength i.is-on { background: #111317; }
+.kp-strength.is-bad i.is-on { background: #E5484D; }
+.kp-strength.is-ok i.is-on { background: #D97706; }
+.kp-strength.is-good i.is-on { background: #16A34A; }
+.kp-strength p { margin: 0 0 12px; font-size: 13px; color: var(--gn-ink-2); }
+.kp-kicker { font-size: 12px; letter-spacing: 0.06em; font-weight: 650; }
+.kp-or { text-align: center; color: var(--gn-ink-2); margin: 12px 0; }

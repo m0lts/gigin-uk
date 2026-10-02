@@ -1733,7 +1733,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     })}
             </tbody>
         </table>
-    ) : gigInfo.status === 'closed' ? (
+    ) : (gigInfo.status === 'closed' || gigInfo.status === 'cancelled') ? (
         <div className='no-applications'>
             <h4>This Gig has been closed.</h4>
             {hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (
@@ -3781,7 +3781,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                                 })}
                             </tbody>
                         </table>
-                    ) : gigInfo.status === 'closed' ? (
+                    ) : (gigInfo.status === 'closed' || gigInfo.status === 'cancelled') ? (
                         <div className='no-applications'>
                             <h4>This Gig has been closed.</h4>
                             {hasVenuePerm(venues, gigInfo.venueId, 'gigs.update') && (

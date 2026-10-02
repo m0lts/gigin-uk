@@ -4,12 +4,12 @@ import { lookupGuestApplication, sendGuestMagicLink, checkGuestEmailAccount } fr
 import { prefillHint, sendPrefillLink } from '@services/client-side/keepProfile';
 import { formatClock, slotEnd, slotTaken } from './guestFormat';
 
-export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, showErrors }) {
+export function GuestWhoStep({ draft, patch, slots, bookerName, venueName, inviteNote, showErrors, onLogin }) {
   const [duplicate, setDuplicate] = useState(null);
-  const [accountExists, setAccountExists] = useState(false);
   const [profileHint, setProfileHint] = useState(false);
   const [linkSent, setLinkSent] = useState(false);
   const [signInSent, setSignInSent] = useState(false);
+  const [asGuest, setAsGuest] = useState(false);
   const missingContact = showErrors && !draft.email && !draft.phone && !draft.instagram;
 
   const checkDuplicate = async () => {
@@ -23,21 +23,18 @@ export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, show
     }
     const email = String(draft.email || '').trim();
     if (!email) {
-      setAccountExists(false);
-      patch({ accountBlocked: false });
+      patch({ accountBlocked: false, hasAccount: false });
       return;
     }
     try {
       const account = await checkGuestEmailAccount(email);
       const blocked = Boolean(account?.hasAccount);
-      setAccountExists(blocked && !FEATURES.keepProfile);
-      patch({ accountBlocked: FEATURES.keepProfile ? false : blocked, hasAccount: blocked });
+      patch({ accountBlocked: false, hasAccount: blocked });
       if (FEATURES.keepProfile && !blocked) {
         const hint = await prefillHint(email);
         setProfileHint(Boolean(hint?.hasProfile));
       }
     } catch {
-      setAccountExists(false);
       patch({ accountBlocked: false });
     }
   };
@@ -58,18 +55,21 @@ export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, show
       <div className="ga-label">How can {bookerName} reach you?</div>
       {missingContact && <p className="ga-error">Add at least one so {bookerName} can get back to you.</p>}
       <div className={`ga-contact-rows${missingContact ? ' is-invalid' : ''}`}>
-        <label><span>Email</span><input type="email" inputMode="email" value={draft.email} onChange={(event) => { patch({ email: event.target.value, accountBlocked: false }); setAccountExists(false); }} onBlur={checkDuplicate} /></label>
+        <label><span>Email</span><input type="email" inputMode="email" value={draft.email} onChange={(event) => { patch({ email: event.target.value, accountBlocked: false, hasAccount: false }); setAsGuest(false); }} onBlur={checkDuplicate} /></label>
         <label><span>Phone</span><input type="tel" inputMode="tel" value={draft.phone} onChange={(event) => patch({ phone: event.target.value })} onBlur={checkDuplicate} /></label>
         <label><span>Instagram</span><input value={draft.instagram} placeholder="@name" onChange={(event) => patch({ instagram: event.target.value })} /></label>
       </div>
-      {accountExists && !FEATURES.keepProfile && (
-        <p className="ga-error">This email already has a Gigin account. Log in to apply.</p>
+      {draft.hasAccount && !asGuest && (
+        <aside className="ga-account-card">
+          <p className="ga-mono">YOU&apos;RE ALREADY ON GIGIN</p>
+          <strong>{draft.email} has a Gigin account</strong>
+          <p>Log in and we&apos;ll fill this in from your profile and keep the application with your account. You can also carry on as a guest.</p>
+          <button type="button" className="ga-dark" onClick={() => onLogin?.(draft.email)}>Log in</button>
+          <button type="button" className="ga-ghost" onClick={() => { setAsGuest(true); patch({ accountBlocked: false }); }}>Carry on as a guest</button>
+        </aside>
       )}
-      {FEATURES.keepProfile && draft.hasAccount && (
-        <p className="ga-note">
-          This email already has a Gigin account. You can still send this application. Log in afterwards and we'll add it to your account.
-          {profileHint && (signInSent ? ' Sign-in link sent.' : <button type="button" className="ga-text" onClick={() => sendPrefillLink(draft.email).then(() => setSignInSent(true))}>Email me a sign-in link</button>)}
-        </p>
+      {draft.hasAccount && asGuest && (
+        <p className="ga-note">Sending as a guest. Next time you log in, we&apos;ll add this application to your account.</p>
       )}
       {profileHint && FEATURES.keepProfile && !draft.hasAccount && (
         <p className="ga-note">You have a Gigin profile. Log in with your password to fill this in from it. {signInSent ? 'Sign-in link sent.' : <button type="button" className="ga-text" onClick={() => sendPrefillLink(draft.email).then(() => setSignInSent(true))}>Email me a sign-in link</button>}</p>
@@ -135,6 +135,9 @@ export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, show
           </div>
         </>
       )}
+      <aside className="ga-privacy">
+        Your email and phone number only go to {bookerName} and the bookers at {venueName || 'the venue'}. We only email you about this application, and never show your details publicly. <a href="/privacy-policy">Privacy policy</a>
+      </aside>
     </div>
   );
 }

@@ -51,7 +51,7 @@ function emptyDraft(gig, invite, ids) {
   };
 }
 
-export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateAccount }) {
+export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateAccount, onLogin }) {
   const { isMdUp } = useBreakpoint();
   const booker = bookerLine(venue, gig);
   const saved = readDraft(gig.gigId, invite?.inviteId);
@@ -260,6 +260,8 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
             patch={patch}
             slots={slots}
             bookerName={booker.name}
+            venueName={venue?.name}
+            onLogin={onLogin}
             showErrors={showErrors}
             inviteNote={invite?.prefill ? "Filled in from Jez's invite. Change anything that's out of date." : ''}
           />

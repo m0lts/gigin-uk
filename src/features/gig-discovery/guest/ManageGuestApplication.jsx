@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import '@styles/artists/gig-page.styles.css';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getGuestApplication, updateGuestApplication, withdrawGuestApplication } from '@services/client-side/guestApplications';
+import { getGuestApplication, markSetChangeSeen, updateGuestApplication, withdrawGuestApplication } from '@services/client-side/guestApplications';
+import { KeepOffer } from '../../keep-profile/KeepOffer';
 import { getGigById, getGigsByIds } from '@services/client-side/gigs';
 import { sortSlots } from '@services/utils/nightApplications';
 import { getVenueProfileById } from '@services/client-side/venues';
@@ -11,7 +12,6 @@ import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
 import { GuestWhoStep } from './GuestWhoStep';
 import { FEATURES } from '../../../config/features';
-import { keepGuestProfile } from '@services/client-side/keepProfile';
 import { bookerLine, firstName, formatClock, formatGigDay, formatShortDay, icsForSet, preferenceReview, slotDate, slotEnd } from './guestFormat';
 
 const STATUS = {
@@ -61,6 +61,12 @@ export function ManageGuestApplication() {
   const [editing, setEditing] = useState('');
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [toast, setToast] = useState('');
+  const [linkEmail, setLinkEmail] = useState('');
+  const [linkError, setLinkError] = useState('');
+  const [linkSent, setLinkSent] = useState('');
+  const [errorStatus, setErrorStatus] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,15 +100,24 @@ export function ManageGuestApplication() {
         })));
         if (gigDoc?.venueId) setVenue(await getVenueProfileById(gigDoc.venueId));
       } catch (err) {
-        if (!cancelled) setError(err?.message || 'This link is not valid.');
+        if (!cancelled) {
+          setErrorStatus(err?.status || 0);
+          setError(err?.message || 'This link is not valid.');
+        }
       }
     })();
     return () => { cancelled = true; };
   }, [gigId, token]);
 
+  useEffect(() => {
+    if (!application?.setChangedFrom || application.setChangeSeenAt) return;
+    markSetChangeSeen(gigId, token).catch(() => {});
+  }, [application, gigId, token]);
+
   const save = async () => {
     if (!draft) return;
     setSaving(true);
+    setSaveError('');
     try {
       const next = await updateGuestApplication(token, {
         gigId,
@@ -119,8 +134,10 @@ export function ManageGuestApplication() {
       });
       setApplication(next);
       setEditing('');
-    } catch (err) {
-      setError(err?.message || 'Could not save.');
+      setToast(`Saved. ${bookerLine(venue, gig).name} can see your changes.`);
+    } catch {
+      if (editing === 'note') setSaveError('note');
+      else setError('Couldn\'t save your changes. Check your connection and try again.');
     } finally {
       setSaving(false);
     }
@@ -139,10 +156,58 @@ export function ManageGuestApplication() {
     }
   };
 
-  if (error && !application) {
-    return <div className="ga-page"><p className="ga-banner">{error}</p></div>;
+  if (error && !application && (errorStatus === 404 || errorStatus === 410)) {
+    const sendFresh = async (event) => {
+      event.preventDefault();
+      const value = linkEmail.trim();
+      if (!value) {
+        setLinkError('Enter the email you applied with.');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        setLinkError('Enter an email address like name@example.com.');
+        return;
+      }
+      try {
+        const { sendGuestMagicLink } = await import('@services/client-side/guestApplications');
+        await sendGuestMagicLink({ gigId, email: value });
+      } catch { /* same answer either way */ }
+      setLinkSent(value);
+    };
+    return (
+      <div className="ga-page">
+        <header className="ga-top"><span className="ga-logo">gigin.</span></header>
+        <main className="ga-manage">
+          <p className="ga-mono">YOUR APPLICATION</p>
+          {linkSent ? (
+            <>
+              <h1>Check your inbox</h1>
+              <p>If {linkSent} applied to this gig, we&apos;ve sent a fresh link. It can take a minute to arrive.</p>
+            </>
+          ) : (
+            <>
+              <h1>This link has stopped working</h1>
+              <p>Private links stop working when we send you a newer one, and 7 days after the gig. Enter the email you applied with and we&apos;ll send a fresh link.</p>
+              <form onSubmit={sendFresh}>
+                <label className="ga-field">Email you applied with<input type="email" value={linkEmail} onChange={(event) => { setLinkEmail(event.target.value); setLinkError(''); }} /></label>
+                {linkError ? <p className="ga-error">{linkError}</p> : null}
+                <button type="submit" className="ga-dark">Email me a fresh link</button>
+              </form>
+            </>
+          )}
+        </main>
+      </div>
+    );
   }
   if (!application || !draft) {
+    if (error) {
+      return (
+        <div className="ga-page">
+          <header className="ga-top"><span className="ga-logo">gigin.</span></header>
+          <p className="ga-banner">{error}</p>
+        </div>
+      );
+    }
     return <div className="ga-page"><p className="ga-quiet">Loading your application…</p></div>;
   }
 
@@ -152,11 +217,16 @@ export function ManageGuestApplication() {
   const setWhen = assigned
     ? `Set ${assignedIndex + 1}, ${formatClock(assigned.startTime)}${slotEnd(assigned) ? `–${slotEnd(assigned)}` : ''}`
     : '';
-  const statusBits = accepted
+  const cancelledGig = application.gigStatus === 'cancelled' || application.gigStatus === 'closed' || gig?.status === 'cancelled' || gig?.status === 'closed';
+  const statusBits = cancelledGig
+    ? ['Gig cancelled', 'is-muted']
+    : accepted
     ? [`Accepted · ${assigned ? setWhen : 'set time to be confirmed'}`, 'is-ok']
-    : (STATUS[application.status] || STATUS.sent);
+    : application.status === 'sent' || application.status === 'pending'
+      ? [`Sent · ${bookerLine(venue, gig).name} hasn't decided yet`, 'is-wait']
+      : (STATUS[application.status] || STATUS.sent);
   const [statusLabel, statusClass] = statusBits;
-  const editable = application.editable !== false && (application.status === 'sent' || application.status === 'pending');
+  const editable = !cancelledGig && application.editable !== false && (application.status === 'sent' || application.status === 'pending');
   const booker = bookerLine(venue, gig);
   const dateLabel = gig ? formatShortDay(gig) : (application.dateLabel || 'this night');
   const preferred = preferenceReview(slots, draft.preferredSlotGigIds || []).replace(/^Prefers /, '');
@@ -177,6 +247,8 @@ export function ManageGuestApplication() {
       end,
       location: address,
       description: assignedIndex >= 0 ? `Set ${assignedIndex + 1}` : '',
+      uid: `gigin-${application.applicationsRootGigId || gigId}-${application.applicantId || application.id}@giginmusic.com`,
+      sequence: Number(application.calendarSequence) || 0,
     });
     const blob = new Blob([body], { type: 'text/calendar' });
     const url = URL.createObjectURL(blob);
@@ -185,6 +257,7 @@ export function ManageGuestApplication() {
     link.download = 'gigin-set.ics';
     link.click();
     URL.revokeObjectURL(url);
+    setToast('Added to your calendar.');
   };
 
   return (
@@ -197,6 +270,18 @@ export function ManageGuestApplication() {
         <p className="ga-mono">{gig ? formatGigDay(gig) : application.dateLabel}</p>
         <h1>{heading}</h1>
         <span className={`ga-pill ${statusClass}`}>{statusLabel}</span>
+        {cancelledGig && (
+          <div className="ga-banner is-cancel">
+            <strong>This gig has been cancelled</strong>
+            <p>{venue?.name || 'The venue'} has cancelled this gig. Your application is closed and there&apos;s nothing you need to do.</p>
+          </div>
+        )}
+        {application.setChangedFrom && !application.setChangeSeenAt && (
+          <div className="ga-banner is-amber">
+            <strong>Your set time has changed</strong>
+            <p>It was {application.setChangedFrom.label || application.setChangedFrom.range}. It&apos;s now {setWhen || 'to be confirmed'}.</p>
+          </div>
+        )}
         {FEATURES.keepProfile && application.artistProfileId && application.profileSlug && (
           <article className="ga-account">
             <strong>Your Gigin profile</strong>
@@ -205,12 +290,12 @@ export function ManageGuestApplication() {
             <Link to="/profile/edit">Edit</Link>
           </article>
         )}
-        {FEATURES.keepProfile && !application.artistProfileId && application.keepProfileOffer === 'dismissed' && (
-          <div className="ga-account">
-            <strong>Keep this as your Gigin profile?</strong>
-            <p>Your details in one place, with a link you can send to other venues. You'll create a password when you confirm.</p>
-            <button type="button" className="ga-text" onClick={() => keepGuestProfile(token, { gigId })}>Keep my profile</button>
-          </div>
+        {FEATURES.keepProfile && !application.artistProfileId && application.keepProfileOffer !== 'confirmed' && (application.status === 'sent' || application.status === 'pending' || accepted) && (
+          <KeepOffer
+            draft={{ ...draft, manageToken: token, gigId, email: draft.email, keepProfileOffer: application.keepProfileOffer }}
+            bookerName={booker.name}
+            onLogin={() => {}}
+          />
         )}
         {application.status === 'declined' && (
           <>
@@ -276,6 +361,12 @@ export function ManageGuestApplication() {
                 <textarea rows={4} maxLength={500} value={draft.note} onChange={(event) => setDraft((current) => ({ ...current, note: event.target.value.slice(0, 500) }))} />
               </label>
             )}
+            {saveError === 'note' && editing === 'note' && (
+              <div className="ga-error-box">
+                <strong>Couldn&apos;t save your changes</strong>
+                <p>Check your connection and try again. Your note is still here.</p>
+              </div>
+            )}
             <div className="ga-actions">
               <button type="button" className="ga-dark" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
               <button type="button" className="ga-ghost" onClick={() => { setDraft(fromApplication(application)); setEditing(''); }}>Cancel</button>
@@ -304,7 +395,7 @@ export function ManageGuestApplication() {
         {editable && !editing && (
           <button type="button" className="ga-danger" onClick={() => setConfirmWithdraw(true)}>Withdraw my application</button>
         )}
-        {accepted && !editing && (
+        {accepted && !cancelledGig && !editing && (
           <div className="ga-cant">
             <strong>Plans changed?</strong>
             <p>Let {booker.name} know as soon as you can, so the set can go to someone else.</p>
@@ -313,6 +404,7 @@ export function ManageGuestApplication() {
         )}
         {application.status === 'withdrawn' && <Link to={`/gig/${gigId}`}>Back to the gig</Link>}
         {error && <p className="ga-error">{error}</p>}
+        {toast && <p className="ga-toast" role="status">{toast}</p>}
       </main>
       {confirmWithdraw && (
         <div className="ga-sheet-backdrop" onClick={() => setConfirmWithdraw(false)}>

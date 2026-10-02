@@ -121,13 +121,16 @@ export function rememberedApplication(gigIds) {
   return { gigId, token };
 }
 
-export function icsForSet({ title, start, end, location, description }) {
+export function icsForSet({ title, start, end, location, description, uid, sequence = 0 }) {
   const stamp = (date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const body = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//Gigin//EN',
+    'METHOD:REQUEST',
     'BEGIN:VEVENT',
+    uid ? `UID:${uid}` : '',
+    `SEQUENCE:${sequence}`,
     `DTSTAMP:${stamp(new Date())}`,
     `DTSTART:${stamp(start)}`,
     `DTEND:${stamp(end)}`,
