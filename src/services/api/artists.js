@@ -32,6 +32,10 @@ export function updateArtistProfile({ artistProfileId, updates }) {
   return post('/artists/updateArtistProfile', { body: { artistProfileId, updates } });
 }
 
+export function createArtistProfile({ profileId, initialData, darkMode, userData }) {
+  return post('/artists/createArtistProfile', { body: { profileId, initialData, darkMode, userData } });
+}
+
 export function updateArtistMemberPermissions({ artistProfileId, memberId, permissionsInput }) {
   return post('/artists/updateArtistMemberPermissions', { body: { artistProfileId, memberId, permissionsInput } });
 }

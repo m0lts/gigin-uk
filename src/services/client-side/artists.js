@@ -25,7 +25,7 @@ import { updateGigDocument } from '../api/gigs';
 import { getOrCreateConversation } from '../api/conversations';
 import { updateMessageDoc } from '../api/messages';
 import { v4 as uuidv4 } from 'uuid';
-import { updateArtistProfile, updateArtistMemberPermissions } from '../api/artists';
+import { updateArtistProfile, updateArtistMemberPermissions, createArtistProfile } from '../api/artists';
 
 
 /*** CREATE OPERATIONS ***/
@@ -48,62 +48,7 @@ export const createArtistProfileDocument = async ({ profileId, userId, initialDa
   if (!profileId) throw new Error('[createArtistProfileDocument] profileId is required');
   if (!userId) throw new Error('[createArtistProfileDocument] userId is required');
 
-  // Note: createdAt and updatedAt are blocked by Firestore rules and should be set server-side
-  // Using serverTimestamp() if needed, but rules block client-set timestamps
-  const defaultData = {
-    userId,
-    status: 'draft',
-    onboardingStep: 'hero-image',
-    isComplete: false,
-    darkMode,
-    name: '',
-    bio: '',
-    location: null,
-    genres: [],
-    videos: [],
-    tracks: [],
-    heroMedia: null,
-    heroBrightness: 100,
-    heroPositionY: 50,
-    // createdAt and updatedAt are blocked by Firestore rules - must be set server-side
-  };
-
-  const payload = { ...defaultData, ...initialData };
-  // Remove createdAt and updatedAt if they were passed in initialData (rules block them)
-  delete payload.createdAt;
-  delete payload.updatedAt;
-  
-  const docRef = doc(firestore, 'artistProfiles', profileId);
-  await setDoc(docRef, payload, { merge: false });
-
-  // Check if user has Stripe Connect account
-  const userRef = doc(firestore, 'users', userId);
-  const userSnap = await getDoc(userRef);
-  const userDoc = userSnap.exists() ? userSnap.data() : {};
-  const hasStripeConnect = !!userDoc.stripeConnectId;
-
-  // Initialize members sub-collection with creator as owner
-  const memberRef = doc(firestore, 'artistProfiles', profileId, 'members', userId);
-  const ownerPermissions = {
-    'profile.viewer': true,
-    'profile.edit': true,
-    'gigs.book': true,
-    'finances.edit': true,
-  };
-  
-  // Note: createdAt and updatedAt are also blocked for members subcollection
-  await setDoc(memberRef, {
-    status: 'active',
-    role: 'owner',
-    permissions: ownerPermissions,
-    addedBy: userId,
-    userId: userId,
-    userName: userData?.name || null,
-    userEmail: userData?.email || null,
-    payoutSharePercent: 100, // Owner gets 100% by default
-    payoutsEnabled: hasStripeConnect, // Enabled if user has Stripe Connect account
-    // createdAt and updatedAt are blocked by Firestore rules - must be set server-side
-  }, { merge: false });
+  await createArtistProfile({ profileId, initialData, darkMode, userData });
 
   try {
     const stored = sessionStorage.getItem('guestApplicationLink') || '';

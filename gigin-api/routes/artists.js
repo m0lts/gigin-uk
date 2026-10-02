@@ -6,8 +6,60 @@ import { admin, db, FieldValue } from "../config/admin.js";
 import { v4 as uuidv4 } from "uuid";
 import { assertVenuePerm, assertArtistPerm, assertArtistOwner, sanitizeArtistPermissions } from "../utils/permissions.js";
 import { addUserToArtistConversations } from "../utils/conversations.js";
+import { clientProfileUpdates } from "../lib/artistProfileFields.js";
 
 const router = express.Router();
+
+// POST /api/artists/createArtistProfile (auth)
+router.post("/createArtistProfile", requireAuth, asyncHandler(async (req, res) => {
+  const uid = req.auth.uid;
+  const { profileId, darkMode = false, userData = null, initialData = {} } = req.body || {};
+  if (!profileId || typeof profileId !== "string" || profileId.includes("/")) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "profileId is required" });
+  }
+  const artistRef = db.doc(`artistProfiles/${profileId}`);
+  if ((await artistRef.get()).exists) {
+    return res.status(409).json({ error: "ALREADY_EXISTS", message: "That profile already exists." });
+  }
+  const extra = clientProfileUpdates(initialData);
+  delete extra.status;
+  await artistRef.set({
+    name: "",
+    bio: "",
+    location: null,
+    genres: [],
+    videos: [],
+    tracks: [],
+    heroMedia: null,
+    heroBrightness: 100,
+    heroPositionY: 50,
+    onboardingStep: "hero-image",
+    isComplete: false,
+    darkMode: Boolean(darkMode),
+    ...extra,
+    userId: uid,
+    status: "draft",
+  });
+  const userSnap = await db.doc(`users/${uid}`).get();
+  const hasStripeConnect = Boolean(userSnap.exists && userSnap.data()?.stripeConnectId);
+  await db.doc(`artistProfiles/${profileId}/members/${uid}`).set({
+    status: "active",
+    role: "owner",
+    permissions: {
+      "profile.viewer": true,
+      "profile.edit": true,
+      "gigs.book": true,
+      "finances.edit": true,
+    },
+    addedBy: uid,
+    userId: uid,
+    userName: userData?.name || null,
+    userEmail: userData?.email || null,
+    payoutSharePercent: 100,
+    payoutsEnabled: hasStripeConnect,
+  });
+  return res.json({ data: { profileId } });
+}));
 
 // POST /api/artists/updateArtistProfile (auth)
 router.post("/updateArtistProfile", requireAuth, asyncHandler(async (req, res) => {
@@ -21,12 +73,7 @@ router.post("/updateArtistProfile", requireAuth, asyncHandler(async (req, res) =
     // Ensure caller has profile.edit permission on this artist profile
     await assertArtistPerm(db, uid, artistProfileId, "profile.edit");
 
-    const allowedUpdates = { ...updates };
-    // Server-controlled fields: never allow client to override
-    delete allowedUpdates.userId;
-    delete allowedUpdates.createdBy;
-    delete allowedUpdates.createdAt;
-    delete allowedUpdates.updatedAt;
+    const allowedUpdates = clientProfileUpdates(updates);
 
     const artistRef = db.doc(`artistProfiles/${artistProfileId}`);
     await artistRef.update({

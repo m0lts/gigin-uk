@@ -388,7 +388,17 @@ service cloud.firestore {
         && !request.resource.data.keys().hasAny([
           'createdAt',
           'updatedAt',
-          'contactEmailHash'
+          'slug',
+          'status',
+          'source',
+          'playedAt',
+          'guestApplicationIds',
+          'contactEmailHash',
+          'venueName',
+          'confirmedAt',
+          'deletedAt',
+          'homeWelcomeDismissedAt',
+          'pressKitRightsConfirmedAt'
         ]);
 
       // Update: owner OR active member with 'profile.edit' permission
@@ -405,7 +415,17 @@ service cloud.firestore {
             .hasAny([
               'userId',
               'createdAt',
-              'contactEmailHash'
+              'slug',
+              'status',
+              'source',
+              'playedAt',
+              'guestApplicationIds',
+              'contactEmailHash',
+              'venueName',
+              'confirmedAt',
+              'deletedAt',
+              'homeWelcomeDismissedAt',
+              'pressKitRightsConfirmedAt'
             ])
         )
         // Allow updatedAt to be set, but it should be server timestamp in practice
