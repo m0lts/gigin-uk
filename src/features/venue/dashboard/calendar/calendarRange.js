@@ -96,7 +96,14 @@ export function gigBookingState(group) {
   const hire = isVenueHireGroup(group);
   const slotConfirmed = (slot) => {
     if (hire && slot?.renterName && String(slot.renterName).trim()) return true;
-    return applicantsOf(slot).some((applicant) => applicant?.status === 'confirmed');
+    const id = slot?.gigId || slot?.id;
+    return applicantsOf(slot).some((applicant) => {
+      const status = String(applicant?.status || '').toLowerCase();
+      if (status === 'confirmed' || status === 'paid') {
+        return !applicant.assignedSlotGigId || applicant.assignedSlotGigId === id;
+      }
+      return status === 'accepted' && applicant.assignedSlotGigId === id;
+    });
   };
   if (slots.every(slotConfirmed)) return 'confirmed';
   if (slots.some((slot) => applicantsOf(slot).some((applicant) => applicant?.status === 'accepted'))) return 'awaiting';

@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { getGigsByVenueIds } from '@services/client-side/gigs';
 import { subscribeToUpcomingOrRecentGigs } from '@services/client-side/gigs';
+import { getGigPrivateBundle } from '@services/api/gigs';
+import { readSlotApplicants } from '@services/utils/nightApplications';
 import {
   getVenueHireOpportunitiesByVenueIds,
   subscribeToVenueHireOpportunities,
@@ -10,6 +12,23 @@ import { fetchCustomerData } from '@services/api/payments';
 import { FEATURES } from '../config/features';
 
 const VenueDashboardContext = createContext();
+
+async function withPrivateApplications(gigs) {
+  const ids = [...new Set((gigs || []).map((gig) => gig?.gigId).filter(Boolean))];
+  if (!ids.length) return gigs || [];
+  const bundles = {};
+  for (let index = 0; index < ids.length; index += 40) {
+    const result = await getGigPrivateBundle(ids.slice(index, index + 40)).catch(() => null);
+    Object.assign(bundles, result?.gigs || {});
+  }
+  return gigs.map((gig) => {
+    const rootId = gig.applicationsRootGigId || bundles[gig.gigId]?.applicationsRootGigId || gig.gigId;
+    const applications = bundles[rootId]?.applications || bundles[gig.gigId]?.applications;
+    if (!Array.isArray(applications) || gig.gigId !== rootId) return gig;
+    const withApplicants = { ...gig, applicants: applications };
+    return { ...withApplicants, applicants: readSlotApplicants(withApplicants, applications) };
+  });
+}
 
 const canReadFinances = (venue, uid) => {
   const isOwner = venue?.createdBy === uid || venue?.userId === uid;
@@ -57,8 +76,14 @@ export const VenueDashboardProvider = ({ user, children }) => {
   useEffect(() => {
     if (!venueProfiles.length) return;
     const venueIds = venueProfiles.map(v => v.venueId);
+    let ticket = 0;
     const unsubGigs = subscribeToUpcomingOrRecentGigs(venueIds, (updatedGigs) => {
-      setGigs(updatedGigs.filter(g => g.complete !== false));
+      const visible = updatedGigs.filter(g => g.complete !== false);
+      const mine = ++ticket;
+      setGigs(visible);
+      withPrivateApplications(visible).then((merged) => {
+        if (mine === ticket) setGigs(merged);
+      }).catch(() => {});
     });
     const unsubHire = FEATURES.venueHire
       ? subscribeToVenueHireOpportunities(venueIds, (updated) => {
@@ -95,7 +120,7 @@ export const VenueDashboardProvider = ({ user, children }) => {
         getVenueRequestsByVenueIds(venueIds),
       ]);
       const templatesRes = await getTemplatesByVenueIds(venueIds);
-      applyGigs(gigsRes);
+      applyGigs(await withPrivateApplications(gigsRes));
       setTemplates(Array.isArray(templatesRes) ? templatesRes : []);
       const visibleRequests = requestsRes.filter(req => !req.removed);
       setRequests(visibleRequests);
@@ -181,7 +206,7 @@ export const VenueDashboardProvider = ({ user, children }) => {
       const venueIds = venueProfiles.map(v => v.venueId);
       const gigsRes = await getGigsByVenueIds(venueIds);
       const hireRes = FEATURES.venueHire ? await getVenueHireOpportunitiesByVenueIds(venueIds) : [];
-      applyGigs(gigsRes);
+      applyGigs(await withPrivateApplications(gigsRes));
       setVenueHireOpportunities(hireRes || []);
     } catch (err) {
       console.error('Error refreshing gigs:', err);

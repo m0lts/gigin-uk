@@ -386,9 +386,17 @@ export function VenueGigPageShell({
 
   const allSlots = useMemo(() => {
     if (!gigInfo) return [];
-    if (!relatedSlots.length) return [gigInfo];
-    return dedupeGigSlots([gigInfo, ...relatedSlots]);
-  }, [gigInfo, relatedSlots]);
+    const combined = relatedSlots.length ? dedupeGigSlots([gigInfo, ...relatedSlots]) : [gigInfo];
+    // Sibling docs are read from the public gig. Pending, declined and withdrawn
+    // applicants live only on the applications-root row in the venue list.
+    return combined.map((slot) => {
+      const id = slot?.gigId || slot?.id;
+      const rootId = slot?.applicationsRootGigId || id;
+      const root = (gigs || []).find((row) => row?.gigId === rootId);
+      if (!id || id !== rootId || !root || !Array.isArray(root.applicants)) return slot;
+      return { ...slot, applicants: root.applicants, closeUndo: root.closeUndo ?? slot.closeUndo };
+    });
+  }, [gigInfo, relatedSlots, gigs]);
 
   const venueRowForGig = useMemo(() => {
     if (!gigInfo?.venueId || !venues?.length) return null;

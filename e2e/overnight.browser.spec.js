@@ -38,6 +38,13 @@ function initAdmin() {
   return admin.firestore();
 }
 
+async function privateApplicants(gigId) {
+  const gig = await world.db.doc(`gigs/${gigId}`).get();
+  const rootId = gig.data()?.applicationsRootGigId || gigId;
+  const snap = await world.db.doc(`gigs/${rootId}/private/applications`).get();
+  return snap.data()?.applicants || [];
+}
+
 async function assertSignedOutGigHidesSecrets(gigId, email) {
   const host = process.env.FIRESTORE_EMULATOR_HOST;
   const response = await fetch(`http://${host}/v1/projects/giginltd-dev/databases/(default)/documents/gigs/${gigId}`);
@@ -553,8 +560,7 @@ test('7. a guest account links, and a name match merges only when asked', async 
   await expect.poll(async () => {
     const priv = await world.db.collection(`gigs/${world.secondId}/guestApplicants`).where('email', '==', email).limit(1).get();
     if (priv.empty) return '';
-    const gig = await world.db.doc(`gigs/${world.secondId}`).get();
-    const applicant = (gig.data()?.applicants || []).find((entry) => entry.id === priv.docs[0].id);
+    const applicant = (await privateApplicants(world.secondId)).find((entry) => entry.id === priv.docs[0].id);
     return applicant?.userId || '';
   }, { timeout: 20000 }).not.toBe('');
   await markEmailVerified(email);
@@ -731,8 +737,7 @@ test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig
   await openGigRow(page, 'Overnight Browser Decline');
   await page.locator('.na-app').getByRole('button', { name: 'Decline', exact: true }).click();
   await expect.poll(async () => {
-    const doc = await world.db.doc(`gigs/${world.declineGigId}`).get();
-    return (doc.data()?.applicants || []).some((entry) => entry.status === 'declined');
+    return (await privateApplicants(world.declineGigId)).some((entry) => entry.status === 'declined');
   }).toBe(true);
 
   await deleteGigFromTable(page, 'Overnight Browser Delete');
@@ -758,7 +763,9 @@ test('privacy. a signed-out read hides guest secrets and a non-owner cannot read
   expect(created.status).toBe(200);
   const listed = await world.db.doc(`gigs/${world.secondId}`).get();
   const applicant = (listed.data()?.applicants || []).find((entry) => entry?.id === applicationId);
-  expect(applicant?.name).toBe('Privacy Act');
+  expect(applicant).toBeFalsy();
+  const privateApplicant = (await privateApplicants(world.secondId)).find((entry) => entry?.id === applicationId);
+  expect(privateApplicant?.name).toBe('Privacy Act');
   const privateGigId = world.secondId;
   const stored = await world.db.doc(`gigs/${privateGigId}/guestApplicants/${applicationId}`).get();
   expect(stored.exists).toBe(true);
@@ -783,6 +790,8 @@ test('privacy. a signed-out read hides guest secrets and a non-owner cannot read
   );
   const signedOutText = await signedOutGig.text();
   expect(signedOutText).not.toContain(email);
+  expect(signedOutText).not.toContain('Privacy Act');
+  expect(signedOutText).not.toContain(applicationId);
   expect(signedOutText).not.toContain('manageToken');
   expect(signedOutText).not.toContain('soundEngineerContact');
   const withToken = stored.data();
@@ -808,8 +817,7 @@ test('night. one application, one list, mail, close, old data, and the profile p
     note: 'No preference this time.',
     preference: 'none',
   });
-  const root = await world.db.doc(`gigs/${world.threeIds[0]}`).get();
-  const preferenceApps = (root.data()?.applicants || []).filter((entry) => entry.name === 'Preference Act' || entry.artistName === 'Preference Act');
+  const preferenceApps = (await privateApplicants(world.threeIds[0])).filter((entry) => entry.name === 'Preference Act' || entry.artistName === 'Preference Act');
   expect(preferenceApps).toHaveLength(1);
   expect(preferenceApps[0].preferredSlotGigIds || []).toEqual([]);
   const contacts = await world.db.collection(`users/${world.venue.uid}/artistCRM`).where('email', '==', email).get();
@@ -827,8 +835,15 @@ test('night. one application, one list, mail, close, old data, and the profile p
 
   await login(page, world.artist.email);
   await applyAsArtist(page, world.threeIds[0], 'Logged-in artist for the three-set night.');
-  const afterArtist = await world.db.doc(`gigs/${world.threeIds[0]}`).get();
-  expect((afterArtist.data()?.applicants || []).filter((entry) => entry.id === world.artistId)).toHaveLength(1);
+  const afterArtist = await privateApplicants(world.threeIds[0]);
+  expect(afterArtist.filter((entry) => entry.id === world.artistId)).toHaveLength(1);
+  const hostNow = process.env.FIRESTORE_EMULATOR_HOST;
+  for (const id of world.threeIds) {
+    const text = await (await fetch(`http://${hostNow}/v1/projects/giginltd-dev/databases/(default)/documents/gigs/${id}`)).text();
+    expect(text).not.toContain('Preference Act');
+    expect(text).not.toContain('Mail Act');
+    expect(text).not.toContain('Regression Act');
+  }
 
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Three');
@@ -886,8 +901,7 @@ test('night. one application, one list, mail, close, old data, and the profile p
   await artistCard.getByRole('button', { name: /Set 1 ▾/ }).click();
   await artistCard.locator('.na-picker').getByRole('button', { name: /Set 3/ }).click();
   await expect.poll(async () => {
-    const doc = await world.db.doc(`gigs/${world.threeIds[0]}`).get();
-    return (doc.data()?.applicants || []).find((entry) => entry.id === world.artistId)?.assignedSlotGigId || '';
+    return (await privateApplicants(world.threeIds[0])).find((entry) => entry.id === world.artistId)?.assignedSlotGigId || '';
   }).toBe(world.threeIds[2]);
   await artistCard.getByRole('button', { name: /Set 3 ▾/ }).click();
   await artistCard.locator('.na-picker').getByRole('button', { name: /Set 2/ }).click();
@@ -986,15 +1000,13 @@ test('legacy. an old per-set night still accepts, declines, and cancels', async 
   await expect(page.getByText(/Accepted · Set 1/).first()).toBeVisible();
   await page.locator('.na-app', { hasText: 'Legacy Waiting' }).getByRole('button', { name: 'Decline', exact: true }).click();
   await expect.poll(async () => {
-    const doc = await world.db.doc(`gigs/${world.legacyIds[0]}`).get();
-    return (doc.data()?.applicants || []).find((entry) => entry.id === 'legacy-waiting')?.status || '';
+    return (await privateApplicants(world.legacyIds[0])).find((entry) => entry.id === 'legacy-waiting')?.status || '';
   }).toBe('declined');
   const bookedCard = page.locator('.na-app', { hasText: 'Legacy Booked' });
   await bookedCard.getByRole('button', { name: /Set 1 ▾/ }).click();
   await bookedCard.locator('.na-picker').getByRole('button', { name: /Set 2/ }).click();
   await expect.poll(async () => {
-    const doc = await world.db.doc(`gigs/${world.legacyIds[0]}`).get();
-    return (doc.data()?.applicants || []).find((entry) => entry.id === 'legacy-booked')?.assignedSlotGigId || '';
+    return (await privateApplicants(world.legacyIds[0])).find((entry) => entry.id === 'legacy-booked')?.assignedSlotGigId || '';
   }).toBe(world.legacyIds[1]);
   const cancelled = await fetch(`${API}/gigs/revertGigAfterCancellationVenue`, {
     method: 'POST',

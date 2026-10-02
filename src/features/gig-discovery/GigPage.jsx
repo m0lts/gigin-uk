@@ -70,6 +70,17 @@ function normalizeFirestoreGigId(g) {
     return g.gigId ?? g.id ?? null;
 }
 
+/** A signed-out gig has no pending application. Keep this artist's own row across a reload. */
+function keepOwnApplication(nextGig, previous, profileIds) {
+    if (!previous || normalizeFirestoreGigId(previous) !== normalizeFirestoreGigId(nextGig)) return nextGig;
+    const incoming = Array.isArray(nextGig?.applicants) ? nextGig.applicants : [];
+    const kept = (previous.applicants || []).filter((app) => (
+        app?.id && profileIds.has(app.id) && !incoming.some((row) => row?.id === app.id)
+    ));
+    if (!kept.length) return nextGig;
+    return { ...nextGig, applicants: [...incoming, ...kept] };
+}
+
 /**
  * Collect all gig document ids in a multi-set night: walk gigSlots until stable, then same-venue/date/name heuristic
  * (dashboard list sometimes has gigSlots when individual Firestore reads do not).
@@ -529,7 +540,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
                 defaultSelected ||
                 null;
             
-            setGigData(enrichedGig);
+            const ownProfileIds = new Set(profiles.map((profile) => profile.id || profile.profileId || profile.musicianId).filter(Boolean));
+            setGigData((prev) => keepOwnApplication(enrichedGig, prev, ownProfileIds));
             setValidProfiles(profiles);
             setSelectedProfile(finalSelected);
             setHasAccessToPrivateGig(nextHasAccess);

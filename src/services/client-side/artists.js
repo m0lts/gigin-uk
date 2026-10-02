@@ -542,11 +542,9 @@ export async function withdrawMusicianApplication(gigId, profile, userId) {
     const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
 
     const hasApplied = applicants.some(a => a?.id === applicantId);
-    if (!hasApplied) return applicants;
-
     const target = applicants.find(a => a?.id === applicantId);
 
-    if (target?.status === 'accepted' || target?.status === 'confirmed') {
+    if (hasApplied && (target?.status === 'accepted' || target?.status === 'confirmed')) {
       console.error('[Firestore Error] withdrawMusicianApplication: cannot withdraw accepted/confirmed application');
       return applicants;
     }
@@ -632,10 +630,8 @@ export async function withdrawArtistApplication(gigId, profile) {
     const gig = gigSnap.data() || {};
     const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
     const hasApplied = applicants.some((a) => a?.id === applicantId);
-    if (!hasApplied) return applicants;
-
     const target = applicants.find((a) => a?.id === applicantId);
-    if (target?.status === 'accepted' || target?.status === 'confirmed') {
+    if (hasApplied && (target?.status === 'accepted' || target?.status === 'confirmed')) {
       console.error('[Firestore Error] withdrawArtistApplication: cannot withdraw accepted/confirmed application');
       return applicants;
     }
