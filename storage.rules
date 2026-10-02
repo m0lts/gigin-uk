@@ -1,23 +1,117 @@
 rules_version = '2';
 
-// Firebase Storage Security Rules
-// For emulator development, these rules are permissive
-// In production, you should implement proper authentication and authorization
+// Path-scoped Storage rules. Anything not matched below is denied.
+// Admin SDK uploads (guest photos, gig media, press kits) bypass these rules
+// and are served back through signed API URLs.
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow authenticated users to read any file
-    match /artist-press-kits/{profileId}/{assetId} {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function venueDoc(venueId) {
+      return /databases/(default)/documents/venueProfiles/$(venueId);
+    }
+
+    function isVenueStaff(venueId) {
+      return signedIn() && (
+        !firestore.exists(venueDoc(venueId))
+        || firestore.get(venueDoc(venueId)).data.createdBy == request.auth.uid
+        || firestore.get(venueDoc(venueId)).data.userId == request.auth.uid
+        || firestore.exists(/databases/(default)/documents/venueProfiles/$(venueId)/members/$(request.auth.uid))
+      );
+    }
+
+    function artistDoc(profileId) {
+      return /databases/(default)/documents/artistProfiles/$(profileId);
+    }
+
+    function isArtistWriter(profileId) {
+      return signedIn() && (
+        !firestore.exists(artistDoc(profileId))
+        || firestore.get(artistDoc(profileId)).data.userId == request.auth.uid
+        || (
+          firestore.exists(/databases/(default)/documents/artistProfiles/$(profileId)/members/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/artistProfiles/$(profileId)/members/$(request.auth.uid)).data.status == 'active'
+        )
+      );
+    }
+
+    function musicianDoc(musicianId) {
+      return /databases/(default)/documents/musicianProfiles/$(musicianId);
+    }
+
+    function isMusicianWriter(musicianId) {
+      return signedIn() && (
+        musicianId == request.auth.uid
+        || !firestore.exists(musicianDoc(musicianId))
+        || firestore.get(musicianDoc(musicianId)).data.userId == request.auth.uid
+      );
+    }
+
+    function bandDoc(bandId) {
+      return /databases/(default)/documents/bands/$(bandId);
+    }
+
+    function isBandWriter(bandId) {
+      return signedIn() && (
+        !firestore.exists(bandDoc(bandId))
+        || firestore.get(bandDoc(bandId)).data.userId == request.auth.uid
+        || firestore.get(bandDoc(bandId)).data.admin.userId == request.auth.uid
+      );
+    }
+
+    // Account picture. Only that user.
+    match /users/{uid}/{allPaths=**} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Musician profile media (photo, tracks, videos). Public to display; write is the owner.
+    match /musicians/{musicianId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isMusicianWriter(musicianId);
+    }
+
+    // Artist profile media. Public to display; write is the owner or an active member.
+    match /artistProfiles/{profileId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isArtistWriter(profileId);
+    }
+
+    // Venue photos at the venue root, and videos. Public to display.
+    match /venues/{venueId}/videos/{allPaths=**} {
+      allow read: if true;
+      allow write: if isVenueStaff(venueId);
+    }
+
+    match /venues/{venueId}/{fileName} {
+      allow read: if true;
+      allow write: if isVenueStaff(venueId);
+    }
+
+    // Terms and house rules. Staff can upload from the client. Guests use the stored download URL.
+    match /venues/{venueId}/documents/{allPaths=**} {
+      allow read, write: if isVenueStaff(venueId);
+    }
+
+    // Band picture. Public to display. The first file can land before the band document exists.
+    match /bands/{bandId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isBandWriter(bandId);
+    }
+
+    // Served only by the API, via signed URLs. No client read or write.
+    match /gig-media/{allPaths=**} {
       allow read, write: if false;
     }
 
-    match /{allPaths=**} {
-      allow read: if request.auth != null
-        && !allPaths.matches('artist-press-kits/.*');
+    match /guest-applications/{allPaths=**} {
+      allow read, write: if false;
+    }
 
-      allow write: if request.auth != null
-        && !allPaths.matches('artist-press-kits/.*');
+    match /artist-press-kits/{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
-
