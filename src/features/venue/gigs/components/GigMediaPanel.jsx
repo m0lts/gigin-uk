@@ -20,10 +20,12 @@ const ALLOWED = new Set([
   'video/webm',
 ]);
 
-export function GigMediaPanel({ gigId, media = [], hasShareLink = false, canUpdate = false }) {
+export function GigMediaPanel({ gigId, media = [], hasShareLink = false, canUpdate = false, onShareLinkChange }) {
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState('');
+  const [linkRevoked, setLinkRevoked] = useState(false);
   const files = Array.isArray(media) ? media : [];
+  const linkLive = !linkRevoked && (hasShareLink || Boolean(token));
 
   if (!gigId || !canUpdate) return null;
 
@@ -68,7 +70,9 @@ export function GigMediaPanel({ gigId, media = [], hasShareLink = false, canUpda
     setBusy(true);
     try {
       const created = await createGigMediaShare(gigId);
+      setLinkRevoked(false);
       setToken(created.token);
+      onShareLinkChange?.(true);
       const link = `${window.location.origin}/share/gig-media/${created.token}`;
       await navigator.clipboard.writeText(link).catch(() => {});
       toast.success('Private link copied.');
@@ -102,9 +106,9 @@ export function GigMediaPanel({ gigId, media = [], hasShareLink = false, canUpda
       </label>
       <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
         <button type="button" className="btn secondary" disabled={busy} onClick={share}>
-          {hasShareLink || token ? 'New private link' : 'Create private link'}
+          {linkLive ? 'New private link' : 'Create private link'}
         </button>
-        {(hasShareLink || token) ? (
+        {linkLive ? (
           <button
             type="button"
             className="btn tertiary"
@@ -114,6 +118,8 @@ export function GigMediaPanel({ gigId, media = [], hasShareLink = false, canUpda
               try {
                 await revokeGigMediaShare(gigId);
                 setToken('');
+                setLinkRevoked(true);
+                onShareLinkChange?.(false);
                 toast.success('Link revoked.');
               } catch (err) {
                 console.error(err);

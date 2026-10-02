@@ -595,13 +595,25 @@ test('8b. private link downloads one file and a zip of that file', async ({ page
   await page.getByRole('button', { name: 'Create private link' }).click();
   const href = await page.locator('p', { hasText: '/share/gig-media/' }).innerText();
   await page.goto(href);
-  const fileHref = await page.getByRole('link', { name: 'Download', exact: true }).first().getAttribute('href');
-  const file = await page.request.get(fileHref);
+  await expect(page.getByRole('heading', { name: 'Photos and videos' })).toBeVisible();
+  const downloadAll = page.getByRole('button', { name: /Download all/ });
+  await expect(downloadAll).toBeVisible();
+  await page.getByRole('button', { name: /Photo 1 of/ }).click();
+  await page.getByRole('button', { name: 'Download', exact: true }).click();
+  await expect(page.getByText(/Downloading overnight-browser-pixel\.png/)).toBeVisible();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await downloadAll.click();
+  await expect(page.getByText(/Your download has started:/)).toBeVisible();
+  const token = new URL(href.trim()).pathname.split('/').pop();
+  const meta = await page.request.get(`${API}/gig-media/share/${token}`);
+  expect(meta.ok()).toBeTruthy();
+  const item = (await meta.json()).media?.[0];
+  expect(item?.id).toBeTruthy();
+  const file = await page.request.get(`${API}/gig-media/share/${token}/file/${item.id}`);
   expect(file.ok()).toBeTruthy();
   expect(file.headers()['content-disposition'] || '').toContain('overnight-browser-pixel.png');
   expect((await file.body()).length).toBeGreaterThan(8);
-  const zipHref = await page.getByRole('link', { name: 'Download all as zip' }).getAttribute('href');
-  const zip = await page.request.get(zipHref);
+  const zip = await page.request.get(`${API}/gig-media/share/${token}/zip`);
   expect(zip.ok()).toBeTruthy();
   const dir = mkdtempSync(path.join(tmpdir(), 'gig-media-'));
   const zipPath = path.join(dir, 'media.zip');
@@ -634,12 +646,14 @@ test('8. media share link, wrong type, revoke', async ({ page }) => {
   await expect(link).toBeVisible();
   const href = await link.innerText();
   await page.goto(href);
-  await expect(page.getByRole('link', { name: 'Download', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Photos and videos' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Download all/ })).toBeVisible();
   await page.goto('/venues/dashboard/gigs');
   await openGigRow(page, 'Overnight Browser Night');
   await page.getByRole('button', { name: 'Revoke link' }).click();
+  await expect(page.getByRole('button', { name: 'Create private link' })).toBeVisible();
   await page.goto(href);
-  await expect(page.getByText('This link is no longer available.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'This link is no longer available' })).toBeVisible();
 });
 
 async function applyAsArtist(page, gigId, message) {
@@ -726,18 +740,26 @@ test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig
 
 test('privacy. a signed-out read hides guest secrets and a non-owner cannot read private docs', async ({ page }) => {
   watch(page, 'privacy');
-  const email = `test+guest-a-${world.stamp}@example.com`;
-  let applicationId = '';
-  let privateGigId = '';
-  for (const id of [...(world.nightIds || [world.nightId]), world.secondId]) {
-    const gig = await world.db.doc(`gigs/${id}`).get();
-    const applicant = (gig.data()?.applicants || []).find((entry) => entry?.name === 'Browser Act Withdrawn' || entry?.artistName === 'Browser Act Withdrawn');
-    if (!applicant) continue;
-    applicationId = applicant.id;
-    privateGigId = id;
-    break;
-  }
-  expect(applicationId).toBeTruthy();
+  const email = `test+privacy-${world.stamp}@example.com`;
+  const applicationId = randomUUID();
+  const created = await fetch(`${API}/guest-applications`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      gigId: world.secondId,
+      applicationId,
+      manageToken: 'c'.repeat(40),
+      actName: 'Privacy Act',
+      contactName: 'Privacy Guest',
+      contacts: { email },
+      slotGigIds: [world.secondId],
+    }),
+  });
+  expect(created.status).toBe(200);
+  const listed = await world.db.doc(`gigs/${world.secondId}`).get();
+  const applicant = (listed.data()?.applicants || []).find((entry) => entry?.id === applicationId);
+  expect(applicant?.name).toBe('Privacy Act');
+  const privateGigId = world.secondId;
   const stored = await world.db.doc(`gigs/${privateGigId}/guestApplicants/${applicationId}`).get();
   expect(stored.exists).toBe(true);
   await assertSignedOutGigHidesSecrets(privateGigId, email);

@@ -2235,7 +2235,13 @@ export function GigDetailsPanel({
               venues={venues}
               gigs={gigs}
             />
-            <GigMediaPanel gigId={rawGig?.gigId} media={privateBundle?.media || []} hasShareLink={Boolean(privateBundle?.hasShareLink)} canUpdate={canUpdate} />
+            <GigMediaPanel
+              gigId={rawGig?.gigId}
+              media={privateBundle?.media || []}
+              hasShareLink={Boolean(privateBundle?.hasShareLink)}
+              canUpdate={canUpdate}
+              onShareLinkChange={(live) => setPrivateBundle((prev) => ({ ...(prev || {}), hasShareLink: live }))}
+            />
           </>
         ) : (
         <div className="venue-hire-confirmed-panel gig-details-main">
@@ -2246,7 +2252,13 @@ export function GigDetailsPanel({
             onSlotBodyMount={setRunningOrderSlotEl}
           />
           {renderConfirmedActRequirements()}
-          <GigMediaPanel gigId={rawGig?.gigId} media={privateBundle?.media || []} hasShareLink={Boolean(privateBundle?.hasShareLink)} canUpdate={canUpdate} />
+          <GigMediaPanel
+            gigId={rawGig?.gigId}
+            media={privateBundle?.media || []}
+            hasShareLink={Boolean(privateBundle?.hasShareLink)}
+            canUpdate={canUpdate}
+            onShareLinkChange={(live) => setPrivateBundle((prev) => ({ ...(prev || {}), hasShareLink: live }))}
+          />
           <GigApplications
             rawGig={rawGig}
             guestPrivate={privateBundle?.guests || {}}
