@@ -28,6 +28,7 @@ import profileRoutes, { artistExtra } from "./routes/profiles.js";
 import finderRoutes from "./routes/finder.js";
 import accessRequestRoutes from "./routes/accessRequests.js";
 import authLinkRoutes from "./routes/authLinks.js";
+import mailRoutes from "./routes/mail.js";
 import { seedListedVenuesIfEmpty } from "./lib/keepProfile.js";
 // Initialize Firebase Admin (must be done before importing routes that use it)
 initializeAdmin();
@@ -195,6 +196,7 @@ app.use("/api/profiles", profileRoutes);
 app.use("/api/finder", finderRoutes);
 app.use("/api/access-requests", accessRequestRoutes);
 app.use("/api/auth", authLinkRoutes);
+app.use("/api/mail", mailRoutes);
 app.use("/api/artists", artistExtra);
 
 // 404 handler (must come after all routes)

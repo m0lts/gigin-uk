@@ -776,9 +776,8 @@ service cloud.firestore {
     }
 
     match /mail/{mailId} {
-      // Allow authenticated users to create email documents
-      // The Trigger Email extension will process these
-      allow create: if request.auth != null;
+      // Mail is queued by the API and Cloud Functions with the Admin SDK.
+      allow create: if false;
 
       // No client reads, updates, or deletes
       // The extension handles these operations

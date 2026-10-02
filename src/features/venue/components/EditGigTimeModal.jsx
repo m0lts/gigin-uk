@@ -4,7 +4,7 @@ import { updateGigDocument } from '@services/api/gigs';
 import { getOrCreateConversation } from '@services/api/conversations';
 import { sendMessage } from '@services/api/messages';
 import { getArtistProfileById, getMusicianProfileByMusicianId } from '@services/client-side/artists';
-import { sendEmail } from '@services/client-side/emails';
+import { sendGigTimingEmail } from '@services/client-side/emails';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { formatDate } from '@services/utils/dates';
 import { toast } from 'sonner';
@@ -144,10 +144,16 @@ export const EditGigTimeModal = ({ gig, allSlots, onClose, refreshGigs, user, ed
                 const name = confirmedApplicant.name || confirmedApplicant.artistName || 'there';
                 const messageText = buildMessage(name);
                 if (confirmedApplicant.email) {
-                    await sendEmail({
+                    await sendGigTimingEmail({
                         to: confirmedApplicant.email,
-                        subject: `Updated timings for ${slotGig.gigName || 'your gig'}`,
-                        text: messageText,
+                        name,
+                        gigName: slotGig.gigName,
+                        venueName: slotGig.venue?.venueName,
+                        dateLabel: formatDate(slotGig.date, 'short'),
+                        oldStartTime,
+                        newStartTime,
+                        oldDuration,
+                        newDuration,
                     });
                 }
                 return messageText;
