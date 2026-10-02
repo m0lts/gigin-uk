@@ -16,6 +16,7 @@ import {
   venueGuestView,
 } from "../lib/gigPrivacy.js";
 import { queueMail } from "../lib/queueMail.js";
+import { keepReminderHtml } from "../lib/keepProfile.js";
 import { placeLoggedInApplication, acceptApplication, assignApplication, declineApplication, undoApplication, closeApplications, undoClose, reopenApplications, saveSoundTech } from "../lib/nightApplicationOps.js";
 
 const router = express.Router();
@@ -208,18 +209,32 @@ function applicantIsGuest(applicant) {
   return applicant?.type === "guest" || applicant?.guest === true;
 }
 
-async function emailGuest(gigId, applicant, { subject, text }) {
+async function emailGuest(gigId, applicant, { subject, text, remind = false }) {
   let to = applicant?.email;
-  if (!to && gigId && applicant?.id) {
-    const priv = await loadGuestPrivate(gigId, applicant.id);
-    to = priv?.email || null;
+  let priv = null;
+  if (gigId && applicant?.id) {
+    priv = await loadGuestPrivate(gigId, applicant.id);
+    to = to || priv?.email || null;
+  }
+  let extra = "";
+  if (remind && to) {
+    extra = await keepReminderHtml({
+      email: to,
+      artistProfileId: priv?.artistProfileId || applicant?.artistProfileId,
+      keepProfileOffer: priv?.keepProfileOffer || applicant?.keepProfileOffer,
+      gigId,
+      applicantId: applicant.id,
+      actName: applicant?.name || applicant?.artistName || "",
+      venueName: applicant?.venueName || "",
+    });
   }
   await queueMail({
     to,
+    from: "Gigin <noreply@giginmusic.com>",
     message: {
       subject,
       text,
-      html: `<p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.5;color:#0F1115;">${text}</p>`,
+      html: `<p style="font-family:Inter,Arial,sans-serif;font-size:15px;line-height:1.5;color:#0F1115;">${text}</p>${extra}`,
     },
   });
 }
@@ -979,6 +994,7 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
     await emailGuest(gigData.gigId, acceptedApplicant, {
       subject: `You're booked to play ${gigData.gigName || "the gig"}`,
       text: `Your application to play at ${gigData.venue?.venueName || "the venue"} has been accepted. We'll only email you about this.`,
+      remind: true,
     });
   } else if (nonPayableGig) {
     // For legacy musician profiles, confirmed gigs were stored on musicianProfiles.
@@ -1132,6 +1148,7 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
     await emailGuest(gigData.gigId, acceptedApplicant, {
       subject: `You're booked to play ${gigData.gigName || "the gig"}`,
       text: `Your application to play at ${gigData.venue?.venueName || "the venue"} has been accepted. We'll only email you about this.`,
+      remind: true,
     });
   } else {
     await declineArtistOnOtherSetsInGroup(gigData.gigId, musicianProfileId);
@@ -1203,6 +1220,7 @@ router.post("/declineGigApplication", requireAuth, asyncHandler(async (req, res)
     await emailGuest(gigData.gigId, declinedApplicant, {
       subject: `Update on your application for ${gigData.gigName || "the gig"}`,
       text: `The venue won't be booking you for this gig. We'll only email you about this.`,
+      remind: true,
     });
   }
   return res.json({ data: { updatedApplicants } });

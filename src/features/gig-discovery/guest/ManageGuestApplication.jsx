@@ -10,6 +10,8 @@ import { GuestAssetsStep } from './GuestAssetsStep';
 import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
 import { GuestWhoStep } from './GuestWhoStep';
+import { FEATURES } from '../../../config/features';
+import { keepGuestProfile } from '@services/client-side/keepProfile';
 import { bookerLine, firstName, formatClock, formatGigDay, formatShortDay, icsForSet, preferenceReview, slotDate, slotEnd } from './guestFormat';
 
 const STATUS = {
@@ -195,6 +197,21 @@ export function ManageGuestApplication() {
         <p className="ga-mono">{gig ? formatGigDay(gig) : application.dateLabel}</p>
         <h1>{heading}</h1>
         <span className={`ga-pill ${statusClass}`}>{statusLabel}</span>
+        {FEATURES.keepProfile && application.artistProfileId && application.profileSlug && (
+          <article className="ga-account">
+            <strong>Your Gigin profile</strong>
+            <p className="ga-mono">giginmusic.com/artist/{application.profileSlug}</p>
+            <Link to={`/artist/${application.profileSlug}`}>Open</Link>
+            <Link to="/profile/edit">Edit</Link>
+          </article>
+        )}
+        {FEATURES.keepProfile && !application.artistProfileId && application.keepProfileOffer === 'dismissed' && (
+          <div className="ga-account">
+            <strong>Keep this as your Gigin profile?</strong>
+            <p>Your details in one place, with a link you can send to other venues. You'll create a password when you confirm.</p>
+            <button type="button" className="ga-text" onClick={() => keepGuestProfile(token, { gigId })}>Keep my profile</button>
+          </div>
+        )}
         {application.status === 'declined' && (
           <>
             <p className="ga-about">{booker.name} has picked the line-up for {dateLabel} and couldn't fit {draft.actName || 'you'} in this time. Thanks for applying. The bar has your details for future nights.</p>

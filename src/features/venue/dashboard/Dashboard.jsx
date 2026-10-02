@@ -1,5 +1,6 @@
-import { Route, Routes, useLocation, Link, useNavigate, Navigate } from 'react-router-dom'
+import { Route, Routes, useLocation, Link, useNavigate, Navigate, useParams } from 'react-router-dom'
 import { FEATURES } from '../../../config/features';
+import { FinderListingSettings } from '../../keep-profile/FinderPages';
 import { Sidebar } from './Sidebar'
 import React, { useState, useEffect, useMemo } from 'react'
 import { AddGigsModal } from './AddGigsModal';
@@ -29,6 +30,11 @@ import Portal from '../../shared/components/Portal';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { Header } from '../components/Header';
+
+function FinderListingRoute() {
+  const { venueId } = useParams();
+  return <FinderListingSettings venueId={venueId} />;
+}
 
 export const VenueDashboard = ({ user }) => {
     const {
@@ -188,6 +194,7 @@ export const VenueDashboard = ({ user }) => {
                         <Route path='gigs/gig-applications' element={<VenueGigPageShell setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsMode={setAddGigsMode} gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} user={user} refreshStripe={refreshStripe} customerDetails={customerDetails} refreshGigs={refreshGigs} />} />
                         <Route path='messages' element={FEATURES.chat ? <MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} requests={requests} setRequests={setRequests} setShowAddGigsModal={setShowAddGigsModal} setAddGigsMode={setAddGigsMode} setBuildingForMusician={setBuildingForMusician} setBuildingForMusicianData={setBuildingForMusicianData} setRequestId={setRequestId} setPreferredDate={setPreferredDate} refreshGigs={refreshGigs} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} setVenues={setVenueProfiles} />} />
+                        <Route path='finder-listing/:venueId' element={FEATURES.venueFinder ? <FinderListingRoute /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='artists' element={<ArtistCRM user={user} venues={venueProfiles} />} />
                         <Route path='artists/find' element={FEATURES.discovery ? <FindArtists user={user} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='artists/find/nearby-lineups' element={FEATURES.discovery ? <NearbyLineups /> : <Navigate to="/venues/dashboard/gigs" replace />} />

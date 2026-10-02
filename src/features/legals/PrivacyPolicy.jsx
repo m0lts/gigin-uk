@@ -110,7 +110,10 @@ export const PrivacyPolicy = () => {
 
       <div className="legals-section">
         <h2>9. Cookies</h2>
-        <p>We currently do not use cookies. If this changes, we will update this Privacy Policy and provide a cookie notice.</p>
+        <p>
+          After you confirm a guest profile, we set one httpOnly cookie on this device so we can fill in your next application and let you edit that profile.
+          It is not used for advertising. Signing out of the profile, or deleting it, clears the cookie.
+        </p>
       </div>
 
       <div className="legals-section">
@@ -131,7 +134,19 @@ export const PrivacyPolicy = () => {
       </div>
 
       <div className="legals-section">
-        <h2>12. Contact Us</h2>
+        <h2>12. Guest profiles</h2>
+        <p>
+          If you apply to a gig without an account and ask us to keep your details, we store an artist profile.
+          Your act name and the sections you switch on (photo, bio, links, band and tech rider) can be seen by anyone with your profile link.
+          Your email and phone number are never on that page. Venues contact you through a form, and you reply from your own email.
+          A venue only sees your email and phone if you have applied to them or they have booked you.
+          Press kit files stay in private storage. Only a venue with a confirmed booking can download the files you switch on.
+          Nothing is public until you open the confirm link and create a password. That password is your Gigin login. You can hide or delete the profile after you log in.
+        </p>
+      </div>
+
+      <div className="legals-section">
+        <h2>13. Contact Us</h2>
         <p className="legals-address">
           <strong>Gigin Ltd</strong> <br />
           The Old Rectory, Rectory Lane, Kingston, Cambridge, CB23 2NL <br />

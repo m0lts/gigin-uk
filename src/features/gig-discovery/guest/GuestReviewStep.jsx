@@ -1,6 +1,6 @@
 import { preferenceReview } from './guestFormat';
 
-export function GuestReviewStep({ draft, slots, bookerName, patch, onJump, summary = false, readOnly = false }) {
+export function GuestReviewStep({ draft, slots, bookerName, patch, onJump, summary = false, readOnly = false, editLabel = 'Edit', rowTags = null, noteHint = '' }) {
   const ids = draft.preferredSlotGigIds || draft.slotGigIds || [];
   const setLabel = preferenceReview(slots, ids);
   const oneSet = slots.length < 2;
@@ -17,24 +17,25 @@ export function GuestReviewStep({ draft, slots, bookerName, patch, onJump, summa
       {!summary && <label className="ga-field">
         <span>Note to {bookerName} <em>{draft.note.length}/500</em></span>
         <textarea maxLength={500} rows={4} value={draft.note} onChange={(event) => patch({ note: event.target.value.slice(0, 500) })} placeholder="Anything they should know before the night." />
+        {noteHint && <small>{noteHint}</small>}
       </label>}
       <div className="ga-review">
-        <Row readOnly={readOnly} label="Act and contact" value={`${draft.actName || '—'} · ${draft.contactName || '—'}`} onEdit={() => onJump('who')} />
-        {!oneSet && <Row readOnly={readOnly} label="Set preference" value={setLabel} muted={!ids.length} onEdit={() => onJump('who')} />}
-        <Row readOnly={readOnly} label="Photo and links" value={photoBits.length ? photoBits.join(' · ') : 'Skipped'} muted={!photoBits.length} onEdit={() => onJump('assets')} />
-        <Row readOnly={readOnly} label="Tech rider" value={`${members.length} member${members.length === 1 ? '' : 's'}, using ${draft.needs.length} of the bar's items, bringing ${draft.bringOwn.length}`} onEdit={() => onJump('tech')} />
+        <Row readOnly={readOnly} editLabel={editLabel} tag={rowTags?.who} label="Act and contact" value={`${draft.actName || '—'} · ${draft.contactName || '—'}`} onEdit={() => onJump('who')} />
+        {!oneSet && <Row readOnly={readOnly} editLabel={editLabel} label="Set preference" value={setLabel} muted={!ids.length} onEdit={() => onJump('who')} />}
+        <Row readOnly={readOnly} editLabel={editLabel} tag={rowTags?.assets} label="Photo and links" value={photoBits.length ? photoBits.join(' · ') : 'Skipped'} muted={!photoBits.length} onEdit={() => onJump('assets')} />
+        <Row readOnly={readOnly} editLabel={editLabel} tag={rowTags?.tech} label="Tech rider" value={`${members.length} member${members.length === 1 ? '' : 's'}, using ${draft.needs.length} of the bar's items, bringing ${draft.bringOwn.length}`} onEdit={() => onJump('tech')} />
       </div>
       {!summary && <p className="ga-fine">{bookerName} will see everything above. We'll email you a copy with a private link to change or withdraw it.</p>}
     </div>
   );
 }
 
-function Row({ label, value, onEdit, muted, readOnly }) {
+function Row({ label, value, onEdit, muted, readOnly, editLabel, tag }) {
   return (
     <div className="ga-review__row">
       <span>{label}</span>
-      <strong className={muted ? 'is-muted' : ''}>{value}</strong>
-      {readOnly ? <span /> : <button type="button" onClick={onEdit}>Edit</button>}
+      <strong className={muted ? 'is-muted' : ''}>{value}{tag ? ` · ${tag}` : ''}</strong>
+      {readOnly ? <span /> : <button type="button" onClick={onEdit}>{editLabel}</button>}
     </div>
   );
 }

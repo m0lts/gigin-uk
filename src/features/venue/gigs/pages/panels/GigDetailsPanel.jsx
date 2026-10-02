@@ -30,6 +30,7 @@ import { GigApplications } from '@features/venue/dashboard/GigApplications';
 import { NightApplyReview } from '@features/venue/gigs/components/NightApplyReview';
 import { isGuestApplyGig } from '@features/gig-discovery/guest/guestFormat';
 import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
+import { PressKitGigBlock } from '../../../../keep-profile/PressKit';
 import { GigMediaPanel } from '@features/venue/gigs/components/GigMediaPanel';
 import {
   isArtistBookingNightFullyBooked,
@@ -151,10 +152,13 @@ function buildRunningOrder(rawGig, slots, gigs) {
     const newCount = status === 'open'
       ? applicants.filter((applicant) => applicant && !applicant.viewed && applicant.invited !== true).length
       : 0;
+    const booked = applicants.find((applicant) => ['confirmed', 'accepted', 'paid'].includes(String(applicant?.status || '').toLowerCase()) && !applicant?.withdrawnAfterAccept);
     return {
       kind: 'set',
       key: doc?.gigId || `set-${index + 1}`,
       label: `Set ${index + 1}`,
+      actName: booked?.name || booked?.artistName || '',
+      profileId: booked?.artistProfileId || booked?.linkedArtistId || (booked && !booked.guest && booked.type !== 'guest' ? booked.id : null),
       time: start || '—',
       minutes: clockToMinutes(doc?.startTime),
       range: start && end ? `${start}\u2013${end}` : (start || '—'),
@@ -241,6 +245,9 @@ function RunningOrder({ rawGig, slots, gigs, onSlotBodyMount }) {
                     </span>
                   </div>
                   <SlotBodyMount gigId={item.key} onMount={onSlotBodyMount} />
+                  {FEATURES.pressKit && item.status === 'booked' && item.profileId ? (
+                    <PressKitGigBlock profileId={item.profileId} actName={item.actName} venueId={rawGig?.venueId} dateLabel={item.range} />
+                  ) : null}
                 </article>
               )}
             </div>

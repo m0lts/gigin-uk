@@ -13,4 +13,8 @@ export const FEATURES = {
   reviews: readFlag(import.meta.env.VITE_FEATURE_REVIEWS),
   marketingPages: readFlag(import.meta.env.VITE_FEATURE_MARKETING_PAGES),
   finances: readFlag(import.meta.env.VITE_FEATURE_FINANCES),
+  keepProfile: readFlag(import.meta.env.VITE_FEATURE_KEEP_PROFILE),
+  publicProfile: readFlag(import.meta.env.VITE_FEATURE_PUBLIC_PROFILE),
+  venueFinder: readFlag(import.meta.env.VITE_FEATURE_VENUE_FINDER),
+  pressKit: readFlag(import.meta.env.VITE_FEATURE_PRESS_KIT),
 };

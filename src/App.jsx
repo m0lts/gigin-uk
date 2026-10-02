@@ -37,7 +37,10 @@ import { VenuePage } from './features/venue/components/VenuePage';
 import { VerifyEmailModal } from './features/shared/components/VerifyEmailModal';
 import { auth } from "@lib/firebase";
 import { NoProfileModal } from './features/artist/components/NoProfileModal';
-import { VenueFinder } from './features/venue-discovery/VenueFinder';
+import { ArtistHome } from './features/keep-profile/ArtistHome';
+import { AddedToAccount, ConfirmProfilePage, KeepChoicesPage, NudgePage, PrefillPage, ProfileEditorPage } from './features/keep-profile/ProfilePages';
+import { PressKitPage } from './features/keep-profile/PressKit';
+import { ArtistVenuePage, FindVenuesRoute } from './features/keep-profile/FinderPages';
 import Portal from './features/shared/components/Portal';
 import { logClientError } from './services/client-side/errors';
 import { TermsAndConditions } from './features/legals/TermsAndConditions';
@@ -150,6 +153,12 @@ export default function App() {
         if (result?.artistLinked) {
           try { sessionStorage.removeItem('guestApplicationLink'); } catch { /* ignore */ }
         }
+        try {
+          if (sessionStorage.getItem('gigin.reviewAdd') === '1') {
+            sessionStorage.removeItem('gigin.reviewAdd');
+            navigate('/profile/added');
+          }
+        } catch { /* ignore */ }
       })
       .catch(() => {});
     return undefined;
@@ -167,7 +176,7 @@ export default function App() {
         <Route path='/find-a-gig' element={FEATURES.discovery ? <GigFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
 
         {/* FIND VENUES */}
-        <Route path='/find-venues' element={FEATURES.discovery ? <VenueFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}   /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
+        <Route path='/find-venues' element={<FindVenuesRoute user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} setAuthClosable={setAuthClosable} />} />
 
         {/* MUSICIAN ROUTES */}
         <Route path='/'>
@@ -185,7 +194,7 @@ export default function App() {
           <Route index element={FEATURES.marketingPages ? <VenueLandingPage setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} setInitialEmail={setInitialEmail} /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
           <Route path='add-venue/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} setAuthType={setAuthType} /></NoHeaderFooterLayout>} />
           <Route path='dashboard/*' element={<VenueDashboardProvider user={user}><VenueDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><VenueDashboard user={user} /></VenueDashboardLayout></VenueDashboardProvider>} />
-          <Route path='/venues/:venueId' element={<VenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+          <Route path='/venues/:venueId' element={FEATURES.venueFinder ? <ArtistVenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} /> : <VenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         </Route>
 
         {/* OTHER ROUTES */}
@@ -200,6 +209,15 @@ export default function App() {
         <Route path='/join-artist' element={<JoinArtistPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         <Route path='/terms-and-conditions' element={<TermsAndConditions />} />
         <Route path='/privacy-policy' element={<PrivacyPolicy />} />
+        <Route path='/home' element={FEATURES.keepProfile ? <ArtistHome user={user} logout={logout} /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
+        <Route path='/profile/keep' element={<KeepChoicesPage />} />
+        <Route path='/profile/confirm/:token' element={<ConfirmProfilePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
+        <Route path='/profile/edit' element={<ProfileEditorPage />} />
+        <Route path='/profile/edit/:token' element={<ProfileEditorPage />} />
+        <Route path='/profile/press-kit' element={FEATURES.pressKit ? <PressKitPage /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
+        <Route path='/profile/keep-from-email/:token' element={<NudgePage />} />
+        <Route path='/profile/prefill/:token' element={<PrefillPage />} />
+        <Route path='/profile/added' element={<AddedToAccount />} />
         <Route path="/auth/email-verified" element={<EmailActionHandler user={user} />} />
         
       </Routes>

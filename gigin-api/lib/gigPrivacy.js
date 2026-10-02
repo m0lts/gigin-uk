@@ -26,6 +26,10 @@ const PRIVATE_KEYS = [
   "dateLabel",
   "setLabel",
   "source",
+  "artistProfileId",
+  "keepProfileOffer",
+  "reminderCount",
+  "profileSlug",
 ];
 
 const DETAILS_FIELDS = [
@@ -61,6 +65,8 @@ export function guestStub(full = {}) {
   };
   if (full.userId) stub.userId = full.userId;
   if (full.linkedArtistId) stub.linkedArtistId = full.linkedArtistId;
+  if (full.artistProfileId) stub.artistProfileId = full.artistProfileId;
+  if (full.profileSlug) stub.profileSlug = full.profileSlug;
   if (full.fee != null) stub.fee = full.fee;
   if (full.proposedFee != null) stub.proposedFee = full.proposedFee;
   if (Array.isArray(full.preferredSlotGigIds)) stub.preferredSlotGigIds = full.preferredSlotGigIds;

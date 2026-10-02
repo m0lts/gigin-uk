@@ -10,6 +10,7 @@ import {
   slotGigId,
   sortSlots,
 } from "./nightApplications.js";
+import { appendPlayedAt, keepReminderHtml, markBookingCancelled } from "./keepProfile.js";
 
 const DELAY_MS = 10 * 1000;
 const DECLINE_DELAY_MS = 5 * 60 * 1000;
@@ -393,7 +394,17 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
     inner = `<p>${escapeHtml(act)} has withdrawn from ${escapeHtml(name)}. ${escapeHtml(open)}You can give it to someone you've accepted, or accept someone who's waiting.</p>`;
     button = "Open the gig";
   }
-  if (other) inner += "";
+  if (kind === "accepted-later" || kind === "accepted-set" || kind === "declined") {
+    inner += await keepReminderHtml({
+      email: app.email,
+      artistProfileId: app.artistProfileId,
+      keepProfileOffer: app.keepProfileOffer,
+      gigId: app.gigId || applicationsRootGigId(slots),
+      applicantId: app.id,
+      actName: act,
+      venueName,
+    });
+  }
   return {
     to: kind === "venue-withdraw" ? null : (app.email || null),
     message: {
@@ -460,6 +471,16 @@ export async function acceptApplication({ gigId, applicantId, slotGigId }) {
     manageToken: priv.manageToken || app.manageToken || null,
   };
   const venue = await loadVenue(root.data.venueId);
+  if (next.artistProfileId || next.linkedArtistId) {
+    await appendPlayedAt({
+      profileId: next.artistProfileId || next.linkedArtistId,
+      venueId: root.data.venueId,
+      venueName: venue?.name || venue?.venueName || "",
+      city: venue?.address?.city || venue?.city || "",
+      gigId: root.id,
+      date: root.data.startDateTime || root.data.date || null,
+    });
+  }
   const mailId = await mailAct(target ? (previous.status === "accepted" ? "set-later" : "accepted-set") : "accepted-later", {
     app: next,
     slots: views,
@@ -829,6 +850,14 @@ export async function withdrawGuestApplication({ gigId, applicant }) {
     applicantId: next.id,
     privatePatch: isGuestApplicant(next) ? guestPrivate(next, rootId) : null,
   });
+  if (wasAccepted && (next.artistProfileId || next.linkedArtistId)) {
+    await markBookingCancelled({
+      profileId: next.artistProfileId || next.linkedArtistId,
+      venueId: root?.data?.venueId,
+      gigId: rootId,
+      date: root?.data?.startDateTime || root?.data?.date || null,
+    });
+  }
   if (wasAccepted && root) {
     const venue = await loadVenue(root.data.venueId);
     const inbox = await venueInbox(venue);

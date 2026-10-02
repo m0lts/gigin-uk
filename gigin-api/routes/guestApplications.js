@@ -21,6 +21,7 @@ import {
   withdrawGuestApplication,
   writeGuestApplication,
 } from "../lib/nightApplicationOps.js";
+import { dismissKeepOffer, keepProfileForGuest, noteProfileApplication } from "../lib/keepProfile.js";
 const router = express.Router();
 
 const guestLimiter = rateLimit({
@@ -117,6 +118,9 @@ function publicApplication(applicant, gig, night) {
     gigName: applicant.gigName || "",
     venueName: applicant.venueName || "",
     dateLabel: applicant.dateLabel || "",
+    artistProfileId: applicant.artistProfileId || null,
+    profileSlug: applicant.profileSlug || null,
+    keepProfileOffer: applicant.keepProfileOffer || "none",
     editable: (applicant.status === "pending" || applicant.status === "sent") && !past,
   };
 }
@@ -229,6 +233,7 @@ function applicantRecord(body, photoUrl) {
     dateLabel: body.dateLabel || "",
     setLabel: body.setLabel || "",
     source: body.source || "public",
+    artistProfileId: body.artistProfileId || null,
   };
 }
 
@@ -632,6 +637,15 @@ router.post("/", asyncHandler(async (req, res) => {
     if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
     throw error;
   }
+  if (applicant.artistProfileId) {
+    await noteProfileApplication({
+      profileId: applicant.artistProfileId,
+      venueId: applicant.venueId,
+      gigId: body.gigId,
+      applicantId: applicant.id,
+      inviteId: body.inviteId || null,
+    }).catch(() => {});
+  }
   if (body.inviteId) {
     await db.collection("gigInvites").doc(body.inviteId).set({
       claimedByApplicationId: body.applicationId,
@@ -733,6 +747,33 @@ router.patch("/:token", asyncHandler(async (req, res) => {
   const fresh = await loadNightSlots(current.gigId || gigId);
   const night = readNight(fresh.slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
   return res.json(publicApplication(next, found.gig.data, night));
+}));
+
+router.post("/:token/keep-profile", asyncHandler(async (req, res) => {
+  const gigId = req.body?.gigId || req.query.gigId;
+  const found = await findByToken(gigId, req.params.token);
+  if (!found) return res.status(404).json({ error: "This link is not valid." });
+  try {
+    const result = await keepProfileForGuest({
+      guest: found.applicant,
+      gigId: found.night?.applicationsRootGigId || gigId,
+      email: req.body?.email || found.applicant.email,
+    });
+    return res.json(result);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ error: error.message });
+  }
+}));
+
+router.post("/:token/keep-dismiss", asyncHandler(async (req, res) => {
+  const gigId = req.body?.gigId || req.query.gigId;
+  const found = await findByToken(gigId, req.params.token);
+  if (!found) return res.status(404).json({ error: "This link is not valid." });
+  await dismissKeepOffer({
+    gigId: found.night?.applicationsRootGigId || gigId,
+    applicantId: found.applicant.id,
+  });
+  return res.json({ ok: true, keepProfileOffer: "dismissed" });
 }));
 
 router.post("/:token/withdraw", asyncHandler(async (req, res) => {

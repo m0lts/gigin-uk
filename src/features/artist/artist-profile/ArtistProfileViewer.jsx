@@ -4,6 +4,9 @@ import { ArtistDashboardProvider } from '../../../context/ArtistDashboardContext
 import { ArtistProfile } from './ArtistProfile';
 import { getArtistProfileById } from '../../../services/client-side/artists';
 import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
+import { FEATURES } from '../../../config/features';
+import { getPublicProfile } from '@services/client-side/keepProfile';
+import { ProfileUnavailable, PublicArtistProfile } from '../../keep-profile/PublicProfile';
 
 /**
  * Read-only viewer for an artist profile, used by venues and public viewers.
@@ -16,6 +19,7 @@ export const ArtistProfileViewer = ({ user, setAuthModal, setAuthType }) => {
   const { artistId } = useParams();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
+  const [publicProfile, setPublicProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -40,7 +44,24 @@ export const ArtistProfileViewer = ({ user, setAuthModal, setAuthType }) => {
         if (!cancelled) setLoading(false);
       }
     };
-    if (artistId) run();
+    if (!artistId) return undefined;
+    if (FEATURES.publicProfile) {
+      getPublicProfile(artistId).then((result) => {
+        if (cancelled) return;
+        if (result?.profile?.source === 'guest_keep') {
+          setPublicProfile(result.profile);
+          setLoading(false);
+        } else run();
+      }).catch((err) => {
+        if (cancelled) return;
+        if (err?.status === 404) {
+          setError('This profile isn\'t available');
+          setLoading(false);
+        } else run();
+      });
+      return () => { cancelled = true; };
+    }
+    run();
     return () => {
       cancelled = true;
     };
@@ -76,6 +97,14 @@ export const ArtistProfileViewer = ({ user, setAuthModal, setAuthType }) => {
 
   if (loading) {
     return <LoadingScreen />;
+  }
+
+  if (publicProfile) {
+    return <PublicArtistProfile profile={publicProfile} user={user} />;
+  }
+
+  if (!FEATURES.publicProfile && profile?.source === 'guest_keep') {
+    return <ProfileUnavailable />;
   }
 
   if (error || !profile) {

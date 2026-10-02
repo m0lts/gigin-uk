@@ -1,11 +1,15 @@
 import { useState } from 'react';
+import { FEATURES } from '../../../config/features';
 import { lookupGuestApplication, sendGuestMagicLink, checkGuestEmailAccount } from '@services/client-side/guestApplications';
+import { prefillHint, sendPrefillLink } from '@services/client-side/keepProfile';
 import { formatClock, slotEnd, slotTaken } from './guestFormat';
 
 export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, showErrors }) {
   const [duplicate, setDuplicate] = useState(null);
   const [accountExists, setAccountExists] = useState(false);
+  const [profileHint, setProfileHint] = useState(false);
   const [linkSent, setLinkSent] = useState(false);
+  const [signInSent, setSignInSent] = useState(false);
   const missingContact = showErrors && !draft.email && !draft.phone && !draft.instagram;
 
   const checkDuplicate = async () => {
@@ -26,8 +30,12 @@ export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, show
     try {
       const account = await checkGuestEmailAccount(email);
       const blocked = Boolean(account?.hasAccount);
-      setAccountExists(blocked);
-      patch({ accountBlocked: blocked });
+      setAccountExists(blocked && !FEATURES.keepProfile);
+      patch({ accountBlocked: FEATURES.keepProfile ? false : blocked, hasAccount: blocked });
+      if (FEATURES.keepProfile && !blocked) {
+        const hint = await prefillHint(email);
+        setProfileHint(Boolean(hint?.hasProfile));
+      }
     } catch {
       setAccountExists(false);
       patch({ accountBlocked: false });
@@ -54,8 +62,17 @@ export function GuestWhoStep({ draft, patch, slots, bookerName, inviteNote, show
         <label><span>Phone</span><input type="tel" inputMode="tel" value={draft.phone} onChange={(event) => patch({ phone: event.target.value })} onBlur={checkDuplicate} /></label>
         <label><span>Instagram</span><input value={draft.instagram} placeholder="@name" onChange={(event) => patch({ instagram: event.target.value })} /></label>
       </div>
-      {accountExists && (
+      {accountExists && !FEATURES.keepProfile && (
         <p className="ga-error">This email already has a Gigin account. Log in to apply.</p>
+      )}
+      {FEATURES.keepProfile && draft.hasAccount && (
+        <p className="ga-note">
+          This email already has a Gigin account. You can still send this application. Log in afterwards and we'll add it to your account.
+          {profileHint && (signInSent ? ' Sign-in link sent.' : <button type="button" className="ga-text" onClick={() => sendPrefillLink(draft.email).then(() => setSignInSent(true))}>Email me a sign-in link</button>)}
+        </p>
+      )}
+      {profileHint && FEATURES.keepProfile && !draft.hasAccount && (
+        <p className="ga-note">You have a Gigin profile. Log in with your password to fill this in from it. {signInSent ? 'Sign-in link sent.' : <button type="button" className="ga-text" onClick={() => sendPrefillLink(draft.email).then(() => setSignInSent(true))}>Email me a sign-in link</button>}</p>
       )}
       {duplicate && !draft.ignoreDuplicate && (
         <div className="ga-soft">

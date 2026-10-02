@@ -4,7 +4,7 @@ import { buildGuestTechRider, computeCompatibility } from '@services/utils/techR
 
 const INSTRUMENTS = ['Vocals', 'Guitar', 'Bass', 'Double bass', 'Drums', 'Keys', 'Sax', 'Violin', 'Other'];
 
-export function GuestTechStep({ draft, patch, venue }) {
+export function GuestTechStep({ draft, patch, venue, hideVenueColumns = false }) {
   const [own, setOwn] = useState('');
   const equipment = useMemo(() => normalizeTechRider(venue?.techRider).equipment || [], [venue]);
   const summary = useMemo(
@@ -28,35 +28,39 @@ export function GuestTechStep({ draft, patch, venue }) {
 
   return (
     <div className="ga-step">
-      <h2>Tech rider</h2>
-      <p className="ga-sub">Tell {venue?.bookerDisplayName || 'Jez'} who is playing and what you need from the bar. Optional.</p>
-      <div className="ga-label">Who's in the band?</div>
-      {draft.members.map((member, index) => (
-        <div className="ga-member" key={index}>
-          <input placeholder="Name, optional" value={member.name} onChange={(event) => patch({
-            members: draft.members.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item),
-          })} />
-          <div className="ga-chips">
-            {INSTRUMENTS.map((instrument) => (
-              <button key={instrument} type="button" className={member.instruments.includes(instrument) ? 'is-on' : ''} onClick={() => toggleInstrument(index, instrument)}>{instrument}</button>
-            ))}
-          </div>
-          {draft.members.length > 1 && (
-            <button type="button" className="ga-text" onClick={() => patch({ members: draft.members.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
-          )}
-        </div>
-      ))}
-      <button type="button" className="ga-dashed" onClick={() => patch({ members: [...draft.members, { name: '', instruments: [] }] })}>+ Add a member</button>
+      {!hideVenueColumns && <h2>Tech rider</h2>}
+      {!hideVenueColumns && <p className="ga-sub">Tell {venue?.bookerDisplayName || 'Jez'} who is playing and what you need from the bar. Optional.</p>}
+      {!hideVenueColumns && (
+        <>
+          <div className="ga-label">Who's in the band?</div>
+          {draft.members.map((member, index) => (
+            <div className="ga-member" key={index}>
+              <input placeholder="Name, optional" value={member.name} onChange={(event) => patch({
+                members: draft.members.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item),
+              })} />
+              <div className="ga-chips">
+                {INSTRUMENTS.map((instrument) => (
+                  <button key={instrument} type="button" className={member.instruments.includes(instrument) ? 'is-on' : ''} onClick={() => toggleInstrument(index, instrument)}>{instrument}</button>
+                ))}
+              </div>
+              {draft.members.length > 1 && (
+                <button type="button" className="ga-text" onClick={() => patch({ members: draft.members.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
+              )}
+            </div>
+          ))}
+          <button type="button" className="ga-dashed" onClick={() => patch({ members: [...draft.members, { name: '', instruments: [] }] })}>+ Add a member</button>
+        </>
+      )}
       <div className="ga-label">What do you need from the bar?</div>
       <div className="ga-needs">
-        <div className="ga-needs__head"><span>Item</span><span>Bar has</span><span>We need</span></div>
+        <div className="ga-needs__head"><span>Item</span>{!hideVenueColumns && <span>Bar has</span>}<span>We need</span></div>
         {equipment.map((item) => {
           const on = draft.needs.includes(item.key);
-          const missing = on && !item.available;
+          const missing = on && !item.available && !hideVenueColumns;
           return (
             <button key={item.key} type="button" className={missing ? 'is-missing' : ''} onClick={() => toggleNeed(item.key)}>
               <span>{item.label}</span>
-              <span>{item.available ? (item.quantity ? `Yes · ${item.quantity}` : 'Yes') : 'No'}</span>
+              {!hideVenueColumns && <span>{item.available ? (item.quantity ? `Yes · ${item.quantity}` : 'Yes') : 'No'}</span>}
               <span className={`ga-box${on ? ' is-on' : ''}`} />
             </button>
           );
@@ -77,12 +81,14 @@ export function GuestTechStep({ draft, patch, venue }) {
           setOwn('');
         }}>Add</button>
       </div>
-      <div className="ga-summary">
-        <div className="ga-label">What {venue?.bookerDisplayName || 'Jez'} will see</div>
-        <Summary title="Provided by the bar" tone="ok" items={summary.providedByVenue} />
-        <Summary title="Covered by your act" tone="dark" items={summary.coveredByArtist} />
-        <Summary title="Needs a chat" tone="warn" items={summary.needsDiscussion} />
-      </div>
+      {!hideVenueColumns && (
+        <div className="ga-summary">
+          <div className="ga-label">What {venue?.bookerDisplayName || 'Jez'} will see</div>
+          <Summary title="Provided by the bar" tone="ok" items={summary.providedByVenue} />
+          <Summary title="Covered by your act" tone="dark" items={summary.coveredByArtist} />
+          <Summary title="Needs a chat" tone="warn" items={summary.needsDiscussion} />
+        </div>
+      )}
     </div>
   );
 }

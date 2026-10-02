@@ -1,12 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBreakpoint } from '@hooks/useBreakpoint';
+import { FEATURES } from '../../../config/features';
 import { createGuestApplication, newGuestIds } from '@services/client-side/guestApplications';
+import { forgetProfileSession, getProfileSession, updateOwnProfile } from '@services/client-side/keepProfile';
+import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
 import { GuestApplied } from './GuestApplied';
 import { GuestAssetsStep } from './GuestAssetsStep';
 import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
 import { GuestWhoStep } from './GuestWhoStep';
 import { bookerLine, clearDraft, formatShortDay, readDraft, rememberApplication, writeDraft } from './guestFormat';
+
+function sectionSnapshot(draft) {
+  return {
+    who: JSON.stringify([draft.actName, draft.contactName, draft.email, draft.phone, draft.instagram]),
+    assets: JSON.stringify([draft.photo?.path || draft.photo?.url || '', draft.links || {}]),
+    tech: JSON.stringify([draft.members, draft.needs, draft.bringOwn]),
+  };
+}
 
 const STEPS = [
   ['who', 'Who you are'],
@@ -52,6 +63,9 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
   const [offline, setOffline] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [sent, setSent] = useState(false);
+  const [returning, setReturning] = useState(null);
+  const [profileNote, setProfileNote] = useState('');
+  const baselineRef = useRef(null);
   const index = Math.max(0, STEPS.findIndex(([key]) => key === step));
 
   useEffect(() => {
@@ -73,6 +87,44 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
   useEffect(() => {
     writeDraft(gig.gigId, invite?.inviteId, { ...draft, step });
   }, [draft, step, gig.gigId, invite?.inviteId]);
+
+  useEffect(() => {
+    if (!FEATURES.keepProfile) return undefined;
+    let cancelled = false;
+    getProfileSession().then((data) => {
+      if (cancelled || !data?.profile || data.profile.status !== 'live') return;
+      setReturning(data);
+      if (saved) return;
+      const profile = data.profile;
+      const contact = data.contact || {};
+      const next = {
+        actName: profile.name || '',
+        contactName: contact.contactName || '',
+        email: contact.email || '',
+        phone: contact.phone || '',
+        whatsapp: contact.whatsapp === true,
+        instagram: profile.instagramUrl || '',
+        links: {
+          spotify: profile.spotifyUrl || '',
+          youtube: profile.youtubeUrl || '',
+          instagram: profile.instagramUrl || '',
+          website: profile.websiteUrl || '',
+        },
+        members: profile.members?.length ? profile.members : [{ name: '', instruments: [] }],
+        needs: profile.techRider?.guestNeeds || [],
+        bringOwn: profile.techRider?.bringOwn || [],
+        photo: profile.heroMedia?.url ? { ...profile.heroMedia, url: profile.heroMedia.url } : null,
+        note: '',
+        artistProfileId: profile.id,
+        profileSlug: profile.slug,
+        updateProfile: false,
+      };
+      baselineRef.current = sectionSnapshot(next);
+      setDraft((current) => ({ ...current, ...next }));
+      setStep('review');
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [gig.gigId]);
 
   const patch = (partial) => setDraft((current) => ({ ...current, ...partial }));
   const whoOk = draft.actName.trim() && draft.contactName.trim() && (draft.email.trim() || draft.phone.trim() || draft.instagram.trim()) && !draft.accountBlocked;
@@ -108,7 +160,24 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         bringOwn: draft.bringOwn,
         note: draft.note,
         anotherAct: draft.ignoreDuplicate === true,
+        artistProfileId: draft.artistProfileId || null,
       });
+      if (draft.updateProfile && draft.artistProfileId) {
+        await updateOwnProfile({
+          name: draft.actName,
+          bio: draft.bio || undefined,
+          spotifyUrl: draft.links?.spotify,
+          youtubeUrl: draft.links?.youtube,
+          instagramUrl: draft.links?.instagram,
+          websiteUrl: draft.links?.website,
+          members: draft.members,
+          techRider: buildGuestTechRider(draft),
+          heroMedia: draft.photo?.path ? draft.photo : undefined,
+        }).catch(() => {});
+        setProfileNote('Your changes were saved to your profile too.');
+      } else if (draft.artistProfileId) {
+        setProfileNote('Your profile is up to date');
+      }
       clearDraft(gig.gigId, invite?.inviteId);
       try { rememberApplication(gig.gigId, draft.manageToken); } catch { /* ignore */ }
       setSent(true);
@@ -159,6 +228,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
           dateLabel={formatShortDay(gig)}
           onClose={onClose}
           onCreateAccount={onCreateAccount}
+          profileNote={profileNote}
         />
       </div>
     );
@@ -196,7 +266,38 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         )}
         {step === 'assets' && <GuestAssetsStep draft={draft} patch={patch} />}
         {step === 'tech' && <GuestTechStep draft={draft} patch={patch} venue={{ ...venue, bookerDisplayName: booker.name }} />}
-        {step === 'review' && <GuestReviewStep draft={draft} slots={slots} bookerName={booker.name} patch={patch} onJump={(next) => { setEditing(true); setStep(next); }} />}
+        {returning && step === 'review' && (
+          <p><strong>Welcome back, {(returning.contact?.contactName || returning.profile.name || '').split(' ')[0]}.</strong> We've filled this in from your Gigin profile. <button type="button" className="ga-text" onClick={() => { setReturning(null); setDraft(emptyDraft(gig, invite, newGuestIds())); setStep('who'); forgetProfileSession(); }}>Not you? Start blank</button></p>
+        )}
+        {returning && (() => {
+          const compat = computeCompatibility(buildGuestTechRider(draft), venue?.techRider);
+          const chat = compat?.needsDiscussion?.[0];
+          return chat ? <p className="ga-note">Checked against {venue?.name || booker.name}: they need a chat about {chat.label}.</p> : null;
+        })()}
+        {step === 'review' && (
+          <GuestReviewStep
+            draft={draft}
+            slots={slots}
+            bookerName={booker.name}
+            patch={patch}
+            editLabel={returning ? 'Change' : 'Edit'}
+            noteHint={returning ? "Notes aren't copied from earlier applications." : ''}
+            rowTags={returning && baselineRef.current ? (() => {
+              const snap = sectionSnapshot(draft);
+              const base = baselineRef.current;
+              const tag = draft.updateProfile ? 'Also updating your profile' : 'This application only';
+              return {
+                who: snap.who !== base.who ? tag : '',
+                assets: snap.assets !== base.assets ? tag : '',
+                tech: snap.tech !== base.tech ? tag : '',
+              };
+            })() : null}
+            onJump={(next) => { setEditing(true); setStep(next); }}
+          />
+        )}
+        {returning && editing && (
+          <label className="ga-note"><input type="checkbox" checked={Boolean(draft.updateProfile)} onChange={(event) => patch({ updateProfile: event.target.checked })} /> Also update my profile <small>Unticked, the change only goes to {booker.name} with this application.</small></label>
+        )}
         <div className={`ga-actions${isMdUp ? ' is-desktop' : ''}`}>
           <button type="button" className={step === 'review' && !editing ? 'ga-orange' : 'ga-dark'} disabled={submitting || offline} onClick={() => (step === 'review' && !editing ? submit() : goNext())}>
             {submitting ? 'Sending…' : primary}

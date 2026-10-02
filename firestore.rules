@@ -91,6 +91,10 @@ service cloud.firestore {
         );
       }
 
+      match /private/{docId} {
+        allow read, write: if false;
+      }
+
       match /artistCRM/{entryId} {
         // Read: venue owner OR active member of that venue
         allow read: if request.auth != null
@@ -361,7 +365,22 @@ service cloud.firestore {
      * =========================== */
     match /artistProfiles/{artistProfileId} {
       // Public read access for artist profiles (for discovery)
-      allow read: if true;
+      // Pending, hidden and deleted profiles are not public. Legacy profiles have no status.
+      allow read: if !resource.data.keys().hasAny(['status'])
+        || resource.data.status == 'live'
+        || (request.auth != null && resource.data.userId == request.auth.uid);
+
+      match /private/{docId} {
+        allow read, write: if false;
+      }
+
+      match /pressKit/{assetId} {
+        allow read, write: if false;
+      }
+
+      match /pressKitDownloads/{downloadId} {
+        allow read, write: if false;
+      }
 
       // Create: authenticated users only, and userId must match caller
       allow create: if request.auth != null
@@ -714,6 +733,39 @@ service cloud.firestore {
     /* ===========================
      * Mail Collection (Trigger Email Extension)
      * =========================== */
+    match /profileTokens/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /profileSessions/{sessionId} {
+      allow read, write: if false;
+    }
+
+    match /profileReminders/{reminderId} {
+      allow read, write: if false;
+    }
+
+    match /profileRequests/{requestId} {
+      allow read, write: if false;
+    }
+
+    match /pressKitRequests/{requestId} {
+      allow read, write: if false;
+    }
+
+    match /finderAreaRequests/{requestId} {
+      allow read, write: if false;
+    }
+
+    match /venueClaims/{claimId} {
+      allow read, write: if false;
+    }
+
+    match /listedVenues/{venueId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /mail/{mailId} {
       // Allow authenticated users to create email documents
       // The Trigger Email extension will process these

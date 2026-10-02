@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { FEATURES } from '../../../config/features';
 import { useNavigate } from 'react-router-dom';
 import '@styles/host/venue-page.styles.css';
 import { 
@@ -219,6 +220,13 @@ export const VenuePage = ({ user, venues, setVenues, venueId, onClose }) => {
                                     <NewTabIcon />
                                 </button>
                             </li>
+                            {FEATURES.venueFinder && hasVenuePerm(venues, venueId, 'venue.update') && (
+                                <li className="settings-item">
+                                    <button className="btn secondary" onClick={() => { onClose(); navigate(`/venues/dashboard/finder-listing/${venueId}`); }} style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                        Finder listing
+                                    </button>
+                                </li>
+                            )}
                             {hasVenuePerm(venues, venueId, 'venue.update') && (
                                 <li className="settings-item" >
                                     <button className="btn secondary" onClick={() => handleEditVenue(venueData)} style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
