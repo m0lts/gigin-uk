@@ -19,6 +19,7 @@ import Portal from '../shared/components/Portal';
 import { incrementProClicks } from '../../services/client-side/reports';
 import { TextLogoArtistLandingPage } from '../shared/ui/logos/Logos';
 import { FEATURES } from '../../config/features';
+import { artistDestination } from '../../config/artistDestination';
 
 const toLngLat = (venue) => {
     if (venue?.geopoint?.longitude != null && venue?.geopoint?.latitude != null) {
@@ -158,10 +159,9 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
     const handleCreateArtistProfile = () => {
         if (!user) {
             // User not logged in - navigate to artist profile example page (don't show auth modal)
-            navigate('/artist-profile?signup=true');
+            navigate(artistDestination(user, FEATURES));
         } else {
-            // User is logged in - navigate normally
-            navigate('/artist-profile');
+            navigate(artistDestination(user, FEATURES));
         }
     };
 
@@ -172,7 +172,7 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
         } else {
             // If user is logged in, redirect based on profile
             if (hasArtistProfile) {
-                navigate('/artist-profile');
+                navigate(artistDestination(user, FEATURES));
             } else if (hasVenueProfile) {
                 navigate('/venues/dashboard/gigs');
             }
@@ -205,9 +205,9 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
     // Auto-redirect if user has artist profile (and no venue profile)
     useEffect(() => {
         if (hasArtistProfile && !hasVenueProfile) {
-            navigate('/artist-profile');
+            navigate(artistDestination(user, FEATURES));
         }
-    }, [hasArtistProfile, hasVenueProfile, navigate]);
+    }, [hasArtistProfile, hasVenueProfile, navigate, user]);
 
     // Fetch venues for hero and discovery sections
     useEffect(() => {
@@ -821,14 +821,14 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
                                 </button>
                             )}
                             {hasArtistProfile ? (
-                                <button className="btn artist-profile" onClick={() => navigate('/artist-profile')}>
+                                <button className="btn artist-profile" onClick={() => navigate(artistDestination(user, FEATURES))}>
                                     My Artist Profile
                                 </button>
-                            ) : (
+                            ) : FEATURES.legacyArtist ? (
                                 <button className="btn artist-profile" onClick={handleCreateArtistProfile}>
                                     Create Artist Profile
                                 </button>
-                            )}
+                            ) : null}
                             <h6 className="or-separator">
                                 OR
                             </h6>
@@ -904,14 +904,14 @@ export const LandingPage = ({ setAuthModal, authType, setAuthType, authClosable,
                                 </Link>
                                 )}
                                 {hasArtistProfile ? (
-                                    <Link className='link item no-margin' to='/artist-profile' onClick={() => setMobileMenuOpen(false)}>
+                                    <Link className='link item no-margin' to={artistDestination(user, FEATURES)} onClick={() => setMobileMenuOpen(false)}>
                                         My Artist Profile
                                     </Link>
-                                ) : (
+                                ) : FEATURES.legacyArtist ? (
                                     <button className='link item no-margin' onClick={() => { handleCreateArtistProfile(); setMobileMenuOpen(false); }}>
                                         Create Artist Profile
                                     </button>
-                                )}
+                                ) : null}
                                 <div className="two-buttons">
                                     <button className='btn secondary' onClick={() => { handleLogout(); setMobileMenuOpen(false); }}>
                                         Log Out

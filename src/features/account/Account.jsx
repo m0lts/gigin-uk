@@ -772,6 +772,7 @@ export const Account = () => {
                             </button>
                         </div>
                     </div>
+                    {FEATURES.chat && (
                     <div className='password-settings'>
                         <h3>Email Notifications:</h3>
                         <div className='data-highlight'>
@@ -794,6 +795,7 @@ export const Account = () => {
                             </div>
                         </div>
                     </div>
+                    )}
                     <div className='delete-settings'>
                         <h3>Account Deletion:</h3>
                         <div className='data-highlight'>
@@ -1152,7 +1154,7 @@ export const Account = () => {
                                                 <button
                                                     className='btn tertiary'
                                                     onClick={() =>
-                                                        navigate(`/artist-profile/${profileId}`)
+                                                        navigate(FEATURES.legacyArtist ? `/artist-profile/${profileId}` : (FEATURES.keepProfile ? '/home' : `/artist/${artistProfile.slug || profileId}`))
                                                     }
                                                 >
                                                     <EditIcon />

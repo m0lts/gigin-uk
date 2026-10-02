@@ -5,6 +5,7 @@ import Portal from "./Portal";
 import { useState } from "react";
 import { toast } from "sonner";
 import { FEATURES } from "../../../config/features";
+import { artistDestination } from "../../../config/artistDestination";
 
 export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, handleLogout, newMessages, isMobile, menuStyle, setNoProfileModal, setNoProfileModalClosable, noProfileModal, noProfileModalClosable, setShowFeedbackModal, showFeedbackModal, feedback, setFeedback }) => {
   const navigate = useNavigate();
@@ -186,8 +187,8 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                                 key={profileId} 
                                                 onClick={() => {
                                                     if (shouldShowCreationFlow) {
-                                                        // Navigate to profile with creation flow for incomplete profiles
-                                                        navigate(`/artist-profile/${profileId}`);
+                                                        navigate(FEATURES.legacyArtist ? `/artist-profile/${profileId}` : artistDestination(user, FEATURES));
+                                                        setMobileOpen(false);
                                                     } else {
                                                         // For complete profiles, update localStorage and navigate if on artist-profile route
                                                         if (user?.uid && profileId !== activeProfileId) {
@@ -219,7 +220,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                 </>
                             );
                         })()}
-                        {user.artistProfiles && user.artistProfiles.length === 1 && (
+                        {FEATURES.legacyArtist && user.artistProfiles && user.artistProfiles.length === 1 && (
                             <>
                                 <button 
                                     className="btn artist-profile item no-margin"
@@ -265,16 +266,19 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             };
                             const activeProfileId = getActiveProfileId();
                             const basePath = activeProfileId ? `/artist-profile/${activeProfileId}` : '/artist-profile';
+                            const profilePath = FEATURES.legacyArtist ? basePath : artistDestination(user, FEATURES);
                             return (
                                 <>
-                                    <Link className='link item no-margin' to={basePath}>
+                                    <Link className='link item no-margin' to={profilePath}>
                                         Profile
                                         <ProfileIcon />
                                     </Link>
+                                    {FEATURES.legacyArtist && (
                                     <Link className='link item no-margin' to={`${basePath}/gigs`}>
                                         Gigs
                                         <AllGigsIcon />
                                     </Link>
+                                    )}
                                     {FEATURES.chat && (
                                     <Link className='link item no-margin' to={`${basePath}/messages`}>
                                         Messages

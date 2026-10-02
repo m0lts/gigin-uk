@@ -10,6 +10,7 @@ import ArtistProfileExample from '@assets/images/artist-profile-example.png';
 import Portal from '../shared/components/Portal';
 import { TextLogoVenueLandingPage } from '../shared/ui/logos/Logos';
 import { FEATURES } from '../../config/features';
+import { artistDestination } from '../../config/artistDestination';
 import Top1 from '@assets/images/landing_page/venue/top_1.png';
 import Top2 from '@assets/images/landing_page/venue/top_2.png';
 import Top3 from '@assets/images/landing_page/venue/top_3.png';
@@ -42,9 +43,9 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
     // Auto-redirect if user has artist profile (and no venue profile)
     useEffect(() => {
         if (hasArtistProfile && !hasVenueProfile) {
-            navigate('/artist-profile');
+            navigate(artistDestination(user, FEATURES));
         }
-    }, [hasArtistProfile, hasVenueProfile, navigate]);
+    }, [hasArtistProfile, hasVenueProfile, navigate, user]);
 
     const handlePricingClick = () => {
         const pricingSection = document.getElementById('pricing-section');
