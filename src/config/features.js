@@ -15,6 +15,7 @@ export const FEATURES = {
   finances: readFlag(import.meta.env.VITE_FEATURE_FINANCES),
   keepProfile: readFlag(import.meta.env.VITE_FEATURE_KEEP_PROFILE),
   publicProfile: readFlag(import.meta.env.VITE_FEATURE_PUBLIC_PROFILE),
+  legacyArtist: readFlag(import.meta.env.VITE_FEATURE_LEGACY_ARTIST),
   venueFinder: readFlag(import.meta.env.VITE_FEATURE_VENUE_FINDER),
   pressKit: readFlag(import.meta.env.VITE_FEATURE_PRESS_KIT),
 };
