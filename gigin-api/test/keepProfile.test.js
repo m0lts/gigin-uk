@@ -11,6 +11,7 @@ import {
   passwordAcceptable,
   slugify,
   toPublicProfile,
+  emailIndexKey,
   venueContactDecision,
 } from "../lib/keepProfileLogic.js";
 
@@ -28,6 +29,7 @@ test("public profile never includes email or phone", () => {
     email: "secret@example.com",
     phone: "07000000000",
     contactEmail: "secret@example.com",
+    contactEmailHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     whatsapp: true,
     bio: "A trio.",
     publicFields: { photo: true, bio: true, links: true, members: true, tech: true },
@@ -36,6 +38,16 @@ test("public profile never includes email or phone", () => {
   assert.equal(profile.bio, "A trio.");
   assert.equal(JSON.stringify(profile).includes("secret@example.com"), false);
   assert.equal(JSON.stringify(profile).includes("07000000000"), false);
+  assert.equal(JSON.stringify(profile).includes("contactEmailHash"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(profile, "contactEmailHash"), false);
+});
+
+test("email index key is an HMAC and fails closed without a secret", () => {
+  const key = emailIndexKey("Artist@Example.com", "server-secret");
+  assert.equal(key, emailIndexKey("  artist@example.com ", "server-secret"));
+  assert.notEqual(key, emailIndexKey("artist@example.com", "other-secret"));
+  assert.equal(key.length, 64);
+  assert.equal(emailIndexKey("artist@example.com", ""), "");
 });
 
 test("switched-off sections are omitted", () => {

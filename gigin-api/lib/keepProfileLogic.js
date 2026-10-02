@@ -1,4 +1,5 @@
 /** Pure keep-profile rules. No Firebase imports, so tests can load this file alone. */
+import crypto from "node:crypto";
 
 const PUBLIC_KEYS = new Set([
   "id", "slug", "name", "status", "source", "bio", "heroMedia",
@@ -6,7 +7,14 @@ const PUBLIC_KEYS = new Set([
   "members", "techRider", "playedAt", "publicFields", "userId",
 ]);
 
-const SECRET_KEYS = ["email", "phone", "whatsapp", "contactEmail", "contactPhone", "contactName"];
+const SECRET_KEYS = ["email", "phone", "whatsapp", "contactEmail", "contactPhone", "contactName", "contactEmailHash"];
+
+/** HMAC key for profileEmailIndex. Empty when the server secret is missing, so lookups fail closed. */
+export function emailIndexKey(email, secret = process.env.PROFILE_EMAIL_INDEX_SECRET) {
+  const address = String(email || "").trim().toLowerCase();
+  if (!address.includes("@") || !secret) return "";
+  return crypto.createHmac("sha256", String(secret)).update(address).digest("hex");
+}
 
 export function passwordAcceptable(password) {
   const value = String(password || "");

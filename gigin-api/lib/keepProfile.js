@@ -27,6 +27,7 @@ import {
   venueContactDecision,
   LISTED_VENUE_EMPTY,
 } from "./keepProfileLogic.js";
+import { forgetProfileEmail, profileIdForEmail, rememberProfileEmail } from "./profileEmailIndex.js";
 
 export {
   artistContactDecision,
@@ -268,11 +269,11 @@ async function writeProfileDocs(profileId, body, guest) {
     guestApplicationIds: guest.id ? [{ id: guest.id, gigId: guest.gigId || null }] : [],
     userId: null,
     venueName: guest.venueName || "",
-    contactEmailHash: body.contact.email ? hashToken(body.contact.email) : null,
     createdAt: new Date().toISOString(),
     confirmedAt: null,
   });
   await db.doc(`artistProfiles/${profileId}/private/contact`).set(body.contact);
+  await rememberProfileEmail(db, profileId, body.contact.email);
   const venues = {};
   if (venueId) venues[venueId] = { applied: true, bookings: [] };
   await db.doc(`artistProfiles/${profileId}/private/relationships`).set({
@@ -590,10 +591,7 @@ export async function sendEditLink({ email, profileId }) {
   let target = null;
   const address = emailNorm(email);
   if (profileId) target = await loadProfile(profileId);
-  if (!target && address) {
-    const snap = await db.collection("artistProfiles").where("contactEmailHash", "==", hashToken(address)).limit(1).get();
-    if (!snap.empty) target = { id: snap.docs[0].id, ...(snap.docs[0].data() || {}) };
-  }
+  if (!target && address) target = await profileByEmail(address);
   if (!target || target.status === "deleted") return { ok: true };
   const contact = await loadContact(target.id);
   const to = emailNorm(contact.email || address);
@@ -720,6 +718,8 @@ export async function hideProfile(profile) {
 }
 
 export async function deleteProfile(profile) {
+  const contact = await loadContact(profile.id);
+  await forgetProfileEmail(db, contact.email);
   await profile.ref.set({
     status: "deleted",
     bio: "",
@@ -730,6 +730,7 @@ export async function deleteProfile(profile) {
     youtubeUrl: "",
     instagramUrl: "",
     websiteUrl: "",
+    contactEmailHash: FieldValue.delete(),
     deletedAt: new Date().toISOString(),
   }, { merge: true });
   await db.doc(`artistProfiles/${profile.id}/private/contact`).delete().catch(() => {});
@@ -999,21 +1000,25 @@ export async function redeemNudge(rawToken) {
   return { ok: true, maskedEmail: maskEmail(result.email), status: result.status };
 }
 
+async function profileByEmail(address) {
+  const id = await profileIdForEmail(db, address);
+  return id ? loadProfile(id) : null;
+}
+
 export async function prefillHint(email) {
   const address = emailNorm(email);
   if (!address) return { hasProfile: false };
-  const snap = await db.collection("artistProfiles").where("contactEmailHash", "==", hashToken(address)).limit(1).get();
-  if (snap.empty) return { hasProfile: false };
-  const status = snap.docs[0].data()?.status;
-  return { hasProfile: status === "live" || status === "hidden" };
+  const profile = await profileByEmail(address);
+  if (!profile) return { hasProfile: false };
+  return { hasProfile: profile.status === "live" || profile.status === "hidden" };
 }
 
 export async function sendPrefillLink(email) {
   const address = emailNorm(email);
   const hint = await prefillHint(address);
   if (!hint.hasProfile || !address) return { ok: true };
-  const snap = await db.collection("artistProfiles").where("contactEmailHash", "==", hashToken(address)).limit(1).get();
-  const profile = { id: snap.docs[0].id, ...(snap.docs[0].data() || {}) };
+  const profile = await profileByEmail(address);
+  if (!profile) return { ok: true };
   const token = await issueToken({ profileId: profile.id, kind: "prefill" }, CONFIRM_DAYS);
   const url = `${APP_ORIGIN}/profile/prefill/${token}`;
   await sendMail({

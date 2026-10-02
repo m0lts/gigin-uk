@@ -387,7 +387,8 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && !request.resource.data.keys().hasAny([
           'createdAt',
-          'updatedAt'
+          'updatedAt',
+          'contactEmailHash'
         ]);
 
       // Update: owner OR active member with 'profile.edit' permission
@@ -403,7 +404,8 @@ service cloud.firestore {
             .affectedKeys()
             .hasAny([
               'userId',
-              'createdAt'
+              'createdAt',
+              'contactEmailHash'
             ])
         )
         // Allow updatedAt to be set, but it should be server timestamp in practice
@@ -758,6 +760,10 @@ service cloud.firestore {
     }
 
     match /venueClaims/{claimId} {
+      allow read, write: if false;
+    }
+
+    match /profileEmailIndex/{key} {
       allow read, write: if false;
     }
 
