@@ -8,16 +8,40 @@ import { assertVenuePerm, assertArtistPerm } from "../utils/permissions.js";
 import {
   loadGuestPrivate,
   loadGuestPrivates,
+  loadPrivateApplications,
   loadPrivateDetails,
   publicMediaItem,
   sanitiseApplicants,
+  savePrivateApplications,
   savePrivateDetails,
   splitGigUpdate,
   venueGuestView,
 } from "../lib/gigPrivacy.js";
+import { publicLineup } from "../lib/nightApplications.js";
 import { queueMail } from "../lib/queueMail.js";
 import { keepReminderHtml } from "../lib/keepProfile.js";
-import { placeLoggedInApplication, acceptApplication, assignApplication, declineApplication, undoApplication, closeApplications, undoClose, reopenApplications, saveSoundTech } from "../lib/nightApplicationOps.js";
+import { placeLoggedInApplication, acceptApplication, assignApplication, declineApplication, undoApplication, closeApplications, undoClose, reopenApplications, saveSoundTech, readNightApplications, publishNightApplicants, withdrawGuestApplication } from "../lib/nightApplicationOps.js";
+
+function visibleApplicants(list, gigId, viewerId, showAll) {
+  if (showAll) return list || [];
+  const lineup = publicLineup(list, gigId);
+  const mine = (list || []).find((entry) => String(entry?.id) === String(viewerId));
+  if (mine && !lineup.some((entry) => String(entry.id) === String(mine.id))) return [...lineup, mine];
+  return lineup;
+}
+
+async function mergePublishApplicants(gigId, incoming) {
+  const { applications } = await readNightApplications(gigId);
+  const map = new Map((applications || []).map((entry) => [String(entry.id), { ...entry }]));
+  for (const entry of incoming || []) {
+    if (entry?.id == null) continue;
+    const prev = map.get(String(entry.id));
+    map.set(String(entry.id), prev ? { ...prev, ...entry, id: prev.id } : entry);
+  }
+  const list = [...map.values()];
+  await publishNightApplicants(gigId, list);
+  return list;
+}
 
 const router = express.Router();
 
@@ -320,7 +344,18 @@ async function declineArtistOnOtherSetsInGroup(acceptedGigId, musicianProfileId)
     });
     if (!changed) continue;
     try {
-      await gigRef.update({ applicants: nextApplicants });
+      const rootId = gig.applicationsRootGigId || otherGigId;
+      const existing = await loadPrivateApplications(rootId);
+      const saved = existing?.applicants?.length
+        ? existing.applicants.map((entry) => (
+          String(entry?.id) === String(musicianProfileId) && shouldAutoDeclineApplicantOnSiblingSlot(entry)
+            ? { ...entry, status: "declined", declinedForOtherSet: true, acceptedOnGigId: acceptedGigId }
+            : entry
+        ))
+        : nextApplicants;
+      await savePrivateApplications(rootId, saved);
+      const onlySlot = !Array.isArray(gig.gigSlots) || gig.gigSlots.length < 2;
+      await gigRef.update({ applicants: publicLineup(saved, otherGigId, { onlySlot }) });
     } catch (e) {
       console.error("sibling gig applicant update failed", otherGigId, e);
       continue;
@@ -406,48 +441,24 @@ router.post("/updateGigDocument", requireAuth, asyncHandler(async (req, res) => 
     case "reviews.create":
       await assertVenuePerm(db, caller, venueId, "reviews.create");
       break;
-    case "musician.withdraw.application": {
-      // Validate caller is one of the applicants' linked user
-      const userSnap = await db.doc(`users/${caller}`).get();
-      const user = userSnap.data() || {};
-      const callerMusicianIds = Array.isArray(user.musicianProfile)
-        ? user.musicianProfile
-        : (user.musicianProfile ? [user.musicianProfile] : []);
-      const applicants = Array.isArray(gig?.applicants) ? gig.applicants : [];
-      const callerIsApplicant = applicants.some(a => callerMusicianIds.includes(a?.id));
-      if (!callerIsApplicant) return res.status(403).json({ error: "PERMISSION_DENIED", message: "caller is not an applicant on this gig" });
-      break;
-    }
+    case "musician.withdraw.application":
     case "artist.withdraw.application": {
-      // Validate caller is one of the applicants' linked artist profiles
       const userSnap = await db.doc(`users/${caller}`).get();
       const user = userSnap.data() || {};
-
-      const artistIdsField = Array.isArray(user.artistProfiles) ? user.artistProfiles : [];
-      const callerArtistIds = artistIdsField.map((id) => id).filter(Boolean);
-
-      const applicants = Array.isArray(gig?.applicants) ? gig.applicants : [];
-      const applicantIdsOnGig = new Set(
-        applicants.map((a) => a?.id).filter(Boolean)
-      );
-      const callerArtistIdsOnGig = callerArtistIds.filter((id) =>
-        applicantIdsOnGig.has(id)
-      );
-      const callerIsApplicant = callerArtistIdsOnGig.length > 0;
-      if (!callerIsApplicant) {
-        return res.status(403).json({
-          error: "PERMISSION_DENIED",
-          message: "caller is not an applicant on this gig",
-        });
+      const callerIds = action === "artist.withdraw.application"
+        ? (Array.isArray(user.artistProfiles) ? user.artistProfiles : []).filter(Boolean)
+        : (Array.isArray(user.musicianProfile) ? user.musicianProfile : (user.musicianProfile ? [user.musicianProfile] : []));
+      const { applications } = await readNightApplications(gigId);
+      const match = (applications || []).find((entry) => callerIds.includes(entry?.id));
+      if (!match) {
+        return res.status(403).json({ error: "PERMISSION_DENIED", message: "caller is not an applicant on this gig" });
       }
-
-      // Enforce gigs.book permission for the matching artist profile
-      const artistIdForGig = callerArtistIdsOnGig[0];
-      const artistRef = db.doc(`artistProfiles/${artistIdForGig}`);
-      const artistSnap = await artistRef.get();
-      if (artistSnap.exists) {
-        await assertArtistPerm(db, caller, artistIdForGig, "gigs.book");
+      if (action === "artist.withdraw.application") {
+        const artistSnap = await db.doc(`artistProfiles/${match.id}`).get();
+        if (artistSnap.exists) await assertArtistPerm(db, caller, match.id, "gigs.book");
       }
+      await withdrawGuestApplication({ gigId, applicant: match });
+      delete updates.applicants;
       break;
     }
     default:
@@ -456,6 +467,10 @@ router.post("/updateGigDocument", requireAuth, asyncHandler(async (req, res) => 
 
   // Normalize any geopoint in updates (handles serialized objects from client)
   const normalizedUpdates = { ...updates };
+  if (Array.isArray(normalizedUpdates.applicants)) {
+    await mergePublishApplicants(gigId, normalizedUpdates.applicants);
+    delete normalizedUpdates.applicants;
+  }
   if (normalizedUpdates.geopoint) {
     const geopoint = toAdminGeoPoint(normalizedUpdates.geopoint);
     if (geopoint) normalizedUpdates.geopoint = geopoint;
@@ -498,6 +513,8 @@ router.post("/privateBundle", requireAuth, asyncHandler(async (req, res) => {
     privates.forEach((data, id) => {
       guests[id] = venueGuestView(data);
     });
+    const rootId = gig.applicationsRootGigId || gigId;
+    const stored = await loadPrivateApplications(rootId);
     gigs[gigId] = {
       soundTech: details.soundTech || null,
       soundEngineerName: details.soundEngineerName || null,
@@ -506,6 +523,8 @@ router.post("/privateBundle", requireAuth, asyncHandler(async (req, res) => {
       media: Array.isArray(details.media) ? details.media.map(publicMediaItem) : [],
       hasShareLink: Boolean(details.mediaShareTokenHash),
       guests,
+      applications: stored?.applicants || null,
+      applicationsRootGigId: rootId,
     };
   }
   return res.json({ gigs });
@@ -645,7 +664,11 @@ router.post("/inviteToGig", requireAuth, asyncHandler(async (req, res) => {
   await db.runTransaction(async (tx) => {
     const freshGigSnap = await tx.get(gigRef);
     const freshGig = freshGigSnap.exists ? (freshGigSnap.data() || {}) : {};
-    const freshApplicants = Array.isArray(freshGig.applicants) ? freshGig.applicants : [];
+    const rootId = freshGig.applicationsRootGigId || gigId;
+    const privateSnap = await tx.get(db.doc(`gigs/${rootId}/private/applications`));
+    const freshApplicants = privateSnap.exists && Array.isArray(privateSnap.data()?.applicants)
+      ? privateSnap.data().applicants
+      : (Array.isArray(freshGig.applicants) ? freshGig.applicants : []);
     const existingApplicantIndex = freshApplicants.findIndex(a => a?.id === musicianId);
     
     let nextApplicants;
@@ -668,7 +691,12 @@ router.post("/inviteToGig", requireAuth, asyncHandler(async (req, res) => {
     const artistRef = db.doc(`artistProfiles/${musicianId}`);
     const [musicianSnap, artistSnap] = await Promise.all([tx.get(musicianRef), tx.get(artistRef)]);
 
-    tx.update(gigRef, { applicants: nextApplicants });
+    tx.set(db.doc(`gigs/${rootId}/private/applications`), {
+      gigId: rootId,
+      applicants: sanitiseApplicants(nextApplicants),
+    }, { merge: true });
+    const onlySlot = !Array.isArray(freshGig.gigSlots) || freshGig.gigSlots.length < 2;
+    tx.update(gigRef, { applicants: publicLineup(nextApplicants, gigId, { onlySlot }) });
 
     const gigApplicationEntry = {
       gigId,
@@ -720,8 +748,8 @@ router.post("/negotiateGigFee", requireAuth, asyncHandler(async (req, res) => {
     sentBy: sender,
   };
   const updatedApplicants = [ ...(Array.isArray(gig.applicants) ? gig.applicants : []), newApplication ];
-  await gigRef.update({ applicants: updatedApplicants });
-  return res.json({ data: { updatedApplicants } });
+  const published = await mergePublishApplicants(gigId, updatedApplicants);
+  return res.json({ data: { updatedApplicants: visibleApplicants(published, gigId, musicianId, false) } });
 }));
 
 // POST /api/gigs/duplicateGig
@@ -975,8 +1003,8 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
   // Close logic: today nonPayable + Ticketed close on the first acceptance.
   // With maxApplicants > 1 we keep them open until the slot list fills up.
   const shouldCloseOnAccept = (nonPayableGig || gigData?.kind === "Ticketed Gig") && willHitMax;
+  const publishedApplicants = await mergePublishApplicants(gigData.gigId, updatedApplicants);
   const gigUpdate = {
-    applicants: sanitiseApplicants(updatedApplicants),
     agreedFee: `${agreedFee}`,
     paid: !!nonPayableGig,
     status: shouldCloseOnAccept ? "closed" : "open",
@@ -1012,7 +1040,12 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
     }
   }
 
-  return res.json({ data: { updatedApplicants, agreedFee } });
+  return res.json({
+    data: {
+      updatedApplicants: visibleApplicants(publishedApplicants, gigData.gigId, musicianProfileId, role === "venue"),
+      agreedFee,
+    },
+  });
 }));
 
 // POST /api/gigs/acceptGigOfferOM
@@ -1141,8 +1174,9 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
   const updatedApplicants = applicantsToProcess.map((a) => a.id === musicianProfileId ? { ...a, status: "confirmed" } : { ...a });
   const confirmedAfterOM = confirmedBeforeOM + 1;
   const omShouldClose = maxApplicantsOM != null && confirmedAfterOM >= maxApplicantsOM;
+  const publishedApplicants = await mergePublishApplicants(gigData.gigId, updatedApplicants);
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
-  await gigRef.update({ applicants: sanitiseApplicants(updatedApplicants), paid: true, status: omShouldClose ? "closed" : "open" });
+  await gigRef.update({ paid: true, status: omShouldClose ? "closed" : "open" });
   const acceptedApplicant = applicantsToProcess.find((applicant) => applicant?.id === musicianProfileId);
   if (applicantIsGuest(acceptedApplicant)) {
     await emailGuest(gigData.gigId, acceptedApplicant, {
@@ -1164,7 +1198,7 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
       }
     }
   }
-  return res.json({ data: { updatedApplicants } });
+  return res.json({ data: { updatedApplicants: visibleApplicants(publishedApplicants, gigData.gigId, musicianProfileId, role === "venue") } });
 }));
 
 // POST /api/gigs/declineGigApplication
@@ -1211,11 +1245,13 @@ router.post("/declineGigApplication", requireAuth, asyncHandler(async (req, res)
     }
   }
 
-  const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
+  const { applications } = await readNightApplications(gigData.gigId);
+  const applicants = applications.length
+    ? applications
+    : (Array.isArray(gigData?.applicants) ? gigData.applicants : []);
   const declinedApplicant = applicants.find((applicant) => applicant?.id === musicianProfileId);
-  const updatedApplicants = applicants.map((a) => a.id === musicianProfileId ? { ...a, status: "declined" } : { ...a });
-  const gigRef = db.doc(`gigs/${gigData.gigId}`);
-  await gigRef.update({ applicants: sanitiseApplicants(updatedApplicants) });
+  const updatedApplicants = applicants.map((a) => a.id === musicianProfileId ? { ...a, status: "declined", assignedSlotGigId: null } : { ...a });
+  const publishedApplicants = await publishNightApplicants(gigData.gigId, updatedApplicants);
   if (applicantIsGuest(declinedApplicant)) {
     await emailGuest(gigData.gigId, declinedApplicant, {
       subject: `Update on your application for ${gigData.gigName || "the gig"}`,
@@ -1223,7 +1259,9 @@ router.post("/declineGigApplication", requireAuth, asyncHandler(async (req, res)
       remind: true,
     });
   }
-  return res.json({ data: { updatedApplicants } });
+  return res.json({
+    data: { updatedApplicants: visibleApplicants(publishedApplicants.applicants, gigData.gigId, musicianProfileId, role === "venue") },
+  });
 }));
 
 // POST /api/gigs/updateGigWithCounterOffer
@@ -1250,9 +1288,10 @@ router.post("/updateGigWithCounterOffer", requireAuth, asyncHandler(async (req, 
       ? { ...applicant, fee: newFee, timestamp: now, status: "pending", sentBy: sender }
       : { ...applicant }
   ));
-  const gigRef = db.doc(`gigs/${gigData.gigId}`);
-  await gigRef.update({ applicants: updatedApplicants });
-  return res.json({ data: { updatedApplicants } });
+  const published = await mergePublishApplicants(gigData.gigId, updatedApplicants);
+  return res.json({
+    data: { updatedApplicants: visibleApplicants(published, gigData.gigId, musicianProfileId, sender !== "musician") },
+  });
 }));
 
 // POST /api/gigs/removeGigApplicant
@@ -1472,17 +1511,21 @@ router.post("/revertGigAfterCancellationVenue", requireAuth, asyncHandler(async 
   // Venue-side cancellation: require gigs.applications.manage permission
   await assertVenuePerm(db, caller, venueId, "gigs.applications.manage");
 
-  const applicants = Array.isArray(gigData?.applicants) ? gigData.applicants : [];
-  const updatedApplicants = applicants.filter((a) => a?.id !== musicianId);
   const gigRef = db.doc(`gigs/${gigData.gigId}`);
-  
+
   // Get payoutConfig before deleting it (needed for pendingFunds update)
   const gigSnap = await gigRef.get();
   const currentGigData = gigSnap.exists ? gigSnap.data() : {};
   const payoutConfig = currentGigData.payoutConfig || gigData.payoutConfig || null;
-  
+  const rootId = currentGigData.applicationsRootGigId || gigData.gigId;
+  const stored = await loadPrivateApplications(rootId);
+  const applicants = stored?.applicants?.length
+    ? stored.applicants
+    : (Array.isArray(gigData?.applicants) ? gigData.applicants : []);
+  const updatedApplicants = musicianId ? applicants.filter((a) => a?.id !== musicianId) : applicants;
+  if (stored?.applicants) await publishNightApplicants(gigData.gigId, updatedApplicants);
+
   await gigRef.update({
-    applicants: updatedApplicants,
     agreedFee: FieldValue.delete(),
     payoutConfig: FieldValue.delete(), // Remove payout config when gig is cancelled
     disputeClearingTime: FieldValue.delete(),
@@ -1689,12 +1732,20 @@ router.post("/markApplicantsViewed", requireAuth, asyncHandler(async (req, res) 
     if (!snap.exists) throw new Error("NOT_FOUND: gig");
     const data = snap.data() || {};
     if (data.venueId !== venueId) throw new Error("VENUE_MISMATCH");
-    const applicants = Array.isArray(data.applicants) ? data.applicants : [];
+    const rootId = data.applicationsRootGigId || gigId;
+    const storedSnap = await tx.get(db.doc(`gigs/${rootId}/private/applications`));
+    const stored = storedSnap.exists ? (storedSnap.data()?.applicants || []) : [];
+    const applicants = stored.length ? stored : (Array.isArray(data.applicants) ? data.applicants : []);
     const targetSet = Array.isArray(applicantIds) && applicantIds.length
       ? new Set(applicantIds)
       : new Set(applicants.map((a) => a?.id).filter(Boolean));
     const nextApplicants = applicants.map((a) => (a && targetSet.has(a.id)) ? { ...a, viewed: true } : a);
-    tx.update(gigRef, { applicants: sanitiseApplicants(nextApplicants), updatedAt: FieldValue.serverTimestamp() });
+    tx.set(db.doc(`gigs/${rootId}/private/applications`), {
+      gigId: rootId,
+      applicants: sanitiseApplicants(nextApplicants),
+    }, { merge: true });
+    const onlySlot = !Array.isArray(data.gigSlots) || data.gigSlots.length < 2;
+    tx.update(gigRef, { applicants: publicLineup(nextApplicants, gigId, { onlySlot }), updatedAt: FieldValue.serverTimestamp() });
   });
   return res.json({ data: { ok: true } });
 }));

@@ -24,6 +24,20 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
+async function privateApplicants(gigId) {
+  const gig = await db.doc(`gigs/${gigId}`).get();
+  const rootId = gig.data()?.applicationsRootGigId || gigId;
+  const snap = await db.doc(`gigs/${rootId}/private/applications`).get();
+  return snap.data()?.applicants || [];
+}
+
+async function signedOutGig(gigId) {
+  const host = process.env.FIRESTORE_EMULATOR_HOST;
+  const response = await fetch(`http://${host}/v1/projects/${PROJECT}/databases/(default)/documents/gigs/${gigId}`);
+  assert.equal(response.status, 200, `signed-out read of ${gigId}`);
+  return response.text();
+}
+
 async function signUp(email) {
   const response = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo', {
     method: 'POST',
@@ -147,8 +161,7 @@ test('one application per night: preference, assign, mail, close, old data, priv
   assert.equal(second.status, 200, JSON.stringify(second.json));
   assert.equal(second.json.applicationId, firstId);
 
-  const root = (await db.doc(`gigs/${a}`).get()).data();
-  const preferenceApps = (root.applicants || []).filter((entry) => entry.name === 'Preference Act' || entry.artistName === 'Preference Act');
+  const preferenceApps = (await privateApplicants(a)).filter((entry) => entry.name === 'Preference Act' || entry.artistName === 'Preference Act');
   assert.equal(preferenceApps.length, 1);
   assert.deepEqual(preferenceApps[0].preferredSlotGigIds, []);
   const contacts = await db.collection(`users/${venue.uid}/artistCRM`).where('email', '==', guestEmail).get();
@@ -192,9 +205,18 @@ test('one application per night: preference, assign, mail, close, old data, priv
   const noticeWait = noticeStart.getTime() - Date.now();
   assert.ok(noticeWait > 50 * 60 * 1000 && noticeWait < 70 * 60 * 1000);
 
-  const afterArtist = (await db.doc(`gigs/${a}`).get()).data();
-  assert.equal((afterArtist.applicants || []).filter((entry) => entry.id === profileId).length, 1);
+  const afterArtist = await privateApplicants(a);
+  assert.equal(afterArtist.filter((entry) => entry.id === profileId).length, 1);
   assert.equal((await db.doc(`gigs/${c}`).get()).data().applicants.some((entry) => entry.id === profileId && entry.status !== 'confirmed'), false);
+  for (const id of [a, b, c]) {
+    const text = await signedOutGig(id);
+    assert.equal(text.includes('Preference Act'), false, id);
+    assert.equal(text.includes('Later Act'), false, id);
+    assert.equal(text.includes('Logged In Act'), false, id);
+    assert.equal(text.includes(firstId), false, id);
+    assert.equal(text.includes(laterId), false, id);
+    assert.equal(text.includes(profileId), false, id);
+  }
 
   const accepted = await api(`/gigs/${a}/applications/${firstId}/accept`, {
     method: 'POST',
@@ -209,13 +231,19 @@ test('one application per night: preference, assign, mail, close, old data, priv
   });
   assert.equal(later.status, 200, JSON.stringify(later.json));
 
-  let night = (await db.doc(`gigs/${a}`).get()).data();
-  const acceptedGuest = night.applicants.find((entry) => entry.id === firstId);
+  const acceptedGuest = (await privateApplicants(a)).find((entry) => entry.id === firstId);
   assert.equal(acceptedGuest.status, 'accepted');
   assert.equal(acceptedGuest.assignedSlotGigId, b);
   const slotB = (await db.doc(`gigs/${b}`).get()).data();
   assert.equal(slotB.bookedApplicantId, firstId);
   assert.equal(slotB.applicants.some((entry) => entry.id === firstId && entry.status === 'confirmed'), true);
+  const bookedSlot = await signedOutGig(b);
+  assert.equal(bookedSlot.includes('Preference Act'), true);
+  assert.equal(bookedSlot.includes('Later Act'), false);
+  assert.equal(bookedSlot.includes('Logged In Act'), false);
+  const rootPublic = await signedOutGig(a);
+  assert.equal(rootPublic.includes('Later Act'), false);
+  assert.equal(rootPublic.includes('Logged In Act'), false);
 
   const assigned = await api(`/gigs/${a}/applications/${laterId}/assign`, {
     method: 'POST',
@@ -235,9 +263,9 @@ test('one application per night: preference, assign, mail, close, old data, priv
     body: { slotGigId: b },
   });
   assert.equal(swapped.status, 200, JSON.stringify(swapped.json));
-  const afterSwapA = (await db.doc(`gigs/${a}`).get()).data();
-  const guestNow = afterSwapA.applicants.find((entry) => entry.id === firstId);
-  const laterNow = afterSwapA.applicants.find((entry) => entry.id === laterId);
+  const afterSwap = await privateApplicants(a);
+  const guestNow = afterSwap.find((entry) => entry.id === firstId);
+  const laterNow = afterSwap.find((entry) => entry.id === laterId);
   assert.equal(laterNow.assignedSlotGigId, b);
   assert.equal(guestNow.assignedSlotGigId, c);
   assert.equal((await db.doc(`gigs/${b}`).get()).data().bookedApplicantId, laterId);
@@ -267,7 +295,10 @@ test('one application per night: preference, assign, mail, close, old data, priv
     token: venue.token,
   });
   assert.equal(declined.status, 200, JSON.stringify(declined.json));
-  const declineMailId = (await db.doc(`gigs/${a}`).get()).data().applicants.find((entry) => entry.id === declineId)?.undo?.mailIds?.[0];
+  const declineMailId = (await privateApplicants(a)).find((entry) => entry.id === declineId)?.undo?.mailIds?.[0];
+  const declinedPublic = await signedOutGig(a);
+  assert.equal(declinedPublic.includes('Later Act'), false);
+  assert.equal(declinedPublic.includes(declineId), false);
   const declineMail = declineMailId ? await db.doc(`mail/${declineMailId}`).get() : null;
   assert.equal(declineMail?.exists, true);
   const declineDelay = mailStart(declineMail.data()).getTime() - Date.now();
@@ -277,7 +308,12 @@ test('one application per night: preference, assign, mail, close, old data, priv
   assert.equal((await db.doc(`mail/${declineMailId}`).get()).exists, false);
 
   const acceptMail = await db.collection('mail').where('to', '==', guestEmail).get();
-  const delayed = acceptMail.docs.map((doc) => ({ id: doc.id, delay: mailStart(doc.data()) ? mailStart(doc.data()).getTime() - Date.now() : null, data: doc.data() }));
+  const acceptedAt = new Date(acceptedGuest.acceptedAt).getTime();
+  const delayed = acceptMail.docs.map((doc) => ({
+    id: doc.id,
+    delay: mailStart(doc.data()) && Number.isFinite(acceptedAt) ? mailStart(doc.data()).getTime() - acceptedAt : null,
+    data: doc.data(),
+  }));
   const tenSecond = delayed.find((row) => row.delay != null && row.delay > 0 && row.delay < 30 * 1000);
   assert.ok(tenSecond, `expected a ~10s accept email, saw ${JSON.stringify(delayed.map((row) => row.delay))}`);
 
@@ -294,6 +330,8 @@ test('one application per night: preference, assign, mail, close, old data, priv
   const withdrawn = await api(`/guest-applications/${freshToken}/withdraw`, { method: 'POST', body: { gigId: a } });
   assert.equal(withdrawn.status, 200, JSON.stringify(withdrawn.json));
   assert.equal((await db.doc(`gigs/${a}`).get()).data().bookedApplicantId || null, null);
+  const afterWithdraw = await signedOutGig(a);
+  assert.equal(afterWithdraw.includes('Preference Act'), false);
   const venueMail = await db.collection('mail').where('to', '==', venueEmail).get();
   assert.ok(venueMail.size >= 1, 'venue should be told the accepted act withdrew');
 
@@ -325,7 +363,7 @@ test('one application per night: preference, assign, mail, close, old data, priv
   });
   assert.equal(booked.status, 200, JSON.stringify(booked.json));
   assert.equal((await db.doc(`gigs/${only}`).get()).data().bookedApplicantId, one.json.applicationId);
-  const oneMailId = (await db.doc(`gigs/${only}`).get()).data().applicants.find((entry) => entry.id === one.json.applicationId)?.undo?.mailIds?.[0];
+  const oneMailId = (await privateApplicants(only)).find((entry) => entry.id === one.json.applicationId)?.undo?.mailIds?.[0];
   const oneMail = await db.doc(`mail/${oneMailId}`).get();
   assert.equal(oneMail.exists, true);
   const acceptDelay = mailStart(oneMail.data()).getTime() - Date.now();

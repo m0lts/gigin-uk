@@ -1,11 +1,12 @@
 /* eslint-disable */
 import { db, FieldValue, Timestamp } from "../config/admin.js";
-import { guestPrivate, guestStub, isGuestApplicant } from "./gigPrivacy.js";
+import { guestPrivate, isGuestApplicant, loadPrivateApplications, operationalApplicant } from "./gigPrivacy.js";
 import { queueMail } from "./queueMail.js";
 import {
   applicationsRootGigId,
   planAssignment,
   preferencePhrase,
+  publicLineup,
   readNight,
   slotGigId,
   sortSlots,
@@ -170,58 +171,33 @@ function canonicalStatus(status) {
   return value;
 }
 
-function publicEntry(app) {
-  const status = canonicalStatus(app.status);
-  if (isGuestApplicant(app)) {
-    return guestStub({ ...app, status, assignedSlotGigId: app.assignedSlotGigId || null });
-  }
-  const entry = { ...app, status, assignedSlotGigId: app.assignedSlotGigId || null };
-  delete entry.manageToken;
-  delete entry.manageTokenHash;
-  delete entry.email;
-  delete entry._slotGigId;
-  return entry;
-}
-
-function mirrorEntry(app, slotId) {
-  const base = isGuestApplicant(app)
-    ? guestStub({ ...app, status: "confirmed", assignedSlotGigId: slotId })
-    : { ...publicEntry(app), status: "confirmed", assignedSlotGigId: slotId };
-  base.status = "confirmed";
-  base.assignedSlotGigId = slotId;
-  return base;
-}
-
-function distribute(slots, rootId, changedApps) {
-  const changed = new Map(changedApps.map((app) => [String(app.id), app]));
+function projectNight(slots, rootId, allApps) {
+  const onlySlot = slots.length < 2;
   return slots.map((slot) => {
-    let applicants = (Array.isArray(slot.data.applicants) ? slot.data.applicants : []).filter((entry) => (
-      !changed.has(String(entry?.id))
-    ));
-    let booked = Object.prototype.hasOwnProperty.call(slot.data, "bookedApplicantId")
-      ? (slot.data.bookedApplicantId || null)
-      : null;
-    for (const app of changed.values()) {
-      if (booked === app.id) booked = null;
-      const assigned = app.assignedSlotGigId || null;
-      const accepted = canonicalStatus(app.status) === "accepted";
-      if (slot.id === rootId) applicants.push(publicEntry(app));
-      if (accepted && assigned === slot.id) {
-        applicants = applicants.filter((entry) => !(String(entry?.id) === String(app.id) && entry?.status === "confirmed"));
-        applicants.push(mirrorEntry(app, slot.id));
-        booked = app.id;
-      }
-    }
+    const lineup = publicLineup(allApps, slot.id, { onlySlot });
     return {
       ref: slot.ref,
       id: slot.id,
       patch: {
-        applicants,
+        applicants: lineup,
         applicationsRootGigId: rootId,
-        bookedApplicantId: booked,
+        bookedApplicantId: lineup[0]?.id || null,
+        closeUndo: FieldValue.delete(),
       },
     };
   });
+}
+
+function mergeChanged(current, changedApps) {
+  const changed = new Map((changedApps || []).filter((app) => app?.id != null).map((app) => [String(app.id), app]));
+  const next = (current || []).map((app) => {
+    const update = changed.get(String(app.id));
+    return update ? { ...app, ...update, id: app.id } : app;
+  });
+  for (const app of changed.values()) {
+    if (!next.some((entry) => String(entry.id) === String(app.id))) next.push(app);
+  }
+  return next;
 }
 
 async function loadVenue(venueId) {
@@ -309,6 +285,16 @@ export async function loadNightSlots(gigId) {
   }
   const views = slots.map((slot) => slotView({ id: slot.id, data: () => slot.data }));
   const rootId = applicationsRootGigId(views);
+  const stored = await loadPrivateApplications(rootId);
+  if (stored && Array.isArray(stored.applicants)) {
+    const root = slots.find((slot) => slot.id === rootId);
+    if (root) {
+      const data = { ...root.data, applicants: stored.applicants };
+      if (stored.closeUndo) data.closeUndo = stored.closeUndo;
+      else delete data.closeUndo;
+      root.data = data;
+    }
+  }
   return { slots, rootId, views: views.sort((a, b) => String(a.startTime || "").localeCompare(String(b.startTime || ""))) };
 }
 
@@ -340,12 +326,17 @@ async function readPrivate(rootId, applicantId) {
 }
 
 async function commitApps({ slots, rootId, apps, privatePatch, applicantId }) {
-  const writes = distribute(slots, rootId, apps);
+  const current = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data }))).applications;
+  const next = mergeChanged(current, apps);
+  const writes = projectNight(slots, rootId, next);
+  const operational = next.map(operationalApplicant).filter(Boolean);
   await db.runTransaction(async (tx) => {
-    for (const slot of slots) {
-      await tx.get(slot.ref);
-    }
+    for (const slot of slots) await tx.get(slot.ref);
     for (const write of writes) tx.update(write.ref, write.patch);
+    tx.set(db.doc(`gigs/${rootId}/private/applications`), {
+      gigId: rootId,
+      applicants: operational,
+    }, { merge: true });
     if (privatePatch && applicantId) {
       tx.set(db.doc(`gigs/${rootId}/guestApplicants/${applicantId}`), privatePatch, { merge: true });
     }
@@ -594,7 +585,8 @@ export async function acceptApplication({ gigId, applicantId, slotGigId }) {
     error.statusCode = 400;
     throw error;
   }
-  if (target && views.find((slot) => slot.gigId === target)?.taken) {
+  const targetSlot = target ? views.find((slot) => slot.gigId === target) : null;
+  if (targetSlot?.taken && String(targetSlot.bookedApplicantId || "") !== String(applicantId)) {
     const error = new Error("That set has already been booked.");
     error.statusCode = 409;
     throw error;
@@ -819,21 +811,21 @@ export async function closeApplications({ gigId, declineWaiting }) {
     next.undo = { until: new Date(Date.now() + DELAY_MS).toISOString(), mailIds: [mailId].filter(Boolean), status: "pending", assignedSlotGigId: null };
     declined.push(next);
   }
+  const next = mergeChanged(night.applications, declined);
+  const closeUndo = {
+    until: new Date(Date.now() + DELAY_MS).toISOString(),
+    mailIds: mailIds.filter(Boolean),
+    applicantIds: declined.map((entry) => entry.id),
+  };
   await db.runTransaction(async (tx) => {
     for (const slot of slots) await tx.get(slot.ref);
-    const writes = declined.length ? distribute(slots, rootId, declined) : slots.map((slot) => ({
-      ref: slot.ref,
-      patch: { applicationsOpen: false, applicationsRootGigId: rootId },
-    }));
-    for (const write of writes) {
+    for (const write of projectNight(slots, rootId, next)) {
       tx.update(write.ref, { ...write.patch, applicationsOpen: false, applicationsRootGigId: rootId });
     }
-    tx.set(db.doc(`gigs/${rootId}`), {
-      closeUndo: {
-        until: new Date(Date.now() + DELAY_MS).toISOString(),
-        mailIds: mailIds.filter(Boolean),
-        applicantIds: declined.map((entry) => entry.id),
-      },
+    tx.set(db.doc(`gigs/${rootId}/private/applications`), {
+      gigId: rootId,
+      applicants: next.map(operationalApplicant).filter(Boolean),
+      closeUndo,
     }, { merge: true });
   });
   const n = declined.length;
@@ -860,14 +852,18 @@ export async function undoClose({ gigId }) {
     if (!app) continue;
     restored.push({ ...app, status: "pending", undo: null, declineEmailSendAt: null });
   }
+  const current = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data }))).applications;
+  const next = mergeChanged(current, restored);
   await db.runTransaction(async (tx) => {
     for (const slot of slots) await tx.get(slot.ref);
-    const writes = restored.length ? distribute(slots, rootId, restored) : [];
-    const refs = new Map(writes.map((write) => [write.ref.path, write.patch]));
-    for (const slot of slots) {
-      const patch = refs.get(slot.ref.path) || { applicants: slot.data.applicants || [] };
-      tx.update(slot.ref, { ...patch, applicationsOpen: true, closeUndo: FieldValue.delete() });
+    for (const write of projectNight(slots, rootId, next)) {
+      tx.update(write.ref, { ...write.patch, applicationsOpen: true });
     }
+    tx.set(db.doc(`gigs/${rootId}/private/applications`), {
+      gigId: rootId,
+      applicants: next.map(operationalApplicant).filter(Boolean),
+      closeUndo: FieldValue.delete(),
+    }, { merge: true });
   });
   return { ok: true };
 }
@@ -947,8 +943,35 @@ export async function placeLoggedInApplication({ gigId, application, preferredSl
       rootId,
     });
   }
-  const fresh = (await db.doc(`gigs/${rootId}`).get()).data() || {};
-  return { applicants: fresh.applicants || [], rootGigId: rootId };
+  const stored = await loadPrivateApplications(rootId);
+  const list = stored?.applicants || [];
+  const lineup = publicLineup(list, rootId);
+  const mine = list.find((entry) => String(entry.id) === String(application.id));
+  const applicants = mine && !lineup.some((entry) => String(entry.id) === String(mine.id))
+    ? [...lineup, mine]
+    : lineup;
+  return { applicants, rootGigId: rootId };
+}
+
+export async function readNightApplications(gigId) {
+  const { slots, rootId } = await loadNightSlots(gigId);
+  const night = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
+  return { slots, rootId, applications: night.applications };
+}
+
+export async function publishNightApplicants(gigId, applicants) {
+  const { slots, rootId } = await loadNightSlots(gigId);
+  const list = Array.isArray(applicants) ? applicants : [];
+  const writes = projectNight(slots, rootId, list);
+  const operational = list.map(operationalApplicant).filter(Boolean);
+  const batch = db.batch();
+  for (const write of writes) batch.update(write.ref, write.patch);
+  batch.set(db.doc(`gigs/${rootId}/private/applications`), {
+    gigId: rootId,
+    applicants: operational,
+  }, { merge: true });
+  await batch.commit();
+  return { rootId, applicants: operational };
 }
 
 export async function writeGuestApplication({ gigId, applicant, preferredSlotGigIds }) {

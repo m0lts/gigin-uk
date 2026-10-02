@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applicationsRootGigId,
+  publicLineup,
   publicSlots,
   readNight,
   readSlotApplicants,
@@ -157,4 +158,32 @@ test("a stored booking is mirrored as confirmed for existing per-slot screens", 
   assert.equal(applicants[0].name, "Maya Reid");
   assert.equal(applicants[0].assignedSlotGigId, "set-1");
   assert.equal(applicants[0].email, undefined);
+});
+
+test("a public lineup is the confirmed act name and set, and nothing else", () => {
+  const lineup = publicLineup([
+    { id: "wait", name: "Waiting Act", status: "pending", preferredSlotGigIds: ["set-1"], email: "wait@example.com" },
+    { id: "no", name: "Declined Act", status: "declined", assignedSlotGigId: null },
+    { id: "gone", name: "Withdrawn Act", status: "withdrawn", withdrawnAfterAccept: true },
+    { id: "later", name: "Accepted Later", status: "accepted", assignedSlotGigId: null, fee: "£80" },
+    {
+      id: "maya",
+      name: "Maya Reid",
+      status: "accepted",
+      assignedSlotGigId: "set-2",
+      email: "maya@example.com",
+      applicationMessage: "hello",
+      undo: { mailIds: ["m1"] },
+    },
+  ], "set-2");
+  assert.equal(lineup.length, 1);
+  assert.deepEqual(lineup[0], {
+    id: "maya",
+    name: "Maya Reid",
+    artistName: "Maya Reid",
+    status: "confirmed",
+    assignedSlotGigId: "set-2",
+  });
+  assert.equal(publicLineup([{ id: "old", name: "Legacy Act", status: "confirmed" }], "set-1", { onlySlot: true })[0].name, "Legacy Act");
+  assert.equal(publicLineup([{ id: "old", name: "Legacy Act", status: "confirmed" }], "set-1").length, 0);
 });

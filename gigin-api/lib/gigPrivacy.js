@@ -1,7 +1,7 @@
 import { db } from "../config/admin.js";
 
 /** Fields that must not sit on the world-readable gigs/{id} document. */
-const PRIVATE_KEYS = [
+export const PRIVATE_KEYS = [
   "contactName",
   "email",
   "phone",
@@ -45,9 +45,9 @@ const DETAILS_FIELDS = [
 ];
 
 /**
- * Public stub kept on applicants[]. viewed, invited, guest, sentBy, fee and
- * proposedFee stay because the running order, the Guest tag and counts
- * already read them. They are not contact details.
+ * Operational guest record. Contact details stay on guestApplicants/{id}.
+ * This object is stored for the venue under private/applications, not on the
+ * world-readable gig document.
  */
 export function guestStub(full = {}) {
   const created = full.createdAt || full.timestamp || full.appliedAt || new Date().toISOString();
@@ -99,6 +99,38 @@ export function guestPrivate(full = {}, gigId) {
 
 export function isGuestApplicant(entry) {
   return entry?.type === "guest" || entry?.guest === true;
+}
+
+/** Applicant state the venue needs, without tokens or a guest's contact details. */
+export function operationalApplicant(entry) {
+  if (!entry || entry.id == null) return null;
+  if (isGuestApplicant(entry)) return guestStub(entry);
+  const next = { ...entry };
+  delete next.manageToken;
+  delete next.manageTokenHash;
+  delete next.email;
+  delete next._slotGigId;
+  for (const key of PRIVATE_KEYS) {
+    if (key === "applicationMessage" || key === "artistProfileId" || key === "profileSlug") continue;
+    delete next[key];
+  }
+  return next;
+}
+
+export async function loadPrivateApplications(rootId) {
+  if (!rootId) return null;
+  const snap = await db.doc(`gigs/${rootId}/private/applications`).get();
+  return snap.exists ? (snap.data() || null) : null;
+}
+
+export async function savePrivateApplications(rootId, applicants, extra = {}) {
+  if (!rootId) return;
+  const next = {
+    gigId: rootId,
+    applicants: (Array.isArray(applicants) ? applicants : []).map(operationalApplicant).filter(Boolean),
+  };
+  for (const [key, value] of Object.entries(extra)) next[key] = value;
+  await db.doc(`gigs/${rootId}/private/applications`).set(next, { merge: true });
 }
 
 export function sanitiseApplicants(list) {

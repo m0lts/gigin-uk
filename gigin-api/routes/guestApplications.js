@@ -9,13 +9,15 @@ import {
   guestPrivate,
   guestStub,
   loadGuestPrivates,
+  loadPrivateApplications,
   mergeApplicants,
   sanitiseApplicants,
+  savePrivateApplications,
 } from "../lib/gigPrivacy.js";
 import { queueMail } from "../lib/queueMail.js";
 import { MAIL_FROM } from "../lib/accessRequest.js";
 import { applicationDateLabel, createWindowLimiter, isUpcomingOrRecent, manageLinksText } from "../lib/manageLinks.js";
-import { preferencePhrase, readNight } from "../lib/nightApplications.js";
+import { preferencePhrase, publicLineup, readNight } from "../lib/nightApplications.js";
 import {
   emailForAct,
   loadNightSlots,
@@ -178,17 +180,18 @@ async function mergedGuests(doc) {
 }
 
 async function loadNightDocs(gigId) {
-  const docs = await loadGroup(gigId);
-  const slots = [];
-  for (const doc of docs) {
-    const guests = await mergedGuests(doc);
+  const { slots, rootId } = await loadNightSlots(gigId);
+  const docs = slots.map((slot) => ({ id: slot.id, ref: slot.ref, data: { ...slot.data } }));
+  const root = docs.find((doc) => doc.id === rootId) || docs[0];
+  if (root) {
+    const guests = await mergedGuests({ id: root.id, data: root.data });
     const guestIds = new Set(guests.map((entry) => entry.id));
-    const rest = (Array.isArray(doc.data.applicants) ? doc.data.applicants : []).filter((entry) => (
+    const rest = (Array.isArray(root.data.applicants) ? root.data.applicants : []).filter((entry) => (
       !isGuest(entry) && !guestIds.has(entry?.id)
     ));
-    slots.push({ gigId: doc.id, ...doc.data, applicants: [...rest, ...guests] });
+    root.data = { ...root.data, applicants: [...rest, ...guests] };
   }
-  return { docs, night: readNight(slots) };
+  return { docs, night: readNight(docs.map((doc) => ({ gigId: doc.id, ...doc.data }))) };
 }
 
 async function findByToken(gigId, token) {
@@ -431,25 +434,20 @@ router.post("/magic-link", asyncHandler(async (req, res) => {
   const gigId = String(req.body?.gigId || "");
   const email = emailNorm(req.body?.email);
   const phone = phoneNorm(req.body?.phone);
-  const docs = gigId ? await loadGroup(gigId) : [];
-  let match = null;
-  for (const doc of docs) {
-    const guests = await mergedGuests(doc);
-    match = guests.find((entry) => (email && emailNorm(entry.email) === email) || (phone && phoneNorm(entry.phone) === phone));
-    if (match) break;
-  }
+  const loaded = gigId ? await loadNightDocs(gigId) : null;
+  const docs = loaded?.docs || [];
+  const match = loaded?.night?.applications?.find((entry) => (
+    (email && emailNorm(entry.email) === email) || (phone && phoneNorm(entry.phone) === phone)
+  )) || null;
   if (match?.email) {
     const manageToken = crypto.randomBytes(32).toString("hex");
     const manageTokenHash = hashToken(manageToken);
-    for (const doc of docs) {
-      const applicants = Array.isArray(doc.data.applicants) ? doc.data.applicants : [];
-      if (!applicants.some((entry) => entry?.id === match.id)) continue;
-      await db.doc(`gigs/${doc.id}/guestApplicants/${match.id}`).set({
-        manageTokenHash,
-        gigId: doc.id,
-        applicantId: match.id,
-      }, { merge: true });
-    }
+    const rootId = loaded?.night?.applicationsRootGigId || gigId;
+    await db.doc(`gigs/${rootId}/guestApplicants/${match.id}`).set({
+      manageTokenHash,
+      gigId: rootId,
+      applicantId: match.id,
+    }, { merge: true });
     const url = `${process.env.BASE_URL || "https://giginmusic.com"}/gig/${match.gigId || gigId}/application/${manageToken}`;
     await sendMail({
       to: match.email,
@@ -501,7 +499,10 @@ async function sendFreshManageLinks(email) {
     const gigId = data.gigId || doc.ref.parent?.parent?.id;
     if (!gigId) continue;
     const docs = await loadGroup(gigId);
-    const stubs = docs.flatMap((slot) => (
+    const rootIdForLinks = docs.find((slot) => slot.data.applicationsRootGigId)?.data.applicationsRootGigId || gigId;
+    const storedApps = await loadPrivateApplications(rootIdForLinks);
+    const fromPrivate = (storedApps?.applicants || []).filter((entry) => entry?.id === applicantId);
+    const stubs = fromPrivate.length ? fromPrivate : docs.flatMap((slot) => (
       (Array.isArray(slot.data.applicants) ? slot.data.applicants : []).filter((entry) => entry?.id === applicantId)
     ));
     if (!stubs.length) continue;
@@ -515,15 +516,24 @@ async function sendFreshManageLinks(email) {
     const token = crypto.randomBytes(32).toString("hex");
     const manageTokenHash = hashToken(token);
     let wrote = false;
-    for (const slot of docs) {
-      const applicants = Array.isArray(slot.data.applicants) ? slot.data.applicants : [];
-      if (!applicants.some((entry) => entry?.id === applicantId)) continue;
-      await db.doc(`gigs/${slot.id}/guestApplicants/${applicantId}`).set({
+    if (fromPrivate.length) {
+      await db.doc(`gigs/${rootIdForLinks}/guestApplicants/${applicantId}`).set({
         manageTokenHash,
-        gigId: slot.id,
+        gigId: rootIdForLinks,
         applicantId,
       }, { merge: true });
       wrote = true;
+    } else {
+      for (const slot of docs) {
+        const applicants = Array.isArray(slot.data.applicants) ? slot.data.applicants : [];
+        if (!applicants.some((entry) => entry?.id === applicantId)) continue;
+        await db.doc(`gigs/${slot.id}/guestApplicants/${applicantId}`).set({
+          manageTokenHash,
+          gigId: slot.id,
+          applicantId,
+        }, { merge: true });
+        wrote = true;
+      }
     }
     if (!wrote) continue;
     const primary = dated[0]?.slot?.data || docs[0]?.data || {};
@@ -948,14 +958,17 @@ router.post("/:token/link", requireAuth, asyncHandler(async (req, res) => {
   if (!found) return res.status(404).json({ error: "This link is not valid." });
   const profileSnap = await db.collection("artistProfiles").where("userId", "==", req.auth.uid).limit(1).get();
   const profile = profileSnap.empty ? null : { id: profileSnap.docs[0].id, ...(profileSnap.docs[0].data() || {}) };
+  const rootId = found.night?.applicationsRootGigId || gigId;
+  const stored = await loadPrivateApplications(rootId);
+  const current = stored?.applicants?.length ? stored.applicants : (found.night?.applications || []);
+  const next = current.map((entry) => (
+    entry?.id === found.applicant.id
+      ? { ...entry, userId: req.auth.uid, ...(profile ? { linkedArtistId: profile.id } : {}) }
+      : entry
+  ));
+  await savePrivateApplications(rootId, next);
   for (const doc of found.docs) {
-    const applicants = Array.isArray(doc.data.applicants) ? doc.data.applicants : [];
-    if (!applicants.some((entry) => entry?.id === found.applicant.id)) continue;
-    await doc.ref.update({
-      applicants: sanitiseApplicants(applicants.map((entry) => entry?.id === found.applicant.id
-        ? { ...entry, userId: req.auth.uid, ...(profile ? { linkedArtistId: profile.id } : {}) }
-        : entry)),
-    });
+    await doc.ref.update({ applicants: publicLineup(next, doc.id) });
   }
   let artistLinked = false;
   if (profile && found.applicant.crmEntryId && found.gig.data?.venueId) {

@@ -134,6 +134,8 @@ test('guest apply, close applications, linking, and media share', async () => {
   const publicGig = (await db.doc(`gigs/${slotA}`).get()).data();
   const publicText = JSON.stringify(publicGig);
   assert.equal(publicText.includes(guestEmail), false);
+  assert.equal(publicText.includes('The Test Act'), false);
+  assert.equal(publicText.includes(applicationId), false);
   assert.equal(publicText.includes('07000000000'), false);
   assert.equal(publicText.includes(manageToken), false);
   assert.equal(publicGig.soundEngineerContact, undefined);
@@ -300,8 +302,11 @@ test('guest apply, close applications, linking, and media share', async () => {
   assert.equal(linked.json?.artistLinked, true);
   const linkedContact = (await db.doc(`users/${venue.uid}/artistCRM/${sameEmail[0].id}`).get()).data();
   assert.equal(linkedContact.artistId, guestProfile);
-  const linkedGig = (await db.doc(`gigs/${slotA}`).get()).data();
-  const guestEntry = linkedGig.applicants.find((entry) => entry.id === applicationId);
+  const linkedRoot = (await db.doc(`gigs/${slotA}`).get()).data()?.applicationsRootGigId || slotA;
+  const linkedPrivate = (await db.doc(`gigs/${linkedRoot}/private/applications`).get()).data();
+  const guestEntry = (linkedPrivate?.applicants || []).find((entry) => entry.id === applicationId);
+  const linkedPublic = JSON.stringify((await db.doc(`gigs/${slotA}`).get()).data());
+  assert.equal(linkedPublic.includes('The Test Act'), false);
   assert.equal(guestEntry.userId, guestUser.uid);
   assert.equal(guestEntry.id, applicationId);
 

@@ -172,6 +172,49 @@ export function slotTaken(slot) {
   return Boolean(bookedApplicantId(slot));
 }
 
+const PUBLIC_LINEUP_STATUSES = new Set(["accepted", "confirmed", "paid"]);
+
+/**
+ * One confirmed act, safe to leave on a world-readable gig document:
+ * act name and the set they are playing.
+ */
+export function publicLineupEntry(applicant, slotId) {
+  const name = applicant?.name || applicant?.artistName || applicant?.actName || "";
+  return {
+    id: applicant.id,
+    name,
+    artistName: applicant?.artistName || applicant?.name || name,
+    status: "confirmed",
+    assignedSlotGigId: applicant?.assignedSlotGigId || slotId || null,
+  };
+}
+
+/**
+ * Accepted or confirmed, and assigned to this set.
+ * A one-slot night can still carry an old confirmed row with no assignment.
+ */
+export function isPublicLineup(applicant, slotId, options = {}) {
+  if (!applicant || applicant.id == null) return false;
+  const status = String(applicant.status || "").toLowerCase();
+  if (!PUBLIC_LINEUP_STATUSES.has(status)) return false;
+  const assigned = applicant.assignedSlotGigId || null;
+  if (assigned) return assigned === slotId;
+  return options.onlySlot === true && (status === "confirmed" || status === "paid");
+}
+
+export function publicLineup(applicants, slotId, options = {}) {
+  const seen = new Set();
+  const out = [];
+  for (const entry of applicants || []) {
+    if (!isPublicLineup(entry, slotId, options)) continue;
+    const key = String(entry.id);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(publicLineupEntry(entry, slotId));
+  }
+  return out;
+}
+
 /** Artist-facing slot. No act names. */
 export function publicSlot(slot) {
   return {

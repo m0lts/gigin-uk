@@ -3,6 +3,8 @@ import crypto from "crypto";
 import { db, admin, FieldValue } from "../config/admin.js";
 import { queueMail } from "./queueMail.js";
 import { renderArtistEmail } from "./artistEmails.js";
+import { loadPrivateApplications, savePrivateApplications } from "./gigPrivacy.js";
+import { publicLineup } from "./nightApplications.js";
 import {
   APP_ORIGIN,
   MAIL_FROM,
@@ -287,14 +289,23 @@ async function writeProfileDocs(profileId, body, guest) {
 async function stampGuest(gigId, applicantId, patch) {
   if (!gigId || !applicantId) return;
   await db.doc(`gigs/${gigId}/guestApplicants/${applicantId}`).set(patch, { merge: true });
-  const ref = db.doc(`gigs/${gigId}`);
-  const snap = await ref.get();
+  const snap = await db.doc(`gigs/${gigId}`).get();
   if (!snap.exists) return;
-  const applicants = Array.isArray(snap.data()?.applicants) ? snap.data().applicants : [];
+  const rootId = snap.data()?.applicationsRootGigId || gigId;
+  const stored = await loadPrivateApplications(rootId);
+  const applicants = stored?.applicants?.length
+    ? stored.applicants
+    : (Array.isArray(snap.data()?.applicants) ? snap.data().applicants : []);
   if (!applicants.some((entry) => entry?.id === applicantId)) return;
-  await ref.update({
-    applicants: applicants.map((entry) => (entry?.id === applicantId ? { ...entry, artistProfileId: patch.artistProfileId || entry.artistProfileId, profileSlug: patch.profileSlug || entry.profileSlug } : entry)),
-  });
+  const next = applicants.map((entry) => (
+    entry?.id === applicantId
+      ? { ...entry, artistProfileId: patch.artistProfileId || entry.artistProfileId, profileSlug: patch.profileSlug || entry.profileSlug }
+      : entry
+  ));
+  await savePrivateApplications(rootId, next);
+  if (stored?.applicants?.length) {
+    await db.doc(`gigs/${gigId}`).update({ applicants: publicLineup(next, gigId) });
+  }
 }
 
 async function confirmEmail({ to, actName, venueName, contactName, sections, token }) {
@@ -754,7 +765,10 @@ async function relationshipFor(profileId, venueId, email) {
   const gigs = await db.collection("gigs").where("venueId", "==", venueId).limit(80).get();
   for (const doc of gigs.docs) {
     const data = doc.data() || {};
-    const applicants = Array.isArray(data.applicants) ? data.applicants : [];
+    const stored = await db.doc(`gigs/${doc.id}/private/applications`).get();
+    const applicants = stored.exists && Array.isArray(stored.data()?.applicants)
+      ? stored.data().applicants
+      : (Array.isArray(data.applicants) ? data.applicants : []);
     for (const applicant of applicants) {
       let hit = applicant?.id === profileId || applicant?.linkedArtistId === profileId || applicant?.artistProfileId === profileId;
       if (!hit && email && (applicant?.type === "guest" || applicant?.guest)) {
