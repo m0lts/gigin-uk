@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getEmailAddress } from '@services/api/users';
 import { sendVerificationEmail as sendVerificationEmailApi } from '../services/api/users';
+import { FEATURES } from '../config/features';
+import { artistLoginRedirect } from '../config/artistDestination';
 
 export const useAuth = () => {
 
@@ -182,13 +184,9 @@ export const useAuth = () => {
         console.log("Error creating user document:", error);
       }
       const redirect = sessionStorage.getItem('redirect');
-      if (redirect === 'create-musician-profile') {
+      if (redirect) {
         sessionStorage.removeItem('redirect');
-        window.location.reload()
-        return;
-      } else if (redirect) {
-        navigate(redirect);
-        sessionStorage.removeItem('redirect');
+        navigate(artistLoginRedirect(redirect, user, FEATURES));
         return;
       }
       // Don't navigate here - let LoginForm handle redirect based on user profile type
@@ -229,13 +227,9 @@ export const useAuth = () => {
         }
       }
       const redirect = sessionStorage.getItem('redirect');
-      if (redirect === 'create-musician-profile') {
+      if (redirect) {
         sessionStorage.removeItem('redirect');
-        window.location.reload()
-        return;
-      } else if (redirect) {
-        navigate(redirect);
-        sessionStorage.removeItem('redirect');
+        navigate(artistLoginRedirect(redirect, user, FEATURES));
         return;
       }
       // Don't navigate here - let LoginForm handle redirect based on user profile type
@@ -265,12 +259,8 @@ export const useAuth = () => {
         marketingConsent: !!marketingConsent,
       }, { merge: true });
       const redirect = sessionStorage.getItem('redirect');
-      if (redirect) {
-        sessionStorage.removeItem('redirect');
-        navigate(redirect);
-      } else {
-        navigate('/');
-      }
+      if (redirect) sessionStorage.removeItem('redirect');
+      navigate(artistLoginRedirect(redirect, user, FEATURES));
       sessionStorage.setItem('newUser', true);
       return { needsEmailVerify: true, redirect };
     } catch (error) {

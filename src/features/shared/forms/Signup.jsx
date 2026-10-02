@@ -12,6 +12,8 @@ import { PhoneField, isValidE164 } from './PhoneField';
 // Styles
 import '@styles/forms/forms.styles.css';
 import { isBlockedEmail } from '../../../services/utils/validation';
+import { FEATURES } from '../../../config/features';
+import { artistDestination } from '../../../config/artistDestination';
 
 /**
  * SignupForm - a React component for signing up to Gigin.
@@ -172,7 +174,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                     if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
                       setAuthModal(false);
                       setAuthClosable(true);
-                      navigate('/artist-profile');
+                      navigate(artistDestination(null, FEATURES));
                     } else {        
                       setAuthModal(false);
                       setAuthClosable(true);

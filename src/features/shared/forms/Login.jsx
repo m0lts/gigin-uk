@@ -11,6 +11,8 @@ import '@styles/forms/forms.styles.css'
 import { GoogleIcon } from '../ui/extras/Icons';
 import { LoadingSpinner } from '../ui/loading/Loading';
 import { Link } from 'react-router-dom';
+import { FEATURES } from '../../../config/features';
+import { artistDestination } from '../../../config/artistDestination';
 
 
 
@@ -33,7 +35,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
       // Wait a bit for user data to fully load before redirecting
       const timer = setTimeout(() => {
         if (user.artistProfiles && user.artistProfiles.length > 0) {
-          navigate('/artist-profile');
+          navigate(artistDestination(user, FEATURES));
           setJustLoggedIn(false);
         } else if (user.venueProfiles && user.venueProfiles.length > 0) {
           navigate('/venues/dashboard/gigs');
@@ -86,7 +88,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
       if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
         setAuthModal(false);
         setAuthClosable(true);
-        navigate('/artist-profile');
+        navigate(artistDestination(user, FEATURES));
         return;
       }
       // Set flag to trigger redirect check in useEffect
@@ -149,7 +151,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
                     if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
                       setAuthModal(false);
                       setAuthClosable(true);
-                      navigate('/artist-profile');
+                      navigate(artistDestination(user, FEATURES));
                     } else {
                       setJustLoggedIn(true);
                       // Mark that we just logged in to prevent App.jsx from reopening modal

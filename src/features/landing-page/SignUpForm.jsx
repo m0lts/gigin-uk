@@ -14,6 +14,8 @@ import { PhoneField, isValidE164 } from '../shared/forms/PhoneField';
 import { getPhoneExistsBoolean } from '@services/api/users';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
 import { isBlockedEmail } from '../../services/utils/validation';
+import { FEATURES } from '../../config/features';
+import { artistDestination } from '../../config/artistDestination';
 
 export const SignupForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, setAuthModal, loading, setLoading, authClosable, setAuthClosable, noProfileModal, setNoProfileModal }) => {
   const { signup, continueWithGoogle } = useAuth();
@@ -80,7 +82,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
       // }
       const signupResponse = await signup(credentials, marketingConsent);
       if (signupResponse) {
-        navigate('/find-a-gig')
+        navigate(artistDestination(null, FEATURES))
       }
     } catch (err) {
       switch (err.error.code) {
@@ -146,7 +148,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
                     if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
                       setAuthModal(false);
                       setAuthClosable(true);
-                      navigate('/artist-profile');
+                      navigate(artistDestination(null, FEATURES));
                     } else {        
                       setAuthModal(false);
                       setAuthClosable(true);
