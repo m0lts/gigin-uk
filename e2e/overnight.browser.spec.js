@@ -153,7 +153,7 @@ async function login(page, email) {
   await page.getByPlaceholder('e.g. johnsmith@gigin.com').fill(email);
   await page.getByPlaceholder('Password').fill(PASSWORD);
   const signedIn = page.waitForResponse((response) => response.url().includes('signInWithPassword'), { timeout: 20000 });
-  await page.getByRole('button', { name: 'Sign In' }).click();
+  await page.getByRole('button', { name: 'Log in' }).click();
   await signedIn;
   await expect(page.getByRole('heading', { name: 'Verify your email' })).toHaveCount(0);
   await expect(page.getByPlaceholder('e.g. johnsmith@gigin.com')).toHaveCount(0, { timeout: 20000 });
@@ -449,7 +449,7 @@ test('2. guest applies, edits, withdraws, and does not duplicate a contact', asy
   expect(mail.size).toBeGreaterThan(0);
 });
 
-test('3. an existing Gigin email is told to log in', async ({ page }) => {
+test('3. an existing Gigin email can continue the application', async ({ page }) => {
   watch(page, 'test 3');
   await page.goto(`/gig/${world.secondId}`);
   await page.getByRole('button', { name: 'Apply to play' }).click();
@@ -458,9 +458,8 @@ test('3. an existing Gigin email is told to log in', async ({ page }) => {
   const emailField = page.locator('input[type="email"]');
   await emailField.fill(world.existing.email);
   await emailField.blur();
-  await expect(page.getByText('This email already has a Gigin account. Log in to apply.')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByRole('heading', { name: 'Who are you?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Photo and links' })).toBeVisible();
 });
 
 test('4. venue accepts one guest and declines another', async ({ page }) => {
