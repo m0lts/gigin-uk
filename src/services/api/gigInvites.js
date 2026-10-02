@@ -11,8 +11,8 @@ export const getGigInvites = async (gigId) => {
 /**
  * Create a new gig invite
  */
-export const createGigInvite = async ({ gigId, expiresAt, artistId, crmEntryId, artistName }) => {
-  const response = await post('/gigs/invites', { body: { gigId, expiresAt, artistId, crmEntryId, artistName } });
+export const createGigInvite = async ({ gigId, expiresAt, artistId, crmEntryId, artistName, email }) => {
+  const response = await post('/gigs/invites', { body: { gigId, expiresAt, artistId, crmEntryId, artistName, email } });
   return response;
 };
 

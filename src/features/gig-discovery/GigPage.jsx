@@ -1290,15 +1290,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
                   profileId: normalizedProfile.musicianId,
                   profileType: 'artist',
               });
-              await sendGigApplicationEmail({
-                  to: venueProfile.email,
-                  musicianName: normalizedProfile.name,
-                  venueName: currentSlot?.venue?.venueName ?? venueProfile?.name ?? 'the venue',
-                  date: formatDate(currentSlot.startDateTime),
-                  budget: currentSlot.budget,
-                  profileType: 'artist',
-                  nonPayableGig,
-              });
+              await sendGigApplicationEmail({ gigId: slotGigId });
               toast.success('Applied to gig!');
               return true;
             }
@@ -1461,13 +1453,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
                 const invitationMessage = await getMostRecentMessage(conversationId, 'invitation');
                 updateDeclinedApplicationMessage({ conversationId, originalMessageId: invitationMessage.id, senderId: user.uid, userRole: 'musician' });
                 await sendCounterOfferMessage({ conversationId, messageId: invitationMessage.id, senderId: user.uid, newFee: newOffer, oldFee: currentSlot.budget, userRole: 'musician' });
-                await sendCounterOfferEmail({
-                    userRole: 'musician',
-                    musicianProfile: normalizedProfile,
-                    venueProfile: venueProfile,
-                    gigData: currentSlot,
-                    newOffer,
-                });
+                await sendCounterOfferEmail({ gigId: currentSlot?.gigId || slotGigId });
             } else {
                 await sendNegotiationMessage(conversationId, {
                     senderId: user.uid,
@@ -1477,15 +1463,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
                     profileId: normalizedProfile.musicianId,
                     profileType
                 });
-                await sendNegotiationEmail({
-                    to: venueProfile.email,
-                    musicianName: senderName,
-                    venueName,
-                    oldFee: currentSlot.budget,
-                    newFee: newOffer,
-                    date: formatDate(currentSlot.startDateTime),
-                    profileType
-                });
+                await sendNegotiationEmail({ gigId: currentSlot?.gigId || slotGigId });
             }
             toast.success('Negotiation sent to venue.')
         } catch (error) {
@@ -1646,16 +1624,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
                 });
               }
             }
-            const venueEmail = venueProfile.email;
-            const musicianName = normalizedProfile.name;
-            await sendInvitationAcceptedEmailToVenue({
-                venueEmail: venueEmail,
-                musicianName: musicianName,
-                venueProfile: venueProfile,
-                gigData: currentSlot,
-                agreedFee: globalAgreedFee,
-                nonPayableGig: nonPayableGig,
-            })
+            await sendInvitationAcceptedEmailToVenue({ gigId: currentSlot?.gigId });
             if (nonPayableGig) {
                 // Only notify other applicants once the gig has filled to its
                 // `maxApplicants` cap — for multi-artist listings (line-ups,

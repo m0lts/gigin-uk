@@ -115,12 +115,9 @@ export function FillThisSlotModal({ gig, venues = [], user, refreshGigs, onClose
           return;
         }
         await sendGigInviteEmail({
-          to: email,
-          userName: user?.name || venueForHire?.accountName || 'The venue',
-          venueName: venueDisplayName,
-          date: hireDateLabel,
-          gigLink: bookingLinkUrl,
-          expiresAt: null,
+          gigId: gig?.gigId,
+          crmEntryId: entry.id,
+          artistName: entry.name,
         });
         setInvitedContactIds((prev) => new Set(prev).add(entry.id));
         toast.success(`Invitation sent to ${entry.name || email}`);
@@ -150,12 +147,9 @@ export function FillThisSlotModal({ gig, venues = [], user, refreshGigs, onClose
     setEmailInviteSending(true);
     try {
       await sendGigInviteEmail({
-        to: email,
-        userName: user?.name || venueForHire?.accountName || 'The venue',
-        venueName: venueDisplayName,
-        date: hireDateLabel,
-        gigLink: bookingLinkUrl,
-        expiresAt: null,
+        gigId: gig?.gigId,
+        email,
+        artistName: email,
       });
       toast.success(`Invitation sent to ${email}`);
       setEmailInviteInput('');

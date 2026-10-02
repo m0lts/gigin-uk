@@ -190,13 +190,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
             await sendGigAcceptedEmail({
-                userRole,
-                musicianProfile: musicianProfileData,
-                venueProfile: venueData,
-                gigData,
-                globalAgreedFee,
-                isNegotiated: false,
-                nonPayableGig
+                gigId: gigData?.gigId,
+                applicantId: musicianProfileId,
             });
             if (gigData.kind === "Ticketed Gig" || (gigData.kind === 'Live Music' && (gigData.budget === '£' || gigData.budget === '£0'))) {
                 // Respect maxApplicants: don't tell pending applicants the gig

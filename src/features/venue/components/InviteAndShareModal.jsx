@@ -121,26 +121,13 @@ export function InviteAndShareModal({ gig, venues, user, onClose, refreshGigs })
     }
     setEmailError('');
     setSendingEmail(true);
-    const userName = user?.name || venue?.accountName || 'The venue';
-    const venueName = gig?.venue?.venueName || venue?.name || 'the venue';
-    const gigDate = gig?.date ?? gig?.dateIso;
-    const formattedDate = gigDate ? formatDate(gigDate, 'short') : '';
 
     try {
       for (const email of emails) {
-        let link = getGigLink(gig);
-        if (isPrivate) {
-          const res = await createGigInvite({ gigId: gig.gigId, artistName: email });
-          const inviteId = res?.inviteId ?? res?.data?.inviteId;
-          if (inviteId) link = getGigLink(gig, inviteId);
-        }
         await sendGigInviteEmail({
-          to: email,
-          userName,
-          venueName,
-          date: formattedDate,
-          gigLink: link,
-          expiresAt: null,
+          gigId: gig.gigId,
+          email,
+          artistName: email,
         });
       }
       toast.success(emails.length === 1 ? 'Invitation sent.' : `${emails.length} invitations sent.`);
@@ -203,19 +190,10 @@ export function InviteAndShareModal({ gig, venues, user, onClose, refreshGigs })
           toast.error('This artist has no email in My Contacts.');
           return;
         }
-        let inviteId = null;
-        if (isPrivate) {
-          const res = await createGigInvite({ gigId: gig.gigId, crmEntryId: artist.id, artistName: artist.name });
-          inviteId = res?.inviteId ?? res?.data?.inviteId;
-        }
-        const link = getGigLink(gig, inviteId);
         await sendGigInviteEmail({
-          to: artistEmail,
-          userName: user.name || venue.accountName,
-          venueName: gig.venue?.venueName || venue.name,
-          date: formatDate(gig.date ?? gig.dateIso, 'short'),
-          gigLink: link,
-          expiresAt: null,
+          gigId: gig.gigId,
+          crmEntryId: artist.id,
+          artistName: artist.name,
         });
         toast.success(`Invitation email sent to ${artist.name || artistEmail}`);
       }

@@ -231,12 +231,8 @@ export const MessageThread = ({ activeConversation, conversationId, user, musici
             const venueData = await getVenueProfileById(gigData.venueId);
             const musicianProfileData = await getMusicianProfileByMusicianId(musicianProfileId);
             await sendGigAcceptedEmail({
-                userRole,
-                musicianProfile: musicianProfileData,
-                venueProfile: venueData,
-                gigData,
-                globalAgreedFee,
-                profileType: 'musician',
+                gigId: gigData?.gigId,
+                applicantId: musicianProfileId,
                 nonPayableGig,
             });
             if (gigData.kind === 'Ticketed Gig') {

@@ -116,15 +116,10 @@ export const InviteMethodsModal = ({ artist, gigData, venue, user, onClose, onEm
 
     try {
       setSendingEmail(true);
-      const gigLink = generateGigLink();
-      const formattedDate = formatDate(gigData.date, 'short');
-      
       await sendGigInviteEmail({
-        to: artist.email.trim(),
-        userName: user.name || venue?.accountName || '',
-        venueName: gigData.venue?.venueName || venue?.name || '',
-        date: formattedDate,
-        gigLink: gigLink,
+        gigId: gigData.gigId,
+        email: artist.email.trim(),
+        artistName: artist.name,
       });
 
       toast.success(`Invitation email sent to ${artist.name}`);

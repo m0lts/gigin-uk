@@ -1165,12 +1165,9 @@ export function GigDetailsPanel({
           return;
         }
         await sendGigInviteEmail({
-          to: email,
-          userName: user?.name || venueForHire?.accountName || 'The venue',
-          venueName: venueDisplayName,
-          date: hireDate,
-          gigLink: bookingLinkUrl,
-          expiresAt: null,
+          gigId: rawGig?.gigId,
+          crmEntryId: entry.id,
+          artistName: entry.name,
         });
         setInvitedContactIds((prev) => new Set(prev).add(entry.id));
         toast.success(`Invitation sent to ${entry.name || email}`);
@@ -1202,12 +1199,9 @@ export function GigDetailsPanel({
     try {
       const hireDate = normalisedGig?.dateLabel || (rawGig?.date && formatDate(rawGig.date, 'short')) || '';
       await sendGigInviteEmail({
-        to: email,
-        userName: user?.name || venueForHire?.accountName || 'The venue',
-        venueName: venueDisplayName,
-        date: hireDate,
-        gigLink: bookingLinkUrl,
-        expiresAt: null,
+        gigId: rawGig?.gigId,
+        email,
+        artistName: email,
       });
       toast.success(`Invitation sent to ${email}`);
       setEmailInviteInput('');

@@ -880,13 +880,8 @@ export const GigApplications = ({
             }
             }
             await sendGigAcceptedEmail({
-                userRole: 'venue',
-                musicianProfile: musicianProfile,
-                venueProfile: venueProfile,
-                gigData: targetGig,
-                agreedFee: globalAgreedFee,
-                isNegotiated: false,
-                nonPayableGig,
+                gigId: targetGig.gigId,
+                applicantId: musicianId,
             })
             if (nonPayableGig && FEATURES.payments) {
                 // Only fan out the "gig confirmed" notice to other applicants
@@ -974,10 +969,8 @@ export const GigApplications = ({
             }
             }
             await sendGigDeclinedEmail({
-                userRole: 'venue',
-                venueProfile: venueProfile,
-                musicianProfile: musicianProfile,
-                gigData: targetGig,
+                gigId: targetGig.gigId,
+                applicantId: musicianId,
             })
             
             // Refresh gigs to get updated data

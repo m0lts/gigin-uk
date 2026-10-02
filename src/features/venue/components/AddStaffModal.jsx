@@ -16,26 +16,6 @@ export const AddStaffModal = ({user, venue, onClose}) => {
 
     const togglePerm = (key) => setPermissions((p) => ({ ...p, [key]: !p[key] }));
 
-    const generateInviteLink = async () => {
-        setLoading(true);
-        try {
-          const invite = await createVenueInvite({
-            venueId: venue.id,
-            email: emailToInvite,
-            permissionsInput: permissions,
-            invitedByName: user?.name || null,
-          });
-          const inviteId = invite?.inviteId || null;
-          if (!inviteId) {
-            toast.error("Failed to create invite");
-            return null;
-          }
-          return `${window.location.origin}/join-venue?invite=${inviteId}`;
-        } finally {
-          setLoading(false);
-        }
-      };
-
     const handleSendEmailInvite = async () => {
         try {
             if (!user) return;
@@ -49,16 +29,20 @@ export const AddStaffModal = ({user, venue, onClose}) => {
             }
             setLoading(true);
             if (!emailToInvite) return;
-            const link = await generateInviteLink();
-            if (link) {
-                await sendVenueInviteEmail({
-                    to: emailToInvite,
-                    venue: venue,
-                    link: link,
-                });
-                setEmailToInvite('');
-                toast.success('Email Sent!')
+            const invite = await createVenueInvite({
+              venueId: venue.id,
+              email: emailToInvite,
+              permissionsInput: permissions,
+              invitedByName: user?.name || null,
+            });
+            const inviteId = invite?.inviteId || null;
+            if (!inviteId) {
+              toast.error("Failed to create invite");
+              return;
             }
+            await sendVenueInviteEmail({ inviteId });
+            setEmailToInvite('');
+            toast.success('Email Sent!')
         } catch (err) {
             console.error('Error sending invite email:', err);
             toast.error('Failed to send invite. Please try again.')

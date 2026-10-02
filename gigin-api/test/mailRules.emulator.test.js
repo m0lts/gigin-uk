@@ -1,10 +1,11 @@
 /**
- * Clients cannot queue mail. The API templates still write a mail document.
+ * Clients cannot queue mail, and /api/mail only sends from stored records.
  * Refuses to run unless the emulators are set.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
+import http from "node:http";
 import admin from "firebase-admin";
 
 const PROJECT = "giginltd-dev";
@@ -32,6 +33,27 @@ async function signUp(email) {
   const body = await response.json();
   assert.equal(response.ok, true, JSON.stringify(body));
   return { uid: body.localId, token: body.idToken, email };
+}
+
+function listen(app) {
+  return new Promise((resolve) => {
+    const server = http.createServer(app);
+    server.listen(0, "127.0.0.1", () => resolve(server));
+  });
+}
+
+async function postMail(server, token, kind, body) {
+  const { port } = server.address();
+  const response = await fetch(`http://127.0.0.1:${port}/api/mail/${kind}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const json = await response.json().catch(() => ({}));
+  return { status: response.status, json };
 }
 
 test("a signed-in client cannot create a mail document", async () => {
@@ -62,26 +84,126 @@ test("a signed-in client cannot create a mail document", async () => {
   assert.equal(text.includes("Open relay"), false);
 });
 
-test("a gig invite and a dispute notice still queue mail", async () => {
-  const { sendGigInviteEmail, sendDisputeNoticeEmail } = await import("../lib/legacyMail.js");
-  const to = `test+invite-${crypto.randomUUID()}@example.com`;
-  await sendGigInviteEmail({
-    to,
-    userName: "Ada",
-    venueName: "The Portland",
-    date: "Friday 2 October",
-    gigLink: "https://giginmusic.com/gig/abc",
-  });
-  const invite = await db.collection("mail").where("to", "==", to).limit(1).get();
-  assert.equal(invite.empty, false);
-  const message = invite.docs[0].data().message || {};
-  assert.equal(message.subject, "Ada has invited you to play at The Portland");
-  assert.match(message.text, /Friday 2 October/);
-  assert.match(message.html, /Check it out on Gigin/);
+test("mail routes send only from stored invites and ignore client recipients", async () => {
+  const express = (await import("express")).default;
+  const { default: mailRoutes } = await import("../routes/mail.js");
+  const app = express();
+  app.use(express.json());
+  app.use("/api/mail", mailRoutes);
+  const server = await listen(app);
 
-  await sendDisputeNoticeEmail({ dateLabel: "Friday 2 October" });
-  const notice = await db.collection("mail").where("to", "==", "toby@giginmusic.com").get();
-  const hit = notice.docs.map((doc) => doc.data()).find((row) => row.message?.text?.includes("Friday 2 October"));
-  assert.ok(hit);
-  assert.equal(hit.message.subject, "Dispute Logged");
+  const owner = await signUp(`test+mail-owner-${crypto.randomUUID()}@example.com`);
+  const outsider = await signUp(`test+mail-outsider-${crypto.randomUUID()}@example.com`);
+  const venueId = crypto.randomUUID();
+  const inviteId = crypto.randomUUID();
+  const gigId = crypto.randomUUID();
+  const gigInviteId = crypto.randomUUID();
+  const storedTo = `staff-${crypto.randomUUID()}@example.com`;
+  const gigTo = `artist-${crypto.randomUUID()}@example.com`;
+  const poisoned = `victim-${crypto.randomUUID()}@evil.example`;
+
+  await db.doc(`venueProfiles/${venueId}`).set({
+    name: "The <script>Portland</script>",
+    accountName: "Ada",
+    createdBy: owner.uid,
+    email: "venue-inbox@example.com",
+  });
+  await db.doc(`venueInvites/${inviteId}`).set({
+    inviteId,
+    venueId,
+    email: storedTo,
+    status: "pending",
+    invitedBy: owner.uid,
+  });
+  await db.doc(`gigs/${gigId}`).set({
+    gigId,
+    venueId,
+    private: true,
+    gigName: "Friday set",
+    date: admin.firestore.Timestamp.fromDate(new Date("2026-10-02T20:00:00Z")),
+    venue: { venueName: "The Portland" },
+  });
+  await db.doc(`gigInvites/${gigInviteId}`).set({
+    inviteId: gigInviteId,
+    gigId,
+    venueId,
+    email: gigTo,
+    active: true,
+    createdBy: owner.uid,
+  });
+
+  try {
+    const denied = await postMail(server, outsider.token, "venue-invite", {
+      inviteId,
+      to: poisoned,
+      gigLink: "https://evil.example/phish",
+      origin: "http://127.0.0.1:5173",
+    });
+    assert.equal(denied.status, 403, JSON.stringify(denied.json));
+    const leaked = await db.collection("mail").where("to", "==", poisoned).get();
+    assert.equal(leaked.empty, true);
+
+    const removed = await postMail(server, owner.token, "dispute-notice", { dateLabel: "Friday" });
+    assert.equal(removed.status, 404);
+
+    const sent = await postMail(server, owner.token, "venue-invite", {
+      inviteId,
+      to: poisoned,
+      venueName: "Attacker venue",
+      gigLink: "https://evil.example/phish",
+      origin: "https://evil.example",
+    });
+    assert.equal(sent.status, 200, JSON.stringify(sent.json));
+    assert.equal(sent.json.sent, true);
+
+    const queued = await db.collection("mail").where("to", "==", storedTo).limit(5).get();
+    assert.equal(queued.empty, false);
+    const message = queued.docs[0].data().message || {};
+    assert.match(message.subject, /The <script>Portland<\/script>/);
+    assert.match(message.html, /&lt;script&gt;/);
+    assert.equal(message.html.includes("<script>"), false);
+    assert.match(message.html, /https:\/\/giginmusic\.com\/join-venue\?invite=/);
+    assert.equal(message.html.includes("evil.example"), false);
+    assert.equal(message.text.includes(poisoned), false);
+    assert.equal(message.text.includes("Attacker venue"), false);
+
+    const gigSent = await postMail(server, owner.token, "gig-invite", {
+      inviteId: gigInviteId,
+      to: poisoned,
+      gigLink: "https://evil.example/gig",
+      userName: "Phisher",
+      origin: "http://127.0.0.1:5173",
+    });
+    assert.equal(gigSent.status, 200, JSON.stringify(gigSent.json));
+    const gigMail = await db.collection("mail").where("to", "==", gigTo).limit(1).get();
+    assert.equal(gigMail.empty, false);
+    const gigMessage = gigMail.docs[0].data().message || {};
+    assert.match(gigMessage.subject, /Ada has invited you to play at The <script>Portland<\/script>/);
+    assert.match(gigMessage.text, /Check it out on Gigin/);
+    assert.match(gigMessage.html, new RegExp(`http://127\\.0\\.0\\.1:5173/gig/${gigId}\\?inviteId=${gigInviteId}`));
+    assert.equal(gigMessage.html.includes("evil.example"), false);
+    assert.equal(gigMessage.html.includes("Phisher"), false);
+    assert.equal(gigMessage.html.includes("<script>"), false);
+  } finally {
+    server.close();
+  }
+});
+
+test("a user cannot send more than 30 emails an hour", async () => {
+  const express = (await import("express")).default;
+  const { default: mailRoutes } = await import("../routes/mail.js");
+  const app = express();
+  app.use(express.json());
+  app.use("/api/mail", mailRoutes);
+  const server = await listen(app);
+  const owner = await signUp(`test+mail-limit-${crypto.randomUUID()}@example.com`);
+  try {
+    let last = { status: 0 };
+    for (let i = 0; i < 31; i += 1) {
+      last = await postMail(server, owner.token, "dispute-notice", {});
+    }
+    assert.equal(last.status, 429);
+  } finally {
+    server.close();
+  }
 });

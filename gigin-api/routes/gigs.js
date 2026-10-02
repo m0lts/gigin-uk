@@ -1742,7 +1742,7 @@ router.get("/invites", requireAuth, asyncHandler(async (req, res) => {
 // POST /api/gigs/invites
 router.post("/invites", requireAuth, asyncHandler(async (req, res) => {
   const caller = req.auth.uid;
-  const { gigId, expiresAt, artistId, crmEntryId, artistName } = req.body || {};
+  const { gigId, expiresAt, artistId, crmEntryId, artistName, email } = req.body || {};
   if (!gigId || typeof gigId !== "string") {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "gigId required" });
   }
@@ -1761,6 +1761,23 @@ router.post("/invites", requireAuth, asyncHandler(async (req, res) => {
   // Permission: venue owner or active member with gigs.invite
   await assertVenuePerm(db, caller, venueId, "gigs.invite");
 
+  let storedEmail = "";
+  if (crmEntryId) {
+    if (typeof crmEntryId !== "string") {
+      return res.status(400).json({ error: "INVALID_ARGUMENT", message: "crmEntryId invalid" });
+    }
+    const crmSnap = await db.doc(`users/${caller}/artistCRM/${crmEntryId}`).get();
+    if (!crmSnap.exists) {
+      return res.status(404).json({ error: "NOT_FOUND", message: "Contact not found" });
+    }
+    storedEmail = String(crmSnap.data()?.email || "").trim().toLowerCase();
+  } else if (email) {
+    storedEmail = String(email).trim().toLowerCase();
+  }
+  if (storedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(storedEmail)) {
+    return res.status(400).json({ error: "INVALID_ARGUMENT", message: "email format invalid" });
+  }
+
   const inviteId = uuidv4();
   const now = Timestamp.fromDate(new Date());
   const expiresAtTs = expiresAt ? Timestamp.fromDate(new Date(expiresAt)) : null;
@@ -1775,7 +1792,8 @@ router.post("/invites", requireAuth, asyncHandler(async (req, res) => {
     applicationCount: 0,
     ...(artistId ? { artistId } : {}),
     ...(crmEntryId ? { crmEntryId } : {}),
-    ...(artistName ? { artistName } : {})
+    ...(artistName ? { artistName } : {}),
+    ...(storedEmail ? { email: storedEmail } : {}),
   };
 
   await db.runTransaction(async (tx) => {

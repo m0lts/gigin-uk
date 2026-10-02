@@ -145,11 +145,8 @@ export const EditGigTimeModal = ({ gig, allSlots, onClose, refreshGigs, user, ed
                 const messageText = buildMessage(name);
                 if (confirmedApplicant.email) {
                     await sendGigTimingEmail({
-                        to: confirmedApplicant.email,
-                        name,
-                        gigName: slotGig.gigName,
-                        venueName: slotGig.venue?.venueName,
-                        dateLabel: formatDate(slotGig.date, 'short'),
+                        gigId: slotGig.gigId,
+                        applicantId: confirmedApplicant.id,
                         oldStartTime,
                         newStartTime,
                         oldDuration,

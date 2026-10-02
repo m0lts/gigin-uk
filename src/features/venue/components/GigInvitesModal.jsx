@@ -361,25 +361,11 @@ export const GigInvitesModal = ({ gig, venues, onClose, refreshGigs, user, fromG
                     return;
                 }
 
-                const gigLink = gig.private && createdInviteId 
-                    ? `${window.location.origin}/gig/${gig.gigId}?inviteId=${createdInviteId}`
-                    : `${window.location.origin}/gig/${gig.gigId}`;
-                const formattedDate = formatDate(gig.date, 'short');
-                
-                // Format expiry date if it exists
-                let formattedExpiryDate = null;
-                if (createdInviteExpiresAt) {
-                    const expiryDate = new Date(createdInviteExpiresAt);
-                    formattedExpiryDate = formatDate(expiryDate, 'short');
-                }
-                
                 await sendGigInviteEmail({
-                    to: artistEmail.trim(),
-                    userName: user.name || venueToSend.accountName,
-                    venueName: gig.venue?.venueName || venueToSend.name,
-                    date: formattedDate,
-                    gigLink: gigLink,
-                    expiresAt: formattedExpiryDate,
+                    gigId: gig.gigId,
+                    crmEntryId: artist.id,
+                    artistName: artist.name,
+                    expiresAt: createdInviteExpiresAt || undefined,
                 });
 
                 toast.success(`Invitation email sent to ${artist.name}`);

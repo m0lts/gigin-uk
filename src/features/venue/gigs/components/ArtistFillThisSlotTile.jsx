@@ -124,14 +124,10 @@ export function ArtistFillThisSlotTile({
           toast.error('This contact has no email. Add one in My Contacts.');
           return;
         }
-        const gigLink = await linkForInvite({ crmEntryId: entry.id, artistName: entry.name });
         await sendGigInviteEmail({
-          to: email,
-          userName: user?.name || venueDisplayName,
-          venueName: gig?.venue?.venueName || venueDisplayName,
-          date: gigDateLabel,
-          gigLink,
-          expiresAt: null,
+          gigId,
+          crmEntryId: entry.id,
+          artistName: entry.name,
         });
         toast.success(`Invitation sent to ${entry.name || email}`);
       }
@@ -162,14 +158,10 @@ export function ArtistFillThisSlotTile({
     setEmailInviteError('');
     setEmailInviteSending(true);
     try {
-      const gigLink = await linkForInvite({ artistName: email });
       await sendGigInviteEmail({
-        to: email,
-        userName: user?.name || venueDisplayName,
-        venueName: gig?.venue?.venueName || venueDisplayName,
-        date: gigDateLabel,
-        gigLink,
-        expiresAt: null,
+        gigId,
+        email,
+        artistName: email,
       });
       toast.success(`Invitation sent to ${email}`);
       setEmailInviteInput('');
