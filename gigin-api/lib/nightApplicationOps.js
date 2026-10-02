@@ -10,6 +10,7 @@ import {
   slotGigId,
   sortSlots,
 } from "./nightApplications.js";
+import { applicationNoticeMessage, planVenueNotice, shouldNotify } from "./venueApplicationNotice.js";
 import { appendPlayedAt, keepReminderHtml, markBookingCancelled } from "./keepProfile.js";
 
 const DELAY_MS = 10 * 1000;
@@ -234,6 +235,59 @@ async function venueInbox(venue) {
   const user = await db.doc(`users/${uid}`).get();
   const email = user.exists ? user.data()?.email : null;
   return email && String(email).includes("@") ? email : null;
+}
+
+function reviewUrl(rootId) {
+  const base = process.env.BASE_URL || "https://giginmusic.com";
+  return `${base}/venues/dashboard/gigs/gig-applications?gig=${rootId}`;
+}
+
+function venueNoticeItem({ app, slots, gig, rootId }) {
+  const phrase = preferencePhrase(slots, app?.preferredSlotGigIds);
+  return {
+    applicantId: String(app?.id || ""),
+    actName: actName(app),
+    nightDate: formatLong(gigDate(gig)),
+    preferredSet: phrase || ((slots || []).length < 2 ? "Only set" : "No preference"),
+    reviewUrl: reviewUrl(rootId),
+  };
+}
+
+/** One email per venue per hour. A second application in that hour replaces the pending mail. */
+export async function notifyVenueOfNewApplication({ venueId, venue, app, slots, gig, rootId }) {
+  if (!venueId) return { skipped: true };
+  const profile = venue?.email || venue?.createdBy || venue?.userId ? venue : await loadVenue(venueId);
+  const to = await venueInbox(profile);
+  if (!shouldNotify(to)) return { skipped: true };
+  const item = venueNoticeItem({ app, slots, gig, rootId });
+  const ref = db.doc(`venueApplicationNotices/${venueId}`);
+  const now = Date.now();
+  let batched = false;
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const open = snap.exists ? snap.data() : null;
+    const plan = planVenueNotice(open, item, now);
+    batched = plan.batched;
+    if (plan.previousMailId) tx.delete(db.collection("mail").doc(plan.previousMailId));
+    const mailRef = db.collection("mail").doc();
+    tx.set(mailRef, {
+      to,
+      message: applicationNoticeMessage(plan.items),
+      delivery: {
+        startTime: Timestamp.fromDate(new Date(plan.sendAt)),
+        state: "PENDING",
+        attempts: 0,
+      },
+    });
+    tx.set(ref, {
+      venueId,
+      openedAt: plan.openedAt,
+      items: plan.items,
+      mailId: mailRef.id,
+      updatedAt: new Date(now).toISOString(),
+    });
+  });
+  return { skipped: false, batched };
 }
 
 function actName(app) {
@@ -785,6 +839,15 @@ export async function placeLoggedInApplication({ gigId, application, preferredSl
     timestamp: existing?.timestamp || application.timestamp || new Date().toISOString(),
   };
   await commitApps({ slots, rootId, apps: [next], applicantId: null, privatePatch: null });
+  if (!existing && root.data.venueId) {
+    await notifyVenueOfNewApplication({
+      venueId: root.data.venueId,
+      app: next,
+      slots: night.slots,
+      gig: root.data,
+      rootId,
+    });
+  }
   const fresh = (await db.doc(`gigs/${rootId}`).get()).data() || {};
   return { applicants: fresh.applicants || [], rootGigId: rootId };
 }

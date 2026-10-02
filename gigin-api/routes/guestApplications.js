@@ -17,6 +17,7 @@ import { preferencePhrase, readNight } from "../lib/nightApplications.js";
 import {
   emailForAct,
   loadNightSlots,
+  notifyVenueOfNewApplication,
   preferenceFromBody,
   withdrawGuestApplication,
   writeGuestApplication,
@@ -664,6 +665,16 @@ router.post("/", asyncHandler(async (req, res) => {
       token: body.manageToken,
     });
     await sendMail({ to: contacts.email, ...built.message });
+  }
+  if (!updatingExisting && gig.venueId) {
+    await notifyVenueOfNewApplication({
+      venueId: gig.venueId,
+      venue,
+      app: { ...applicant, preferredSlotGigIds: pref.preferredSlotGigIds },
+      slots: saved.slots,
+      gig,
+      rootId: saved.rootId,
+    });
   }
   return res.json({ ok: true, applicationId: body.applicationId });
 }));

@@ -178,6 +178,20 @@ test('one application per night: preference, assign, mail, close, old data, priv
     },
   });
   assert.equal(loggedIn.status, 200, JSON.stringify(loggedIn.json));
+
+  const venueNotices = (await db.collection('mail').where('to', '==', venueEmail).get()).docs
+    .map((doc) => doc.data())
+    .filter((mail) => /application/i.test(String(mail.message?.subject || '')));
+  assert.equal(venueNotices.length, 1, 'applications in the same hour share one venue email');
+  assert.match(venueNotices[0].message.text, /Preference Act/);
+  assert.match(venueNotices[0].message.text, /Later Act/);
+  assert.match(venueNotices[0].message.text, /Logged In Act/);
+  assert.equal((venueNotices[0].message.text.match(/Preference Act/g) || []).length, 1);
+  const noticeStart = mailStart(venueNotices[0]);
+  assert.ok(noticeStart, 'the venue notice is delayed');
+  const noticeWait = noticeStart.getTime() - Date.now();
+  assert.ok(noticeWait > 50 * 60 * 1000 && noticeWait < 70 * 60 * 1000);
+
   const afterArtist = (await db.doc(`gigs/${a}`).get()).data();
   assert.equal((afterArtist.applicants || []).filter((entry) => entry.id === profileId).length, 1);
   assert.equal((await db.doc(`gigs/${c}`).get()).data().applicants.some((entry) => entry.id === profileId && entry.status !== 'confirmed'), false);
