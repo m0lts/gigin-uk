@@ -3017,6 +3017,25 @@
     .window.venues .body.gigs::-webkit-scrollbar {
         display: none;
     }
+
+    .window.venues .body.gigs:not(.gigs-calendar-react-body) {
+        overflow-x: auto;
+        min-width: 0;
+        max-width: 100%;
+        scrollbar-width: thin;
+    }
+
+    .window.venues .body.gigs:not(.gigs-calendar-react-body) table {
+        table-layout: auto;
+        width: max-content;
+        min-width: 100%;
+        overflow: visible;
+    }
+
+    .window.venues .body.gigs:not(.gigs-calendar-react-body) th,
+    .window.venues .body.gigs:not(.gigs-calendar-react-body) td {
+        white-space: nowrap;
+    }
 }
 
 .window.venues .gigs .filters {
