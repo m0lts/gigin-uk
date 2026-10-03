@@ -672,7 +672,13 @@ async function applyAsArtist(page, gigId, message) {
   await expect(page.getByRole('button', { name: 'Apply To Gig' })).toBeEnabled({ timeout: 20000 });
   await page.getByRole('button', { name: 'Apply To Gig' }).click();
   await page.getByLabel('Message to the venue').fill(message);
+  const mailed = page.waitForResponse((response) => (
+    response.url().includes('/api/mail/gig-application') && response.request().method() === 'POST'
+  ), { timeout: 20000 });
   await page.getByRole('button', { name: 'Submit application' }).click();
+  const mailResponse = await mailed;
+  expect(mailResponse.status(), await mailResponse.text().catch(() => '')).toBe(200);
+  await expect(page.getByText('Applied to gig!')).toBeVisible({ timeout: 20000 });
   await expect(page.getByRole('button', { name: 'Withdraw Application' })).toBeVisible({ timeout: 20000 });
   const wizard = page.locator('.apply-wizard-modal');
   if (await wizard.isVisible().catch(() => false)) {

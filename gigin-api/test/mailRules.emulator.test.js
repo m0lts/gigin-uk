@@ -189,6 +189,61 @@ test("mail routes send only from stored invites and ignore client recipients", a
   }
 });
 
+test("a logged-in artist with a pending application can email the venue", async () => {
+  const express = (await import("express")).default;
+  const { default: mailRoutes } = await import("../routes/mail.js");
+  const app = express();
+  app.use(express.json());
+  app.use("/api/mail", mailRoutes);
+  const server = await listen(app);
+
+  const artist = await signUp(`test+mail-pending-${crypto.randomUUID()}@example.com`);
+  const outsider = await signUp(`test+mail-pending-out-${crypto.randomUUID()}@example.com`);
+  const venueId = crypto.randomUUID();
+  const gigId = crypto.randomUUID();
+  const profileId = crypto.randomUUID();
+  const inbox = `venue-${crypto.randomUUID()}@example.com`;
+
+  await db.doc(`venueProfiles/${venueId}`).set({
+    name: "The Portland",
+    createdBy: outsider.uid,
+    email: inbox,
+  });
+  await db.doc(`artistProfiles/${profileId}`).set({
+    userId: artist.uid,
+    name: "Pending Act",
+    status: "live",
+  });
+  await db.doc(`gigs/${gigId}`).set({
+    gigId,
+    venueId,
+    gigName: "Friday set",
+    applicationsRootGigId: gigId,
+    applicants: [],
+    date: admin.firestore.Timestamp.fromDate(new Date("2026-10-02T20:00:00Z")),
+    venue: { venueName: "The Portland" },
+  });
+  await db.doc(`gigs/${gigId}/private/applications`).set({
+    gigId,
+    applicants: [{ id: profileId, name: "Pending Act", status: "pending", type: "artist" }],
+  });
+
+  try {
+    const denied = await postMail(server, outsider.token, "gig-application", { gigId });
+    assert.equal(denied.status, 403, JSON.stringify(denied.json));
+
+    for (const kind of ["gig-application", "negotiation", "counter-offer", "invitation-accepted"]) {
+      const sent = await postMail(server, artist.token, kind, { gigId });
+      assert.equal(sent.status, 200, `${kind} ${JSON.stringify(sent.json)}`);
+    }
+
+    const queued = await db.collection("mail").where("to", "==", inbox).get();
+    assert.equal(queued.size, 4);
+  } finally {
+    server.close();
+  }
+});
+
 test("a user cannot send more than 30 emails an hour", async () => {
   const express = (await import("express")).default;
   const { default: mailRoutes } = await import("../routes/mail.js");
