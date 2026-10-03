@@ -22,9 +22,26 @@ const PNG = '/tmp/overnight-browser-pixel.png';
 
 const consoleProblems = [];
 
+function emulatorHostIsLocal(value) {
+  const raw = String(value || '').trim().replace(/^https?:\/\//, '');
+  let host = raw.split('/')[0];
+  if (host.startsWith('[')) {
+    const end = host.indexOf(']');
+    host = end === -1 ? host : host.slice(1, end);
+  } else {
+    host = host.replace(/:\d+$/, '');
+  }
+  return host === '127.0.0.1' || host === 'localhost' || host === '::1';
+}
+
 function assertSafe() {
-  if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST) {
-    throw new Error('Refusing to run browser tests without the Firebase emulators.');
+  const firestore = process.env.FIRESTORE_EMULATOR_HOST;
+  const auth = process.env.FIREBASE_AUTH_EMULATOR_HOST;
+  if (!firestore || !auth) {
+    throw new Error('Refusing to run browser tests: set FIRESTORE_EMULATOR_HOST and FIREBASE_AUTH_EMULATOR_HOST to the local emulators. These tests must not write to the giginltd-dev cloud project.');
+  }
+  if (!emulatorHostIsLocal(firestore) || !emulatorHostIsLocal(auth)) {
+    throw new Error(`Refusing to run browser tests: emulator hosts must be local (127.0.0.1, localhost, or ::1). FIRESTORE_EMULATOR_HOST=${firestore} FIREBASE_AUTH_EMULATOR_HOST=${auth}. These tests must not write to the giginltd-dev cloud project.`);
   }
   const project = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || '';
   if (project === 'giginltd-16772') throw new Error('Refusing to run against production.');
