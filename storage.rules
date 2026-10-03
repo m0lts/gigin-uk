@@ -1,8 +1,12 @@
 rules_version = '2';
 
-// Path-scoped Storage rules. Anything not matched below is denied.
+// Default deny. A client can fetch a public image by its exact path (`allow get`)
+// but cannot list a folder (`allow list` is separate; `allow read` would grant both).
+// Download URLs that already contain a token keep working without these rules.
 // Admin SDK uploads (guest photos, gig media, press kits) bypass these rules
 // and are served back through signed API URLs.
+// Writes require an ownership document. Creating a venue, band, or musician
+// profile must write that document before the first upload.
 
 service firebase.storage {
   match /b/{bucket}/o {
@@ -15,12 +19,13 @@ service firebase.storage {
     }
 
     function isVenueStaff(venueId) {
-      return signedIn() && (
-        !firestore.exists(venueDoc(venueId))
-        || firestore.get(venueDoc(venueId)).data.createdBy == request.auth.uid
-        || firestore.get(venueDoc(venueId)).data.userId == request.auth.uid
-        || firestore.exists(/databases/(default)/documents/venueProfiles/$(venueId)/members/$(request.auth.uid))
-      );
+      return signedIn()
+        && firestore.exists(venueDoc(venueId))
+        && (
+          firestore.get(venueDoc(venueId)).data.createdBy == request.auth.uid
+          || firestore.get(venueDoc(venueId)).data.userId == request.auth.uid
+          || firestore.exists(/databases/(default)/documents/venueProfiles/$(venueId)/members/$(request.auth.uid))
+        );
     }
 
     function artistDoc(profileId) {
@@ -28,14 +33,15 @@ service firebase.storage {
     }
 
     function isArtistWriter(profileId) {
-      return signedIn() && (
-        !firestore.exists(artistDoc(profileId))
-        || firestore.get(artistDoc(profileId)).data.userId == request.auth.uid
-        || (
-          firestore.exists(/databases/(default)/documents/artistProfiles/$(profileId)/members/$(request.auth.uid))
-          && firestore.get(/databases/(default)/documents/artistProfiles/$(profileId)/members/$(request.auth.uid)).data.status == 'active'
-        )
-      );
+      return signedIn()
+        && firestore.exists(artistDoc(profileId))
+        && (
+          firestore.get(artistDoc(profileId)).data.userId == request.auth.uid
+          || (
+            firestore.exists(/databases/(default)/documents/artistProfiles/$(profileId)/members/$(request.auth.uid))
+            && firestore.get(/databases/(default)/documents/artistProfiles/$(profileId)/members/$(request.auth.uid)).data.status == 'active'
+          )
+        );
     }
 
     function musicianDoc(musicianId) {
@@ -45,8 +51,10 @@ service firebase.storage {
     function isMusicianWriter(musicianId) {
       return signedIn() && (
         musicianId == request.auth.uid
-        || !firestore.exists(musicianDoc(musicianId))
-        || firestore.get(musicianDoc(musicianId)).data.userId == request.auth.uid
+        || (
+          firestore.exists(musicianDoc(musicianId))
+          && firestore.get(musicianDoc(musicianId)).data.userId == request.auth.uid
+        )
       );
     }
 
@@ -55,53 +63,89 @@ service firebase.storage {
     }
 
     function isBandWriter(bandId) {
-      return signedIn() && (
-        !firestore.exists(bandDoc(bandId))
-        || firestore.get(bandDoc(bandId)).data.userId == request.auth.uid
-        || firestore.get(bandDoc(bandId)).data.admin.userId == request.auth.uid
-      );
+      return signedIn()
+        && firestore.exists(bandDoc(bandId))
+        && (
+          firestore.get(bandDoc(bandId)).data.userId == request.auth.uid
+          || firestore.get(bandDoc(bandId)).data.admin.userId == request.auth.uid
+        );
     }
 
-    // Account picture. Only that user.
-    match /users/{uid}/{allPaths=**} {
-      allow read, write: if signedIn() && request.auth.uid == uid;
+    // Email logo. Token URLs do not need this. getDownloadURL on this path does.
+    match /gigin.png {
+      allow get: if true;
     }
 
-    // Musician profile media (photo, tracks, videos). Public to display; write is the owner.
-    match /musicians/{musicianId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if isMusicianWriter(musicianId);
+    // Welcome-modal tutorial videos. The client calls getDownloadURL on a known path.
+    match /tutorials/{allPaths=**} {
+      allow get: if true;
     }
 
-    // Artist profile media. Public to display; write is the owner or an active member.
-    match /artistProfiles/{profileId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if isArtistWriter(profileId);
+    // Account files. Only that user. Not public.
+    match /users/{uid} {
+      allow list: if signedIn() && request.auth.uid == uid;
+
+      match /{allPaths=**} {
+        allow get, list, write: if signedIn() && request.auth.uid == uid;
+      }
     }
 
-    // Venue photos at the venue root, and videos. Public to display.
+    // Musician profile media. Anyone can fetch a known object. Only the owner can list or write.
+    match /musicians/{musicianId} {
+      allow list: if isMusicianWriter(musicianId);
+
+      match /{allPaths=**} {
+        allow get: if true;
+        allow list, write: if isMusicianWriter(musicianId);
+      }
+    }
+
+    // Artist profile media (hero, tracks, videos). Same split.
+    match /artistProfiles/{profileId} {
+      allow list: if isArtistWriter(profileId);
+
+      match /{allPaths=**} {
+        allow get: if true;
+        allow list, write: if isArtistWriter(profileId);
+      }
+    }
+
+    // Listing venues/{id}/ is only granted by a multi-segment match. That match
+    // does not grant get, so terms under documents/ stay staff-only.
+    match /venues/{venueId}/{allPaths=**} {
+      allow list: if isVenueStaff(venueId);
+    }
+
     match /venues/{venueId}/videos/{allPaths=**} {
-      allow read: if true;
-      allow write: if isVenueStaff(venueId);
+      allow get: if true;
+      allow list, write: if isVenueStaff(venueId);
     }
 
     match /venues/{venueId}/{fileName} {
-      allow read: if true;
+      allow get: if true;
       allow write: if isVenueStaff(venueId);
     }
 
-    // Terms and house rules. Staff can upload from the client. Guests use the stored download URL.
-    match /venues/{venueId}/documents/{allPaths=**} {
-      allow read, write: if isVenueStaff(venueId);
+    // Terms and house rules. Staff only. Guests open the stored download URL, which carries its own token.
+    match /venues/{venueId}/documents {
+      allow list: if isVenueStaff(venueId);
+
+      match /{allPaths=**} {
+        allow get, list, write: if isVenueStaff(venueId);
+      }
     }
 
-    // Band picture. Public to display. The first file can land before the band document exists.
-    match /bands/{bandId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if isBandWriter(bandId);
+    // Band picture. The band document (userId) must exist before the upload.
+    match /bands/{bandId} {
+      allow list: if isBandWriter(bandId);
+
+      match /{allPaths=**} {
+        allow get: if true;
+        allow list, write: if isBandWriter(bandId);
+      }
     }
 
-    // Served only by the API, via signed URLs. No client read or write.
+    // Served only by the API, via signed URLs. No client get, list, or write.
     match /gig-media/{allPaths=**} {
       allow read, write: if false;
     }
