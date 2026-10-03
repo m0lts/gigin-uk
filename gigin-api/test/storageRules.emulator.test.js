@@ -39,10 +39,20 @@ async function signUp(email) {
   return { uid: body.localId, token: body.idToken, email };
 }
 
-async function storageCall(method, objectPath, { token, body, contentType = 'image/jpeg' } = {}) {
+async function storageList(prefix, { token } = {}) {
+  const url = `http://${STORAGE}/v0/b/${BUCKET}/o?prefix=${encodeURIComponent(prefix)}`;
+  const headers = {};
+  if (token) headers.Authorization = `Firebase ${token}`;
+  const response = await fetch(url, { headers });
+  const text = await response.text();
+  return { status: response.status, text };
+}
+
+async function storageCall(method, objectPath, { token, body, contentType = 'image/jpeg', alt } = {}) {
   const encoded = encodeURIComponent(objectPath);
+  const media = alt ? '?alt=media' : '';
   const url = method === 'GET' || method === 'DELETE'
-    ? `http://${STORAGE}/v0/b/${BUCKET}/o/${encoded}`
+    ? `http://${STORAGE}/v0/b/${BUCKET}/o/${encoded}${media}`
     : `http://${STORAGE}/v0/b/${BUCKET}/o?name=${encoded}`;
   const headers = {};
   if (token) headers.Authorization = `Firebase ${token}`;
@@ -83,6 +93,25 @@ test('an artist cannot read or write another user, or any gig media', async () =
 
   const signedOut = await storageCall('GET', `users/${owner.uid}/profile/photo.jpg`);
   assert.ok(signedOut.status === 401 || signedOut.status === 403, signedOut.text);
+
+  for (const prefix of [
+    `users/${owner.uid}/`,
+    'gig-media/',
+    'guest-applications/',
+    'artist-press-kits/',
+  ]) {
+    const listed = await storageList(prefix);
+    assert.ok(listed.status === 401 || listed.status === 403, `${prefix} ${listed.status} ${listed.text}`);
+    const listedAsArtist = await storageList(prefix, { token: artist.token });
+    assert.equal(listedAsArtist.status, 403, `${prefix} ${listedAsArtist.text}`);
+  }
+
+  const unclaimed = `venues/missing-${crypto.randomUUID()}/front.jpg`;
+  const unclaimedWrite = await storageCall('POST', unclaimed, {
+    token: artist.token,
+    body: Buffer.from('no-owner'),
+  });
+  assert.equal(unclaimedWrite.status, 403, unclaimedWrite.text);
 
   const gigWrite = await storageCall('POST', `gig-media/${crypto.randomUUID()}/set.mp3`, {
     token: artist.token,
@@ -135,8 +164,24 @@ test('the owner can still upload a venue image and an artist profile image', asy
   const publicRead = await storageCall('GET', `venues/${venueId}/front.jpg`);
   assert.equal(publicRead.status, 200, publicRead.text);
 
+  const publicBytes = await storageCall('GET', `venues/${venueId}/front.jpg`, { alt: true });
+  assert.equal(publicBytes.status, 200, publicBytes.text);
+  assert.equal(publicBytes.text, 'venue-image');
+
+  const publicHero = await storageCall('GET', `artistProfiles/${profileId}/hero/hero.jpg`, { alt: true });
+  assert.equal(publicHero.status, 200, publicHero.text);
+
+  const listedVenue = await storageList(`venues/${venueId}/`);
+  assert.ok(listedVenue.status === 401 || listedVenue.status === 403, listedVenue.text);
+
+  const ownerList = await storageList(`venues/${venueId}/`, { token: owner.token });
+  assert.equal(ownerList.status, 200, ownerList.text);
+
   const docs = await storageCall('GET', `venues/${venueId}/documents/terms.pdf`);
   assert.ok(docs.status === 401 || docs.status === 403, docs.text);
+
+  const listedDocs = await storageList(`venues/${venueId}/documents/`);
+  assert.ok(listedDocs.status === 401 || listedDocs.status === 403, listedDocs.text);
 });
 
 test('a guest photo written by the API is not readable by a client', async () => {
@@ -155,4 +200,16 @@ test('a guest photo written by the API is not readable by a client', async () =>
     body: Buffer.from('nope'),
   });
   assert.equal(clientWrite.status, 403, clientWrite.text);
+
+  const signedOutPhoto = await storageCall('GET', objectPath);
+  assert.ok(signedOutPhoto.status === 401 || signedOutPhoto.status === 403, signedOutPhoto.text);
+
+  const gigPath = `gig-media/${crypto.randomUUID()}/set.mp3`;
+  await admin.storage().bucket().file(gigPath).save(Buffer.from('gig-media-bytes'), {
+    contentType: 'audio/mpeg',
+  });
+  const gigClient = await storageCall('GET', gigPath, { token: artist.token });
+  assert.equal(gigClient.status, 403, gigClient.text);
+  const gigAnon = await storageCall('GET', gigPath);
+  assert.ok(gigAnon.status === 401 || gigAnon.status === 403, gigAnon.text);
 });
