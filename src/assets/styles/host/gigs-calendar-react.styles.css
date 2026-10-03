@@ -1,3 +1,5 @@
+@import '../breakpoints.css';
+
 /* Calendar shell (console). Header is the redesigned chrome; the month grid still uses react-calendar until the hand-built grid lands. */
 
 .gigs-cal {
