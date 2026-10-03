@@ -1282,5 +1282,17 @@ textarea.ng-input { height: auto; padding: 10px; }
   .ng-modal__body, .ng-wizard { grid-template-columns: 1fr; }
   .ng-side, .ng-rail { display: none; }
   .ng-drawer { width: 100%; }
+  .ng-when, .ng-three { grid-template-columns: minmax(0, 1fr); }
+  .ng-modal__foot {
+    height: auto;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+  .ng-modal__foot > div {
+    flex-wrap: wrap;
+    width: 100%;
+  }
 }
 
