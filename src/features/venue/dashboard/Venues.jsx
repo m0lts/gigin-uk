@@ -33,7 +33,7 @@ export const Venues = ({ venues, user, setVenues }) => {
                     <div className='venue-card' key={index} onClick={() => handleOpenVenuePage(venue)}>
                         <div>
                             <div className='venue-image'>
-                                <img src={venue.photos[0]} alt={venue.name} />
+                                {venue.photos?.[0] ? <img src={venue.photos[0]} alt={venue.name} /> : null}
                             </div>
                             <div className="venue-flex">
                                 <div className="venue-name">
