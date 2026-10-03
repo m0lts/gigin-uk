@@ -120,6 +120,13 @@ export const ProfileCreator = ({ user, setShowModal, closable = true }) => {
     }
     setSaving(true);
     try {
+      if (formData.picture && typeof formData.picture !== 'string') {
+        await createMusicianProfile(formData.musicianId, {
+          musicianId: formData.musicianId,
+          name: formData.name || '',
+          email: user?.email || '',
+        }, user.uid);
+      }
       const pictureUrl = formData.picture
         ? await uploadPictureIfNeeded(formData.picture, formData.musicianId)
         : '';

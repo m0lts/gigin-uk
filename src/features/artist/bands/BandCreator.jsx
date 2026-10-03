@@ -74,11 +74,10 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
       setLoading(true);
       try {
         const pictureFile = formData.picture;
-        const pictureUrl = await uploadFileToStorage(pictureFile, `bands/${formData.bandId}/profileImg/${pictureFile.name}`);
         const bandPassword = generateBandPassword();
         const updatedFormData = {
           ...formData,
-          picture: pictureUrl,
+          picture: '',
           email: user?.email,
           joinPassword: bandPassword,
           admin: {
@@ -94,6 +93,13 @@ export const BandCreator = ({ musicianProfile, refreshData }) => {
           ]
         };
         await createBandProfile({ bandId: formData.bandId, data: updatedFormData, userId: user.uid, musicianProfile });
+        const pictureUrl = pictureFile && typeof pictureFile !== 'string'
+          ? await uploadFileToStorage(pictureFile, `bands/${formData.bandId}/profileImg/${pictureFile.name}`)
+          : '';
+        if (pictureUrl) {
+          updatedFormData.picture = pictureUrl;
+          await createBandProfile({ bandId: formData.bandId, data: updatedFormData, userId: user.uid, musicianProfile });
+        }
         await updateUserArrayField({ field: 'bands', op: 'add', value: formData.bandId });
         await updateMusicianProfile(musicianProfile.id, {
           bands: arrayUnion(formData.bandId)

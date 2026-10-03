@@ -218,22 +218,12 @@ export const NoProfileModal = ({
       
           setLoadingMessage('Creating your band…');
           setStage(Stage.LOADING);
-      
-          // 3) Optional image upload
-          let pictureUrl = '';
-          if (bandImageFile) {
-            pictureUrl = await uploadFileToStorage(
-              bandImageFile,
-              `bands/${bandId}/profileImg/${bandImageFile.name}`
-            );
-          }
-      
-          // 4) Build band (admin) doc payload
+
           const bandPassword = generateBandPassword();
           const bandAdminData = {
             bandId,
             name: bandName.trim(),
-            picture: pictureUrl || '',
+            picture: '',
             email: creatorUser?.email || '',
             joinPassword: bandPassword,
             onboarded: true,
@@ -249,9 +239,19 @@ export const NoProfileModal = ({
               },
             ],
           };
-      
-          // 5) Create band admin profile (bands collection)
+
+          // Ownership document first, so the picture upload is under this user's band.
           await createBandProfile({ bandId, data: bandAdminData, userId: uid, musicianProfile: creatorMusicianProfile });
+
+          let pictureUrl = '';
+          if (bandImageFile) {
+            pictureUrl = await uploadFileToStorage(
+              bandImageFile,
+              `bands/${bandId}/profileImg/${bandImageFile.name}`
+            );
+            bandAdminData.picture = pictureUrl;
+            await createBandProfile({ bandId, data: bandAdminData, userId: uid, musicianProfile: creatorMusicianProfile });
+          }
       
           // 6) Link band to user + creator’s musician profile
           await Promise.all([
