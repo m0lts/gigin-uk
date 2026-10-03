@@ -1,6 +1,7 @@
 import rateLimit from "express-rate-limit";
 import { db } from "../config/admin.js";
 import { queueMail } from "./queueMail.js";
+import { loadPrivateApplications } from "./gigPrivacy.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 import { allowedMailOrigin } from "./legacyMail.js";
 
@@ -146,8 +147,19 @@ async function emailsForApplicant(gigId, applicant) {
   return musicianEmail ? [musicianEmail] : [];
 }
 
-function findApplicant(gig, applicantId) {
-  const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+/**
+ * Pending, declined, and withdrawn applicants live on
+ * gigs/{rootId}/private/applications. The public gig only keeps the confirmed lineup.
+ */
+async function gigApplicants(gig) {
+  const rootId = gig.applicationsRootGigId || gig.id;
+  const stored = await loadPrivateApplications(rootId);
+  if (stored && Array.isArray(stored.applicants)) return stored.applicants;
+  return Array.isArray(gig.applicants) ? gig.applicants : [];
+}
+
+async function findApplicant(gig, applicantId) {
+  const applicants = await gigApplicants(gig);
   return applicants.find((entry) => entry && entry.id === applicantId) || null;
 }
 
@@ -286,7 +298,7 @@ async function sendGigTiming(uid, body) {
 }
 
 async function emailApplicantOrVenue(uid, gig, applicantId, { venueSubject, artistSubject, venueText, artistText }) {
-  const applicant = findApplicant(gig, applicantId);
+  const applicant = await findApplicant(gig, applicantId);
   if (!applicant) throw fail(404, "Applicant not found");
   const venue = await loadVenue(gig.venueId);
   const place = venueLabel(venue, gig);
@@ -326,7 +338,7 @@ async function sendToVenueAboutCaller(uid, body, copy) {
   const gigId = requireId(body.gigId, "gigId");
   const gig = await loadGig(gigId);
   if (!gig.venueId) throw fail(400, "Gig has no venue");
-  const applicants = Array.isArray(gig.applicants) ? gig.applicants : [];
+  const applicants = await gigApplicants(gig);
   let applicant = null;
   for (const entry of applicants) {
     if (entry?.id && await ownsApplicant(uid, entry.id)) {
