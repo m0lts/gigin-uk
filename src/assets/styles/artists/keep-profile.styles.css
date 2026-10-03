@@ -36,6 +36,9 @@
   width: 100%; min-height: 54px; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
 }
 .kp-btn { background: #111317; color: #fff; border: 0; }
+.kp button.kp-btn,
+.kp a.kp-btn { color: #fff; }
+.kp button.kp-btn:disabled { color: #9AA0AA; }
 .kp-btn:disabled { background: #E5E7EB; color: #9AA0AA; }
 .kp-ghost { background: #fff; border: 1px solid var(--gn-line); color: var(--gn-ink); margin-top: 8px; }
 .kp-orange { background: var(--gn-orange); color: #fff; border: 0; }
@@ -67,7 +70,7 @@
 .kp-url button, .kp-inline { min-height: 44px; border-radius: 10px; border: 1px solid var(--gn-line); background: #fff; padding: 0 12px; font-weight: 600; cursor: pointer; }
 .kp-next { background: #111317; color: #fff; border-radius: 16px; padding: 18px; margin-top: 18px; }
 .kp-next p { color: #C9CDD4; }
-.kp-next .kp-btn { background: #fff; color: #111317; margin-top: 12px; }
+.kp .kp-next .kp-btn { background: #fff; color: #111317; margin-top: 12px; }
 .kp-card { background: #fff; border: 1px solid var(--gn-line); border-radius: 14px; padding: 16px; margin: 12px 0; }
 .kp-hero { width: 100%; height: 280px; object-fit: cover; border-radius: 16px; background: #111317; }
 .kp-hero-fallback { height: 280px; border-radius: 16px; background: #111317; display: grid; place-items: center; }
