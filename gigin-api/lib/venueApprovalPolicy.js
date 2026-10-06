@@ -10,7 +10,6 @@ export const SERVER_VENUE_FIELDS = [
   "approvedAt",
   "approvedBy",
   "approvalNotifiedAt",
-  "ownerEmail",
 ];
 
 /**

@@ -45,7 +45,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
 
     const [formData, setFormData] = useState({
         venueId: uuidv4(),
-        email: user ? user.email : '',
+        email: '',
         type: '',
         name: '',
         address: '',
@@ -182,7 +182,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 extraInformation: formData.extraInformation || '',
                 website: formData.website || '',
                 capacity: formData.capacity || '',
-                email: user?.email || formData.email || '',
+                email: formData.email || '',
                 completed,
             });
             return true;

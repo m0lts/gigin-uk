@@ -130,7 +130,9 @@ test("a pending venue cannot create a night, take an application, or be read in 
     const venueId = created.json.data.venueId;
     const stored = (await db.doc(`venueProfiles/${venueId}`).get()).data();
     assert.equal(stored.approvalStatus, "pending");
-    assert.equal(stored.ownerEmail, owner.email);
+    assert.equal(stored.ownerEmail, undefined);
+    assert.equal(stored.email, "");
+    assert.equal(JSON.stringify(stored).includes(owner.email), false);
     assert.equal(stored.city, "Cambridge");
     const member = await db.doc(`venueProfiles/${venueId}/members/${owner.uid}`).get();
     assert.equal(member.exists, true);
@@ -268,6 +270,13 @@ test("the approval link does nothing on open, works once, and rejects expired or
     assert.equal(after.approvalStatus, "approved");
     assert.equal(after.approvedBy, "approval-link");
     assert.ok(after.approvedAt);
+    assert.equal(JSON.stringify(after).includes(owner.email), false);
+    const host = process.env.FIRESTORE_EMULATOR_HOST;
+    const publicApproved = await fetch(`http://${host}/v1/projects/${PROJECT}/databases/(default)/documents/venueProfiles/${venueId}`);
+    assert.equal(publicApproved.status, 200);
+    const publicApprovedText = await publicApproved.text();
+    assert.equal(publicApprovedText.includes(owner.email), false);
+    assert.equal(publicApprovedText.includes("ownerEmail"), false);
     assert.ok((await db.doc(`venueApprovalTokens/${hash}`).get()).data().usedAt);
     const ownerMail = await db.collection("mail").where("to", "==", owner.email).get();
     assert.equal(ownerMail.docs.some((doc) => String(doc.data()?.message?.text || "").includes("is approved")), true);

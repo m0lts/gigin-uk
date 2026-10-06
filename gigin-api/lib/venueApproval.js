@@ -77,7 +77,7 @@ async function reserveSignupSlot(uid) {
   if (failure) throw failure;
 }
 
-function profileFromBody(body, uid, email) {
+function profileFromBody(body, uid) {
   const source = body && typeof body === "object" ? body : {};
   const name = text(source.name, 120);
   if (name.length < 2) throw httpError(400, "Add the venue name.");
@@ -86,6 +86,7 @@ function profileFromBody(body, uid, email) {
   const venueId = /^[0-9a-f-]{36}$/i.test(String(source.venueId || ""))
     ? String(source.venueId)
     : uuidv4();
+  const typedEmail = text(source.email, 160);
   const profile = {
     venueId,
     name,
@@ -98,26 +99,35 @@ function profileFromBody(body, uid, email) {
     website: text(source.website, 300),
     capacity: text(source.capacity, 20),
     completed: source.completed === true,
-    email: text(source.email, 160) || email || "",
+    email: typedEmail,
     createdBy: uid,
     userId: uid,
-    ownerEmail: email || "",
-    approvalStatus: "pending",
-    approvedAt: null,
-    approvedBy: null,
   };
   SERVER_VENUE_FIELDS.forEach((field) => {
-    if (field !== "approvalStatus" && field !== "approvedAt" && field !== "approvedBy" && field !== "ownerEmail") {
-      delete profile[field];
-    }
+    delete profile[field];
   });
+  profile.approvalStatus = "pending";
+  profile.approvedAt = null;
+  profile.approvedBy = null;
   return profile;
+}
+
+async function ownerLoginEmail(venue) {
+  const uid = String(venue?.createdBy || venue?.userId || "");
+  if (!uid) return "";
+  try {
+    const user = await admin.auth().getUser(uid);
+    return user.email || "";
+  } catch (error) {
+    console.error("owner email lookup failed", error);
+    return "";
+  }
 }
 
 export async function createPendingVenue({ uid, email, body }) {
   if (!uid) throw httpError(401, "Sign in to create a venue.");
   if (!email) throw httpError(403, "Verify your email before creating a venue.");
-  const profile = profileFromBody(body, uid, email);
+  const profile = profileFromBody(body, uid);
   await reserveSignupSlot(uid);
 
   const venueRef = db.doc(`venueProfiles/${profile.venueId}`);
@@ -203,7 +213,7 @@ export async function notifyFounder(venueId) {
   const lines = [
     `Venue: ${data.name || "Untitled venue"}`,
     `City: ${data.city || cityFromAddress(data.address) || "—"}`,
-    `Owner: ${data.ownerEmail || "—"}`,
+    `Owner: ${await ownerLoginEmail(data) || "—"}`,
     `Review: ${link}`,
   ];
   await queueMail({
@@ -219,7 +229,7 @@ export async function notifyFounder(venueId) {
 }
 
 async function emailOwner(venue, decision) {
-  const to = venue.ownerEmail;
+  const to = await ownerLoginEmail(venue);
   if (!to) return;
   const name = venue.name || "Your venue";
   const approved = decision === "approve";
@@ -251,7 +261,7 @@ export async function readApproval(raw) {
     expiresAt: token.expiresAt || null,
     venueName: venue.name || "",
     city: venue.city || cityFromAddress(venue.address) || "",
-    ownerEmail: venue.ownerEmail || "",
+    ownerEmail: await ownerLoginEmail(venue),
     approvalStatus: venue.approvalStatus || (venueSnap?.exists ? "approved" : null),
   };
 }
@@ -336,6 +346,6 @@ export async function approveVenueById({ venueId, actor }) {
     approvedAt: admin.firestore.FieldValue.serverTimestamp(),
     approvedBy: actor || "cli",
   });
-  await emailOwner({ ...current, name: current.name, ownerEmail: current.ownerEmail }, "approve");
+  await emailOwner(current, "approve");
   return { ok: true, approvalStatus: "approved", venueId };
 }
