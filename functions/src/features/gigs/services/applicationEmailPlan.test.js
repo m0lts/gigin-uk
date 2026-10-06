@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { earliestFlush, planFlush, planRecipientWindow } from "./applicationEmailPlan.js";
+import {
+  earliestFlush,
+  planFlush,
+  planRecipientWindow,
+} from "./applicationEmailPlan.js";
 
 const NOW = 1_700_000_000_000;
 
@@ -32,7 +36,7 @@ test("later applications in the same write queue behind the single", () => {
 test("applications inside the window are queued and not sent", () => {
   const plan = planRecipientWindow({
     now: NOW + 10 * 60 * 1000,
-    window: { until: NOW + 60 * 60 * 1000, queued: ["b"] },
+    window: {until: NOW + 60 * 60 * 1000, queued: ["b"]},
     applicantIds: ["c"],
     viewedIds: new Set(),
   });
@@ -54,7 +58,7 @@ test("viewed applicants are skipped", () => {
 test("flush sends a batch, or a single when only one remains", () => {
   const batch = planFlush({
     now: NOW + 60 * 60 * 1000,
-    window: { until: NOW + 60 * 60 * 1000, queued: ["b", "c"] },
+    window: {until: NOW + 60 * 60 * 1000, queued: ["b", "c"]},
     viewedIds: new Set(),
   });
   assert.equal(batch.sends[0].kind, "batch");
@@ -62,7 +66,7 @@ test("flush sends a batch, or a single when only one remains", () => {
 
   const single = planFlush({
     now: NOW + 60 * 60 * 1000,
-    window: { until: NOW + 60 * 60 * 1000, queued: ["b", "c"] },
+    window: {until: NOW + 60 * 60 * 1000, queued: ["b", "c"]},
     viewedIds: new Set(["b"]),
   });
   assert.equal(single.sends[0].kind, "single");
@@ -70,7 +74,7 @@ test("flush sends a batch, or a single when only one remains", () => {
 
   const none = planFlush({
     now: NOW + 60 * 60 * 1000,
-    window: { until: NOW + 60 * 60 * 1000, queued: ["b"] },
+    window: {until: NOW + 60 * 60 * 1000, queued: ["b"]},
     viewedIds: new Set(["b"]),
   });
   assert.deepEqual(none.sends, []);
@@ -80,7 +84,7 @@ test("flush sends a batch, or a single when only one remains", () => {
 test("flush waits while the window is open", () => {
   const plan = planFlush({
     now: NOW,
-    window: { until: NOW + 1000, queued: ["b"] },
+    window: {until: NOW + 1000, queued: ["b"]},
     viewedIds: new Set(),
   });
   assert.deepEqual(plan.sends, []);
@@ -89,9 +93,9 @@ test("flush waits while the window is open", () => {
 
 test("earliest flush is the soonest queued window", () => {
   const at = earliestFlush({
-    one: { until: NOW + 5000, queued: ["a"] },
-    two: { until: NOW + 1000, queued: [] },
-    three: { until: NOW + 2000, queued: ["b"] },
+    one: {until: NOW + 5000, queued: ["a"]},
+    two: {until: NOW + 1000, queued: []},
+    three: {until: NOW + 2000, queued: ["b"]},
   });
   assert.equal(at, NOW + 2000);
 });
