@@ -1,14 +1,7 @@
 import { auth } from '../../lib/firebase';
+import { joinApiUrl, normalizeBaseUrl } from './url.js';
 
 const DEFAULT_TIMEOUT_MS = 20000;
-
-function normalizeBaseUrl(raw) {
-  if (!raw) return '';
-  let base = String(raw).trim();
-  if (!/^https?:\/\//i.test(base)) base = `http://${base}`; // add scheme for localhost:PORT
-  base = base.replace(/\/+$/, ''); // trim trailing slashes
-  return base;
-}
 
 const getBaseUrl = () => {
   const raw = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
@@ -34,12 +27,7 @@ async function getAuthToken() {
 }
 
 function buildUrl(path, query) {
-  const base = getBaseUrl();
-  const isAbsolute = /^https?:\/\//i.test(path);
-  const joined = isAbsolute
-    ? path
-    : `${base}${path.startsWith('/') ? '' : '/'}${path}`;
-  const url = new URL(joined);
+  const url = new URL(joinApiUrl(getBaseUrl(), path));
   if (query && typeof query === 'object') {
     Object.entries(query).forEach(([key, value]) => {
       if (value === undefined || value === null) return;
