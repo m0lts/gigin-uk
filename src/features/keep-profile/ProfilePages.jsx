@@ -123,7 +123,9 @@ export function KeepChoicesPage() {
 
 export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
   const { token } = useParams();
+  const navigate = useNavigate();
   const [state, setState] = useState('working');
+  const [directSignup, setDirectSignup] = useState(false);
   const [slug, setSlug] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -138,6 +140,7 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
     inspectConfirm(token).then((result) => {
       setEmail(result.email || '');
       setSlug(result.slug || '');
+      setDirectSignup(Boolean(result.directSignup));
       setMethods({ hasPassword: result.hasPassword !== false, hasGoogle: Boolean(result.hasGoogle) });
       setState(result.hasAccount ? 'login' : 'password');
     }).catch((err) => {
@@ -175,6 +178,10 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
       const result = await claimProfileAccount(token, { password });
       await signInWithEmailAndPassword(auth, result.email || email, password);
       setSlug(result.slug || '');
+      if (directSignup) {
+        navigate('/home');
+        return;
+      }
       setState('live');
     } catch (err) {
       const code = err?.payload?.error || err?.code;
@@ -213,7 +220,9 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
       <Shell>
         <p className="kp-kicker">✓ EMAIL CONFIRMED</p>
         <h1>Create a password</h1>
-        <p>This puts your profile live and creates your Gigin login. Next time, log in at giginmusic.com with this email and password.</p>
+        <p>{directSignup
+          ? 'This creates your Gigin login. Your profile stays private until you publish it. Next time, log in at giginmusic.com with this email and password.'
+          : 'This puts your profile live and creates your Gigin login. Next time, log in at giginmusic.com with this email and password.'}</p>
         <form onSubmit={createAccount}>
           <label className="kp-field">Email<input value={email} readOnly /></label>
           <label className="kp-field">
@@ -228,7 +237,7 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
             <p>{hint.title ? <strong>{hint.title} </strong> : null}{hint.body}</p>
           </div>
           {error && <p className="kp-error">{error}</p>}
-          <button type="submit" className="kp-btn" disabled={busy}>{busy ? 'Saving…' : 'Put my profile live'}</button>
+          <button type="submit" className="kp-btn" disabled={busy}>{busy ? 'Saving…' : (directSignup ? 'Create my account' : 'Put my profile live')}</button>
         </form>
         <p className="kp-or">or</p>
         <button type="button" className="kp-ghost" onClick={async () => {
@@ -243,6 +252,10 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
             }
             const claimed = await claimProfileAccount(token, {});
             setSlug(claimed.slug || slug);
+            if (directSignup) {
+              navigate('/home');
+              return;
+            }
             setViaGoogle(true);
             setState('live');
           } catch (err) {

@@ -20,6 +20,10 @@ export function previewSlug(name) {
   return base || 'artist';
 }
 
+export function startArtistSignup(body) {
+  return httpClient.post('/profiles/signup', { ...authFree, body });
+}
+
 export function keepGuestProfile(token, body) {
   return httpClient.post(`/guest-applications/${encodeURIComponent(token)}/keep-profile`, { ...authFree, body });
 }

@@ -515,6 +515,7 @@ export async function inspectConfirmToken(rawToken) {
     email,
     slug: profile.slug || "",
     hasAccount: Boolean(existing),
+    directSignup: profile.source === "artist_signup",
     ...authProviders(existing),
   };
 }
@@ -565,7 +566,7 @@ export async function claimProfileAccount({ rawToken, password, authUser }) {
   }, { merge: true });
   await profile.ref.set({
     userId: uid,
-    status: "live",
+    status: profile.source === "artist_signup" ? "hidden" : "live",
     confirmedAt: new Date().toISOString(),
   }, { merge: true });
   await token.ref.set({ usedAt: new Date().toISOString() }, { merge: true });

@@ -6,6 +6,7 @@ import { FEATURES } from '../../config/features';
 import { PROOF } from './landing.config';
 import { submitAccessRequest } from '../../services/api/accessRequests';
 import { requestManageLinks } from '../../services/api/manageLinks';
+import { startArtistSignup } from '@services/client-side/keepProfile';
 import {
   EmailScreen,
   GalleryScreen,
@@ -250,6 +251,7 @@ export const LandingPage = ({ setAuthModal, setAuthType }) => {
             <h2>Playing a night booked on Gigin?</h2>
             <p className="lp-lead">You apply to a night from the venue&apos;s link as a guest. There&apos;s no account to make first.</p>
             <div className="lp-cards">
+              {FEATURES.keepProfile ? <ArtistSignupCard /> : null}
               <ManageCard />
               {showProfile ? <ProfileCard pressKit={FEATURES.pressKit} onLogin={openLogin} /> : null}
               {showFinder ? <FinderCard /> : null}
@@ -286,6 +288,69 @@ export const LandingPage = ({ setAuthModal, setAuthType }) => {
     </div>
   );
 };
+
+function ArtistSignupCard() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [company, setCompany] = useState('');
+  const [error, setError] = useState('');
+  const [phase, setPhase] = useState('form');
+  const nameId = useId();
+  const emailId = useId();
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const nextName = name.trim();
+    const nextEmail = email.trim();
+    if (nextName.length < 2) {
+      setError('Enter the name you perform under.');
+      return;
+    }
+    if (!EMAIL.test(nextEmail)) {
+      setError('Enter an email address like name@example.com.');
+      return;
+    }
+    setError('');
+    setPhase('sending');
+    try {
+      await startArtistSignup({ name: nextName, email: nextEmail, company });
+      setPhase('sent');
+    } catch (err) {
+      setPhase('form');
+      setError(err?.status === 429 ? 'Too many requests. Please try again later.' : 'Could not send that email. Please try again.');
+    }
+  };
+
+  if (phase === 'sent') {
+    return (
+      <article className="lp-artist-card">
+        <h3>Check your email</h3>
+        <p>If this address is new, the message has a link to create your password. If you already use Gigin, it has a sign-in link. Your profile stays private until you publish it.</p>
+      </article>
+    );
+  }
+
+  return (
+    <article className="lp-artist-card">
+      <h3>Create your artist profile</h3>
+      <p>Confirm your email, choose a password, then fill in the profile. It stays private until you publish it. Nights to apply for come from a venue&apos;s link.</p>
+      <form className="lp-manage" noValidate onSubmit={submit}>
+        <label htmlFor={nameId}>Your name</label>
+        <input id={nameId} value={name} autoComplete="name" placeholder="The Fen Street Trio" disabled={phase === 'sending'} onChange={(event) => setName(event.target.value)} />
+        <label htmlFor={emailId}>Email</label>
+        <input id={emailId} type="email" inputMode="email" autoComplete="email" placeholder="you@example.com" value={email} disabled={phase === 'sending'} onChange={(event) => setEmail(event.target.value)} />
+        <div className="lp-hp" aria-hidden="true">
+          <label htmlFor="artist-signup-company">Company</label>
+          <input id="artist-signup-company" name="company" tabIndex={-1} autoComplete="off" value={company} onChange={(event) => setCompany(event.target.value)} />
+        </div>
+        {error ? <p className="lp-field-error" role="alert">{error}</p> : null}
+        <button type="submit" className="lp-btn lp-btn--light" disabled={phase === 'sending'}>
+          {phase === 'sending' ? 'Sending…' : 'Create your artist profile'}
+        </button>
+      </form>
+    </article>
+  );
+}
 
 function ManageCard() {
   const [email, setEmail] = useState('');

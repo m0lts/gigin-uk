@@ -45,8 +45,21 @@ import {
   updateOwnProfile,
   artistContactForVenue,
 } from "../lib/keepProfile.js";
+import { startArtistSignup } from "../lib/artistSignup.js";
 
 const router = express.Router();
+
+const signupIpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: () => {
+    const parsed = Number(process.env.ARTIST_SIGNUP_IP_MAX);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please try again later." },
+  validate: { trustProxy: false, xForwardedForHeader: false },
+});
 
 const contactLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -65,6 +78,18 @@ function fail(res, error) {
     hasGoogle: error.hasGoogle,
   });
 }
+
+router.post("/signup", signupIpLimiter, asyncHandler(async (req, res) => {
+  try {
+    await startArtistSignup(req.body || {});
+    return res.json({ sent: true });
+  } catch (error) {
+    if (error.statusCode === 429) {
+      return res.status(429).json({ error: "Too many requests. Please try again later." });
+    }
+    throw error;
+  }
+}));
 
 router.get("/public/:slug", asyncHandler(async (req, res) => {
   const profile = await publicProfileView(req.params.slug);
@@ -333,6 +358,7 @@ router.get("/home", optionalAuth, asyncHandler(async (req, res) => {
       id: profileId,
       name: profile.name || "",
       slug: profile.slug || "",
+      bio: profile.bio || "",
       status: profile.status || "live",
       source: profile.source || null,
       userId: profile.userId || null,

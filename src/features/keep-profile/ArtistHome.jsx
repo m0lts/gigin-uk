@@ -49,6 +49,8 @@ export function ArtistHome({ user, logout }) {
     );
   }
   const url = data.profile.slug ? profileLink(data.profile.slug) : '';
+  const nothingYet = data.gigs.length === 0 && data.applications.length === 0;
+  const unpublished = data.profile.status === 'hidden' || data.profile.status === 'pending';
   return (
     <div className="kp">
       <header className="kp-top">
@@ -65,7 +67,14 @@ export function ArtistHome({ user, logout }) {
             )}
             {welcome && <button type="button" className="kp-text" onClick={() => { setWelcome(false); updateOwnProfile({ homeWelcomeDismissed: true }).catch(() => {}); }}>Dismiss</button>}
             <h2>MY CONFIRMED GIGS</h2>
-            {data.gigs.length === 0 && <p>No confirmed gigs yet. When a venue confirms you, the gig shows here.</p>}
+            {nothingYet ? (
+              <p className="kp-card">
+                <strong>There&apos;s nothing to apply to yet.</strong> Nights come from a venue&apos;s link. When a venue shares one, you apply from that page.
+              </p>
+            ) : data.gigs.length === 0 ? (
+              <p>No confirmed gigs yet. When a venue confirms you, the gig shows here.</p>
+            ) : null}
+            {unpublished ? <p>Your profile is empty. <Link to="/profile/edit">Fill it in</Link>, then publish it when you want a public link.</p> : null}
             {data.gigs.map((gig) => (
               <article className="kp-home-gig" key={gig.gigId}>
                 <p className="kp-mono">{gig.date || ''}</p>
@@ -89,7 +98,8 @@ export function ArtistHome({ user, logout }) {
           <aside className="kp-aside kp-card">
             <p className="kp-mono">MY PROFILE</p>
             <strong>{data.profile.name}</strong>
-            {url && <p className="kp-mono">{url.replace('https://', '')}</p>}
+            {unpublished ? <p>Not public yet.</p> : null}
+            {url && !unpublished && <p className="kp-mono">{url.replace('https://', '')}</p>}
             <div className="kp-links">
               {data.profile.slug && <Link to={`/artist/${data.profile.slug}`}>View</Link>}
               <Link to="/profile/edit">Edit</Link>
