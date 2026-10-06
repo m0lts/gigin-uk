@@ -34,6 +34,9 @@ jobs:
       VITE_STRIPE_ACCOUNT_URL: ${{ secrets.PROD_STRIPE_ACCOUNT_URL }}
       VITE_STRIPE_ACCOUNT_SESSION_URL: ${{ secrets.PROD_STRIPE_ACCOUNT_SESSION_URL }}
       VITE_API_URL: https://gigin-api-prod-gxujnzd2uq-ey.a.run.app/api
+      VITE_FEATURE_MARKETING_PAGES: 'true'
+      VITE_FEATURE_KEEP_PROFILE: 'true'
+      VITE_FEATURE_PUBLIC_PROFILE: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
