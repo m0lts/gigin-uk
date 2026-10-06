@@ -4,6 +4,7 @@
   "description": "Cloud Functions for Firebase",
   "scripts": {
     "lint": "eslint .",
+    "sync-shared": "node syncShared.js",
     "serve:dev": "firebase use dev && firebase emulators:start --only functions",
     "deploy:dev": "firebase use dev && firebase deploy --only functions",
     "serve:prod": "firebase use prod && firebase emulators:start --only functions",

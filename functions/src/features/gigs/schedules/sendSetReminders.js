@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { schedule } from "../../../lib/schedule.js";
 import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
-import { icsAttachment, icsEvent, renderArtistEmail } from "../../../../../gigin-api/lib/artistEmails.js";
+import { icsAttachment, icsEvent, renderArtistEmail } from "../../../shared/artistEmails.js";
 
 const FROM = "Gigin <noreply@giginmusic.com>";
 const ORIGIN = process.env.BASE_URL || "https://giginmusic.com";

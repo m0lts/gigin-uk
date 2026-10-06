@@ -1,5 +1,7 @@
 // functions/.eslintrc.cjs
 module.exports = {
+  // Synced from gigin-api/lib. Lint those files with the API, not here.
+  ignorePatterns: ["src/shared/**"],
   env: { es2022: true, node: true },
   parserOptions: { ecmaVersion: 2022, sourceType: "module" },
   extends: ["eslint:recommended", "google"],
