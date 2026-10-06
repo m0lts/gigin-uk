@@ -21,7 +21,8 @@
     "migrate:artistProfiles": "node scripts/migrateArtistProfiles.js",
     "backup:firestore": "node scripts/backupFirestore.js",
     "restore:firestore": "node scripts/restoreFirestore.js",
-    "venue:approve": "node scripts/venueApprove.js"
+    "venue:approve": "node scripts/venueApprove.js",
+    "reset:dev": "node gigin-api/scripts/resetDev.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.5.1",

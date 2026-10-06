@@ -54,6 +54,15 @@ npm run dev
 
 The server will automatically detect the project from `GCLOUD_PROJECT` and initialize Firebase Admin with the correct project. You'll see logs indicating which project is being used.
 
+### Reset dev data
+
+From the repo root, `npm run reset:dev` deletes the Firestore collections this app uses, including their subcollections, and every Auth user. It runs only when the resolved project is exactly `giginltd-dev`, and only after that id is typed. Other collections and other projects are left alone. Emulator hosts, when set, are what get wiped.
+
+```bash
+export GCLOUD_PROJECT=giginltd-dev
+npm run reset:dev
+```
+
 ## Building Docker Image
 
 ```bash

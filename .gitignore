@@ -29,6 +29,8 @@ dist-ssr
 functions/service-account.json
 firestore-rules
 scripts/
+!gigin-api/scripts/
+!gigin-api/scripts/**
 gigin-api/node_modules
 gigin-api/dist
 gigin-api/dist-ssr
