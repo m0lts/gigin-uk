@@ -38,6 +38,7 @@ jobs:
       VITE_FEATURE_MARKETING_PAGES: 'true'
       VITE_FEATURE_KEEP_PROFILE: 'true'
       VITE_FEATURE_PUBLIC_PROFILE: 'true'
+      VITE_FEATURE_VENUE_SIGNUP: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
