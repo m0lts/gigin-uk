@@ -238,11 +238,13 @@ export function bookText(value) {
   return map[value] || value || "";
 }
 
-export const APP_ORIGIN = "https://giginmusic.com";
+export function appOrigin() {
+  return String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
+}
 export const MAIL_FROM = "Gigin <noreply@giginmusic.com>";
 
 export function profileUrl(slug) {
-  return `${APP_ORIGIN}/artist/${slug}`;
+  return `${appOrigin()}/artist/${slug}`;
 }
 
 export const LISTED_VENUE_EMPTY = {

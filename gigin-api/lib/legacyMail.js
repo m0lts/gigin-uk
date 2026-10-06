@@ -21,8 +21,14 @@ export function useMailOrigin(value) {
   currentOrigin = allowedMailOrigin(value);
 }
 
+export function emailLinkOrigin(requested) {
+  const fromEnv = String(process.env.BASE_URL || "").trim().replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+  return requested ? allowedMailOrigin(requested) : currentOrigin;
+}
+
 function mailOrigin() {
-  return currentOrigin;
+  return emailLinkOrigin();
 }
 
 function toJsDate(v) {
@@ -1877,7 +1883,7 @@ export const sendTestimonialRequestEmail = async ({
   to,
   musicianId,
   musicianName,
-  baseUrl = 'https://giginmusic.com',
+  baseUrl = process.env.BASE_URL || "https://giginmusic.com",
 }) => {
   const subject = `Gigin Testimonial Request From ${musicianName}`;
   const link = `${baseUrl}/testimonials?musicianId=${encodeURIComponent(

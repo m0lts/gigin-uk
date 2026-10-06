@@ -33,7 +33,7 @@ export const sendMessageNotificationEmail = async ({
   };
 
   // Get base URL from environment or use default
-  const baseUrl = process.env.BASE_URL || "https://app.gigin.com";
+  const baseUrl = process.env.BASE_URL || "https://giginmusic.com";
   const dashboardUrl = `${baseUrl}/dashboard`;
   // Use generic messages link - will work for artists, venues can navigate from dashboard
   const messagesUrl = `${baseUrl}/messages?conversationId=${conversationId}`;

@@ -24,7 +24,7 @@ function hashToken(token) {
 }
 
 function appOrigin() {
-  return String(process.env.PUBLIC_APP_URL || process.env.APP_ORIGIN || "https://giginmusic.com").replace(/\/$/, "");
+  return String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
 }
 
 function escapeHtml(value) {

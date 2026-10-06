@@ -6,7 +6,10 @@ import { asyncHandler } from "../middleware/errorHandler.js";
 import { venueIsApproved } from "../lib/venueApprovalPolicy.js";
 
 const router = express.Router();
-const APP_ORIGIN = process.env.PUBLIC_APP_URL || "http://localhost:5173";
+
+function appOrigin() {
+  return String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
+}
 
 const previewLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -48,7 +51,7 @@ router.get("/gig/:gigId", previewLimiter, asyncHandler(async (req, res) => {
   const description = [when, venueName].filter(Boolean).join(" · ");
   const image = venue.photoUrl || venue.picture || venue.heroImage || gig.imageUrl || "";
   const invite = typeof req.query.inviteId === "string" ? req.query.inviteId : "";
-  const pageUrl = `${APP_ORIGIN}/gig/${encodeURIComponent(req.params.gigId)}${invite ? `?inviteId=${encodeURIComponent(invite)}` : ""}`;
+  const pageUrl = `${appOrigin()}/gig/${encodeURIComponent(req.params.gigId)}${invite ? `?inviteId=${encodeURIComponent(invite)}` : ""}`;
   const html = `<!doctype html>
 <html>
 <head>

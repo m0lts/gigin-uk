@@ -87,13 +87,13 @@ export const automaticReviewMessage = httpRaw(
         audience: "musician",
         musicianName,
         venueName,
-        baseUrl: "https://giginmusic.com",
+        baseUrl: process.env.BASE_URL || "https://giginmusic.com",
       });
       const venueMessage = reviewPromptEmail({
         audience: "venue",
         musicianName,
         venueName,
-        baseUrl: "https://giginmusic.com",
+        baseUrl: process.env.BASE_URL || "https://giginmusic.com",
       });
 
       if (typeof musicianEmail === "string" && musicianEmail.includes("@")) {

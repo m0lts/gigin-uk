@@ -17,7 +17,7 @@ export const gigFeeReleasedEmail = (musicianName, venueName, isAdmin = false) =>
     const subject = "Your gig fee is available!";
     const text =
         "We have just cleared your gig fee. You can now withdraw it to your bank account.";
-    const financesUrl = "https://giginmusic.com/dashboard/finances";
+    const financesUrl = `${process.env.BASE_URL || "https://giginmusic.com"}/dashboard/finances`;
     const baseStyles = {
       bodyBg: "#f9f9f9",
       cardBg: "#ffffff",
@@ -136,7 +136,7 @@ export const gigFeeReleasedEmail = (musicianName, venueName, isAdmin = false) =>
     audience,
     musicianName,
     venueName,
-    baseUrl = "https://giginmusic.com",
+    baseUrl = process.env.BASE_URL || "https://giginmusic.com",
   }) => {
     const subject =
         audience === "musician" ? "How did the gig go?" : "How was the performance?";

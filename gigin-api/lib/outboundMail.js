@@ -3,7 +3,7 @@ import { db } from "../config/admin.js";
 import { queueMail } from "./queueMail.js";
 import { loadPrivateApplications } from "./gigPrivacy.js";
 import { assertVenuePerm } from "../utils/permissions.js";
-import { allowedMailOrigin } from "./legacyMail.js";
+import { emailLinkOrigin } from "./legacyMail.js";
 
 export const MAIL_RECIPIENT_CAP = 5;
 
@@ -212,7 +212,7 @@ async function sendVenueInvite(uid, body) {
   const to = normalizeEmail(invite.email);
   if (!to) throw fail(400, "This invite has no email address.");
   const name = plain(venue?.name || venue?.venueName || venue?.accountName || "the venue");
-  const origin = allowedMailOrigin(body.origin);
+  const origin = emailLinkOrigin(body.origin);
   const link = `${origin}/join-venue?invite=${encodeURIComponent(inviteId)}`;
   const message = letter({
     subject: `You're invited to join ${name} on Gigin`,
@@ -238,7 +238,7 @@ async function sendGigInvite(uid, body) {
   const who = plain(venue?.accountName || venue?.name || "A venue");
   const place = plain(venue?.name || venue?.venueName || gig?.venue?.venueName || who);
   const when = formatWhen(gig.startDateTime || gig.date);
-  const origin = allowedMailOrigin(body.origin);
+  const origin = emailLinkOrigin(body.origin);
   const link = gig.private
     ? `${origin}/gig/${encodeURIComponent(gig.id)}?inviteId=${encodeURIComponent(inviteId)}`
     : `${origin}/gig/${encodeURIComponent(gig.id)}`;

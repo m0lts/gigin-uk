@@ -7,7 +7,10 @@ import { queueMail } from "../lib/queueMail.js";
 import { renderArtistEmail } from "../lib/artistEmails.js";
 
 const router = express.Router();
-const ORIGIN = process.env.BASE_URL || "https://giginmusic.com";
+
+function appOrigin() {
+  return String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
+}
 const FROM = "Gigin <noreply@giginmusic.com>";
 
 const limiter = rateLimit({
@@ -32,11 +35,11 @@ router.post("/password-reset", limiter, asyncHandler(async (req, res) => {
   try {
     const user = await admin.auth().getUserByEmail(email);
     const link = await admin.auth().generatePasswordResetLink(email, {
-      url: `${ORIGIN}/auth/reset`,
+      url: `${appOrigin()}/auth/reset`,
       handleCodeInApp: true,
     });
     const oobCode = new URL(link).searchParams.get("oobCode") || "";
-    const resetUrl = `${ORIGIN}/auth/reset?oobCode=${encodeURIComponent(oobCode)}`;
+    const resetUrl = `${appOrigin()}/auth/reset?oobCode=${encodeURIComponent(oobCode)}`;
     const message = renderArtistEmail({
       subject: "Reset your Gigin password",
       preheader: "The link works once, for 1 hour.",

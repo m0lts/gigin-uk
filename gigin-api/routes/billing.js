@@ -518,8 +518,8 @@ router.post("/getConnectAccountStatus", requireAuth, asyncHandler(async (req, re
   if (status !== "all_good" || needsOnboarding) {
     const link = await stripe.accountLinks.create({ 
       account: accountId, 
-      refresh_url: "https://giginmusic.com/account?show=payouts&retry=true", 
-      return_url: "https://giginmusic.com/account?show=payouts&done=true", 
+      refresh_url: `${process.env.BASE_URL || "https://giginmusic.com"}/account?show=payouts&retry=true`,
+      return_url: `${process.env.BASE_URL || "https://giginmusic.com"}/account?show=payouts&done=true`, 
       type: needsOnboarding ? "account_onboarding" : "account_update" 
     });
     resolveUrl = link.url;

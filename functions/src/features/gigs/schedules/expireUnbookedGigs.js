@@ -2,7 +2,7 @@
 import { schedule } from "../../../lib/schedule.js";
 import { db, Timestamp, FieldValue } from "../../../lib/admin.js";
 
-const BASE_URL = process.env.BASE_URL || "https://app.gigin.com";
+const BASE_URL = process.env.BASE_URL || "https://giginmusic.com";
 const PAGE_SIZE = 100;
 
 /**

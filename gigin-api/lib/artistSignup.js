@@ -6,7 +6,7 @@ import { queueMail } from "./queueMail.js";
 import { renderArtistEmail } from "./artistEmails.js";
 import { issueToken } from "./keepProfile.js";
 import { profileIdForEmail, rememberProfileEmail } from "./profileEmailIndex.js";
-import { APP_ORIGIN, MAIL_FROM, emailIndexKey, firstName, nextSlug, slugify } from "./keepProfileLogic.js";
+import { appOrigin, MAIL_FROM, emailIndexKey, firstName, nextSlug, slugify } from "./keepProfileLogic.js";
 
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 const SENT = { sent: true };
@@ -81,7 +81,7 @@ async function sendArtistMail(to, email) {
 
 async function sendConfirm({ to, name, profileId }) {
   const token = await issueToken({ profileId, kind: "confirm" }, 7);
-  const url = `${APP_ORIGIN}/profile/confirm/${token}`;
+  const url = `${appOrigin()}/profile/confirm/${token}`;
   await sendArtistMail(to, {
     subject: "Confirm your Gigin profile",
     preheader: "Tap the link to confirm your email and create a password. Nothing is public until you publish.",
@@ -99,11 +99,11 @@ async function sendConfirm({ to, name, profileId }) {
 
 async function sendSignIn(user, email) {
   const link = await admin.auth().generatePasswordResetLink(email, {
-    url: `${APP_ORIGIN}/auth/reset`,
+    url: `${appOrigin()}/auth/reset`,
     handleCodeInApp: true,
   });
   const oobCode = new URL(link).searchParams.get("oobCode") || "";
-  const resetUrl = `${APP_ORIGIN}/auth/reset?oobCode=${encodeURIComponent(oobCode)}`;
+  const resetUrl = `${appOrigin()}/auth/reset?oobCode=${encodeURIComponent(oobCode)}`;
   await sendArtistMail(email, {
     subject: "Sign in to your Gigin profile",
     preheader: "Use this link to sign in. It works once.",

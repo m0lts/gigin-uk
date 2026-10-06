@@ -43,7 +43,8 @@ export const stripeAccount = http(
       }
 
       // Try to derive a default website URL for this account
-      let websiteUrl = "https://giginmusic.com";
+      const site = String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
+      let websiteUrl = site;
       if (userId) {
         try {
           const userSnap = await db.collection("users").doc(userId).get();
@@ -52,7 +53,7 @@ export const stripeAccount = http(
             const artistProfileIds = userData.artistProfileIds || userData.artistProfiles || [];
             const firstArtistId = Array.isArray(artistProfileIds) ? artistProfileIds[0] : null;
             if (firstArtistId) {
-              websiteUrl = `https://giginmusic.com/${firstArtistId}`;
+              websiteUrl = `${site}/${firstArtistId}`;
             }
           }
         } catch (e) {

@@ -44,8 +44,8 @@ export const changeBankDetails = http(
 
       const accountLink = await stripe.accountLinks.create({
         account: accountId,
-        refresh_url: "https://giginmusic.com/dashboard/finances",
-        return_url: "https://giginmusic.com/dashboard/finances",
+        refresh_url: `${process.env.BASE_URL || "https://giginmusic.com"}/dashboard/finances`,
+        return_url: `${process.env.BASE_URL || "https://giginmusic.com"}/dashboard/finances`,
         type: "account_onboarding",
       });
 

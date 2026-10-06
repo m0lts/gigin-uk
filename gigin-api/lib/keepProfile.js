@@ -6,7 +6,7 @@ import { renderArtistEmail } from "./artistEmails.js";
 import { loadPrivateApplications, savePrivateApplications } from "./gigPrivacy.js";
 import { publicLineup } from "./nightApplications.js";
 import {
-  APP_ORIGIN,
+  appOrigin,
   MAIL_FROM,
   artistContactDecision,
   bookText,
@@ -309,8 +309,8 @@ async function stampGuest(gigId, applicantId, patch) {
 }
 
 async function confirmEmail({ to, actName, venueName, contactName, sections, token }) {
-  const confirmUrl = `${APP_ORIGIN}/profile/confirm/${token}`;
-  const chooseUrl = `${APP_ORIGIN}/profile/keep?t=${token}`;
+  const confirmUrl = `${appOrigin()}/profile/confirm/${token}`;
+  const chooseUrl = `${appOrigin()}/profile/keep?t=${token}`;
   const list = sections.length ? sections.join(", ") : "Act name";
   const message = renderArtistEmail({
     subject: `Confirm your Gigin profile for ${actName}`,
@@ -610,7 +610,7 @@ export async function sendEditLink({ email, profileId }) {
   const to = emailNorm(contact.email || address);
   if (!to) return { ok: true };
   const token = await issueToken({ profileId: target.id, kind: "edit" }, CONFIRM_DAYS);
-  const url = `${APP_ORIGIN}/profile/edit/${token}`;
+  const url = `${appOrigin()}/profile/edit/${token}`;
   await sendMail({
     to,
     subject: `Edit your Gigin profile for ${target.name || "your act"}`,
@@ -920,7 +920,7 @@ export async function askForPressKit({ profileId, venueId }) {
         title: "A venue asked for your press kit",
         inner: `<p>Hi ${escapeHtml(firstName(contact.contactName || profile.name))},</p><p>A venue you've been booked by asked for files they can use to promote the gig. Add them from your press kit. Only venues who have booked you can download what you switch on.</p>`,
         buttonLabel: "Set up press kit",
-        buttonUrl: `${APP_ORIGIN}/profile/press-kit`,
+        buttonUrl: `${appOrigin()}/profile/press-kit`,
         orange: true,
         footer: "",
       }),
@@ -999,7 +999,7 @@ export async function keepReminderHtml({ email, artistProfileId, keepProfileOffe
   if (!reminderEligible({ keepProfileOffer, hasLiveProfile, reminderCount: count })) return "";
   const token = await issueToken({ kind: "nudge", gigId, applicantId, email: address }, 30);
   await db.doc(`profileReminders/${hashToken(address)}`).set({ count: count + 1, email: address }, { merge: true });
-  const url = `${APP_ORIGIN}/profile/keep-from-email/${token}`;
+  const url = `${appOrigin()}/profile/keep-from-email/${token}`;
   return `<table role="presentation" width="100%" style="background:#F6F7F9;border-radius:12px;margin-top:16px;"><tr><td style="padding:14px 16px;font-family:Geist,Inter,Arial,sans-serif;font-size:14px;line-height:1.5;color:#0F1115;"><strong>Keep your details for next time?</strong><br>Turn this application into a Gigin profile with a link you can send to other venues. You'll create a password when you confirm.<br><a href="${url}">Keep my profile</a></td></tr></table>`;
 }
 
@@ -1036,7 +1036,7 @@ export async function sendPrefillLink(email) {
   const profile = await profileByEmail(address);
   if (!profile) return { ok: true };
   const token = await issueToken({ profileId: profile.id, kind: "prefill" }, CONFIRM_DAYS);
-  const url = `${APP_ORIGIN}/profile/prefill/${token}`;
+  const url = `${appOrigin()}/profile/prefill/${token}`;
   await sendMail({
     to: address,
     subject: "Fill in your Gigin application from your profile",
@@ -1399,4 +1399,4 @@ export async function loadGuestForProfile(gigId, applicantId) {
   return { ...(priv.data() || {}), ...stub, id: applicantId, gigId, gig: gig.data() || {} };
 }
 
-export { capacityMatches, ogDescription, profileUrl, APP_ORIGIN, enabledSections };
+export { capacityMatches, ogDescription, profileUrl, appOrigin, enabledSections };

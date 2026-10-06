@@ -10,7 +10,7 @@ import { assertVenuePerm } from "../utils/permissions.js";
 import { db } from "../config/admin.js";
 import { ogCardPng } from "../lib/ogCard.js";
 import {
-  APP_ORIGIN,
+  appOrigin,
   askForPressKit,
   clearProfileCookie,
   claimProfileAccount,
@@ -116,7 +116,7 @@ router.get("/public/:slug/preview", asyncHandler(async (req, res) => {
   }
   const title = `${profile.name} · Gigin`;
   const description = ogDescription(profile);
-  const image = `${APP_ORIGIN}/api/profiles/public/${encodeURIComponent(profile.slug || req.params.slug)}/og.png`;
+  const image = `${appOrigin()}/api/profiles/public/${encodeURIComponent(profile.slug || req.params.slug)}/og.png`;
   const page = profileUrl(profile.slug || req.params.slug);
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
 <meta property="og:title" content="${title.replace(/"/g, "&quot;")}">

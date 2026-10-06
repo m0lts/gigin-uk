@@ -26,6 +26,7 @@ function strip(value) {
 }
 
 export function renderArtistEmail(email) {
+  const home = String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
   const styles = `:root{color-scheme:light dark;supported-color-schemes:light dark;}
 body{margin:0;padding:0;-webkit-text-size-adjust:100%;}
 a{text-decoration:underline;}
@@ -71,7 +72,7 @@ ${styles}
 <h1 class="ink" style="margin:0 0 18px;font-family:${FONT};font-size:24px;line-height:30px;font-weight:600;letter-spacing:-0.01em;color:#0F1115;">${email.heading || ""}</h1>
 ${paras}${boxes}${pre}${button}${after}${extra}${small}
 </td></tr>
-<tr><td class="muted" style="padding:16px 10px 0;font-family:${FONT};font-size:12.5px;line-height:19px;color:#6B7280;">${email.footer || ""}<br>Gigin · <a class="link" href="https://giginmusic.com" style="color:#6B7280;">giginmusic.com</a> · <a class="link" href="https://giginmusic.com/privacy-policy" style="color:#6B7280;">Privacy</a></td></tr>
+<tr><td class="muted" style="padding:16px 10px 0;font-family:${FONT};font-size:12.5px;line-height:19px;color:#6B7280;">${email.footer || ""}<br>Gigin · <a class="link" href="${home}" style="color:#6B7280;">giginmusic.com</a> · <a class="link" href="${home}/privacy-policy" style="color:#6B7280;">Privacy</a></td></tr>
 </table>
 </td></tr>
 </table>
@@ -91,7 +92,7 @@ ${paras}${boxes}${pre}${button}${after}${extra}${small}
   if (email.after) lines.push(`${email.after[0]} ${email.after[1]}:`, email.after[2], "");
   if (email.extra) lines.push(email.extra.title, email.extra.body, `${email.extra.link[0]}: ${email.extra.link[1]}`, "");
   if (email.small) lines.push(strip(email.small), "");
-  lines.push("--", strip(email.footer), "Gigin · https://giginmusic.com");
+  lines.push("--", strip(email.footer), `Gigin · ${home}`);
   return { subject: strip(email.subject), html, text: lines.join("\n") };
 }
 

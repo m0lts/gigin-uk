@@ -22,7 +22,7 @@ if (process.env.GCLOUD_PROJECT === "giginltd-16772" || process.env.GOOGLE_CLOUD_
 }
 
 process.env.VENUE_ACCESS_NOTIFY_EMAIL = NOTIFY;
-process.env.PUBLIC_APP_URL = "http://127.0.0.1:5174";
+process.env.BASE_URL = "http://127.0.0.1:5174";
 
 if (!admin.apps.length) {
   admin.initializeApp({ projectId: PROJECT });

@@ -2,7 +2,9 @@
 import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
 import { earliestFlush, planFlush, planRecipientWindow } from "./applicationEmailPlan.js";
 
-const ORIGIN = process.env.PUBLIC_APP_URL || "https://giginmusic.com";
+function appOrigin() {
+  return String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
+}
 const LOGO = "https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/gigin.png?alt=media&token=efd9ba79-f580-454c-98f6-b4a391e0d636";
 const FROM = "Gigin <notifications@giginmusic.com>";
 const ZONE = "Europe/London";
@@ -249,7 +251,7 @@ function singleEmail(context, person, recipient) {
     act ? ["Act", act] : null,
     ["Sets booked", `${context.booked} of ${context.totalSets}`],
   ].filter(Boolean);
-  const review = `${ORIGIN}/venues/dashboard/gigs/gig-applications?gigId=${encodeURIComponent(context.gigId)}&applicant=${encodeURIComponent(person.id)}`;
+  const review = `${appOrigin()}/venues/dashboard/gigs/gig-applications?gigId=${encodeURIComponent(context.gigId)}&applicant=${encodeURIComponent(person.id)}`;
   const note = person.note ? truncate(person.note, 280) : "";
   const heading = `${person.name} applied to play ${context.name}`;
   const footnote = `${context.totalApps} application${context.totalApps === 1 ? "" : "s"} so far for this night.`;
@@ -284,7 +286,7 @@ function batchEmail(context, people, recipient) {
   const preheader = nameList(people.map((person) => person.name), context.name);
   const heading = `${count} new applications for ${context.name}`;
   const sub = [when, context.range, `${context.booked} of ${context.totalSets} sets booked`].filter(Boolean).join(" · ");
-  const review = `${ORIGIN}/venues/dashboard/gigs/gig-applications?gigId=${encodeURIComponent(context.gigId)}&filter=new`;
+  const review = `${appOrigin()}/venues/dashboard/gigs/gig-applications?gigId=${encodeURIComponent(context.gigId)}&filter=new`;
   const shown = people.slice(0, 8);
   const more = people.length - shown.length;
   const footnote = `${context.totalApps} application${context.totalApps === 1 ? "" : "s"} so far for this night.`;
@@ -343,7 +345,7 @@ function shell({ preheader, eyebrow, heading, sub, body, button, href, footnote,
         </table>
         <div style="max-width:600px;margin-top:14px;font-family:Geist, -apple-system, 'Segoe UI', Arial, sans-serif;font-size:12px;line-height:1.5;color:#6B7280;">
           You're getting this because you book gigs for ${escapeHtml(venueName || "your venue")} on Gigin.
-          <a href="${ORIGIN}/venues/dashboard/my-venues" style="color:#6B7280;">Change email settings</a><br>
+          <a href="${appOrigin()}/venues/dashboard/my-venues" style="color:#6B7280;">Change email settings</a><br>
           Gigin · giginmusic.com
         </div>
       </td></tr>
@@ -434,7 +436,7 @@ function nameList(names, gigName) {
 }
 
 function footerText(venueName) {
-  return `You're getting this because you book gigs for ${venueName || "your venue"} on Gigin. Change email settings: ${ORIGIN}/venues/dashboard/my-venues\nGigin · giginmusic.com`;
+  return `You're getting this because you book gigs for ${venueName || "your venue"} on Gigin. Change email settings: ${appOrigin()}/venues/dashboard/my-venues\nGigin · giginmusic.com`;
 }
 
 function baseName(gig) {
