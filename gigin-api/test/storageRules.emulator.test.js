@@ -184,6 +184,33 @@ test('the owner can still upload a venue image and an artist profile image', asy
   assert.ok(listedDocs.status === 401 || listedDocs.status === 403, listedDocs.text);
 });
 
+test('an existing image with no ownership document can still be fetched', async () => {
+  const venueId = `legacy-ven-${crypto.randomUUID()}`;
+  const profileId = `legacy-art-${crypto.randomUUID()}`;
+  const musicianId = `legacy-mus-${crypto.randomUUID()}`;
+  const bandId = `legacy-band-${crypto.randomUUID()}`;
+  const objects = [
+    [`venues/${venueId}/front.jpg`, 'venue-bytes'],
+    [`artistProfiles/${profileId}/hero/hero.jpg`, 'hero-bytes'],
+    [`musicians/${musicianId}/profileImg/face.jpg`, 'musician-bytes'],
+    [`bands/${bandId}/profileImg/band.jpg`, 'band-bytes'],
+  ];
+  for (const [objectPath, bytes] of objects) {
+    await admin.storage().bucket().file(objectPath).save(Buffer.from(bytes), { contentType: 'image/jpeg' });
+    const venueDoc = await db.doc(`venueProfiles/${venueId}`).get();
+    const artistDoc = await db.doc(`artistProfiles/${profileId}`).get();
+    assert.equal(venueDoc.exists, false);
+    assert.equal(artistDoc.exists, false);
+    const fetched = await storageCall('GET', objectPath, { alt: true });
+    assert.equal(fetched.status, 200, `${objectPath} ${fetched.text}`);
+    assert.equal(fetched.text, bytes);
+    const write = await storageCall('POST', objectPath.replace(/\.jpg$/, '-new.jpg'), {
+      body: Buffer.from('no-owner'),
+    });
+    assert.ok(write.status === 401 || write.status === 403, `${objectPath} write ${write.status}`);
+  }
+});
+
 test('a guest photo written by the API is not readable by a client', async () => {
   const artist = await signUp(`test+storage-guest-${crypto.randomUUID()}@example.com`);
   const applicationId = crypto.randomUUID();
