@@ -4,6 +4,7 @@ export const APPROVAL_DEV_PROJECT = "giginltd-dev";
 export const APPROVAL_DAYS = 14;
 export const SIGNUP_LIMIT = 3;
 export const SIGNUP_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const RESEND_INTERVAL_MS = 60 * 60 * 1000;
 
 export const SERVER_VENUE_FIELDS = [
   "approvalStatus",
@@ -37,6 +38,32 @@ export function cityFromAddress(address) {
   const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
   if (parts.length >= 3) return parts[parts.length - 3];
   return parts[0] || "";
+}
+
+function tokenCreatedMs(token) {
+  const ms = new Date(token?.createdAt || 0).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+/**
+ * A pending venue can be emailed again when the last token expired or the
+ * previous send never landed. A successful resend blocks the next one for an hour.
+ * A failed send does not.
+ */
+export function approvalResendDecision({ approvalStatus, approvalNotifiedAt, tokens, now = Date.now() }) {
+  if (approvalStatus !== "pending") return "skip";
+  const list = Array.isArray(tokens) ? tokens : [];
+  const newest = list.reduce((best, token) => {
+    if (!best || tokenCreatedMs(token) >= tokenCreatedMs(best)) return token;
+    return best;
+  }, null);
+  const failed = !approvalNotifiedAt;
+  const expired = !newest || tokenState(newest, now) === "expired";
+  if (!failed && !expired) return "skip";
+  if (!failed && list.some((token) => token.resend === true && now - tokenCreatedMs(token) < RESEND_INTERVAL_MS)) {
+    return "throttle";
+  }
+  return "send";
 }
 
 export function tokenState(token, now = Date.now()) {

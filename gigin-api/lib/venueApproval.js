@@ -11,6 +11,7 @@ import {
   SIGNUP_LIMIT,
   SIGNUP_WINDOW_MS,
   SERVER_VENUE_FIELDS,
+  approvalResendDecision,
   cityFromAddress,
   tokenState,
   venueIsApproved,
@@ -177,10 +178,11 @@ export async function createPendingVenue({ uid, email, body }) {
   return { venueId: profile.venueId, approvalStatus: "pending" };
 }
 
-export async function notifyFounder(venueId) {
+export async function notifyFounder(venueId, { resend = false } = {}) {
   const venueRef = db.doc(`venueProfiles/${venueId}`);
   const raw = crypto.randomBytes(32).toString("hex");
   const hash = hashToken(raw);
+  const tokenRef = db.doc(`venueApprovalTokens/${hash}`);
   let shouldSend = false;
   let details = null;
   let failure = null;
@@ -193,16 +195,16 @@ export async function notifyFounder(venueId) {
       return;
     }
     const data = snap.data() || {};
-    if (data.approvalStatus !== "pending" || data.approvalNotifiedAt) return;
+    if (data.approvalStatus !== "pending") return;
+    if (!resend && data.approvalNotifiedAt) return;
     const expiresAt = new Date(Date.now() + APPROVAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    tx.set(db.doc(`venueApprovalTokens/${hash}`), {
+    tx.set(tokenRef, {
       hash,
       venueId,
       expiresAt,
       usedAt: null,
       createdAt: new Date().toISOString(),
     });
-    tx.update(venueRef, { approvalNotifiedAt: new Date().toISOString() });
     shouldSend = true;
     details = { data, expiresAt };
   });
@@ -210,22 +212,50 @@ export async function notifyFounder(venueId) {
   if (!shouldSend || !details) return { ok: true, skipped: true };
   const data = details.data;
   const link = `${appOrigin()}/admin/venue-approval/${raw}`;
+  const ownerEmail = await ownerLoginEmail(data);
   const lines = [
     `Venue: ${data.name || "Untitled venue"}`,
     `City: ${data.city || cityFromAddress(data.address) || "—"}`,
-    `Owner: ${await ownerLoginEmail(data) || "—"}`,
+    `Owner: ${ownerEmail || "—"}`,
     `Review: ${link}`,
   ];
-  await queueMail({
-    to: notifyAddress(),
-    from: MAIL_FROM,
-    message: {
-      subject: `New venue waiting for approval: ${data.name || "Untitled venue"}`,
-      text: lines.join("\n"),
-      html: `<p>${lines.map((line) => escapeHtml(line)).join("<br>")}</p>`,
-    },
+  try {
+    const sent = await queueMail({
+      to: notifyAddress(),
+      from: MAIL_FROM,
+      message: {
+        subject: `New venue waiting for approval: ${data.name || "Untitled venue"}`,
+        text: lines.join("\n"),
+        html: `<p>${lines.map((line) => escapeHtml(line)).join("<br>")}</p>`,
+      },
+    });
+    if (!sent) throw httpError(502, "Could not send the approval email.");
+    const patch = { approvalNotifiedAt: new Date().toISOString() };
+    await venueRef.update(patch);
+    if (resend) await tokenRef.set({ resend: true }, { merge: true });
+    return { ok: true, skipped: false };
+  } catch (error) {
+    await venueRef.update({ approvalNotifiedAt: FieldValue.delete() }).catch((clearError) => {
+      console.error("clearing approval notification failed", clearError);
+    });
+    throw error;
+  }
+}
+
+export async function resendVenueApproval(venueId) {
+  const venueRef = db.doc(`venueProfiles/${venueId}`);
+  const snap = await venueRef.get();
+  if (!snap.exists) throw httpError(404, "Venue not found.");
+  const data = snap.data() || {};
+  const tokenSnap = await db.collection("venueApprovalTokens").where("venueId", "==", venueId).get();
+  const decision = approvalResendDecision({
+    approvalStatus: data.approvalStatus,
+    approvalNotifiedAt: data.approvalNotifiedAt,
+    tokens: tokenSnap.docs.map((doc) => doc.data()),
   });
-  return { ok: true, skipped: false };
+  if (decision === "skip") return { ok: true, skipped: true };
+  if (decision === "throttle") throw httpError(429, "Approval was already requested. Try again in an hour.");
+  return notifyFounder(venueId, { resend: true });
 }
 
 async function emailOwner(venue, decision) {

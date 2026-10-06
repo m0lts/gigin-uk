@@ -6,7 +6,7 @@ import { admin, db, FieldValue } from "../config/admin.js";
 import { v4 as uuidv4 } from "uuid";
 import { assertVenuePerm, assertArtistPerm, PERM_DEFAULTS, PERM_KEYS, sanitizePermissions } from "../utils/permissions.js";
 import { addUserToAccountConversations } from "../utils/conversations.js";
-import { createPendingVenue, decideApproval, notifyFounder, readApproval } from "../lib/venueApproval.js";
+import { createPendingVenue, decideApproval, readApproval, resendVenueApproval } from "../lib/venueApproval.js";
 
 const router = express.Router();
 
@@ -66,7 +66,7 @@ router.post("/:venueId/request-approval", requireAuth, asyncHandler(async (req, 
     return res.status(403).json({ error: "You can't request approval for this venue." });
   }
   try {
-    const data = await notifyFounder(req.params.venueId);
+    const data = await resendVenueApproval(req.params.venueId);
     return res.json({ data });
   } catch (error) {
     if (sendKnown(res, error)) return undefined;

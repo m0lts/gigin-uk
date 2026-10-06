@@ -332,3 +332,79 @@ test("the approval link does nothing on open, works once, and rejects expired or
     server.close();
   }
 });
+
+test("a failed founder email can be resent, an expired token can be reissued, and a second resend waits an hour", async () => {
+  const { default: venuesRouter } = await import("../routes/venues.js");
+  const app = express();
+  app.use(express.json());
+  app.use("/api/venues", venuesRouter);
+  const server = await listen(app);
+  const { port } = server.address();
+  const previousNotify = process.env.VENUE_ACCESS_NOTIFY_EMAIL;
+  try {
+    process.env.VENUE_ACCESS_NOTIFY_EMAIL = "not-an-email";
+    const failedOwner = await signUp(`test+venue-notify-fail-${crypto.randomUUID()}@example.com`);
+    const failed = await api(port, "/api/venues", {
+      method: "POST",
+      token: failedOwner.token,
+      body: venueBody("Notify Failed Room"),
+    });
+    assert.equal(failed.status, 201, JSON.stringify(failed.json));
+    const failedId = failed.json.data.venueId;
+    const failedVenue = (await db.doc(`venueProfiles/${failedId}`).get()).data();
+    assert.equal(failedVenue.approvalNotifiedAt, undefined);
+    assert.equal(tokenFromMail(await founderMail(), "Notify Failed Room"), "");
+
+    process.env.VENUE_ACCESS_NOTIFY_EMAIL = NOTIFY;
+    const retried = await api(port, `/api/venues/${failedId}/request-approval`, {
+      method: "POST",
+      token: failedOwner.token,
+    });
+    assert.equal(retried.status, 200, JSON.stringify(retried.json));
+    assert.equal(retried.json.data.skipped, false);
+    assert.ok((await db.doc(`venueProfiles/${failedId}`).get()).data().approvalNotifiedAt);
+    assert.equal(tokenFromMail(await founderMail(), "Notify Failed Room").length, 64);
+
+    const owner = await signUp(`test+venue-resend-${crypto.randomUUID()}@example.com`);
+    const created = await api(port, "/api/venues", {
+      method: "POST",
+      token: owner.token,
+      body: venueBody("Resend Room"),
+    });
+    assert.equal(created.status, 201, JSON.stringify(created.json));
+    const venueId = created.json.data.venueId;
+    const firstToken = tokenFromMail(await founderMail(), "Resend Room");
+    assert.equal(firstToken.length, 64);
+    const firstHash = crypto.createHash("sha256").update(firstToken).digest("hex");
+    await db.doc(`venueApprovalTokens/${firstHash}`).update({ expiresAt: "2000-01-01T00:00:00.000Z" });
+
+    const resent = await api(port, `/api/venues/${venueId}/request-approval`, {
+      method: "POST",
+      token: owner.token,
+    });
+    assert.equal(resent.status, 200, JSON.stringify(resent.json));
+    assert.equal(resent.json.data.skipped, false);
+    const messages = (await founderMail()).filter((entry) => String(entry?.message?.text || "").includes("Resend Room"));
+    const tokens = messages.map((entry) => {
+      const match = String(entry?.message?.text || "").match(/\/admin\/venue-approval\/([a-f0-9]{64})/);
+      return match ? match[1] : "";
+    }).filter(Boolean);
+    assert.equal(new Set(tokens).size, 2);
+    const secondToken = tokens.find((token) => token !== firstToken);
+    const secondHash = crypto.createHash("sha256").update(secondToken).digest("hex");
+    assert.equal((await db.doc(`venueApprovalTokens/${secondHash}`).get()).data().resend, true);
+    assert.equal((await db.doc(`venueProfiles/${venueId}`).get()).data().approvalStatus, "pending");
+    await db.doc(`venueApprovalTokens/${secondHash}`).update({ expiresAt: "2000-01-01T00:00:00.000Z" });
+
+    const throttled = await api(port, `/api/venues/${venueId}/request-approval`, {
+      method: "POST",
+      token: owner.token,
+    });
+    assert.equal(throttled.status, 429, JSON.stringify(throttled.json));
+    const tokenCount = await db.collection("venueApprovalTokens").where("venueId", "==", venueId).get();
+    assert.equal(tokenCount.size, 2);
+  } finally {
+    process.env.VENUE_ACCESS_NOTIFY_EMAIL = previousNotify;
+    server.close();
+  }
+});

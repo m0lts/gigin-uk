@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  approvalResendDecision,
   confirmationMatches,
   projectNeedsTypedConfirmation,
   tokenState,
@@ -24,6 +25,36 @@ test("only giginltd-dev skips the typed project confirmation", () => {
   assert.equal(projectNeedsTypedConfirmation("giginltd-16772"), true);
   assert.equal(confirmationMatches("giginltd-16772", "giginltd-16772"), true);
   assert.equal(confirmationMatches("giginltd-16772", "giginltd-dev"), false);
+});
+
+test("a failed approval email can be retried, and a fresh resend waits an hour", () => {
+  const now = Date.parse("2026-10-06T12:00:00.000Z");
+  const fresh = { usedAt: null, expiresAt: "2026-10-20T12:00:00.000Z", createdAt: "2026-10-06T12:00:00.000Z" };
+  const expired = { usedAt: null, expiresAt: "2026-10-01T12:00:00.000Z", createdAt: "2026-09-20T12:00:00.000Z" };
+  assert.equal(approvalResendDecision({
+    approvalStatus: "pending",
+    approvalNotifiedAt: "",
+    tokens: [fresh],
+    now,
+  }), "send");
+  assert.equal(approvalResendDecision({
+    approvalStatus: "pending",
+    approvalNotifiedAt: "2026-09-20T12:00:00.000Z",
+    tokens: [expired],
+    now,
+  }), "send");
+  assert.equal(approvalResendDecision({
+    approvalStatus: "pending",
+    approvalNotifiedAt: "2026-10-06T12:00:00.000Z",
+    tokens: [fresh],
+    now,
+  }), "skip");
+  assert.equal(approvalResendDecision({
+    approvalStatus: "pending",
+    approvalNotifiedAt: "2026-10-06T11:30:00.000Z",
+    tokens: [{ ...expired, resend: true, createdAt: "2026-10-06T11:30:00.000Z" }],
+    now,
+  }), "throttle");
 });
 
 test("an expired or used approval token cannot be used", () => {
