@@ -19,6 +19,6 @@ export const FEATURES = {
   venueFinder: readFlag(import.meta.env.VITE_FEATURE_VENUE_FINDER),
   pressKit: readFlag(import.meta.env.VITE_FEATURE_PRESS_KIT),
   landingProof: readFlag(import.meta.env.VITE_FEATURE_LANDING_PROOF),
-  // Self-serve venue signup. Off unless the CI build sets this to true.
-  openVenueCreation: readFlag(import.meta.env.VITE_FEATURE_OPEN_VENUE_CREATION),
+  // Venue self-signup. Off unless the build sets this to true. A new venue stays pending until the founder approves it.
+  venueSignup: readFlag(import.meta.env.VITE_FEATURE_VENUE_SIGNUP),
 };

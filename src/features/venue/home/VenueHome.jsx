@@ -17,6 +17,7 @@ import {
   selectUpcomingNights,
 } from './nights';
 import { copyText, displayUrl, gigApplyUrl, venuePageUrl } from './publicLinks';
+import { venueNeedsApproval, nightsAreClosed } from '../../../config/venueAccess';
 import { useShareLink } from './shareLinkContext';
 import { BellIcon, ContactsIcon, LinkIcon, PlusIcon, QrCodeIcon } from './icons';
 import './venue-home.css';
@@ -72,6 +73,7 @@ export function VenueHome({ user, gigs, venues, onNewGig }) {
   const attention = useMemo(() => attentionNights(nights), [nights]);
   const upcoming = useMemo(() => selectUpcomingNights(nights), [nights]);
   const freshTotal = attention.reduce((sum, night) => sum + night.fresh, 0);
+  const waiting = displayedVenue ? venueNeedsApproval(displayedVenue) : nightsAreClosed(venues);
   const { phrase, first } = greetingFor(user?.name);
   const today = longDate(new Date());
 
@@ -220,7 +222,11 @@ export function VenueHome({ user, gigs, venues, onNewGig }) {
         <div>
           <h1 className="venue-home__hello">{hasAnyGigs ? phrase : `Welcome to Gigin, ${first}`}</h1>
           <p className="venue-home__sub">
-            {hasAnyGigs ? `${today} · ${venueLabel}` : `${venueLabel} is set up. Here's how booking works.`}
+            {waiting
+              ? (displayedVenue?.approvalStatus === 'rejected'
+                ? `${venueLabel} wasn't approved.`
+                : `${venueLabel} is waiting for approval.`)
+              : (hasAnyGigs ? `${today} · ${venueLabel}` : `${venueLabel} is set up. Here's how booking works.`)}
           </p>
         </div>
         <div className="venue-home__actions">
@@ -244,18 +250,22 @@ export function VenueHome({ user, gigs, venues, onNewGig }) {
             <ContactsIcon />
             Contacts
           </button>
-          <button type="button" className="venue-home__btn is-dark" onClick={() => onNewGig?.(readLastNewGigRoute() || 'full')}>
-            <PlusIcon />
-            New gig
-          </button>
+          {!waiting && (
+            <button type="button" className="venue-home__btn is-dark" onClick={() => onNewGig?.(readLastNewGigRoute() || 'full')}>
+              <PlusIcon />
+              New gig
+            </button>
+          )}
         </div>
       </header>
 
       <div className="venue-home__mobile-actions">
-        <button type="button" className="venue-home__tile is-dark" onClick={() => onNewGig?.(readLastNewGigRoute() || 'full')}>
-          <PlusIcon />
-          New gig
-        </button>
+        {!waiting && (
+          <button type="button" className="venue-home__tile is-dark" onClick={() => onNewGig?.(readLastNewGigRoute() || 'full')}>
+            <PlusIcon />
+            New gig
+          </button>
+        )}
         <button
           type="button"
           className="venue-home__tile"
@@ -273,7 +283,27 @@ export function VenueHome({ user, gigs, venues, onNewGig }) {
       </div>
       {!isMdUp && menu}
 
-      {!hasAnyGigs ? (
+      {waiting ? (
+        <section className="venue-home__card venue-home__welcome">
+          <h2>{displayedVenue?.approvalStatus === 'rejected' ? "This venue wasn't approved" : 'Waiting for approval'}</h2>
+          <p>
+            {displayedVenue?.approvalStatus === 'rejected'
+              ? 'You can still edit the profile. Nights stay closed.'
+              : 'You can edit your venue profile. You can’t create nights until the founder approves this venue.'}
+          </p>
+          <div className="venue-home__welcome-actions">
+            <button
+              type="button"
+              className="venue-home__btn is-dark"
+              onClick={() => navigate('/venues/add-venue', { state: { venue: displayedVenue || venues?.[0] } })}
+            >
+              Edit profile
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {!hasAnyGigs && !waiting ? (
         <section className="venue-home__card venue-home__welcome">
           <h2>Post your first gig</h2>
           <p>Create a night, then share its link so acts can apply. New applications show up here and in your email.</p>

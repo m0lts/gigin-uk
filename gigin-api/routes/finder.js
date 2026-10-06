@@ -3,6 +3,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "../config/admin.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
+import { venueIsApproved } from "../lib/venueApprovalPolicy.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 import {
@@ -64,6 +65,7 @@ router.get("/venues/:venueId", optionalAuth, asyncHandler(async (req, res) => {
   const venue = await db.doc(`venueProfiles/${req.params.venueId}`).get();
   if (!venue.exists) return res.status(404).json({ error: "This venue isn't listed." });
   const data = venue.data() || {};
+  if (!venueIsApproved(data)) return res.status(404).json({ error: "This venue isn't listed." });
   const invitedIds = session?.profile ? ((await db.doc(`artistProfiles/${session.profile.id}/private/relationships`).get()).data()?.invitedVenueIds || []) : [];
   const contact = await venueContactPayload({
     id: venue.id,

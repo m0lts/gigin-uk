@@ -25,6 +25,7 @@ import { getMusicianProfileByMusicianId, getArtistProfileById } from '../../../s
 import { toJsDate } from '../../../services/utils/dates';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { hasVenuePerm } from '../../../services/utils/permissions';
+import { nightsAreClosed } from '../../../config/venueAccess';
 import { duplicateGig, updateGigDocument } from '@services/api/gigs';
 import { saveGigTemplate, deleteGigTemplate, renameGigTemplate } from '@services/api/venues';
 import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
@@ -1157,6 +1158,10 @@ export const Gigs = ({
     };
 
     const openNewGig = ({ route = 'full', entry = 'menu', dateIso = null, kind = 'bookNew', legacy = false } = {}) => {
+      if (nightsAreClosed(venues)) {
+        toast.error('Waiting for approval. You can edit your venue, but you can’t create nights yet.');
+        return;
+      }
       setNewGigMenuOpen(false);
       setAddGigsEditData(null);
       setAddGigsInitialDateIso(dateIso);
@@ -2231,6 +2236,10 @@ export const Gigs = ({
                     type="button"
                     className="btn primary gigs-react-book-gig-btn"
                     onClick={() => {
+                      if (nightsAreClosed(venues)) {
+                        toast.error('Waiting for approval. You can edit your venue, but you can’t create nights yet.');
+                        return;
+                      }
                       setAddGigsEditData(null);
                       setAddGigsInitialDateIso(addGigsChoiceDateIso);
                       setAddGigsMode?.('bookNew');
@@ -2245,6 +2254,10 @@ export const Gigs = ({
                     type="button"
                     className="btn secondary gigs-react-add-booking-btn"
                     onClick={() => {
+                      if (nightsAreClosed(venues)) {
+                        toast.error('Waiting for approval. You can edit your venue, but you can’t create nights yet.');
+                        return;
+                      }
                       setAddGigsEditData(null);
                       setAddGigsInitialDateIso(addGigsChoiceDateIso);
                       setAddGigsMode?.('addExisting');
@@ -2418,6 +2431,10 @@ export const Gigs = ({
                     type="button"
                     className="btn primary gigs-react-book-gig-btn"
                     onClick={() => {
+                      if (nightsAreClosed(venues)) {
+                        toast.error('Waiting for approval. You can edit your venue, but you can’t create nights yet.');
+                        return;
+                      }
                       const tpl = templateUseChoiceTemplate;
                       setTemplateUseChoiceTemplate(null);
                       setAddGigsBookNewTemplate?.(tpl);

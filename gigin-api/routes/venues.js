@@ -6,8 +6,73 @@ import { admin, db, FieldValue } from "../config/admin.js";
 import { v4 as uuidv4 } from "uuid";
 import { assertVenuePerm, assertArtistPerm, PERM_DEFAULTS, PERM_KEYS, sanitizePermissions } from "../utils/permissions.js";
 import { addUserToAccountConversations } from "../utils/conversations.js";
+import { createPendingVenue, decideApproval, notifyFounder, readApproval } from "../lib/venueApproval.js";
 
 const router = express.Router();
+
+function sendKnown(res, error) {
+  if (!error?.statusCode) return false;
+  res.status(error.statusCode).json({ error: error.message });
+  return true;
+}
+
+// POST /api/venues — signed-in, verified email, one venue, pending until approval.
+router.post("/", requireAuth, asyncHandler(async (req, res) => {
+  if (!req.auth.emailVerified) {
+    return res.status(403).json({ error: "Verify your email before creating a venue." });
+  }
+  try {
+    const data = await createPendingVenue({
+      uid: req.auth.uid,
+      email: req.auth.email || "",
+      body: req.body,
+    });
+    return res.status(201).json({ data });
+  } catch (error) {
+    if (sendKnown(res, error)) return undefined;
+    throw error;
+  }
+}));
+
+// GET does not approve or reject. POST is the only decision.
+router.get("/approval/:token", asyncHandler(async (req, res) => {
+  const details = await readApproval(req.params.token);
+  if (details.state === "missing") return res.status(404).json({ error: "This approval link is not valid." });
+  return res.json({ data: details });
+}));
+
+router.post("/approval/:token", asyncHandler(async (req, res) => {
+  try {
+    const data = await decideApproval({
+      raw: req.params.token,
+      decision: req.body?.decision,
+      actor: "approval-link",
+    });
+    return res.json({ data });
+  } catch (error) {
+    if (sendKnown(res, error)) return undefined;
+    throw error;
+  }
+}));
+
+router.post("/:venueId/request-approval", requireAuth, asyncHandler(async (req, res) => {
+  if (!req.auth.emailVerified) {
+    return res.status(403).json({ error: "Verify your email before creating a venue." });
+  }
+  const venueSnap = await db.doc(`venueProfiles/${req.params.venueId}`).get();
+  if (!venueSnap.exists) return res.status(404).json({ error: "Venue not found." });
+  const venue = venueSnap.data() || {};
+  if (venue.createdBy !== req.auth.uid && venue.userId !== req.auth.uid) {
+    return res.status(403).json({ error: "You can't request approval for this venue." });
+  }
+  try {
+    const data = await notifyFounder(req.params.venueId);
+    return res.json({ data });
+  } catch (error) {
+    if (sendKnown(res, error)) return undefined;
+    throw error;
+  }
+}));
 
 // POST /api/venues/fetchVenueMembersWithUsers (auth)
 router.post("/fetchVenueMembersWithUsers", requireAuth, asyncHandler(async (req, res) => {

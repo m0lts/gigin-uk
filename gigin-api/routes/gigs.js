@@ -21,6 +21,7 @@ import { publicLineup } from "../lib/nightApplications.js";
 import { queueMail } from "../lib/queueMail.js";
 import { keepReminderHtml } from "../lib/keepProfile.js";
 import { placeLoggedInApplication, acceptApplication, assignApplication, declineApplication, undoApplication, closeApplications, undoClose, reopenApplications, saveSoundTech, readNightApplications, publishNightApplicants, withdrawGuestApplication } from "../lib/nightApplicationOps.js";
+import { assertVenueCanOperate } from "../lib/venueApproval.js";
 
 function visibleApplicants(list, gigId, viewerId, showAll) {
   if (showAll) return list || [];
@@ -381,6 +382,7 @@ router.post("/postMultipleGigs", requireAuth, asyncHandler(async (req, res) => {
 
   // Permission: venue owner or active member with gigs.create
   await assertVenuePerm(db, caller, venueId, "gigs.create");
+  await assertVenueCanOperate(venueId);
 
   const batch = db.batch();
   const gigIds = [];
@@ -430,6 +432,7 @@ router.post("/updateGigDocument", requireAuth, asyncHandler(async (req, res) => 
   const gig = gigSnap.data() || {};
   const venueId = gig?.venueId;
   if (!venueId) return res.status(400).json({ error: "FAILED_PRECONDITION", message: "gig missing venueId" });
+  await assertVenueCanOperate(venueId);
   // Permission checks by action (parity with callable)
   switch (action) {
     case "gigs.applications.manage":
@@ -550,6 +553,7 @@ router.post("/applyToGig", requireAuth, asyncHandler(async (req, res) => {
   const gigSnap = await gigRef.get();
   if (!gigSnap.exists) return res.json({ data: { applicants: null } });
   const gig = gigSnap.data() || {};
+  await assertVenueCanOperate(gig.venueId);
   if (gig.applicationsOpen === false) {
     return res.status(409).json({
       error: "APPLICATIONS_CLOSED",
@@ -760,6 +764,7 @@ router.post("/duplicateGig", requireAuth, asyncHandler(async (req, res) => {
   const originalSnap = await originalRef.get();
   if (!originalSnap.exists) return res.status(404).json({ error: "NOT_FOUND", message: "gig not found" });
   const originalData = originalSnap.data() || {};
+  await assertVenueCanOperate(originalData.venueId);
   const newGigId = uuidv4();
   const newGigRef = db.collection("gigs").doc(newGigId);
   const now = new Date();

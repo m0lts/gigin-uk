@@ -9,7 +9,10 @@ import { AdditionalDetails } from './AdditionalDetails';
 import '@styles/host/venue-builder.styles.css'
 import { UploadingProfile } from './UploadingProfile';
 import { arrayUnion, arrayRemove, GeoPoint, deleteField } from 'firebase/firestore';
-import { claimVenueForUpload, createVenueProfile, deleteVenueProfile } from '@services/client-side/venues';
+import { createVenueProfile, deleteVenueProfile } from '@services/client-side/venues';
+import { createOwnVenue, requestVenueApproval } from '@services/api/venues';
+import { getCityFromAddress } from '@services/utils/misc';
+import { auth } from '@lib/firebase';
 import { BuildingIcon, ErrorIcon, MobileIcon, SavedIcon, TickIcon, VenueBuilderIcon } from '../../shared/ui/extras/Icons';
 import { uploadImageArrayWithFallback, uploadFileWithFallback, uploadFileWithProgress } from '../../../services/storage';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
@@ -158,6 +161,37 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         }
     }, [user, setAuthModal, formData]);
 
+    const venueAlreadySaved = () => (
+        editingExisting
+        || (Array.isArray(user?.venueProfiles) && user.venueProfiles.some((profile) => (profile?.venueId || profile?.id) === formData.venueId))
+    );
+
+    const ensureServerVenue = async (completed) => {
+        if (venueAlreadySaved()) return false;
+        if (auth.currentUser) await auth.currentUser.getIdToken(true);
+        const address = typeof formData.address === 'string' ? formData.address : '';
+        try {
+            await createOwnVenue({
+                venueId: formData.venueId,
+                name: formData.name,
+                type: formData.type || '',
+                address,
+                city: getCityFromAddress(address),
+                establishment: formData.establishment || '',
+                description: formData.description || '',
+                extraInformation: formData.extraInformation || '',
+                website: formData.website || '',
+                capacity: formData.capacity || '',
+                email: user?.email || formData.email || '',
+                completed,
+            });
+            return true;
+        } catch (error) {
+            if (error.status === 409) return false;
+            throw error;
+        }
+    };
+
     const getGeoField = (coordinates) => {
         if (!coordinates || coordinates.length !== 2) return null;
         const [lng, lat] = coordinates;
@@ -173,7 +207,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         setUploadText(`Creating your Dashboard and Venue Page`);
         setUploadingProfile(true);
         try {
-            await claimVenueForUpload(formData.venueId, user.uid);
+            const createdNow = await ensureServerVenue(true);
             // Validate and upload images
             const imageFiles = formData.photos || [];
             let imageUrls = [];
@@ -270,6 +304,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 navigate('/venues/dashboard/gigs');
                 return;
             }
+            if (!createdNow) await requestVenueApproval(formData.venueId);
             await updateUserArrayField({ field: 'venueProfiles', op: 'add', value: formData.venueId });
             const progressIntervals = [11, 22, 33, 44, 55, 66, 77, 88, 100];
             progressIntervals.forEach((value, index) => {
@@ -334,7 +369,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         }
         try {
             setSaving(true);
-            await claimVenueForUpload(formData.venueId, user.uid);
+            const createdNow = await ensureServerVenue(formData.completed === true);
 
             // Always process photos FIRST to convert wrapped objects back to URLs
             // This ensures existing URLs are preserved when editing
@@ -470,6 +505,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 navigate('/venues/dashboard/gigs')
                 return;
             }
+            if (updatedFormData.completed && !createdNow) await requestVenueApproval(formData.venueId);
             await updateUserArrayField({ field: 'venueProfiles', op: 'add', value: formData.venueId });
             if (updatedFormData.completed || (user?.venueProfiles && user?.venueProfiles?.length > 1)) {
                 navigate('/venues/dashboard/gigs')
@@ -696,6 +732,10 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
       ].filter(Boolean).length;
     
     const percentComplete = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
+
+    if (user && FEATURES.venueSignup && auth.currentUser && !auth.currentUser.emailVerified) {
+        return null;
+    }
 
     if (creationClosed) {
         return (

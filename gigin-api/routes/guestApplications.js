@@ -27,6 +27,7 @@ import {
   writeGuestApplication,
 } from "../lib/nightApplicationOps.js";
 import { dismissKeepOffer, keepProfileForGuest, noteProfileApplication } from "../lib/keepProfile.js";
+import { assertVenueCanOperate } from "../lib/venueApproval.js";
 const router = express.Router();
 
 const guestLimiter = rateLimit({
@@ -606,6 +607,12 @@ router.post("/", asyncHandler(async (req, res) => {
   if (problem) return res.status(400).json({ error: problem });
   const gig = await loadGig(body.gigId);
   if (!gig) return res.status(404).json({ error: "Gig not found." });
+  try {
+    await assertVenueCanOperate(gig.venueId);
+  } catch (error) {
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
+    throw error;
+  }
   const when = gigDate(gig);
   if (when && when.getTime() < Date.now()) return res.status(400).json({ error: "This gig has already happened." });
   const groupForClose = await loadGroup(body.gigId);

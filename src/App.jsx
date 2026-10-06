@@ -14,6 +14,7 @@ import { useEffect, useState, useRef } from 'react';
 import { MainLayout } from '@layouts/MainLayout';
 import { NoHeaderFooterLayout } from '@layouts/NoHeaderFooterLayout';
 import { VenueBuilder } from '@features/venue/builder/VenueBuilder';
+import { VenueApprovalPage } from '@features/admin/VenueApprovalPage';
 import { useAuth } from '@hooks/useAuth';
 import { AuthModal } from '@features/shared/components/AuthModal';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
@@ -207,6 +208,7 @@ export default function App() {
         {/* OTHER ROUTES */}
         <Route path='/messages' element={FEATURES.chat ? <MessagesLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><MessagePage /></MessagesLayout> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
         <Route path='/share/gig-media/:token' element={<GigMediaSharePage />} />
+        <Route path='/admin/venue-approval/:token' element={<VenueApprovalPage />} />
         <Route path='/auth/action' element={<AuthActionPage />} />
         <Route path='/auth/reset' element={<ResetPasswordPage />} />
         <Route path='/auth/email-link' element={<EmailLinkPage />} />

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { auth } from '@lib/firebase';
 import { FEATURES } from '../../config/features';
 import { PROOF } from './landing.config';
 import { submitAccessRequest } from '../../services/api/accessRequests';
@@ -154,6 +155,16 @@ export const LandingPage = ({ setAuthModal, setAuthType }) => {
     setAuthModal?.(true);
   };
 
+  const startVenueAccount = () => {
+    if (auth.currentUser?.emailVerified) {
+      navigate('/venues/add-venue');
+      return;
+    }
+    try { sessionStorage.setItem('redirect', '/venues/add-venue'); } catch { /* ignore */ }
+    setAuthType?.('signup');
+    setAuthModal?.(true);
+  };
+
   const showProof = FEATURES.landingProof && PROOF.names.length > 0;
   const showProfile = FEATURES.keepProfile && FEATURES.publicProfile;
   const showFinder = FEATURES.venueFinder;
@@ -165,8 +176,8 @@ export const LandingPage = ({ setAuthModal, setAuthType }) => {
           <Link to="/" className="lp-wordmark" aria-label="Gigin">gigin<span>.</span></Link>
           <div className="lp-header__actions">
             <button type="button" className="lp-login" onClick={openLogin}>Log in</button>
-            <button type="button" className="lp-btn lp-btn--dark lp-btn--header" onClick={() => scrollToSection('request-access', 'access-name')}>
-              Request access
+            <button type="button" className="lp-btn lp-btn--dark lp-btn--header" onClick={FEATURES.venueSignup ? startVenueAccount : () => scrollToSection('request-access', 'access-name')}>
+              {FEATURES.venueSignup ? 'Create a venue account' : 'Request access'}
             </button>
           </div>
         </div>
@@ -179,12 +190,24 @@ export const LandingPage = ({ setAuthModal, setAuthType }) => {
             <h1>Run your gig nights without the inbox chaos</h1>
             <p className="lp-hero__sub">One application link for each night. Acts apply in one place, you pick the line-up and give each act a set, and Gigin sends the emails.</p>
             <div className="lp-hero__actions">
-              <button type="button" className="lp-btn lp-btn--orange" onClick={() => scrollToSection('request-access', 'access-name')}>
-                Request access
-              </button>
+              {FEATURES.venueSignup ? (
+                <button type="button" className="lp-btn lp-btn--orange" onClick={startVenueAccount}>
+                  Create a venue account
+                </button>
+              ) : (
+                <button type="button" className="lp-btn lp-btn--orange" onClick={() => scrollToSection('request-access', 'access-name')}>
+                  Request access
+                </button>
+              )}
               <button type="button" className="lp-quiet" onClick={() => scrollToSection('artists')}>I&apos;m an artist →</button>
             </div>
-            <p className="lp-small">Invite-only while we set up the first venues.</p>
+            {FEATURES.venueSignup ? (
+              <p className="lp-small">
+                <button type="button" className="lp-quiet" onClick={() => scrollToSection('request-access', 'access-name')}>Talk to us first</button>
+              </p>
+            ) : (
+              <p className="lp-small">Invite-only while we set up the first venues.</p>
+            )}
           </div>
           <div className="lp-hero__screen">
             <HomeScreen />

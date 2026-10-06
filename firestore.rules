@@ -60,17 +60,30 @@ service cloud.firestore {
       
     }
 
+    function venueDataIsApproved(data) {
+      return !data.keys().hasAny(['approvalStatus']) || data.approvalStatus == 'approved';
+    }
+
+    function venueIdIsApproved(venueId) {
+      return exists(/databases/$(database)/documents/venueProfiles/$(venueId))
+        && venueDataIsApproved(get(/databases/$(database)/documents/venueProfiles/$(venueId)).data);
+    }
+
     /* ===========================
      * Venue Profiles (+ members)
      * =========================== */
     match /venueProfiles/{venueId} {
-      allow read: if true;
+      // Missing approvalStatus stays public, so venues created before this field keep working.
+      // Pending and rejected venues are visible to the owner and members only.
+      allow read: if venueDataIsApproved(resource.data)
+        || (request.auth != null && (
+          resource.data.createdBy == request.auth.uid
+          || resource.data.userId == request.auth.uid
+          || exists(/databases/$(database)/documents/venueProfiles/$(venueId)/members/$(request.auth.uid))
+        ));
 
-      // Self-serve creation is closed. A signed-in stranger cannot open a venue.
-      // Invites join through the API (Admin SDK), which does not use this rule.
-      // Restore the old line when VITE_FEATURE_OPEN_VENUE_CREATION is turned on
-      // and these rules are deliberately deployed:
-      // allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid;
+      // Clients cannot create a venue. POST /api/venues does it with the Admin SDK
+      // and starts the venue as pending. Invites join through the API as well.
       allow create: if false;
         
       allow update: if request.auth != null
@@ -78,7 +91,14 @@ service cloud.firestore {
           resource.data.createdBy == request.auth.uid ||
           // member doc exists under this venue with id == user uid
           exists(/databases/$(database)/documents/venueProfiles/$(venueId)/members/$(request.auth.uid))
-        );
+        )
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'approvalStatus',
+          'approvedAt',
+          'approvedBy',
+          'approvalNotifiedAt',
+          'ownerEmail'
+        ]);
 
       allow delete: if request.auth != null
         && resource.data.createdBy == request.auth.uid;
@@ -631,20 +651,25 @@ service cloud.firestore {
     }
 
     match /gigs/{gigId} {
-      // Publicly readable
-      allow read: if true;
+      // Pending venues are not on the public gig page. A venue with no approvalStatus stays public.
+      allow read: if resource.data.venueId is string && (
+        venueIdIsApproved(resource.data.venueId)
+        || isVenueActor(resource.data.venueId)
+      );
 
-      // CREATE: only venue owner or active member; no sensitive fields allowed at create
+      // CREATE: only an approved venue's owner or active member; no sensitive fields allowed at create
       allow create: if isAuthed()
         && request.resource.data.venueId is string
         && isVenueActor(request.resource.data.venueId)
+        && venueIdIsApproved(request.resource.data.venueId)
         && !request.resource.data.keys().hasAny(sensitiveGigFields());
 
-      // UPDATE: only venue owner or active member of the gig's venue
+      // UPDATE: only an approved venue's owner or active member
       // - may NOT change venueId
       // - may NOT touch sensitive fields
       allow update: if isAuthed()
         && isVenueActor(resource.data.venueId)
+        && venueIdIsApproved(resource.data.venueId)
         && !(request.resource.data
               .diff(resource.data)
               .affectedKeys()
@@ -760,6 +785,14 @@ service cloud.firestore {
      * Mail Collection (Trigger Email Extension)
      * =========================== */
     match /profileTokens/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /venueApprovalTokens/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /venueSignupRate/{userId} {
       allow read, write: if false;
     }
 

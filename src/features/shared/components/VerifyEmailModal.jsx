@@ -6,7 +6,7 @@ import { NoTextLogo } from "@features/shared/ui/logos/Logos";
 import { LoadingSpinner } from "../ui/loading/Loading";
 import { sendVerificationEmail } from "@services/api/users";
 
-export const  VerifyEmailModal = () => {
+export const  VerifyEmailModal = ({ setAuthModal }) => {
 
   const user = auth.currentUser;
   const email = user?.email || "";
@@ -19,6 +19,29 @@ export const  VerifyEmailModal = () => {
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [cooldown]);
+
+  useEffect(() => {
+    let stopped = false;
+    let timer = 0;
+    const tick = async () => {
+      const current = auth.currentUser;
+      if (!current || stopped) return;
+      try {
+        await current.reload();
+        if (current.emailVerified) {
+          await current.getIdToken(true);
+          setAuthModal?.(false);
+          return;
+        }
+      } catch { /* keep waiting for the email link */ }
+      if (!stopped) timer = window.setTimeout(tick, 2000);
+    };
+    timer = window.setTimeout(tick, 1500);
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
+  }, [setAuthModal]);
 
   const handleResend = async () => {
     if (!auth.currentUser) {

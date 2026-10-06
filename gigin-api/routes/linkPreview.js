@@ -3,6 +3,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "../config/admin.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
+import { venueIsApproved } from "../lib/venueApprovalPolicy.js";
 
 const router = express.Router();
 const APP_ORIGIN = process.env.PUBLIC_APP_URL || "http://localhost:5173";
@@ -38,6 +39,9 @@ router.get("/gig/:gigId", previewLimiter, asyncHandler(async (req, res) => {
   const gig = snap.data() || {};
   const venueSnap = gig.venueId ? await db.doc(`venueProfiles/${gig.venueId}`).get() : null;
   const venue = venueSnap?.exists ? venueSnap.data() || {} : {};
+  if (venueSnap?.exists && !venueIsApproved(venue)) {
+    return res.status(404).type("html").send("<!doctype html><title>Gig</title><p>This gig is not available.</p>");
+  }
   const title = String(gig.gigName || "Gig on Gigin").replace(/\s*\(Set\s+\d+\)\s*$/, "");
   const venueName = venue.name || venue.venueName || gig.venue?.venueName || "Gigin";
   const when = gigWhen(gig);

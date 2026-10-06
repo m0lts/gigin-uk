@@ -1,4 +1,20 @@
-import { post } from '../http';
+import { get, post } from '../http';
+
+export function createOwnVenue(body) {
+  return post('/venues', { body });
+}
+
+export function requestVenueApproval(venueId) {
+  return post(`/venues/${venueId}/request-approval`, { body: {} });
+}
+
+export function getVenueApproval(token) {
+  return get(`/venues/approval/${encodeURIComponent(token)}`, { auth: false });
+}
+
+export function decideVenueApproval(token, decision) {
+  return post(`/venues/approval/${encodeURIComponent(token)}`, { auth: false, body: { decision } });
+}
 
 export function transferVenueOwnership({ venueId, recipientEmail }) {
   return post('/venues/transferVenueOwnership', { body: { venueId, recipientEmail } });

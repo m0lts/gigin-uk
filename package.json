@@ -20,7 +20,8 @@
     "buildLegacy:artistProfiles": "node scripts/buildLegacyArtistProfiles.js",
     "migrate:artistProfiles": "node scripts/migrateArtistProfiles.js",
     "backup:firestore": "node scripts/backupFirestore.js",
-    "restore:firestore": "node scripts/restoreFirestore.js"
+    "restore:firestore": "node scripts/restoreFirestore.js",
+    "venue:approve": "node scripts/venueApprove.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.5.1",

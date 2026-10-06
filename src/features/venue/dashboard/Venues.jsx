@@ -1,15 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { VenueIconSolid } from '@icons';
 import { getCityFromAddress } from '@services/utils/misc';
-import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { VenuePage } from './VenuePage';
 import { ApplicationEmailToggle } from '../home/ApplicationEmailToggle';
-import { FEATURES } from '../../../config/features';
 
 export const Venues = ({ venues, user, setVenues }) => {
-    const navigate = useNavigate();
-    const { isMdUp } = useBreakpoint();
     const [selectedVenueId, setSelectedVenueId] = useState(null);
     
     const handleOpenVenuePage = (venueProfile) => {
@@ -20,11 +15,6 @@ export const Venues = ({ venues, user, setVenues }) => {
         <>
             <div className='head'>
                 <h1 className='title'>My Venues</h1>
-                {isMdUp && FEATURES.openVenueCreation && (
-                    <button className='btn primary' onClick={() => navigate('/venues/add-venue')}>
-                        Add Another Venue
-                    </button>
-                )}
             </div>
 
             <ApplicationEmailToggle user={user} />

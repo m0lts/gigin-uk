@@ -20,7 +20,7 @@ export const VenueDashboardLayout = ({ children, setAuthModal, setAuthType, user
             setAuthClosable(false);
         }
         if (user && !user.venueProfiles) {
-            if (!FEATURES.openVenueCreation || isMdUp) {
+            if (!FEATURES.venueSignup || isMdUp) {
                 navigate('/venues/add-venue');
             } else {
                 navigate('/');

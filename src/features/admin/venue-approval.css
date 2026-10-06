@@ -1,0 +1,69 @@
+.venue-approval {
+  max-width: 32rem;
+  margin: 4rem auto;
+  padding: 0 1.25rem 4rem;
+  color: #111317;
+  font-family: Geist, Inter, Arial, sans-serif;
+}
+
+.venue-approval__mark {
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.venue-approval h1 {
+  font-size: 1.75rem;
+  margin: 0.5rem 0 1.25rem;
+}
+
+.venue-approval dl {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1.5rem;
+}
+
+.venue-approval dt {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.venue-approval dd {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+}
+
+.venue-approval__actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.venue-approval__actions button {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.8rem 1.1rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.venue-approval__actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.venue-approval__approve {
+  background: #111317;
+  color: #fff;
+}
+
+.venue-approval__reject {
+  background: #fff;
+  color: #111317;
+  box-shadow: inset 0 0 0 1px #d1d5db;
+}
+
+.venue-approval__error {
+  color: #9f1239;
+}

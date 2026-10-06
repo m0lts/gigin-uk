@@ -69,6 +69,7 @@ export const createVenueProfile = async (venueId, data, userId) => {
 
       // Never overwrite createdBy on edits; set it if missing
       const { createdBy, userId: incomingUserId, ...safe } = data || {};
+      ['approvalStatus', 'approvedAt', 'approvedBy', 'approvalNotifiedAt', 'ownerEmail'].forEach((key) => delete safe[key]);
       await setDoc(
         venueRef,
         {
@@ -116,6 +117,7 @@ export const createVenueProfile = async (venueId, data, userId) => {
 
     // Never overwrite createdBy/userId during normal edits
     const { createdBy, userId: incomingUserId, ...safe } = data || {};
+    ['approvalStatus', 'approvedAt', 'approvedBy', 'approvalNotifiedAt', 'ownerEmail'].forEach((key) => delete safe[key]);
     await setDoc(venueRef, { ...safe }, { merge: true });
 
     // Do not create/modify owner membership here
