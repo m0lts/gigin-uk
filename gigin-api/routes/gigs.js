@@ -1,7 +1,7 @@
 /* eslint-disable */
 import express from "express";
 import { v4 as uuidv4 } from "uuid";
-import { requireAuth } from "../middleware/auth.js";
+import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { db, admin, FieldValue, Timestamp, GeoPoint } from "../config/admin.js";
 import { assertVenuePerm, assertArtistPerm } from "../utils/permissions.js";
@@ -22,6 +22,7 @@ import { queueMail } from "../lib/queueMail.js";
 import { keepReminderHtml } from "../lib/keepProfile.js";
 import { placeLoggedInApplication, acceptApplication, assignApplication, declineApplication, undoApplication, closeApplications, undoClose, reopenApplications, saveSoundTech, readNightApplications, publishNightApplicants, withdrawGuestApplication } from "../lib/nightApplicationOps.js";
 import { assertVenueCanOperate } from "../lib/venueApproval.js";
+import { readGigsByIds, readNearbyGigs } from "../lib/gigReads.js";
 
 function visibleApplicants(list, gigId, viewerId, showAll) {
   if (showAll) return list || [];
@@ -45,6 +46,22 @@ async function mergePublishApplicants(gigId, incoming) {
 }
 
 const router = express.Router();
+
+// These shapes are not constrained by venueId, so the gigs read rule cannot prove them.
+router.post("/by-ids", optionalAuth, asyncHandler(async (req, res) => {
+  const gigs = await readGigsByIds(req.body?.gigIds, req.auth?.uid || null);
+  return res.json({ data: gigs });
+}));
+
+router.post("/nearby", optionalAuth, asyncHandler(async (req, res) => {
+  try {
+    const data = await readNearbyGigs(req.body || {});
+    return res.json({ data });
+  } catch (error) {
+    if (error?.statusCode) return res.status(error.statusCode).json({ error: error.message });
+    throw error;
+  }
+}));
 
 // Normalize various incoming representations (Date, ISO string, millis, {seconds,nanoseconds})
 // into a Firestore Admin Timestamp. Returns null if input is falsy/invalid.

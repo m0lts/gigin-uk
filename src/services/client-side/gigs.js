@@ -11,16 +11,12 @@ import {
   deleteDoc,
   onSnapshot,
   Timestamp,
-  orderBy,
   deleteField,
-  documentId,
   setDoc,
   arrayUnion,
   serverTimestamp,
   limit,
-  GeoPoint,
   writeBatch,
-  startAfter
 } from 'firebase/firestore';
 import {
   distanceBetween,
@@ -100,59 +96,22 @@ export const fetchNearbyGigs = async ({
 }) => {
   try {
     const center = [location.latitude, location.longitude];
-    const lat = location.latitude;
-    const lng = location.longitude;
 
-    // Bounding box calculation
-    const latDelta = radiusInKm / 111; // 1 degree latitude ≈ 111km
-    const lngDelta = radiusInKm / (111 * Math.cos(lat * Math.PI / 180));
-
-
-
-    const minLat = lat - latDelta;
-    const maxLat = lat + latDelta;
-    const minLng = lng - lngDelta;
-    const maxLng = lng + lngDelta;
-
-    const gigsRef = collection(firestore, 'gigs');
-
-    let q = query(
-      gigsRef,
-      where('geopoint', '>=', new GeoPoint(minLat, minLng)),
-      where('geopoint', '<=', new GeoPoint(maxLat, maxLng)),
-      where('status', '==', 'open'),
-      where('startDateTime', '>=', Timestamp.now()),
-      orderBy('geopoint'),
-      orderBy('startDateTime')
-    );
-
-    if (lastDoc) {
-      q = query(q, startAfter(lastDoc));
-    }
-
-    // Optional filters
-    if (filters.musicianType) {
-      q = query(q, where('gigType', '==', filters.musicianType));
-    }
-    if (filters.kind) {
-      q = query(q, where('kind', '==', filters.kind));
-    }
-    if (typeof filters.minBudget === 'number') {
-      q = query(q, where('budgetValue', '>=', filters.minBudget));
-    }
-    if (typeof filters.maxBudget === 'number') {
-      q = query(q, where('budgetValue', '<=', filters.maxBudget));
-    }
-    if (filters.startDate) {
-      const startTimestamp = Timestamp.fromDate(new Date(filters.startDate));
-      q = query(q, where('startDateTime', '>=', startTimestamp));
-    }
-    if (filters.endDate) {
-      const endTimestamp = Timestamp.fromDate(new Date(filters.endDate));
-      q = query(q, where('startDateTime', '<=', endTimestamp));
-    }
-
-    const snapshot = await getDocs(q);
+    // The bounding-box query is not constrained by venueId, so the read rule cannot prove it.
+    const { httpClient } = await import('../http/client');
+    const nearby = await httpClient.post('/gigs/nearby', {
+      body: {
+        location,
+        radiusInKm,
+        limitCount,
+        filters: {
+          ...filters,
+          startDate: filters.startDate ? new Date(filters.startDate).toISOString() : undefined,
+          endDate: filters.endDate ? new Date(filters.endDate).toISOString() : undefined,
+        },
+      },
+    });
+    const snapshotDocs = (Array.isArray(nearby?.gigs) ? nearby.gigs : []).map(reviveGig);
 
     const filterByGenreManually = filters.genres?.length > 0;
 
@@ -165,8 +124,7 @@ export const fetchNearbyGigs = async ({
     };
     
 
-    const gigs = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
+    const gigs = snapshotDocs
       .filter(gig => {
         const gp = gig.geopoint;
         if (!gp) return false;
@@ -230,7 +188,7 @@ export const fetchNearbyGigs = async ({
       return { ...gig, venue: { ...gig.venue, ...venue } };
     });
 
-    const lastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
+    const lastVisible = lastDoc || null;
 
     return { gigs: enrichedGigs, lastVisible };
   } catch (error) {
@@ -311,21 +269,32 @@ export const getGigById = async (gigId) => {
 /**
  * Fetches multiple gig documents based on an array of gig IDs.
  */
+function reviveValue(value) {
+  if (value == null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(reviveValue);
+  const keys = Object.keys(value);
+  if (keys.length === 2 && typeof value.seconds === 'number' && typeof value.nanoseconds === 'number') {
+    const ms = value.seconds * 1000 + Math.floor(value.nanoseconds / 1e6);
+    return { seconds: value.seconds, nanoseconds: value.nanoseconds, toMillis: () => ms, toDate: () => new Date(ms) };
+  }
+  const out = {};
+  keys.forEach((key) => { out[key] = reviveValue(value[key]); });
+  return out;
+}
+
+function reviveGig(gig) {
+  return reviveValue(gig);
+}
+
 export const getGigsByIds = async (gigIds) => {
   try {
     if (!Array.isArray(gigIds) || gigIds.length === 0) return [];
-    const gigsRef = collection(firestore, 'gigs');
-    const chunkedIds = [];
-    for (let i = 0; i < gigIds.length; i += 10) {
-      chunkedIds.push(gigIds.slice(i, i + 10));
-    }
+    const { httpClient } = await import('../http/client');
     const gigs = [];
-    for (const chunk of chunkedIds) {
-      const q = query(gigsRef, where(documentId(), 'in', chunk));
-      const snapshot = await getDocs(q);
-      snapshot.docs.forEach(doc => {
-        gigs.push({ id: doc.id, ...doc.data() });
-      });
+    for (let i = 0; i < gigIds.length; i += 100) {
+      const chunk = gigIds.slice(i, i + 100);
+      const rows = await httpClient.post('/gigs/by-ids', { body: { gigIds: chunk } });
+      (Array.isArray(rows) ? rows : []).forEach((gig) => gigs.push(reviveGig(gig)));
     }
     return gigs;
   } catch (error) {
