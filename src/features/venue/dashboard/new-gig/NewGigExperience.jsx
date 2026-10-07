@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
 import { getArtistCRMEntries } from '@services/client-side/artistCRM';
 import { createGigInvite } from '@services/api/gigInvites';
 import { inviteToGig, updateGigDocument } from '@services/api/gigs';
@@ -115,13 +116,18 @@ export function NewGigExperience({
     const name = window.prompt('Template name');
     if (!name || !venue?.venueId) return;
     try {
-      const payload = buildBookNewTemplatePayload(draftToFormGig(draft, venue), venue.venueId, undefined, name);
+      const templateId = uuidv4();
+      const payload = buildBookNewTemplatePayload(draftToFormGig(draft, venue), venue.venueId, templateId, name);
       await saveGigTemplate({ templateData: payload });
       toast.success('Template saved.');
       refreshTemplates?.();
     } catch (error) {
       console.error(error);
-      toast.error('Failed to save template.');
+      if (error.status === 409) {
+        toast.error(error.payload?.message || error.message || 'A template with this name already exists.');
+      } else {
+        toast.error('Failed to save template.');
+      }
     }
   };
 

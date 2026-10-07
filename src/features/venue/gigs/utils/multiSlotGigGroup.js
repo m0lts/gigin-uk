@@ -1,4 +1,5 @@
 import { getLocalGigDateTime } from '@services/utils/filtering';
+import { isNewApplicant } from './isNewApplicant';
 
 function isVenueHireLikeGig(g) {
   if (!g) return false;
@@ -42,12 +43,9 @@ export function gigSlotHasConfirmedArtist(slotGig) {
   );
 }
 
-/** A new application the booker has not opened yet. Confirmed and withdrawn rows do not count. */
+/** A new application the booker has not opened yet. Decided rows do not count. */
 export function isUnreviewedApplication(app) {
-  if (!app || app.invited === true) return false;
-  const status = String(app.status || 'pending').toLowerCase();
-  if (status !== 'pending' && status !== 'sent') return false;
-  return app.viewed !== true;
+  return isNewApplicant(app);
 }
 
 /** Unreviewed applications across a night, counted once when the same act is on more than one slot. */
@@ -68,17 +66,12 @@ export function unreviewedApplicationCount(gigs) {
   return count;
 }
 
-/** True when this slot has applicants not yet marked viewed (set-tab notification dot). */
+/** True when this slot still has a new, undecided application (set-tab notification dot). */
 export function gigSlotHasUnviewedApplicants(slotGig) {
   if (!slotGig || !Array.isArray(slotGig.applicants) || slotGig.applicants.length === 0) {
     return false;
   }
-  return slotGig.applicants.some(
-    (a) =>
-      a &&
-      a.viewed !== true &&
-      String(a.status || '').toLowerCase() !== 'withdrawn'
-  );
+  return slotGig.applicants.some(isNewApplicant);
 }
 
 /**

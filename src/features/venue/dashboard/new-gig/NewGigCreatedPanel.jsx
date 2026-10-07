@@ -113,7 +113,11 @@ export function NewGigCreatedPanel({
           )}
         </div>
         <footer className="ng-drawer__foot ng-drawer__foot--row">
-          <button type="button" className="ng-dark" onClick={() => primary && navigate('/venues/dashboard/gigs/gig-applications', { state: { gig: primary } })}>Open gig page</button>
+          <button type="button" className="ng-dark" onClick={() => {
+            if (!primary) return;
+            onClose();
+            navigate('/venues/dashboard/gigs/gig-applications', { state: { gig: primary } });
+          }}>Open gig page</button>
           <button type="button" className="ng-ghost" onClick={onClose}>Done</button>
         </footer>
       </aside>

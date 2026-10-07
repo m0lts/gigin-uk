@@ -5,6 +5,7 @@ import {
   gigNeedsAction,
   isVenueHireGroup,
 } from './calendarRange';
+import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 
 export const WEEKDAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 const MONTHS_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -158,7 +159,7 @@ export function presentGig(group, { applicantNames = {}, now = new Date(), hireA
   const fresh = hire
     ? 0
     : slots.reduce((sum, slot) => (
-      sum + (slot.applicants || []).filter((applicant) => applicant && !applicant.viewed && applicant.invited !== true && applicant.status === 'pending').length
+      sum + (slot.applicants || []).filter(isNewApplicant).length
     ), 0);
 
   const negotiating = sets.find((set) => set.kind === 'negotiating' && set.artist);

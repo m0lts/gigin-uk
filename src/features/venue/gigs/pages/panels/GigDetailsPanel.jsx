@@ -14,6 +14,7 @@ import { sendGigDeclinedEmail, sendGigInviteEmail } from '@services/client-side/
 import { updateDeclinedApplicationMessage } from '@services/api/messages';
 import { hasVenuePerm } from '@services/utils/permissions';
 import { getLocalGigDateTime } from '@services/utils/filtering';
+import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 import { formatDate } from '@services/utils/dates';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
@@ -150,7 +151,7 @@ function buildRunningOrder(rawGig, slots, gigs) {
     const status = setStatusKey(doc);
     const applicants = Array.isArray(doc?.applicants) ? doc.applicants : [];
     const newCount = status === 'open'
-      ? applicants.filter((applicant) => applicant && !applicant.viewed && applicant.invited !== true).length
+      ? applicants.filter(isNewApplicant).length
       : 0;
     const booked = applicants.find((applicant) => ['confirmed', 'accepted', 'paid'].includes(String(applicant?.status || '').toLowerCase()) && !applicant?.withdrawnAfterAccept);
     return {

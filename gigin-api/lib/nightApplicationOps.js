@@ -14,6 +14,7 @@ import {
 import { applicationNoticeMessage, planVenueNotice, shouldNotify } from "./venueApplicationNotice.js";
 import { appendPlayedAt, keepReminderHtml, markBookingCancelled } from "./keepProfile.js";
 import { icsAttachment, icsEvent, renderArtistEmail } from "./artistEmails.js";
+import { ownerName } from "./ownerName.js";
 
 const DELAY_MS = 10 * 1000;
 const DECLINE_DELAY_MS = 5 * 60 * 1000;
@@ -76,13 +77,6 @@ function addressOf(venue) {
   if (!address) return "";
   if (typeof address === "string") return address;
   return [address.line1 || address.addressLine1, address.city, address.postcode].filter(Boolean).join(", ");
-}
-
-function bookerName(venue) {
-  if (venue?.bookerDisplayName) return venue.bookerDisplayName;
-  const name = `${venue?.name || venue?.venueName || ""}`.toLowerCase();
-  if (name.includes("jesus college") || name.trim() === "jbar") return "Jez";
-  return "The booker";
 }
 
 function firstName(name) {
@@ -367,7 +361,7 @@ function slotMoment(gig, slot, end = false) {
 }
 
 export async function emailForAct({ kind, app, slots, venue, gig, token, later, other }) {
-  const booker = bookerName(venue);
+  const booker = ownerName(venue, gig);
   const venueName = venue?.name || venue?.venueName || gig?.venue?.venueName || "the venue";
   const name = gigTitle(gig);
   const when = formatLong(gigDate(gig));
@@ -408,7 +402,7 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       eyebrow: "APPLICATION SENT",
       heading: `${escapeHtml(booker)} has your application`,
       paras: [hi, `Thanks for applying. ${escapeHtml(booker)} at ${escapeHtml(venueName)} has your application for <b>${escapeHtml(when)}</b>, and will get back to you${reach}.`],
-      boxes: [{ label: "YOUR APPLICATION", rows: [["Act", escapeHtml(act)], setCopy ? ["Set", setCopy] : null, ["Band", `${members || "No"} members`]].filter(Boolean) }],
+      boxes: [{ label: "YOUR APPLICATION", rows: [["Act", escapeHtml(act)], setCopy ? ["Set", setCopy] : null, members ? ["Band", `${members} members`] : null].filter(Boolean) }],
       pre: "Need to change something, or can't make it any more? Use your private link:",
       button: ["Change or withdraw your application", url],
       small: "This link is private, so don't forward it. It works until 7 days after the gig.",
@@ -597,6 +591,7 @@ export async function acceptApplication({ gigId, applicantId, slotGigId }) {
     ...priv,
     ...app,
     status: "accepted",
+    viewed: true,
     acceptedAt: new Date().toISOString(),
     assignedSlotGigId: target,
     assignedAt: target ? new Date().toISOString() : null,
@@ -720,6 +715,7 @@ export async function declineApplication({ gigId, applicantId }) {
     ...priv,
     ...app,
     status: "declined",
+    viewed: true,
     declinedAt: new Date().toISOString(),
     declineEmailSendAt: new Date(Date.now() + DECLINE_DELAY_MS).toISOString(),
     assignedSlotGigId: null,
@@ -801,6 +797,7 @@ export async function closeApplications({ gigId, declineWaiting }) {
       ...priv,
       ...app,
       status: "declined",
+      viewed: true,
       declinedAt: new Date().toISOString(),
       assignedSlotGigId: null,
       email: app.email || priv.email || null,

@@ -32,6 +32,7 @@ scripts/
 !gigin-api/scripts/
 !gigin-api/scripts/**
 gigin-api/node_modules
+gigin-api/exec -l --version/
 gigin-api/dist
 gigin-api/dist-ssr
 gigin-api/*.local

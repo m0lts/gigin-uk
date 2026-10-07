@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { normalizeTechRider } from '@features/venue/builder/techRiderConfig';
 import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
+import { bookerLine } from './guestFormat';
 
 const INSTRUMENTS = ['Vocals', 'Guitar', 'Bass', 'Double bass', 'Drums', 'Keys', 'Sax', 'Violin', 'Other'];
 
 export function GuestTechStep({ draft, patch, venue, hideVenueColumns = false }) {
   const [own, setOwn] = useState('');
+  const bookerName = bookerLine(venue).name;
   const equipment = useMemo(() => normalizeTechRider(venue?.techRider).equipment || [], [venue]);
   const summary = useMemo(
     () => computeCompatibility(buildGuestTechRider(draft), venue?.techRider),
@@ -29,7 +31,7 @@ export function GuestTechStep({ draft, patch, venue, hideVenueColumns = false })
   return (
     <div className="ga-step">
       {!hideVenueColumns && <h2>Tech rider</h2>}
-      {!hideVenueColumns && <p className="ga-sub">Tell {venue?.bookerDisplayName || 'Jez'} who is playing and what you need from the bar. Optional.</p>}
+      {!hideVenueColumns && <p className="ga-sub">Tell {bookerName} who is playing and what you need from the bar. Optional.</p>}
       {!hideVenueColumns && (
         <>
           <div className="ga-label">Who's in the band?</div>
@@ -83,7 +85,7 @@ export function GuestTechStep({ draft, patch, venue, hideVenueColumns = false })
       </div>
       {!hideVenueColumns && (
         <div className="ga-summary">
-          <div className="ga-label">What {venue?.bookerDisplayName || 'Jez'} will see</div>
+          <div className="ga-label">What {bookerName} will see</div>
           <Summary title="Provided by the bar" tone="ok" items={summary.providedByVenue} />
           <Summary title="Covered by your act" tone="dark" items={summary.coveredByArtist} />
           <Summary title="Needs a chat" tone="warn" items={summary.needsDiscussion} />

@@ -28,6 +28,7 @@ import {
 } from "../lib/nightApplicationOps.js";
 import { dismissKeepOffer, keepProfileForGuest, noteProfileApplication } from "../lib/keepProfile.js";
 import { assertVenueCanOperate } from "../lib/venueApproval.js";
+import { ownerName } from "../lib/ownerName.js";
 const router = express.Router();
 
 const guestLimiter = rateLimit({
@@ -931,13 +932,21 @@ router.post("/:token/withdraw", asyncHandler(async (req, res) => {
   const wasAccepted = current.status === "confirmed" || current.status === "accepted";
   const next = await withdrawGuestApplication({ gigId, applicant: current });
   if (current.email && !wasAccepted) {
+    const venueId = current.venueId || found.gig?.data?.venueId;
+    let venue = {};
+    if (venueId) {
+      const venueSnap = await db.collection("venueProfiles").doc(venueId).get();
+      if (venueSnap.exists) venue = venueSnap.data() || {};
+    }
+    const owner = ownerName(venue, found.gig?.data);
+    const when = current.dateLabel || "the gig";
     await sendMail({
       to: current.email,
       subject: `You withdrew your application for ${current.gigName || "the gig"}`,
-      text: `Your application to play at ${current.venueName || "the venue"} has been withdrawn.`,
+      text: `${owner} has been told you can't make ${when}. You can apply again while it is still open.`,
       html: emailShell({
         title: "Application withdrawn",
-        inner: `Jez has been told you can't make ${current.dateLabel || "the gig"}. You can apply again while it is still open.`,
+        inner: `${escapeMail(owner)} has been told you can't make ${escapeMail(when)}. You can apply again while it is still open.`,
         footer: "You're receiving this because you applied on Gigin.",
       }),
     });

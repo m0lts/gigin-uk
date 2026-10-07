@@ -54,6 +54,7 @@ import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { getGigsByIds } from '@services/client-side/gigs';
 import { findSlotSiblingsFromFlatGigs, gigSlotHasUnviewedApplicants, gigSlotHasConfirmedArtist } from '@features/venue/gigs/utils/multiSlotGigGroup';
+import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 import { formatDate } from '@services/utils/dates';
 import { GigHandbook } from '@features/artist/components/GigHandbook';
 import { storage } from '@lib/firebase';
@@ -568,7 +569,7 @@ export const GigApplications = ({
       const nightSlots = [gigInfo, ...relatedSlots].filter((slot) => slot?.gigId);
       const unviewedSlots = nightSlots.filter((slot) => (
         Array.isArray(slot.applicants)
-        && slot.applicants.some((applicant) => applicant?.viewed !== true)
+        && slot.applicants.some(isNewApplicant)
         && !markedRef.current.has(slot.gigId)
       ));
     
@@ -1611,6 +1612,34 @@ export const GigApplications = ({
         );
     }, [gigInfo, relatedSlots]);
 
+    const openedViewRef = useRef(new Set());
+    useEffect(() => {
+        if (!applicantId || !gigInfo?.venueId || openedViewRef.current.has(applicantId)) return;
+        const slots = [gigInfo, ...relatedSlots].filter(Boolean);
+        const slot = slots.find((item) => (item.applicants || []).some((app) => app.id === applicantId));
+        const applicant = slot?.applicants?.find((app) => app.id === applicantId);
+        if (!slot || !isNewApplicant(applicant)) return;
+        openedViewRef.current.add(applicantId);
+        markApplicantsViewed({
+            venueId: slot.venueId || gigInfo.venueId,
+            gigId: slot.gigId,
+            applicantIds: [applicantId],
+        }).then(() => {
+            setGigInfoState?.((prev) => {
+                if (!prev || prev.gigId !== slot.gigId || !Array.isArray(prev.applicants)) return prev;
+                return {
+                    ...prev,
+                    applicants: prev.applicants.map((entry) => (
+                        entry.id === applicantId ? { ...entry, viewed: true } : entry
+                    )),
+                };
+            });
+            refreshGigs?.();
+        }).catch((err) => {
+            console.error('Error marking applicant viewed:', err);
+        });
+    }, [applicantId, gigInfo, relatedSlots, refreshGigs, setGigInfoState]);
+
     if (loading || !gigInfo) {
         return <LoadingScreen />;
     }
@@ -2515,8 +2544,8 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                 return true;
             })
             .sort((a, b) => {
-                const aNew = !a.viewed && a.invited !== true;
-                const bNew = !b.viewed && b.invited !== true;
+                const aNew = isNewApplicant(a);
+                const bNew = isNewApplicant(b);
                 if (aNew !== bNew) return aNew ? -1 : 1;
                 const aTime = Date.parse(a.appliedAt || a.createdAt || '') || 0;
                 const bTime = Date.parse(b.appliedAt || b.createdAt || '') || 0;
@@ -2547,7 +2576,7 @@ const gigAlreadyConfirmed = slotGig?.applicants?.some((a) => ['confirmed', 'acce
                     <p className="venue-gig-running__empty">No applications yet</p>
                 ) : visible.map((profile) => {
                     const applicant = slotGig?.applicants?.find((entry) => entry.id === profile.id);
-                    const unviewed = applicant && !applicant.viewed && applicant.invited !== true;
+                    const unviewed = isNewApplicant(applicant);
                     const meta = runningOrderApplicantMeta(profile);
                     const fee = runningOrderFeeLabel(profile.proposedFee || profile.fee);
                     return (

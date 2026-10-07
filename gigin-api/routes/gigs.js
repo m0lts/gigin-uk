@@ -6,6 +6,7 @@ import { asyncHandler } from "../middleware/errorHandler.js";
 import { db, admin, FieldValue, Timestamp, GeoPoint } from "../config/admin.js";
 import { assertVenuePerm, assertArtistPerm } from "../utils/permissions.js";
 import {
+  isGuestApplicant,
   loadGuestPrivate,
   loadGuestPrivates,
   loadPrivateApplications,
@@ -961,13 +962,13 @@ router.post("/acceptGigOffer", requireAuth, asyncHandler(async (req, res) => {
   const updatedApplicants = applicantsToProcess.map((applicant) => {
     if (applicant.id === musicianProfileId) {
       agreedFee = applicant.fee;
-      return { ...applicant, status: nonPayableGig ? "confirmed" : "accepted" };
+      return { ...applicant, status: nonPayableGig ? "confirmed" : "accepted", viewed: true };
     }
     // For paid gigs we historically auto-declined every other applicant on
     // first acceptance. With maxApplicants > 1 we only do that once the
     // listing fills up; otherwise we leave other applicants pending so
     // additional acceptances can still happen.
-    if (!nonPayableGig && willHitMax) return { ...applicant, status: "declined" };
+    if (!nonPayableGig && willHitMax) return { ...applicant, status: "declined", viewed: true };
     return { ...applicant };
   });
 
@@ -1193,7 +1194,7 @@ router.post("/acceptGigOfferOM", requireAuth, asyncHandler(async (req, res) => {
     ? Math.max(1, Math.min(50, Math.floor(rawMaxApplicantsOM)))
     : null;
   const confirmedBeforeOM = applicantsToProcess.filter((a) => a?.status === "confirmed").length;
-  const updatedApplicants = applicantsToProcess.map((a) => a.id === musicianProfileId ? { ...a, status: "confirmed" } : { ...a });
+  const updatedApplicants = applicantsToProcess.map((a) => a.id === musicianProfileId ? { ...a, status: "confirmed", viewed: true } : { ...a });
   const confirmedAfterOM = confirmedBeforeOM + 1;
   const omShouldClose = maxApplicantsOM != null && confirmedAfterOM >= maxApplicantsOM;
   const publishedApplicants = await mergePublishApplicants(gigData.gigId, updatedApplicants);
@@ -1272,7 +1273,7 @@ router.post("/declineGigApplication", requireAuth, asyncHandler(async (req, res)
     ? applications
     : (Array.isArray(gigData?.applicants) ? gigData.applicants : []);
   const declinedApplicant = applicants.find((applicant) => applicant?.id === musicianProfileId);
-  const updatedApplicants = applicants.map((a) => a.id === musicianProfileId ? { ...a, status: "declined", assignedSlotGigId: null } : { ...a });
+  const updatedApplicants = applicants.map((a) => a.id === musicianProfileId ? { ...a, status: "declined", assignedSlotGigId: null, viewed: true } : { ...a });
   const publishedApplicants = await publishNightApplicants(gigData.gigId, updatedApplicants);
   if (applicantIsGuest(declinedApplicant)) {
     await emailGuest(gigData.gigId, declinedApplicant, {
@@ -1766,6 +1767,10 @@ router.post("/markApplicantsViewed", requireAuth, asyncHandler(async (req, res) 
       gigId: rootId,
       applicants: sanitiseApplicants(nextApplicants),
     }, { merge: true });
+    nextApplicants.forEach((applicant) => {
+      if (!applicant || !targetSet.has(applicant.id) || !isGuestApplicant(applicant)) return;
+      tx.set(db.doc(`gigs/${rootId}/guestApplicants/${applicant.id}`), { viewed: true }, { merge: true });
+    });
     const onlySlot = !Array.isArray(data.gigSlots) || data.gigSlots.length < 2;
     tx.update(gigRef, { applicants: publicLineup(nextApplicants, gigId, { onlySlot }), updatedAt: FieldValue.serverTimestamp() });
   });

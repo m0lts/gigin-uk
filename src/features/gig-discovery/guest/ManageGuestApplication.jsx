@@ -12,10 +12,10 @@ import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
 import { GuestWhoStep } from './GuestWhoStep';
 import { FEATURES } from '../../../config/features';
-import { bookerLine, firstName, formatClock, formatGigDay, formatShortDay, icsForSet, preferenceReview, slotDate, slotEnd } from './guestFormat';
+import { bookerLine, firstName, forgetApplication, formatClock, formatGigDay, formatShortDay, icsForSet, preferenceReview, slotDate, slotEnd } from './guestFormat';
 
 const STATUS = {
-  sent: ['Sent · Jez hasn\'t decided yet', 'is-wait'],
+  sent: ['Sent', 'is-wait'],
   accepted: ['Accepted', 'is-ok'],
   declined: ['Not this time', 'is-muted'],
   withdrawn: ['Withdrawn', 'is-muted'],
@@ -113,6 +113,10 @@ export function ManageGuestApplication() {
     if (!application?.setChangedFrom || application.setChangeSeenAt) return;
     markSetChangeSeen(gigId, token).catch(() => {});
   }, [application, gigId, token]);
+
+  useEffect(() => {
+    if (application?.status === 'withdrawn') forgetApplication(gigId, token);
+  }, [application?.status, gigId, token]);
 
   const save = async () => {
     if (!draft) return;
@@ -353,7 +357,7 @@ export function ManageGuestApplication() {
         {editing ? (
           <div className="ga-step">
             {editing === 'who' && <GuestWhoStep draft={draft} patch={(partial) => setDraft((current) => ({ ...current, ...partial }))} slots={slots.length ? slots : [gig].filter(Boolean)} bookerName={booker.name} showErrors={false} />}
-            {editing === 'assets' && <GuestAssetsStep draft={draft} patch={(partial) => setDraft((current) => ({ ...current, ...partial }))} />}
+            {editing === 'assets' && <GuestAssetsStep draft={draft} patch={(partial) => setDraft((current) => ({ ...current, ...partial }))} bookerName={booker.name} />}
             {editing === 'tech' && <GuestTechStep draft={draft} patch={(partial) => setDraft((current) => ({ ...current, ...partial }))} venue={venue} />}
             {editing === 'note' && (
               <label className="ga-field">
@@ -402,9 +406,9 @@ export function ManageGuestApplication() {
             <button type="button" className="ga-danger" onClick={() => setConfirmWithdraw(true)}>I can't play any more</button>
           </div>
         )}
-        {application.status === 'withdrawn' && <Link to={`/gig/${gigId}`}>Back to the gig</Link>}
         {error && <p className="ga-error">{error}</p>}
         {toast && <p className="ga-toast" role="status">{toast}</p>}
+        <button type="button" className="ga-text" onClick={() => navigate(`/gig/${gigId}`)}>Back to the gig</button>
       </main>
       {confirmWithdraw && (
         <div className="ga-sheet-backdrop" onClick={() => setConfirmWithdraw(false)}>
@@ -427,7 +431,6 @@ export function ManageGuestApplication() {
           </div>
         </div>
       )}
-      <button type="button" className="ga-text" onClick={() => navigate(`/gig/${gigId}`)}>Back to the gig</button>
     </div>
   );
 }

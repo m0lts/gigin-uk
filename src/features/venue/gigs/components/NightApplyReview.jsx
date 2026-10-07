@@ -15,6 +15,7 @@ import {
   undoNightApplication,
 } from '@services/api/gigs';
 import { formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
+import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 import { ApplicantProfileModal, useApplicantQuery } from '@features/venue/gigs/components/ApplicantProfileModal';
 import '@styles/host/night-apply.styles.css';
 
@@ -97,7 +98,7 @@ export function NightApplyReview({
   const ordered = night.slots;
   const rootId = night.applicationsRootGigId || rawGig?.gigId;
   const oneSet = ordered.length < 2;
-  const signature = night.applications.map((app) => `${app.id}:${app.status}:${app.assignedSlotGigId || ''}`).join('|');
+  const signature = night.applications.map((app) => `${app.id}:${app.status}:${app.assignedSlotGigId || ''}:${app.viewed ? 1 : 0}`).join('|');
   const serverClosed = ordered.length > 0 && ordered.every((slot) => slot.applicationsOpen === false);
   const [localApps, setLocalApps] = useState(null);
   const [closedOverride, setClosedOverride] = useState(null);
@@ -167,7 +168,7 @@ export function NightApplyReview({
   const accept = (app, slotGigId) => run(
     () => acceptNightApplication({ rootGigId: rootId, applicantId: app.id, slotGigId: slotGigId || null }),
     applications.map((item) => (item.id === app.id
-      ? { ...item, status: 'accepted', assignedSlotGigId: slotGigId || null }
+      ? { ...item, status: 'accepted', assignedSlotGigId: slotGigId || null, viewed: true }
       : item)),
   );
 
@@ -188,7 +189,7 @@ export function NightApplyReview({
   const decline = (app) => run(
     () => declineNightApplication({ rootGigId: rootId, applicantId: app.id }),
     applications.map((item) => (item.id === app.id
-      ? { ...item, status: 'declined', assignedSlotGigId: null }
+      ? { ...item, status: 'declined', assignedSlotGigId: null, viewed: true }
       : item)),
   );
 
@@ -202,7 +203,7 @@ export function NightApplyReview({
     const decline = typeof shouldDecline === 'boolean' ? shouldDecline : declineWaiting;
     setClosedOverride(true);
     if (decline) {
-      setLocalApps(applications.map((item) => (isWaiting(item) ? { ...item, status: 'declined' } : item)));
+      setLocalApps(applications.map((item) => (isWaiting(item) ? { ...item, status: 'declined', viewed: true } : item)));
     }
     const result = await closeNightApplications({ rootGigId: rootId, declineWaiting: decline });
     const extra = decline && waiting.length ? ` ${waiting.length} ${waiting.length === 1 ? 'act' : 'acts'} will get a polite no.` : '';
@@ -291,6 +292,18 @@ export function NightApplyReview({
     declined: applications.filter((app) => app.status === 'declined').length,
   };
 
+  const markOpened = (ids) => {
+    const pending = (ids || []).filter((id) => isNewApplicant(applications.find((item) => item.id === id)));
+    if (!pending.length || !rawGig?.venueId) return;
+    const wanted = new Set(pending);
+    setLocalApps((current) => (current || applications).map((item) => (
+      wanted.has(item.id) ? { ...item, viewed: true } : item
+    )));
+    markApplicantsViewed({ venueId: rawGig.venueId, gigId: rootId, applicantIds: pending })
+      .then(() => refreshGigs?.())
+      .catch(() => {});
+  };
+
   const copyLink = async () => {
     const url = `${window.location.origin}/gig/${rootId}`;
     try {
@@ -328,8 +341,8 @@ export function NightApplyReview({
             <button type="button" className={tab === 'applications' ? 'is-on' : ''} onClick={() => setTab('applications')}>
               Applications
               {waiting.length > 0 && <b>{waiting.length}</b>}
-              {applications.filter((app) => app.viewed !== true && app.invited !== true).length > 0 && (
-                <span className="na-new">{applications.filter((app) => app.viewed !== true && app.invited !== true).length} new</span>
+              {applications.filter(isNewApplicant).length > 0 && (
+                <span className="na-new">{applications.filter(isNewApplicant).length} new</span>
               )}
             </button>
             <button type="button" className={tab === 'order' ? 'is-on' : ''} onClick={() => setTab('order')}>
@@ -378,16 +391,9 @@ export function NightApplyReview({
                     conflict={givenAway(app)}
                     slotLabel={slotLabel}
                     occupant={occupant}
-                    onView={() => {
-                      if (!app.viewed && rawGig?.venueId) {
-                        markApplicantsViewed({ venueId: rawGig.venueId, gigId: rootId, applicantIds: [app.id] }).catch(() => {});
-                      }
-                    }}
+                    onView={() => markOpened([app.id])}
                     onOpenProfile={(id, trigger) => {
-                      const row = applications.find((item) => item.id === id);
-                      if (row && !row.viewed && rawGig?.venueId) {
-                        markApplicantsViewed({ venueId: rawGig.venueId, gigId: rootId, applicantIds: [id] }).catch(() => {});
-                      }
+                      markOpened([id]);
                       openApplicant(id, trigger);
                     }}
                   />
@@ -536,7 +542,7 @@ function ApplicantCard({
   const tech = techLine(app, venue);
   const assigned = ordered.find((slot) => (slot.gigId || slot.id) === app.assignedSlotGigId);
   const withdrawn = app.status === 'withdrawn';
-  const unviewed = app.viewed !== true && app.invited !== true;
+  const unviewed = isNewApplicant(app);
   const status = statusChip(app, assigned, ordered, oneSet);
   const members = (app.members || []).filter((member) => member?.name || member?.instruments?.length);
   return (
@@ -624,7 +630,7 @@ function statusChip(app, assigned, ordered, oneSet) {
     const index = ordered.findIndex((slot) => (slot.gigId || slot.id) === (assigned.gigId || assigned.id));
     return { label: `Accepted · Set ${index + 1}`, className: 'is-ok' };
   }
-  if (!app.viewed) return { label: 'New', className: 'is-new' };
+  if (isNewApplicant(app)) return { label: 'New', className: 'is-new' };
   return { label: 'Waiting', className: 'is-muted' };
 }
 

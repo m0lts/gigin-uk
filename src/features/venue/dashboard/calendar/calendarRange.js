@@ -1,3 +1,5 @@
+import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
+
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -116,7 +118,7 @@ export function gigNeedsAction(group, now) {
   if (!gig?.dateTime || !(gig.dateTime > now)) return false;
   const slots = group.allGigs?.length ? group.allGigs : [gig];
   const newApplicants = slots.reduce((sum, slot) => (
-    sum + applicantsOf(slot).filter((applicant) => applicant && !applicant.viewed && applicant.invited !== true).length
+    sum + applicantsOf(slot).filter(isNewApplicant).length
   ), 0);
   const state = gigBookingState(group);
   return newApplicants > 0 || state === 'awaiting' || state === 'negotiating';

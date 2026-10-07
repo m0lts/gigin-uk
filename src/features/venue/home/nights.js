@@ -1,16 +1,15 @@
 import { getLocalGigDateTime } from '@services/utils/filtering';
 import { readNight, slotGigId } from '@services/utils/nightApplications';
 import { gigSlotHasConfirmedArtist } from '../gigs/utils/multiSlotGigGroup';
+import { isNewApplicant, nightNeedsAttention } from '../gigs/utils/isNewApplicant';
 import { formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
+
+export { isNewApplicant };
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-export function isNewApplicant(applicant) {
-  return Boolean(applicant) && applicant.viewed !== true && applicant.invited !== true;
-}
 
 export function baseGigName(gig) {
   const raw = gig?.eventName || gig?.title || gig?.gigName || 'Gig';
@@ -181,7 +180,7 @@ export function selectUpcomingNights(nights, now = new Date()) {
 
 export function attentionNights(nights, now = new Date()) {
   return nights
-    .filter((night) => isUpcomingNight(night, now) && night.fresh > 0)
+    .filter((night) => isUpcomingNight(night, now) && nightNeedsAttention(night))
     .sort((a, b) => a.date - b.date);
 }
 

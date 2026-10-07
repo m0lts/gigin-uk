@@ -454,7 +454,7 @@ export function ProfileEditorPage() {
             needs: profile.techRider?.guestNeeds || [],
             bringOwn: profile.techRider?.bringOwn || [],
           }}
-          venue={{ bookerDisplayName: 'your profile', techRider: null }}
+          venue={{ techRider: null }}
           patch={(partial) => setProfile((current) => {
             const next = {
               members: partial.members !== undefined ? partial.members : (current.members || []),

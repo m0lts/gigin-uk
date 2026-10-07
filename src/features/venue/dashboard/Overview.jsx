@@ -11,6 +11,7 @@ import {
 } from 'chart.js';
 import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
 import { getGigPrivateBundle } from '@services/api/gigs';
+import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 
 function isGuestApplicant(applicant) {
     return applicant?.guest === true || applicant?.type === 'guest';
@@ -55,10 +56,7 @@ export const Overview = ({ gigs, loadingGigs, venues, setShowAddGigsModal, setAd
         if (!gigs?.length) return;
         const now = new Date();
         const newApplications = gigs.filter(gig =>
-            gig.applicants.some(applicant =>
-              (applicant.viewed === false || applicant.viewed === undefined) &&
-              applicant.invited !== true
-            )
+            gig.applicants.some(isNewApplicant)
         );
         const confirmedGigsLocal = gigs.filter(gig =>
             gig.applicants.some(applicant => applicant.status === 'confirmed')

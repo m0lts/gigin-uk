@@ -11,6 +11,10 @@ export function GuestReviewStep({ draft, slots, bookerName, patch, onJump, summa
     draft.assets.length ? `${draft.assets.length} file${draft.assets.length === 1 ? '' : 's'}` : '',
   ].filter(Boolean);
   const members = draft.members.filter((member) => member.name || member.instruments.length);
+  const techEmpty = members.length === 0 && draft.needs.length === 0 && draft.bringOwn.length === 0;
+  const techSummary = techEmpty
+    ? 'None'
+    : `${members.length} member${members.length === 1 ? '' : 's'}, using ${draft.needs.length} of the bar's items, bringing ${draft.bringOwn.length}`;
   return (
     <div className="ga-step">
       {!summary && <h2>Nearly done</h2>}
@@ -23,7 +27,7 @@ export function GuestReviewStep({ draft, slots, bookerName, patch, onJump, summa
         <Row readOnly={readOnly} editLabel={editLabel} tag={rowTags?.who} label="Act and contact" value={`${draft.actName || '—'} · ${draft.contactName || '—'}`} onEdit={() => onJump('who')} />
         {!oneSet && <Row readOnly={readOnly} editLabel={editLabel} label="Set preference" value={setLabel} muted={!ids.length} onEdit={() => onJump('who')} />}
         <Row readOnly={readOnly} editLabel={editLabel} tag={rowTags?.assets} label="Photo and links" value={photoBits.length ? photoBits.join(' · ') : 'Skipped'} muted={!photoBits.length} onEdit={() => onJump('assets')} />
-        <Row readOnly={readOnly} editLabel={editLabel} tag={rowTags?.tech} label="Tech rider" value={`${members.length} member${members.length === 1 ? '' : 's'}, using ${draft.needs.length} of the bar's items, bringing ${draft.bringOwn.length}`} onEdit={() => onJump('tech')} />
+        <Row readOnly={readOnly} editLabel={editLabel} tag={rowTags?.tech} label="Tech rider" value={techSummary} muted={techEmpty} onEdit={() => onJump('tech')} />
       </div>
       {!summary && <p className="ga-fine">{bookerName} will see everything above. We'll email you a copy with a private link to change or withdraw it.</p>}
     </div>

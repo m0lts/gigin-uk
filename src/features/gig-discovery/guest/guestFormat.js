@@ -1,4 +1,4 @@
-import { slotTaken } from '@services/utils/nightApplications';
+import { slotTaken } from '../../../services/utils/nightApplications.js';
 
 export { slotTaken };
 
@@ -79,10 +79,11 @@ export function isGuestApplyGig(gig, venue) {
 }
 
 export function bookerLine(venue, gig) {
-  const jesus = isJesusCollege(venue, gig);
+  const owner = firstName(venue?.accountName);
+  const venueName = String(venue?.name || venue?.venueName || gig?.venue?.venueName || gig?.venueName || '').trim();
   return {
-    name: venue?.bookerDisplayName || (jesus ? 'Jez' : 'The booker'),
-    role: venue?.bookerRole || (jesus ? 'booker' : ''),
+    name: owner || venueName || 'the venue',
+    role: String(venue?.bookerRole || '').trim(),
   };
 }
 
@@ -119,6 +120,26 @@ export function rememberedApplication(gigIds) {
   const token = raw.slice(splitAt + 1);
   if (!token || !(gigIds || []).includes(gigId)) return null;
   return { gigId, token };
+}
+
+export function forgetApplication(gigId, token) {
+  const drop = (storage) => {
+    const raw = storage.getItem('guestApplicationLink') || '';
+    const splitAt = raw.indexOf(':');
+    if (splitAt < 0) return;
+    const storedGigId = raw.slice(0, splitAt);
+    const storedToken = raw.slice(splitAt + 1);
+    if (storedGigId !== gigId && storedToken !== token) return;
+    storage.removeItem('guestApplicationLink');
+  };
+  try { drop(localStorage); } catch { /* ignore */ }
+  try { drop(sessionStorage); } catch { /* ignore */ }
+}
+
+export function keepRememberedApplication({ status, httpStatus } = {}) {
+  if (httpStatus === 404 || httpStatus === 410) return false;
+  if (status === 'withdrawn') return false;
+  return true;
 }
 
 export function icsForSet({ title, start, end, location, description, uid, sequence = 0 }) {

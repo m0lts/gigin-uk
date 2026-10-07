@@ -263,11 +263,11 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
             venueName={venue?.name}
             onLogin={onLogin}
             showErrors={showErrors}
-            inviteNote={invite?.prefill ? "Filled in from Jez's invite. Change anything that's out of date." : ''}
+            inviteNote={invite?.prefill ? `Filled in from ${booker.name}'s invite. Change anything that's out of date.` : ''}
           />
         )}
-        {step === 'assets' && <GuestAssetsStep draft={draft} patch={patch} />}
-        {step === 'tech' && <GuestTechStep draft={draft} patch={patch} venue={{ ...venue, bookerDisplayName: booker.name }} />}
+        {step === 'assets' && <GuestAssetsStep draft={draft} patch={patch} bookerName={booker.name} />}
+        {step === 'tech' && <GuestTechStep draft={draft} patch={patch} venue={venue} />}
         {returning && step === 'review' && (
           <p><strong>Welcome back, {(returning.contact?.contactName || returning.profile.name || '').split(' ')[0]}.</strong> We've filled this in from your Gigin profile. <button type="button" className="ga-text" onClick={() => { setReturning(null); setDraft(emptyDraft(gig, invite, newGuestIds())); setStep('who'); forgetProfileSession(); }}>Not you? Start blank</button></p>
         )}

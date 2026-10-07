@@ -14,6 +14,7 @@ import { get } from '@services/http';
 import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
 import { preferencePhrase } from '@services/utils/nightApplications';
 import { formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
+import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 import { InviteToGigModal } from '@features/venue/dashboard/ArtistCRM';
 import './ApplicantProfileModal.css';
 
@@ -802,7 +803,7 @@ function ApplicantProfileDialog({
       if (!assigned) return { label: 'Accepted · no set yet', bg: 'oklch(0.95 0.05 80)', color: 'oklch(0.48 0.11 60)', dot: 'oklch(0.72 0.15 70)' };
       return { label: `Accepted · Set ${assignedIndex + 1}`, bg: 'oklch(0.95 0.04 150)', color: 'oklch(0.45 0.11 150)', dot: 'oklch(0.66 0.14 150)' };
     }
-    if (!applicant.viewed) return { label: 'New', bg: '#FFEDE7', color: '#B5462C', dot: '#FF6C4B' };
+    if (isNewApplicant(applicant)) return { label: 'New', bg: '#FFEDE7', color: '#B5462C', dot: '#FF6C4B' };
     return { label: 'Waiting', bg: '#F3F4F6', color: '#6B7280', dot: '#9AA0AA' };
   })();
   const decidedText = applicant.status === 'withdrawn'

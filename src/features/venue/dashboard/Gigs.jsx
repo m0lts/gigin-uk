@@ -33,6 +33,7 @@ import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/api/gigs';
 import { GigInvitesModal } from '../components/GigInvitesModal';
 import { unreviewedApplicationCount } from '../gigs/utils/multiSlotGigGroup';
+import { isNewApplicant } from '../gigs/utils/isNewApplicant';
 import { GigsCalendarReact } from './GigsCalendarReact';
 import { GigsConsole } from './GigsConsole';
 import { getCalendarFeedUrl } from '@services/api/calendar';
@@ -1026,7 +1027,7 @@ export const Gigs = ({
         const slots = group.allGigs;
         const totalApplicants = slots.reduce((sum, slot) => sum + ((slot.applicants || []).length), 0);
         const newApplicants = slots.reduce((sum, slot) => (
-          sum + (slot.applicants || []).filter((applicant) => !applicant.viewed && applicant.invited !== true).length
+          sum + (slot.applicants || []).filter(isNewApplicant).length
         ), 0);
         const slotsBooked = slots.map((slot) => (slot.applicants || []).some((applicant) => applicant.status === 'confirmed'));
         const isFuture = !!(group.primaryGig.dateTime && group.primaryGig.dateTime > now);

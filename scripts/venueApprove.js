@@ -47,6 +47,8 @@ if (projectNeedsTypedConfirmation(project)) {
 process.env.GCLOUD_PROJECT = project;
 process.env.GOOGLE_CLOUD_PROJECT = project;
 
+const { initializeAdmin } = await import("../gigin-api/config/admin.js");
+initializeAdmin();
 const { approveVenueById } = await import("../gigin-api/lib/venueApproval.js");
 
 try {

@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { FEATURES } from '../../../config/features';
 import { artistDestination } from '../../../config/artistDestination';
+import { finishSetupPath } from '../../../config/loginDestination';
 
 
 
@@ -50,7 +51,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
           navigate('/venues/dashboard');
           setJustLoggedIn(false);
         } else {
-          // User logged in but no profiles - stay on landing page
+          navigate(finishSetupPath(user, FEATURES));
           setJustLoggedIn(false);
         }
       }, 500); // Small delay to ensure user data is loaded

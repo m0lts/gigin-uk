@@ -4,8 +4,9 @@ import { normalizeTechRider } from '@features/venue/builder/techRiderConfig';
 import { useMapbox } from '@hooks/useMapbox';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { getGigInviteById } from '@services/client-side/gigs';
+import { getGuestApplication } from '@services/client-side/guestApplications';
 import { GuestApplyWizard } from './GuestApplyWizard';
-import { bookerLine, firstName, formatClock, formatGigDay, formatShortDay, photoUrl, rememberedApplication, setCountLabel, slotDate, slotEnd, slotState, slotTaken } from './guestFormat';
+import { bookerLine, firstName, forgetApplication, formatClock, formatGigDay, formatShortDay, keepRememberedApplication, photoUrl, rememberedApplication, setCountLabel, slotDate, slotEnd, slotState, slotTaken } from './guestFormat';
 
 function setMeta(property, content) {
   if (!content) return;
@@ -41,7 +42,32 @@ export function GuestGigPage({
   const openCount = slots.filter((slot) => !slotTaken(slot) && slot.applicationsOpen !== false).length;
   const past = !cancelled && slots.every((slot) => slotState(slot) === 'played') && slots.length > 0;
   const closed = cancelled || applicationsClosed || allTaken;
-  const remembered = rememberedApplication(slots.map((slot) => slot.gigId || slot.id).concat(gig.gigId));
+  const storedApplication = rememberedApplication(slots.map((slot) => slot.gigId || slot.id).concat(gig.gigId));
+  const storedKey = storedApplication ? `${storedApplication.gigId}:${storedApplication.token}` : '';
+  const [hiddenKey, setHiddenKey] = useState('');
+  const remembered = storedApplication && hiddenKey !== storedKey ? storedApplication : null;
+
+  useEffect(() => {
+    if (!storedKey) return undefined;
+    const splitAt = storedKey.indexOf(':');
+    const gigId = storedKey.slice(0, splitAt);
+    const token = storedKey.slice(splitAt + 1);
+    let cancelled = false;
+    getGuestApplication(gigId, token)
+      .then((application) => {
+        if (cancelled) return;
+        if (keepRememberedApplication({ status: application?.status })) return;
+        forgetApplication(gigId, token);
+        setHiddenKey(storedKey);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if (keepRememberedApplication({ httpStatus: error?.status })) return;
+        forgetApplication(gigId, token);
+        setHiddenKey(storedKey);
+      });
+    return () => { cancelled = true; };
+  }, [storedKey]);
   const venueName = venue?.name || 'the bar';
   const venuePath = `/venues/${venue?.venueId || gig.venueId || ''}`;
   const equipment = useMemo(() => normalizeTechRider(venue?.techRider).equipment || [], [venue]);
