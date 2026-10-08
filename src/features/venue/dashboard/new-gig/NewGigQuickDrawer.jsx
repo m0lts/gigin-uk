@@ -9,6 +9,7 @@ export function NewGigQuickDrawer({
   onClose,
   onCreate,
   onFullForm,
+  onSaveTemplate,
 }) {
   const date = draft.dates[0];
   const feeName = draft.kind === 'booked' ? 'Agreed fee' : 'Fee offered';
@@ -71,6 +72,7 @@ export function NewGigQuickDrawer({
           <button type="button" className="ng-primary" disabled={submitting} onClick={onCreate}>
             {draft.kind === 'booked' ? 'Add to calendar' : 'Create gig'}
           </button>
+          <button type="button" className="ng-text" onClick={onSaveTemplate}>Save as template</button>
           <button type="button" className="ng-text" onClick={onFullForm}>Use the full form instead</button>
         </footer>
       </aside>

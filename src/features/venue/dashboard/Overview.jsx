@@ -12,6 +12,8 @@ import {
 import { getMusicianProfileByMusicianId } from '@services/client-side/artists';
 import { getGigPrivateBundle } from '@services/api/gigs';
 import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
+import { toast } from 'sonner';
+import { gigCreationClosed, NIGHTS_CLOSED_MESSAGE } from '../../../config/venueAccess';
 
 function isGuestApplicant(applicant) {
     return applicant?.guest === true || applicant?.type === 'guest';
@@ -32,7 +34,6 @@ function guestAsMusician(applicant) {
 import { AllGigsIcon, CalendarIconSolid, ExclamationIcon, GigIcon, MailboxFullIcon, NextGigIcon, StarEmptyIcon, StarIcon } from '../../shared/ui/extras/Icons';
 import { NextGig } from '../components/NextGig';
 import { FeedbackSection } from './FeedbackSection';
-import { toast } from 'sonner';
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { submitReview } from '@services/api/reviews';
@@ -217,6 +218,10 @@ export const Overview = ({ gigs, loadingGigs, venues, setShowAddGigsModal, setAd
                     <div
                       className="quick-button"
                       onClick={() => {
+                        if (gigCreationClosed(venues)) {
+                          toast.error(NIGHTS_CLOSED_MESSAGE);
+                          return;
+                        }
                         setAddGigsMode?.('bookNew');
                         setShowAddGigsModal?.(true);
                       }}

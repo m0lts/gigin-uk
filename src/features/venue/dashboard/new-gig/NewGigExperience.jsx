@@ -12,6 +12,7 @@ import { formatDate } from '@services/utils/dates';
 import { InviteMethodsModal } from '../InviteMethodsModal';
 import { buildBookNewTemplatePayload, filterBookNewEventTemplatesForVenue } from '../bookNewEventTemplateHelpers';
 import { hasVenuePerm } from '@services/utils/permissions';
+import { gigCreationClosed, NIGHTS_CLOSED_MESSAGE } from '../../../../config/venueAccess';
 import { NewGigCreatedPanel } from './NewGigCreatedPanel';
 import { NewGigFullForm } from './NewGigFullForm';
 import { NewGigQuickDrawer } from './NewGigQuickDrawer';
@@ -42,6 +43,10 @@ export function NewGigExperience({
   const [contacts, setContacts] = useState([]);
   const [scrollTo, setScrollTo] = useState('');
   const [inviteMethods, setInviteMethods] = useState(null);
+  const [nameDialog, setNameDialog] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templateSaved, setTemplateSaved] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const venue = venues.find((item) => item.venueId === venueId) || venues[0];
   const venueTemplates = filterBookNewEventTemplatesForVenue(templates, venue?.venueId);
 
@@ -69,6 +74,10 @@ export function NewGigExperience({
   };
 
   const submit = async (meta = {}) => {
+    if (gigCreationClosed(venues, venue?.venueId)) {
+      toast.error(NIGHTS_CLOSED_MESSAGE);
+      return;
+    }
     if (!venue?.venueId || !hasVenuePerm(venues, venue.venueId, 'gigs.create')) {
       toast.error("You don't have permission to create gigs for this venue.");
       return;
@@ -112,15 +121,23 @@ export function NewGigExperience({
     }
   };
 
-  const saveTemplate = async () => {
-    const name = window.prompt('Template name');
-    if (!name || !venue?.venueId) return;
+  const openSaveTemplate = () => {
+    setTemplateSaved(false);
+    setTemplateName('');
+    setNameDialog(true);
+  };
+
+  const saveTemplate = async (event) => {
+    event?.preventDefault?.();
+    const name = templateName.trim();
+    if (!name || !venue?.venueId || savingTemplate) return;
+    setSavingTemplate(true);
     try {
       const templateId = uuidv4();
       const payload = buildBookNewTemplatePayload(draftToFormGig(draft, venue), venue.venueId, templateId, name);
       await saveGigTemplate({ templateData: payload });
-      toast.success('Template saved.');
       refreshTemplates?.();
+      setTemplateSaved(true);
     } catch (error) {
       console.error(error);
       if (error.status === 409) {
@@ -128,8 +145,21 @@ export function NewGigExperience({
       } else {
         toast.error('Failed to save template.');
       }
+    } finally {
+      setSavingTemplate(false);
     }
   };
+
+  const templateDialog = nameDialog ? (
+    <TemplateNameDialog
+      saved={templateSaved}
+      name={templateName}
+      saving={savingTemplate}
+      onName={setTemplateName}
+      onSubmit={saveTemplate}
+      onClose={() => setNameDialog(false)}
+    />
+  ) : null;
 
   if (screen === 'created') {
     return (
@@ -153,6 +183,7 @@ export function NewGigExperience({
             toast.error('Failed to offer the gig.');
           }
         }}
+        onSaveTemplate={openSaveTemplate}
         onPublish={async (next) => {
           setPublished(next);
           try {
@@ -177,12 +208,14 @@ export function NewGigExperience({
           onEmailSent={() => setInviteMethods(null)}
         />
       )}
+      {templateDialog}
       </>
     );
   }
 
   if (screen === 'quick') {
     return (
+      <>
       <NewGigQuickDrawer
         draft={draft}
         patch={update}
@@ -192,12 +225,16 @@ export function NewGigExperience({
         onClose={onClose}
         onCreate={() => submit()}
         onFullForm={() => go('full')}
+        onSaveTemplate={openSaveTemplate}
       />
+      {templateDialog}
+      </>
     );
   }
 
   if (screen === 'wizard') {
     return (
+      <>
       <NewGigWizard
         draft={draft}
         patch={update}
@@ -207,12 +244,16 @@ export function NewGigExperience({
         submitting={submitting}
         onClose={onClose}
         onSaveDraft={() => toast.success('Draft kept in this window.')}
+        onSaveTemplate={openSaveTemplate}
         onPublish={() => submit({ publish: draft.publishListing, offerIds: draft.offerArtistIds })}
       />
+      {templateDialog}
+      </>
     );
   }
 
   return (
+    <>
     <NewGigFullForm
       draft={draft}
       patch={update}
@@ -225,10 +266,42 @@ export function NewGigExperience({
       submitting={submitting}
       scrollTo={scrollTo}
       onClose={onClose}
-      onSaveTemplate={saveTemplate}
+      onSaveTemplate={openSaveTemplate}
       onCreate={() => submit({ publish: true })}
       onOffer={() => submit({ publish: false })}
     />
+    {templateDialog}
+    </>
+  );
+}
+
+function TemplateNameDialog({ saved, name, saving, onName, onSubmit, onClose }) {
+  return (
+    <div className="ng-name-dialog" onClick={onClose}>
+      <div className="ng-name-dialog__card" role="dialog" aria-labelledby="ng-template-name-title" onClick={(event) => event.stopPropagation()}>
+        {saved ? (
+          <>
+            <h3 id="ng-template-name-title">Template saved</h3>
+            <p>You can start from it next time you create a gig.</p>
+            <div className="ng-name-dialog__actions">
+              <button type="button" className="ng-dark" onClick={onClose}>Done</button>
+            </div>
+          </>
+        ) : (
+          <form onSubmit={onSubmit}>
+            <h3 id="ng-template-name-title">Save as template</h3>
+            <label className="ng-field">
+              <span>Template name</span>
+              <input className="ng-input" value={name} autoFocus onChange={(event) => onName(event.target.value)} />
+            </label>
+            <div className="ng-name-dialog__actions">
+              <button type="button" className="ng-ghost" onClick={onClose}>Cancel</button>
+              <button type="submit" className="ng-dark" disabled={saving || !name.trim()}>Save</button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
   );
 }
 

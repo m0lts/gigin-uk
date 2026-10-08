@@ -11,6 +11,7 @@ import { InviteAndShareModal } from '../components/InviteAndShareModal';
 import { FillThisSlotModal } from '../components/FillThisSlotModal';
 import { openInNewTab } from '@services/utils/misc';
 import { toast } from 'sonner';
+import { gigCreationClosed, NIGHTS_CLOSED_MESSAGE } from '../../../config/venueAccess';
 import { CalendarHeader } from './calendar/CalendarHeader';
 import { CalendarSidePanel } from './calendar/CalendarSidePanel';
 import { MonthView } from './calendar/MonthView';
@@ -323,6 +324,14 @@ export function GigsCalendarReact({
     { label: 'Delete', danger: true, onClick: requestDelete },
   ] : [];
 
+  const requestNewGig = (dateIso) => {
+    if (gigCreationClosed(venues)) {
+      toast.error(NIGHTS_CLOSED_MESSAGE);
+      return;
+    }
+    onAddGigForDate?.(dateIso);
+  };
+
   const viewProps = {
     cursor: cursorDate,
     gigs: presented,
@@ -330,7 +339,7 @@ export function GigsCalendarReact({
     now,
     selectedId,
     onSelect: (gig) => selectGig(gig, false),
-    onAdd: (dateIso) => onAddGigForDate?.(dateIso),
+    onAdd: requestNewGig,
   };
 
   return (
@@ -363,7 +372,7 @@ export function GigsCalendarReact({
           onToggleNight={(day) => setRegularNights((current) => (
             current.includes(day) ? current.filter((item) => item !== day) : [...current, day]
           ))}
-          onAdd={(dateIso) => onAddGigForDate?.(dateIso)}
+          onAdd={requestNewGig}
           onSelect={selectGig}
           selected={selected}
           onClose={() => setSelectedId(null)}

@@ -169,7 +169,7 @@ export function NewGigFullForm({
                   <input className="ng-input" value={draft.artistName} onChange={(event) => patch({ artistName: event.target.value, artistId: '' })} />
                 </label>
                 {paymentsOn() && <FeeField label="Agreed fee" value={draft.fee} onChange={(fee) => patch({ fee })} />}
-                <label className="ng-check">
+                <label className="ng-checkrow">
                   <input type="checkbox" checked={draft.paidVia === 'gigin'} onChange={(event) => patch({ paidVia: event.target.checked ? 'gigin' : 'outside' })} />
                   Pay through Gigin
                 </label>

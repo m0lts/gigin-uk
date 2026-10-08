@@ -20,6 +20,7 @@ export function NewGigCreatedPanel({
   onPublish,
   onFinish,
   onClose,
+  onSaveTemplate,
 }) {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
@@ -111,6 +112,7 @@ export function NewGigCreatedPanel({
               ))}
             </section>
           )}
+          <button type="button" className="ng-text" onClick={onSaveTemplate}>Save as template</button>
         </div>
         <footer className="ng-drawer__foot ng-drawer__foot--row">
           <button type="button" className="ng-dark" onClick={() => {

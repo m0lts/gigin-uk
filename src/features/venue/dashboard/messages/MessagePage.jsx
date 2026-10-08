@@ -13,6 +13,7 @@ import { GigInformation } from './GigInformation';
 import { RequestCard } from '@features/venue/components/RequestCard';
 import { removeVenueRequest } from '@services/client-side/venues';
 import { toast } from 'sonner';
+import { gigCreationClosed, NIGHTS_CLOSED_MESSAGE } from '../../../../config/venueAccess';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
     updateConversationLastViewed,
@@ -90,6 +91,10 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     };
 
     const openBuildGigModal = (request) => {
+        if (gigCreationClosed(venueProfiles, request?.venueId)) {
+            toast.error(NIGHTS_CLOSED_MESSAGE);
+            return;
+        }
         setBuildingForMusician(true);
         setBuildingForMusicianData({
             id: request.musicianId,
@@ -112,6 +117,10 @@ export const MessagePage = ({ user, conversations = [], setConversations, venueG
     };
 
     const openBuildGigModalWithDate = (request, date) => {
+        if (gigCreationClosed(venueProfiles, request?.venueId)) {
+            toast.error(NIGHTS_CLOSED_MESSAGE);
+            return;
+        }
         setBuildingForMusician(true);
         setBuildingForMusicianData({
             id: request.musicianId,

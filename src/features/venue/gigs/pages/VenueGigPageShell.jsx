@@ -391,10 +391,12 @@ export function VenueGigPageShell({
     // applicants live only on the applications-root row in the venue list.
     return combined.map((slot) => {
       const id = slot?.gigId || slot?.id;
-      const rootId = slot?.applicationsRootGigId || id;
+      const fresh = id ? (gigs || []).find((row) => row?.gigId === id) : null;
+      const current = fresh ? { ...slot, ...fresh, gigId: id } : slot;
+      const rootId = current?.applicationsRootGigId || id;
       const root = (gigs || []).find((row) => row?.gigId === rootId);
-      if (!id || id !== rootId || !root || !Array.isArray(root.applicants)) return slot;
-      return { ...slot, applicants: root.applicants, closeUndo: root.closeUndo ?? slot.closeUndo };
+      if (!id || id !== rootId || !root || !Array.isArray(root.applicants)) return current;
+      return { ...current, applicants: root.applicants, closeUndo: root.closeUndo ?? current.closeUndo };
     });
   }, [gigInfo, relatedSlots, gigs]);
 

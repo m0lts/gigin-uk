@@ -10,12 +10,16 @@ export const NEW_GIG_ROUTE_KEY = 'gigs.newGigRoute';
 export const LOOKING_FOR = ['Musician/Band', 'DJ', 'Promoter'];
 export const GENRES = ['Jazz', 'Soul', 'Funk', 'Indie', 'Rock', 'Pop', 'Electronic', 'Folk', 'Hip Hop', 'Blues', 'Reggae', 'Classical'];
 
-export function readLastNewGigRoute() {
+export function readStoredNewGigRoute() {
   try {
     const value = localStorage.getItem(NEW_GIG_ROUTE_KEY);
     if (value === 'quick' || value === 'full' || value === 'wizard') return value;
   } catch { /* ignore */ }
-  return 'full';
+  return null;
+}
+
+export function readLastNewGigRoute() {
+  return readStoredNewGigRoute() || 'full';
 }
 
 export function writeLastNewGigRoute(route) {
@@ -249,7 +253,11 @@ export function readiness(draft) {
 }
 
 export function useNewGigDraft(seed) {
-  const [draft, setDraft] = useState(() => emptyDraft(seed));
+  const [draft, setDraft] = useState(() => {
+    const { applyTemplate: template, ...rest } = seed || {};
+    const base = emptyDraft(rest);
+    return template ? applyTemplateToDraft(base, template) : base;
+  });
   const check = useMemo(() => readiness(draft), [draft]);
   const patch = (partial) => setDraft((current) => ({ ...current, ...partial }));
   return { draft, setDraft, patch, check };

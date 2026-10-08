@@ -32,7 +32,7 @@ import { VenueHome } from '../home/VenueHome';
 import { ShareLinkProvider } from '../home/shareLinkContext';
 import { VenueMobileChrome } from '../home/VenueMobileChrome';
 import { readLastNewGigRoute } from './new-gig/useNewGigDraft';
-import { nightsAreClosed } from '../../../config/venueAccess';
+import { gigCreationClosed, NIGHTS_CLOSED_MESSAGE } from '../../../config/venueAccess';
 import { toast } from 'sonner';
 
 function FinderListingRoute() {
@@ -98,8 +98,9 @@ export const VenueDashboard = ({ user }) => {
         location.state.preferredDate
       ));
       if (hasAddGigsState) {
-        if (nightsAreClosed(venueProfiles)) {
-          toast.error('Waiting for approval. You can edit your venue, but you can’t create nights yet.');
+        const targetVenueId = location.state?.musicianData?.venueId || location.state?.venueId || null;
+        if (gigCreationClosed(venueProfiles, targetVenueId)) {
+          toast.error(NIGHTS_CLOSED_MESSAGE);
           return;
         }
         setShowAddGigsModal(true);
@@ -163,8 +164,8 @@ export const VenueDashboard = ({ user }) => {
 
     const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
     const openNewGig = (route) => {
-        if (nightsAreClosed(venueProfiles)) {
-          toast.error('Waiting for approval. You can edit your venue, but you can’t create nights yet.');
+        if (gigCreationClosed(venueProfiles)) {
+          toast.error(NIGHTS_CLOSED_MESSAGE);
           return;
         }
         setAddGigsEditData(null);

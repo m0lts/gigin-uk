@@ -23,6 +23,7 @@ import { uploadFileWithFallback } from '@services/storage';
 import { CopyIcon, TickIcon, DownChevronIcon, UpChevronIcon } from '../../shared/ui/extras/Icons';
 import { toast } from 'sonner';
 import { FEATURES } from '../../../config/features';
+import { gigCreationClosed, NIGHTS_CLOSED_MESSAGE } from '../../../config/venueAccess';
 import '@styles/shared/modals.styles.css';
 import {
   buildBookNewTemplatePayload,
@@ -36,6 +37,7 @@ import {
   parseLookingForSelection,
   toggleLookingForOption,
 } from './bookNewEventTemplateHelpers';
+import { artistBookingEditTimes } from './artistBookingEditTimes';
 
 /** Placeholder date key for "Create event" before user picks a single date (e.g. from Offer gig). */
 export const BOOK_NEW_PENDING_DATE_ISO = '__book_new_pending_date__';
@@ -1406,16 +1408,6 @@ export function AddGigsModal({
     });
   };
 
-  function recalcSlotsFrom(slots, fromIdx) {
-    const next = [...slots];
-    for (let i = fromIdx + 1; i < next.length; i++) {
-      const prev = next[i - 1];
-      const end = addMinutesToTime(prev?.startTime ?? '', Number(prev?.duration) || 0);
-      next[i] = { ...next[i], startTime: end || (next[i]?.startTime ?? '') };
-    }
-    return next;
-  }
-
   const submitOverrideRef = useRef(null);
   const allSlotsFor = (iso) => {
     const source = submitOverrideRef.current?.gigsByDate || gigsByDate;
@@ -1438,9 +1430,8 @@ export function AddGigsModal({
       } else {
         slots[index] = { ...(slots[index] || {}), startTime: value };
       }
-      const recalc = recalcSlotsFrom(slots, index);
-      const base = recalc[0];
-      const extra = recalc.slice(1);
+      const base = slots[0];
+      const extra = slots.slice(1);
       return {
         ...prev,
         [iso]: { ...gig, startTime: base.startTime, duration: base.duration, extraSlots: extra },
@@ -1460,9 +1451,8 @@ export function AddGigsModal({
       } else {
         slots[index] = { ...(slots[index] || {}), duration: durationMinutes };
       }
-      const recalc = recalcSlotsFrom(slots, index);
-      const base = recalc[0];
-      const extra = recalc.slice(1);
+      const base = slots[0];
+      const extra = slots.slice(1);
       return {
         ...prev,
         [iso]: { ...gig, startTime: base.startTime, duration: base.duration, extraSlots: extra },
@@ -1939,6 +1929,13 @@ export function AddGigsModal({
   };
 
   const handleAddGigs = async () => {
+    const targetVenueId = venueId || editGigData?.venueId;
+    if (gigCreationClosed(venues, targetVenueId)) {
+      toast.error(NIGHTS_CLOSED_MESSAGE);
+      submitOverrideRef.current?.onFailed?.(new Error(NIGHTS_CLOSED_MESSAGE));
+      submitOverrideRef.current = null;
+      return;
+    }
     const getBudgetValue = (b) => {
       const n = parseInt(String(b ?? '').replace(/[^\d]/g, ''), 10);
       return Number.isFinite(n) ? n : 0;
@@ -2001,13 +1998,6 @@ export function AddGigsModal({
             ? editGigData.existingGigIds
             : [editFirestoreTargetId];
           const slotsRow = allSlotsFor(dateIso) || [];
-          // If the wizard was used single-slot, fall back to top-level music
-          // start/stop for slot 0 since `startTime`/`duration` may be empty.
-          const fallbackStart = pickArtistPerformanceStart(gig);
-          const fallbackEnd = pickRentalEnd(gig);
-          const fallbackDuration = fallbackStart && fallbackEnd
-            ? diffMinutesEndAfterStart(fallbackStart, fallbackEnd)
-            : undefined;
           const slotCount = Math.max(existingIds.length, slotsRow.length, 1);
           const slotBudgetsArr = getSlotBudgetsFor(gig, slotCount);
           const slotArtistNamesArr = getArtistNamesForSlots(gig, slotCount);
@@ -2028,12 +2018,13 @@ export function AddGigsModal({
           // entries with a warning rather than silently losing data.
           const updatePromises = existingIds.map((gigId, slotIndex) => {
             const slot = slotsRow[slotIndex];
-            const slotStart = (slot?.startTime ?? '').toString().trim() || (slotIndex === 0 ? fallbackStart : '');
-            const slotDurNum = Number(slot?.duration);
-            const slotDuration = Number.isFinite(slotDurNum) && slotDurNum > 0
-              ? slotDurNum
-              : (slotIndex === 0 && fallbackDuration ? fallbackDuration : undefined);
-            const startDateTime = slotStart ? getStartDateTime(dateIso, slotStart) : undefined;
+            const editedTimes = artistBookingEditTimes({
+              gig,
+              slot,
+              slotIndex,
+              slotCount,
+              dateIso,
+            });
             // Single-slot edits write to unifiedFeeAmount (not slotBudgets),
             // so fall back to it when the slot budget is the '£' placeholder.
             const rawSlotBudget = slotBudgetsArr[slotIndex];
@@ -2071,9 +2062,7 @@ export function AddGigsModal({
               private: isAddExistingEdit ? true : privateListing,
               extraInformation: String(gig.extraInformation ?? '').trim(),
               eventTimings: eventTimings ?? null,
-              ...(startDateTime && { startDateTime }),
-              ...(slotDuration && { duration: slotDuration }),
-              ...(slotStart && { startTime: slotStart }),
+              ...editedTimes,
               capacity: capacityToSave,
               listingDocEntries: listingDocs,
               ...(soundManagerVal && { soundManager: soundManagerVal }),
@@ -2090,7 +2079,7 @@ export function AddGigsModal({
 
           await Promise.all(updatePromises);
           toast.success(slotCount > 1 ? 'Gig sets updated.' : 'Gig updated.');
-          refreshGigs?.();
+          await refreshGigs?.();
           onClose();
         } catch (err) {
           console.error(err);
@@ -3005,6 +2994,7 @@ export function AddGigsModal({
           dates: initialIso ? [initialIso] : [],
           showOnProfile: buildForMusicianActive ? false : true,
           ...seededArtist,
+          ...(bookNewTemplateToApply ? { applyTemplate: bookNewTemplateToApply } : {}),
         }}
         onSubmit={(draft) => new Promise((resolve, reject) => {
           const gig = draftToFormGig(draft, venues.find((item) => item.venueId === venueId));

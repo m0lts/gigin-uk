@@ -296,7 +296,12 @@ export function BookNewEventWizard({
                     ? undefined
                     : (e) => {
                       onClearTimingError?.();
-                      set({ timingMusicStartTime: e.target.value });
+                      const start = e.target.value;
+                      const stop = String(currentGig.timingMusicStopTime || '').trim();
+                      const patch = { timingMusicStartTime: start, startTime: start };
+                      const duration = minutesBetweenHHMM(start, stop);
+                      if (duration > 0) patch.duration = duration;
+                      set(patch);
                     }
                 }
               />
@@ -319,7 +324,15 @@ export function BookNewEventWizard({
                     ? undefined
                     : (e) => {
                       onClearTimingError?.();
-                      set({ timingMusicStopTime: e.target.value });
+                      const stop = e.target.value;
+                      const start = String(currentGig.timingMusicStartTime || '').trim();
+                      const patch = { timingMusicStopTime: stop };
+                      const duration = minutesBetweenHHMM(start, stop);
+                      if (duration > 0) {
+                        patch.duration = duration;
+                        patch.startTime = start;
+                      }
+                      set(patch);
                     }
                 }
               />

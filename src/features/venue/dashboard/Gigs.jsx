@@ -25,7 +25,8 @@ import { getMusicianProfileByMusicianId, getArtistProfileById } from '../../../s
 import { toJsDate } from '../../../services/utils/dates';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { hasVenuePerm } from '../../../services/utils/permissions';
-import { nightsAreClosed } from '../../../config/venueAccess';
+import { gigCreationClosed, NIGHTS_CLOSED_MESSAGE } from '../../../config/venueAccess';
+import { readStoredNewGigRoute } from './new-gig/useNewGigDraft';
 import { duplicateGig, updateGigDocument } from '@services/api/gigs';
 import { saveGigTemplate, deleteGigTemplate, renameGigTemplate } from '@services/api/venues';
 import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
@@ -137,8 +138,6 @@ export const Gigs = ({
     const [renamingTemplateId, setRenamingTemplateId] = useState(null);
     const [renameTemplateInput, setRenameTemplateInput] = useState('');
     const [renameTemplateBusy, setRenameTemplateBusy] = useState(false);
-    const [templateUseChoiceTemplate, setTemplateUseChoiceTemplate] = useState(null);
-
     const canShowTemplatesButton = useMemo(
       () => Array.isArray(venues) && venues.some((v) => v?.venueId && hasVenuePerm(venues, v.venueId, 'gigs.create')),
       [venues],
@@ -677,7 +676,16 @@ export const Gigs = ({
       };
       
       const handleDuplicateSelected = async () => {
-        if (selectedGigs.length === 0) return;      
+        if (selectedGigs.length === 0) return;
+        const blocked = selectedGigs.some((id) => {
+          const group = groupedGigs.find((item) => item.gigIds.includes(id));
+          return gigCreationClosed(venues, group?.primaryGig?.venueId);
+        });
+        if (blocked) {
+          toast.error(NIGHTS_CLOSED_MESSAGE);
+          setConfirmModal(false);
+          return;
+        }
         try {
           setLoading(true);
           const newGigIds = [];
@@ -1159,8 +1167,8 @@ export const Gigs = ({
     };
 
     const openNewGig = ({ route = 'full', entry = 'menu', dateIso = null, kind = 'bookNew', legacy = false } = {}) => {
-      if (nightsAreClosed(venues)) {
-        toast.error('Waiting for approval. You can edit your venue, but you can’t create nights yet.');
+      if (gigCreationClosed(venues, selectedVenue)) {
+        toast.error(NIGHTS_CLOSED_MESSAGE);
         return;
       }
       setNewGigMenuOpen(false);
@@ -2237,8 +2245,8 @@ export const Gigs = ({
                     type="button"
                     className="btn primary gigs-react-book-gig-btn"
                     onClick={() => {
-                      if (nightsAreClosed(venues)) {
-                        toast.error('Waiting for approval. You can edit your venue, but you can’t create nights yet.');
+                      if (gigCreationClosed(venues, selectedVenue)) {
+                        toast.error(NIGHTS_CLOSED_MESSAGE);
                         return;
                       }
                       setAddGigsEditData(null);
@@ -2255,8 +2263,8 @@ export const Gigs = ({
                     type="button"
                     className="btn secondary gigs-react-add-booking-btn"
                     onClick={() => {
-                      if (nightsAreClosed(venues)) {
-                        toast.error('Waiting for approval. You can edit your venue, but you can’t create nights yet.');
+                      if (gigCreationClosed(venues, selectedVenue)) {
+                        toast.error(NIGHTS_CLOSED_MESSAGE);
                         return;
                       }
                       setAddGigsEditData(null);
@@ -2396,8 +2404,18 @@ export const Gigs = ({
                                   type="button"
                                   className="btn tertiary small gigs-manage-templates-use-btn"
                                   onClick={() => {
-                                    setTemplateUseChoiceTemplate(t);
+                                    if (gigCreationClosed(venues, selectedVenue || t.venueId)) {
+                                      toast.error(NIGHTS_CLOSED_MESSAGE);
+                                      return;
+                                    }
                                     setShowManageTemplatesModal(false);
+                                    setAddGigsEditData(null);
+                                    setAddGigsInitialDateIso(null);
+                                    setAddGigsBookNewTemplate?.(t);
+                                    setAddGigsMode?.('bookNew');
+                                    setNewGigRoute?.(readStoredNewGigRoute() || 'wizard');
+                                    setNewGigEntry?.('template');
+                                    setShowAddGigsModal(true);
                                   }}
                                 >
                                   Use
@@ -2410,53 +2428,6 @@ export const Gigs = ({
                     })}
                   </ul>
                 )}
-              </div>
-            </div>
-          </Portal>
-        )}
-        {templateUseChoiceTemplate && (
-          <Portal>
-            <div
-              className="modal add-gigs-choice-modal gigs-template-use-choice-modal"
-              onClick={() => setTemplateUseChoiceTemplate(null)}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="gigs-template-use-choice-title"
-            >
-              <div className="modal-content add-gigs-choice-modal__content" onClick={(e) => e.stopPropagation()}>
-                <h3 id="gigs-template-use-choice-title">
-                  Use a Template &ldquo;{templateUseChoiceTemplate.templateName || 'Untitled'}&rdquo;
-                </h3>
-                <div className="add-gigs-choice-modal__buttons">
-                  <button
-                    type="button"
-                    className="btn primary gigs-react-book-gig-btn"
-                    onClick={() => {
-                      if (nightsAreClosed(venues)) {
-                        toast.error('Waiting for approval. You can edit your venue, but you can’t create nights yet.');
-                        return;
-                      }
-                      const tpl = templateUseChoiceTemplate;
-                      setTemplateUseChoiceTemplate(null);
-                      setAddGigsBookNewTemplate?.(tpl);
-                      setAddGigsEditData(null);
-                      setAddGigsInitialDateIso(null);
-                      setAddGigsMode?.('bookNew');
-                      setShowAddGigsModal(true);
-                    }}
-                  >
-                    <CalendarIconSolid />
-                    <span>Create a gig</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn secondary gigs-react-add-booking-btn"
-                    onClick={() => setTemplateUseChoiceTemplate(null)}
-                  >
-                    <CalendarPlusIcon />
-                    <span>Add existing gig</span>
-                  </button>
-                </div>
               </div>
             </div>
           </Portal>

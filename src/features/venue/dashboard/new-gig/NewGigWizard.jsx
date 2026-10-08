@@ -6,7 +6,7 @@ import { FEATURES } from '../../../../config/features';
 const FIND_STEPS = ['Start', 'Date & time', 'Fee & tickets', 'Listing', 'Review'];
 const BOOKED_STEPS = ['Start', 'Date & time', "Who's playing", 'Review'];
 
-export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], submitting, onClose, onSaveDraft, onPublish }) {
+export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], submitting, onClose, onSaveDraft, onSaveTemplate, onPublish }) {
   const [step, setStep] = useState(0);
   const [month, setMonth] = useState(() => new Date());
   const booked = draft.kind === 'booked';
@@ -197,8 +197,8 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
               </div>
               {!booked && (
                 <>
-                  <label className="ng-check"><input type="checkbox" checked={draft.publishListing} onChange={(event) => patch({ publishListing: event.target.checked, showOnProfile: event.target.checked })} /> Publish the listing</label>
-                  <label className="ng-check"><input type="checkbox" checked={draft.offerArtistIds.length > 0} onChange={(event) => patch({ offerArtistIds: event.target.checked ? contacts.slice(0, 1).map((contact) => contact.id) : [] })} /> Offer the gig to artists you know</label>
+                  <label className="ng-checkrow"><input type="checkbox" checked={draft.publishListing} onChange={(event) => patch({ publishListing: event.target.checked, showOnProfile: event.target.checked })} /> Publish the listing</label>
+                  <label className="ng-checkrow"><input type="checkbox" checked={draft.offerArtistIds.length > 0} onChange={(event) => patch({ offerArtistIds: event.target.checked ? contacts.slice(0, 1).map((contact) => contact.id) : [] })} /> Offer the gig to artists you know</label>
                   {draft.offerArtistIds.length > 0 && (
                     <div className="ng-chips">
                       {contacts.slice(0, 8).map((contact) => {
@@ -210,6 +210,7 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
                   )}
                 </>
               )}
+              <button type="button" className="ng-text" onClick={onSaveTemplate}>Save as template</button>
             </Question>
           )}
         </div>
