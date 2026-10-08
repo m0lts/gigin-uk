@@ -7,6 +7,8 @@ import { db, admin, FieldValue } from "../config/admin.js";
 import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { assertVenuePerm } from "../utils/permissions.js";
+import { assertVenueCanPublishNights } from "../lib/venueApproval.js";
+import { venueIsApproved } from "../lib/venueApprovalPolicy.js";
 import { loadGuestPrivates, loadPrivateDetails, mergeApplicants, savePrivateDetails } from "../lib/gigPrivacy.js";
 import { queueMail } from "../lib/queueMail.js";
 import { renderArtistEmail } from "../lib/artistEmails.js";
@@ -99,6 +101,13 @@ async function loadGigForCaller(gigId, caller) {
   }
   await assertVenuePerm(db, caller, gig.venueId, "gigs.update");
   return { ref: snap.ref, gig };
+}
+
+async function shareVenueIsPublic(gig) {
+  if (!gig?.venueId) return true;
+  const snap = await db.doc(`venueProfiles/${gig.venueId}`).get();
+  if (!snap.exists) return true;
+  return venueIsApproved(snap.data() || {});
 }
 
 async function gigByShareToken(token) {
@@ -258,7 +267,8 @@ router.delete("/item/:gigId/:mediaId", requireAuth, asyncHandler(async (req, res
 }));
 
 router.post("/:gigId/share", requireAuth, asyncHandler(async (req, res) => {
-  await loadGigForCaller(req.params.gigId, req.auth.uid);
+  const { gig } = await loadGigForCaller(req.params.gigId, req.auth.uid);
+  await assertVenueCanPublishNights(gig.venueId);
   const token = newToken();
   await savePrivateDetails(req.params.gigId, { mediaShareTokenHash: hashToken(token) });
   return res.json({ token });
@@ -272,6 +282,7 @@ router.delete("/:gigId/share", requireAuth, asyncHandler(async (req, res) => {
 
 router.post("/:gigId/share/email", requireAuth, asyncHandler(async (req, res) => {
   const { gig } = await loadGigForCaller(req.params.gigId, req.auth.uid);
+  await assertVenueCanPublishNights(gig.venueId);
   if (!gig.mediaShareTokenHash) return res.status(400).json({ error: "Create a share link first." });
   const token = String(req.body?.token || "");
   if (!token || hashToken(token) !== gig.mediaShareTokenHash) {
@@ -310,7 +321,7 @@ router.post("/:gigId/share/email", requireAuth, asyncHandler(async (req, res) =>
 
 router.get("/share/:token", publicLimiter, asyncHandler(async (req, res) => {
   const found = await gigByShareToken(req.params.token);
-  if (!found) return res.status(404).json({ error: "This link is no longer available." });
+  if (!found || !(await shareVenueIsPublic(found.gig))) return res.status(404).json({ error: "This link is no longer available." });
   const title = String(found.gig.gigName || "Gig").replace(/\s*\(Set\s+\d+\)\s*$/, "");
   const when = found.gig.startDateTime?.toDate ? found.gig.startDateTime.toDate() : (found.gig.date ? new Date(found.gig.date) : null);
   const media = await Promise.all(mediaList(found.gig).map(async (item) => publicMedia(item, await signedThumb(item))));
@@ -324,7 +335,7 @@ router.get("/share/:token", publicLimiter, asyncHandler(async (req, res) => {
 
 router.get("/share/:token/file/:mediaId", publicLimiter, asyncHandler(async (req, res) => {
   const found = await gigByShareToken(req.params.token);
-  if (!found) return res.status(404).json({ error: "This link is no longer available." });
+  if (!found || !(await shareVenueIsPublic(found.gig))) return res.status(404).json({ error: "This link is no longer available." });
   const item = mediaList(found.gig).find((entry) => entry.id === req.params.mediaId);
   if (!item?.path || !String(item.path).startsWith(`gig-media/${found.gig.gigId}/`)) {
     return res.status(404).json({ error: "File not found." });
@@ -337,7 +348,7 @@ router.get("/share/:token/file/:mediaId", publicLimiter, asyncHandler(async (req
 
 router.get("/share/:token/zip", publicLimiter, asyncHandler(async (req, res) => {
   const found = await gigByShareToken(req.params.token);
-  if (!found) return res.status(404).json({ error: "This link is no longer available." });
+  if (!found || !(await shareVenueIsPublic(found.gig))) return res.status(404).json({ error: "This link is no longer available." });
   const items = mediaList(found.gig).filter((item) => item?.path && String(item.path).startsWith(`gig-media/${found.gig.gigId}/`));
   if (!items.length) return res.status(404).json({ error: "There are no files to download." });
   const title = safeName(String(found.gig.gigName || "gig-media").replace(/\s*\(Set\s+\d+\)\s*$/, ""));

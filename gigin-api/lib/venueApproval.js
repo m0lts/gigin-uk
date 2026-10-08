@@ -19,6 +19,9 @@ import {
 
 export { venueIsApproved, SERVER_VENUE_FIELDS };
 
+export const NIGHTS_CLOSED_MESSAGE =
+  "This venue is waiting for approval. You can edit your venue, but you can't create nights yet.";
+
 function hashToken(token) {
   return crypto.createHash("sha256").update(String(token)).digest("hex");
 }
@@ -55,6 +58,16 @@ export async function assertVenueCanOperate(venueId) {
   if (!snap.exists) return;
   if (!venueIsApproved(snap.data() || {})) {
     throw httpError(403, "This venue is waiting for approval.");
+  }
+}
+
+/** Creating, duplicating, publishing, or editing a night. */
+export async function assertVenueCanPublishNights(venueId) {
+  if (!venueId) return;
+  const snap = await db.doc(`venueProfiles/${venueId}`).get();
+  if (!snap.exists) return;
+  if (!venueIsApproved(snap.data() || {})) {
+    throw httpError(403, NIGHTS_CLOSED_MESSAGE);
   }
 }
 

@@ -8,6 +8,7 @@ import crypto from "node:crypto";
 import http from "node:http";
 import express from "express";
 import admin from "firebase-admin";
+import { errorHandler } from "../middleware/errorHandler.js";
 
 const PROJECT = "giginltd-dev";
 const NOTIFY = "founder-venue-approval@example.com";
@@ -107,6 +108,7 @@ test("a pending venue cannot create a night, take an application, or be read in 
   app.use("/api/venues", venuesRouter);
   app.use("/api/gigs", gigsRouter);
   app.use("/api/guest-applications", guestRouter);
+  app.use(errorHandler);
   const server = await listen(app);
   const { port } = server.address();
   try {
@@ -181,6 +183,7 @@ test("a pending venue cannot create a night, take an application, or be read in 
       },
     });
     assert.equal(night.status, 403, JSON.stringify(night.json));
+    assert.equal(night.json?.error, "This venue is waiting for approval. You can edit your venue, but you can't create nights yet.");
     assert.equal((await db.doc(`gigs/${gigId}`).get()).exists, false);
 
     await db.doc(`gigs/${gigId}`).set({
@@ -405,6 +408,160 @@ test("a failed founder email can be resent, an expired token can be reissued, an
     assert.equal(tokenCount.size, 2);
   } finally {
     process.env.VENUE_ACCESS_NOTIFY_EMAIL = previousNotify;
+    server.close();
+  }
+});
+
+const NIGHTS_CLOSED = "This venue is waiting for approval. You can edit your venue, but you can't create nights yet.";
+
+test("a pending or rejected venue cannot publish a night, and a live venue still can", async () => {
+  const { default: gigsRouter } = await import("../routes/gigs.js");
+  const { default: hireRouter } = await import("../routes/venueHireOpportunities.js");
+  const { default: mediaRouter } = await import("../routes/gigMedia.js");
+  const { default: guestRouter } = await import("../routes/guestApplications.js");
+  const app = express();
+  app.use(express.json());
+  app.use("/api/gigs", gigsRouter);
+  app.use("/api/venueHireOpportunities", hireRouter);
+  app.use("/api/gig-media", mediaRouter);
+  app.use("/api/guest-applications", guestRouter);
+  app.use(errorHandler);
+  const server = await listen(app);
+  const { port } = server.address();
+  const when = new Date(Date.now() + 9 * 86400000).toISOString();
+  try {
+    const owner = await signUp(`test+nights-closed-${crypto.randomUUID()}@example.com`);
+    const seed = async (name, approvalStatus) => {
+      const venueId = crypto.randomUUID();
+      const data = { name, createdBy: owner.uid, userId: owner.uid, completed: true };
+      if (approvalStatus !== undefined) data.approvalStatus = approvalStatus;
+      await db.doc(`venueProfiles/${venueId}`).set(data);
+      return venueId;
+    };
+    const pendingId = await seed("Pending Room", "pending");
+    const rejectedId = await seed("Rejected Room", "rejected");
+    const approvedId = await seed("Approved Room", "approved");
+    const legacyId = await seed("Already Live");
+
+    const postNight = (venueId, gigId) => api(port, "/api/gigs/postMultipleGigs", {
+      method: "POST",
+      token: owner.token,
+      body: {
+        venueId,
+        gigDocuments: [{ gigId, venueId, status: "open", gigName: "Thursday", date: when, startDateTime: when }],
+      },
+    });
+
+    const rejectedGig = crypto.randomUUID();
+    const rejected = await postNight(rejectedId, rejectedGig);
+    assert.equal(rejected.status, 403, JSON.stringify(rejected.json));
+    assert.equal(rejected.json?.error, NIGHTS_CLOSED);
+    assert.equal((await db.doc(`gigs/${rejectedGig}`).get()).exists, false);
+
+    const pendingGig = crypto.randomUUID();
+    await db.doc(`gigs/${pendingGig}`).set({
+      gigId: pendingGig,
+      venueId: pendingId,
+      status: "open",
+      gigName: "Thursday",
+      applicants: [],
+    });
+    const duplicated = await api(port, "/api/gigs/duplicateGig", {
+      method: "POST",
+      token: owner.token,
+      body: { gigId: pendingGig },
+    });
+    assert.equal(duplicated.status, 403, JSON.stringify(duplicated.json));
+    assert.equal(duplicated.json?.error, NIGHTS_CLOSED);
+    const pendingGigs = await db.collection("gigs").where("venueId", "==", pendingId).get();
+    assert.equal(pendingGigs.size, 1);
+
+    const changed = await api(port, "/api/gigs/updateGigDocument", {
+      method: "POST",
+      token: owner.token,
+      body: { gigId: pendingGig, action: "gigs.update", updates: { gigName: "Friday", private: false } },
+    });
+    assert.equal(changed.status, 403, JSON.stringify(changed.json));
+    assert.equal(changed.json?.error, NIGHTS_CLOSED);
+    assert.equal((await db.doc(`gigs/${pendingGig}`).get()).data().gigName, "Thursday");
+
+    const managed = await api(port, "/api/gigs/updateGigDocument", {
+      method: "POST",
+      token: owner.token,
+      body: { gigId: pendingGig, action: "gigs.applications.manage", updates: { soundManager: "Ada" } },
+    });
+    assert.equal(managed.status, 403, JSON.stringify(managed.json));
+    assert.equal(managed.json?.error, NIGHTS_CLOSED);
+
+    const hireId = crypto.randomUUID();
+    const hire = await api(port, "/api/venueHireOpportunities/createBatch", {
+      method: "POST",
+      token: owner.token,
+      body: { venueId: pendingId, items: [{ id: hireId, venueId: pendingId, gigName: "Room hire", date: when }] },
+    });
+    assert.equal(hire.status, 403, JSON.stringify(hire.json));
+    assert.equal(hire.json?.error, NIGHTS_CLOSED);
+    assert.equal((await db.doc(`venueHireOpportunities/${hireId}`).get()).exists, false);
+
+    const share = await api(port, `/api/gig-media/${pendingGig}/share`, {
+      method: "POST",
+      token: owner.token,
+    });
+    assert.equal(share.status, 403, JSON.stringify(share.json));
+    assert.equal(share.json?.error, NIGHTS_CLOSED);
+    const hiddenToken = crypto.randomBytes(32).toString("hex");
+    await db.doc(`gigs/${pendingGig}/private/details`).set({
+      gigId: pendingGig,
+      mediaShareTokenHash: crypto.createHash("sha256").update(hiddenToken).digest("hex"),
+    });
+    const hiddenShare = await api(port, `/api/gig-media/share/${hiddenToken}`);
+    assert.equal(hiddenShare.status, 404, JSON.stringify(hiddenShare.json));
+
+    const publicRead = await api(port, "/api/gigs/by-ids", {
+      method: "POST",
+      body: { gigIds: [pendingGig] },
+    });
+    assert.equal(publicRead.status, 200, JSON.stringify(publicRead.json));
+    assert.equal(JSON.stringify(publicRead.json).includes("Thursday"), false);
+
+    const application = await api(port, "/api/guest-applications", {
+      method: "POST",
+      body: {
+        gigId: pendingGig,
+        applicationId: crypto.randomUUID(),
+        manageToken: crypto.randomBytes(32).toString("hex"),
+        actName: "Hidden Act",
+        contactName: "Ada",
+        contacts: { email: `test+hidden-${crypto.randomUUID()}@example.com` },
+      },
+    });
+    assert.equal(application.status, 403, JSON.stringify(application.json));
+    assert.equal((await db.doc(`gigs/${pendingGig}`).get()).data().gigName, "Thursday");
+
+    const approvedGig = crypto.randomUUID();
+    const approved = await postNight(approvedId, approvedGig);
+    assert.equal(approved.status, 200, JSON.stringify(approved.json));
+    assert.equal((await db.doc(`gigs/${approvedGig}`).get()).exists, true);
+    const approvedEdit = await api(port, "/api/gigs/updateGigDocument", {
+      method: "POST",
+      token: owner.token,
+      body: { gigId: approvedGig, action: "gigs.update", updates: { gigName: "Friday" } },
+    });
+    assert.equal(approvedEdit.status, 200, JSON.stringify(approvedEdit.json));
+    assert.equal((await db.doc(`gigs/${approvedGig}`).get()).data().gigName, "Friday");
+    const approvedCopy = await api(port, "/api/gigs/duplicateGig", {
+      method: "POST",
+      token: owner.token,
+      body: { gigId: approvedGig },
+    });
+    assert.equal(approvedCopy.status, 200, JSON.stringify(approvedCopy.json));
+
+    const legacyGig = crypto.randomUUID();
+    const legacy = await postNight(legacyId, legacyGig);
+    assert.equal(legacy.status, 200, JSON.stringify(legacy.json));
+    assert.equal((await db.doc(`gigs/${legacyGig}`).get()).exists, true);
+    assert.equal((await db.doc(`venueProfiles/${legacyId}`).get()).data().approvalStatus, undefined);
+  } finally {
     server.close();
   }
 });

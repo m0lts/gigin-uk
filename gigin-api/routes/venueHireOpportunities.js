@@ -6,6 +6,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { db, Timestamp } from "../config/admin.js";
 import { assertVenuePerm } from "../utils/permissions.js";
+import { assertVenueCanOperate, assertVenueCanPublishNights } from "../lib/venueApproval.js";
 
 const router = express.Router();
 const COLLECTION = "venueHireOpportunities";
@@ -124,6 +125,7 @@ router.post("/createBatch", requireAuth, asyncHandler(async (req, res) => {
   }
 
   await assertVenuePerm(db, caller, venueId, "gigs.create");
+  await assertVenueCanPublishNights(venueId);
 
   const now = Timestamp.fromDate(new Date());
   const ids = [];
@@ -158,6 +160,12 @@ router.post("/apply", requireAuth, asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "NOT_FOUND", message: "Venue hire opportunity not found" });
   }
   const data = snap.data() || {};
+  try {
+    await assertVenueCanOperate(data.venueId);
+  } catch (error) {
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
+    throw error;
+  }
 
   // Guard: reject applications to past or non-available hire opportunities
   const hireDate = toJsDate(data.date ?? data.startDateTime);
@@ -244,6 +252,7 @@ router.post("/update", requireAuth, asyncHandler(async (req, res) => {
   }
 
   await assertVenuePerm(db, caller, venueId, "gigs.update");
+  await assertVenueCanPublishNights(venueId);
 
   // If a specific applicant is being accepted, update the applicants array accordingly.
   const acceptedApplicantId = updates.acceptedApplicantId;
