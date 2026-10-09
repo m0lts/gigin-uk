@@ -36,7 +36,8 @@ export function initializeAdmin() {
         // Firebase Admin SDK reads these during initialization
         process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:8081";
         process.env.FIREBASE_AUTH_EMULATOR_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST || "127.0.0.1:9099";
-        process.env.STORAGE_EMULATOR_HOST = process.env.STORAGE_EMULATOR_HOST || "127.0.0.1:9199";
+        const storageHost = (process.env.STORAGE_EMULATOR_HOST || "127.0.0.1:9199").replace(/^https?:\/\//, "");
+        process.env.STORAGE_EMULATOR_HOST = `http://${storageHost}`;
         console.log("🔥 Using Firebase Emulators");
         console.log(`   Firestore: ${process.env.FIRESTORE_EMULATOR_HOST}`);
         console.log(`   Auth: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);

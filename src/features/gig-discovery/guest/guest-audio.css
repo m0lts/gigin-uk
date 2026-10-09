@@ -1,0 +1,88 @@
+.ga-audio-list,
+.ga-assets {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.ga-audio,
+.ga-assets li.ga-audio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 44px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gn-line-soft, #E5E7EB);
+}
+
+.ga-audio__mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #F3F4F6;
+  color: #111317;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.ga-audio__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 140px;
+}
+
+.ga-audio__meta strong {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ga-audio__meta em {
+  font-style: normal;
+  color: #6B7280;
+  font-size: 13px;
+}
+
+.ga-audio.is-pending em,
+.ga-audio.is-failed em {
+  color: #92400E;
+}
+
+.ga-audio audio {
+  flex: 1 1 180px;
+  height: 32px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ga-audio a {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111317;
+}
+
+.ga-assets li.ga-file-pending {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ga-assets li.ga-file-pending em {
+  font-style: normal;
+  color: #92400E;
+  font-size: 13px;
+}
+
+.ga-audio button {
+  margin-left: auto;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: #B5462C;
+  font-weight: 600;
+  cursor: pointer;
+}

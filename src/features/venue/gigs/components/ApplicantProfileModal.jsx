@@ -16,6 +16,8 @@ import { preferencePhrase } from '@services/utils/nightApplications';
 import { formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
 import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 import { InviteToGigModal } from '@features/venue/dashboard/ArtistCRM';
+import { GuestAudioRow } from '@features/gig-discovery/guest/GuestAudioRow';
+import { isAudioAsset } from '@features/gig-discovery/guest/guestAssetFiles';
 import './ApplicantProfileModal.css';
 
 const BRANDS = {
@@ -659,6 +661,7 @@ function ApplicantProfileDialog({
       const photo = applicant.photo?.url || applicant.photoUrl;
       if (photo) photos.push(photo);
       (applicant.assets || []).forEach((asset) => {
+        if (isAudioAsset(asset)) return;
         if (!asset?.url) return;
         const type = String(asset.contentType || asset.type || '');
         if (type.startsWith('video')) pushVideo(asset.url, asset.name);
@@ -1074,7 +1077,14 @@ function ApplicantProfileDialog({
               <section className="ap-card">
                 <h2>Music</h2>
                 {tracks.map((row) => <MusicRow key={row.key} row={row} />)}
-                {!tracks.length ? <p className="ap-muted">No music links added.</p> : null}
+                {(applicant.assets || []).some(isAudioAsset) ? (
+                  <ul className="ga-audio-list">
+                    {(applicant.assets || []).filter(isAudioAsset).map((asset) => (
+                      <GuestAudioRow key={asset.path || asset.name} asset={asset} showPlayer />
+                    ))}
+                  </ul>
+                ) : null}
+                {!tracks.length && !(applicant.assets || []).some(isAudioAsset) ? <p className="ap-muted">No music links added.</p> : null}
               </section>
               <section className="ap-card">
                 <h2>About</h2>

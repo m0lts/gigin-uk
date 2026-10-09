@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import '@styles/artists/gig-page.styles.css';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getGuestApplication, markSetChangeSeen, updateGuestApplication, withdrawGuestApplication } from '@services/client-side/guestApplications';
+import { getGuestApplication, markSetChangeSeen, releaseGuestUpload, updateGuestApplication, withdrawGuestApplication } from '@services/client-side/guestApplications';
 import { KeepOffer } from '../../keep-profile/KeepOffer';
 import { getGigById, getGigsByIds } from '@services/client-side/gigs';
 import { sortSlots } from '@services/utils/nightApplications';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { GuestAssetsStep } from './GuestAssetsStep';
+import { GuestAudioRow } from './GuestAudioRow';
+import { isAudioAsset } from './guestAssetFiles';
 import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
 import { GuestWhoStep } from './GuestWhoStep';
@@ -80,6 +82,8 @@ export function ManageGuestApplication() {
   const [linkError, setLinkError] = useState('');
   const [linkSent, setLinkSent] = useState('');
   const [errorStatus, setErrorStatus] = useState(0);
+  const [deferredAudio, setDeferredAudio] = useState([]);
+  const sessionUploads = useRef([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,7 +152,23 @@ export function ManageGuestApplication() {
         note: draft.note,
         slotGigIds: draft.preferredSlotGigIds || draft.slotGigIds || [],
         preferredSlotGigIds: draft.preferredSlotGigIds || draft.slotGigIds || [],
+        ...(editing === 'assets' ? {
+          photo: draft.photo?.path ? {
+            path: draft.photo.path,
+            name: draft.photo.name,
+            size: draft.photo.size,
+            contentType: draft.photo.contentType,
+          } : null,
+          assets: draft.assets.map((asset) => ({
+            path: asset.path,
+            name: asset.name,
+            size: asset.size,
+            contentType: asset.contentType,
+          })),
+        } : {}),
       });
+      sessionUploads.current = [];
+      setDeferredAudio([]);
       setApplication(next);
       setEditing('');
       setToast(`Saved. ${bookerLine(venue, gig).name} can see your changes.`);
@@ -182,6 +202,20 @@ export function ManageGuestApplication() {
       sessionStorage.setItem(`gigin-another-act:${gigId}`, JSON.stringify({ priorManageToken: token, prefill }));
     } catch { /* the form starts blank if the browser blocks storage */ }
     navigate(`/gig/${gigId}?anotherAct=1`);
+  };
+
+  const cancelEdit = async () => {
+    const paths = [...sessionUploads.current];
+    sessionUploads.current = [];
+    setDeferredAudio([]);
+    await Promise.all(paths.map((path) => releaseGuestUpload({
+      applicationId: application?.applicationId,
+      path,
+      gigId,
+      manageToken: token,
+    }).catch(() => {})));
+    setDraft(fromApplication(application));
+    setEditing('');
   };
 
   const withdraw = async () => {
@@ -391,10 +425,40 @@ export function ManageGuestApplication() {
             {assigned && <button type="button" className="ga-text" onClick={addToCalendar}>Add to calendar</button>}
           </article>
         )}
+        {editing !== 'assets' && (draft.assets || []).some(isAudioAsset) && (
+          <ul className="ga-audio-list">
+            {(draft.assets || []).filter(isAudioAsset).map((asset) => (
+              <GuestAudioRow key={asset.path} asset={asset} showPlayer />
+            ))}
+          </ul>
+        )}
         {editing ? (
           <div className="ga-step">
             {editing === 'who' && <GuestWhoStep mode="edit" draft={draft} patch={(partial) => setDraft((current) => ({ ...current, ...partial }))} slots={slots.length ? slots : [gig].filter(Boolean)} bookerName={booker.name} showErrors={false} />}
-            {editing === 'assets' && <GuestAssetsStep draft={draft} patch={(partial) => setDraft((current) => ({ ...current, ...partial }))} bookerName={booker.name} />}
+            {editing === 'assets' && (
+              <GuestAssetsStep
+                draft={draft}
+                patch={(partial) => setDraft((current) => ({ ...current, ...partial }))}
+                bookerName={booker.name}
+                showPlayer
+                gigId={gigId}
+                manageToken={token}
+                ignorePaths={deferredAudio}
+                releaseOnRemove={false}
+                onUploaded={(asset) => {
+                  if (isAudioAsset(asset) && !sessionUploads.current.includes(asset.path)) sessionUploads.current.push(asset.path);
+                }}
+                onRemoved={(asset) => {
+                  const saved = (application.assets || []).some((item) => item.path === asset.path);
+                  if (saved) {
+                    setDeferredAudio((list) => (list.includes(asset.path) ? list : [...list, asset.path]));
+                    return;
+                  }
+                  sessionUploads.current = sessionUploads.current.filter((path) => path !== asset.path);
+                  releaseGuestUpload({ applicationId: draft.applicationId, path: asset.path, gigId, manageToken: token }).catch(() => {});
+                }}
+              />
+            )}
             {editing === 'tech' && <GuestTechStep draft={draft} patch={(partial) => setDraft((current) => ({ ...current, ...partial }))} venue={venue} />}
             {editing === 'note' && (
               <label className="ga-field">
@@ -410,7 +474,7 @@ export function ManageGuestApplication() {
             )}
             <div className="ga-actions">
               <button type="button" className="ga-dark" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
-              <button type="button" className="ga-ghost" onClick={() => { setDraft(fromApplication(application)); setEditing(''); }}>Cancel</button>
+              <button type="button" className="ga-ghost" onClick={cancelEdit}>Cancel</button>
             </div>
           </div>
         ) : !accepted && application.status !== 'declined' && (
@@ -421,7 +485,15 @@ export function ManageGuestApplication() {
             patch={() => {}}
             summary
             readOnly={!editable}
-            onJump={(step) => editable && setEditing(step === 'review' ? 'note' : step)}
+            onJump={(step) => {
+              if (!editable) return;
+              const next = step === 'review' ? 'note' : step;
+              if (next === 'assets') {
+                setDeferredAudio([]);
+                sessionUploads.current = [];
+              }
+              setEditing(next);
+            }}
           />
         )}
         {!editing && !accepted && application.status !== 'declined' && (

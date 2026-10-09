@@ -18,6 +18,8 @@ import { formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat'
 import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 import { reportApplicationActionError } from '@features/venue/gigs/utils/applicationActionError';
 import { ApplicantProfileModal, useApplicantQuery } from '@features/venue/gigs/components/ApplicantProfileModal';
+import { GuestAudioRow } from '@features/gig-discovery/guest/GuestAudioRow';
+import { isAudioAsset } from '@features/gig-discovery/guest/guestAssetFiles';
 import '@styles/host/night-apply.styles.css';
 
 const ACTIVE = new Set(['accepted', 'confirmed', 'paid']);
@@ -76,6 +78,7 @@ function mergeGuest(app, guests) {
     bringOwn: app.bringOwn?.length ? app.bringOwn : (priv.bringOwn || []),
     contactName: app.contactName || priv.contactName || '',
     photoUrl: app.photoUrl || priv.photoUrl || priv.photo?.url || app.photo?.url || app.profilePicture || '',
+    assets: app.assets?.length ? app.assets : (priv.assets || []),
     actName: actName({ ...priv, ...app }),
   };
 }
@@ -569,6 +572,13 @@ function ApplicantCard({
         <p>{app.kind || 'Act'} · {members.length || 1} {members.length === 1 ? 'member' : 'members'} · applied {when(app.createdAt || app.appliedAt) || 'recently'}</p>
         {!oneSet && <div className="na-tags"><span className={conflict ? 'is-warn' : (app.preferredSlotGigIds || []).length ? 'is-pref' : ''}>{conflict || prefersLabel}</span></div>}
         {music && <p className="na-music"><i />{music.provider}{preview?.title ? ` · ${preview.title}` : ''}</p>}
+        {(app.assets || []).some(isAudioAsset) && (
+          <ul className="ga-audio-list">
+            {(app.assets || []).filter(isAudioAsset).map((asset) => (
+              <GuestAudioRow key={asset.path || asset.name} asset={asset} showPlayer />
+            ))}
+          </ul>
+        )}
         <p className={`na-tech ${tech.tone}`}>{tech.text}</p>
         <blockquote>{app.note ? `“${app.note}”` : 'No note'}</blockquote>
         <div className="na-actions">

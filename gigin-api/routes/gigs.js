@@ -24,6 +24,7 @@ import { keepReminderHtml } from "../lib/keepProfile.js";
 import { placeLoggedInApplication, acceptApplication, assignApplication, declineApplication, undoApplication, closeApplications, undoClose, reopenApplications, saveSoundTech, readNightApplications, publishNightApplicants, withdrawGuestApplication, cancelNight, undoCancelNight } from "../lib/nightApplicationOps.js";
 import { assertVenueCanOperate, assertVenueCanPublishNights } from "../lib/venueApproval.js";
 import { readGigsByIds, readNearbyGigs } from "../lib/gigReads.js";
+import { withAudioReadUrls } from "../lib/guestAssets.js";
 
 function visibleApplicants(list, gigId, viewerId, showAll) {
   if (showAll) return list || [];
@@ -534,9 +535,11 @@ router.post("/privateBundle", requireAuth, asyncHandler(async (req, res) => {
     const details = await loadPrivateDetails(gigId);
     const privates = await loadGuestPrivates(gigId);
     const guests = {};
-    privates.forEach((data, id) => {
-      guests[id] = venueGuestView(data);
-    });
+    for (const [id, data] of privates.entries()) {
+      const view = venueGuestView(data);
+      view.assets = await withAudioReadUrls(view.assets, req);
+      guests[id] = view;
+    }
     const rootId = gig.applicationsRootGigId || gigId;
     const stored = await loadPrivateApplications(rootId);
     gigs[gigId] = {

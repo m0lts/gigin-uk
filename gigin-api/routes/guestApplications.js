@@ -30,6 +30,17 @@ import { dismissKeepOffer, keepProfileForGuest, noteProfileApplication } from ".
 import { assertVenueCanOperate } from "../lib/venueApproval.js";
 import { ownerName } from "../lib/ownerName.js";
 import {
+  acceptSubmittedAssets,
+  AUDIO_CAP,
+  countAudioObjects,
+  deleteStoredFile,
+  pathBelongs,
+  readLocalTicket,
+  safeObjectName,
+  uploadRequestProblem,
+  withAudioReadUrls,
+} from "../lib/guestAssets.js";
+import {
   checkReturningGuest,
   claimReturnToken,
   guestCreateDecision,
@@ -57,10 +68,6 @@ if (!process.env.FIRESTORE_EMULATOR_HOST) {
 const manageLinkIpLimit = createWindowLimiter({ max: 5 });
 const manageLinkEmailLimit = createWindowLimiter({ max: 3 });
 
-const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
-const ASSET_TYPES = new Set([...IMAGE_TYPES, "application/pdf"]);
-const IMAGE_LIMIT = 10 * 1024 * 1024;
-const ASSET_LIMIT = 20 * 1024 * 1024;
 
 function hashToken(token) {
   return crypto.createHash("sha256").update(String(token)).digest("hex");
@@ -366,20 +373,78 @@ function emailShell({ title, inner, buttonLabel, buttonUrl, footer }) {
     </table>`;
 }
 
+function validApplicationId(applicationId) {
+  return Boolean(applicationId) && /^[a-zA-Z0-9-]{16,80}$/.test(applicationId);
+}
+
+function applicationEditable(applicant) {
+  const status = String(applicant?.status || "");
+  return status === "pending" || status === "sent";
+}
+
+async function applicationIsStored(applicationId) {
+  try {
+    const snap = await db.collectionGroup("guestApplicants").where("applicantId", "==", applicationId).limit(1).get();
+    return !snap.empty;
+  } catch {
+    return true;
+  }
+}
+
+async function ownedApplication(gigId, manageToken, applicationId) {
+  if (!gigId || !manageToken) return null;
+  const found = await findByToken(gigId, manageToken);
+  if (!found || found.applicant?.id !== applicationId) return null;
+  return found;
+}
+
+async function ignoreAudioPaths(body, applicationId) {
+  const requested = Array.isArray(body?.ignorePaths) ? body.ignorePaths.map(String) : [];
+  if (!requested.length) return [];
+  const found = await ownedApplication(body?.gigId, body?.manageToken, applicationId);
+  if (!found || !applicationEditable(found.applicant)) return [];
+  const known = new Set((found.applicant.assets || []).map((asset) => asset?.path).filter(Boolean));
+  return requested.filter((path) => known.has(path) && pathBelongs(path, [applicationId]) && isAudioPath(path));
+}
+
+function isAudioPath(path) {
+  return /\.(mp3|m4a|wav)$/i.test(String(path || ""));
+}
+
+async function presentApplication(applicant, gig, night, req) {
+  const view = publicApplication(applicant, gig, night);
+  view.assets = await withAudioReadUrls(view.assets, req);
+  return view;
+}
+
+async function acceptPhoto(photo, applicationIds) {
+  if (!photo) return { photo: null };
+  if (!photo.path || !pathBelongs(photo.path, applicationIds)) return { error: "Photo path is not valid." };
+  return {
+    photo: {
+      path: photo.path,
+      name: String(photo.name || "photo").slice(0, 180),
+      size: Number(photo.size) || 0,
+      contentType: String(photo.contentType || "").split(";")[0].trim().toLowerCase(),
+      url: await publicDownloadUrl(photo.path),
+    },
+  };
+}
+
 router.post("/upload-url", asyncHandler(async (req, res) => {
   const { applicationId, kind, contentType, name, size } = req.body || {};
-  if (!applicationId || !/^[a-zA-Z0-9-]{16,80}$/.test(applicationId)) {
+  if (!validApplicationId(applicationId)) {
     return res.status(400).json({ error: "A valid application id is required." });
   }
-  const type = String(contentType || "").toLowerCase();
-  const bytes = Number(size) || 0;
-  if (kind === "photo") {
-    if (!IMAGE_TYPES.has(type)) return res.status(400).json({ error: "Use a JPG or PNG." });
-    if (bytes > IMAGE_LIMIT) return res.status(400).json({ error: "Photos must be 10 MB or smaller.", captchaRequired: false });
-  } else if (!ASSET_TYPES.has(type) || bytes > ASSET_LIMIT) {
-    return res.status(400).json({ error: "Files must be 20 MB or smaller." });
+  const type = String(contentType || "").split(";")[0].trim().toLowerCase();
+  const problem = uploadRequestProblem({ kind, contentType: type, name, size });
+  if (problem?.error) return res.status(400).json({ error: problem.error });
+  if (kind !== "photo" && isAudioPath(name)) {
+    const ignore = await ignoreAudioPaths(req.body, applicationId);
+    const used = await countAudioObjects(applicationId, ignore);
+    if (used >= AUDIO_CAP) return res.status(400).json({ error: "You can add up to 3 audio files." });
   }
-  const safe = String(name || "file").replace(/[^\w.\-]+/g, "-").slice(0, 80);
+  const safe = safeObjectName(name);
   const path = `guest-applications/${applicationId}/${kind === "photo" ? "photo" : crypto.randomUUID()}-${safe}`;
   if (directStorageUpload) {
     return res.json({ uploadUrl: directUploadUrl(req, path), path, method: "POST" });
@@ -402,21 +467,60 @@ router.post("/upload-url", asyncHandler(async (req, res) => {
 router.post("/direct-upload", express.raw({ type: "*/*", limit: "20mb" }), asyncHandler(async (req, res) => {
   if (!directStorageUpload) return res.status(404).json({ error: "Not found." });
   const path = String(req.query.path || "");
-  if (!/^guest-applications\/[a-zA-Z0-9-]{16,80}\/[^/]+$/.test(path) || path.includes("..")) {
+  const applicationId = path.split("/")[1];
+  if (!validApplicationId(applicationId) || !pathBelongs(path, [applicationId])) {
     return res.status(400).json({ error: "Upload path is not valid." });
   }
   const fileName = path.split("/").pop();
   const isPhoto = fileName.startsWith("photo");
   const type = String(req.get("content-type") || "").split(";")[0].toLowerCase();
-  const allowed = isPhoto ? IMAGE_TYPES : ASSET_TYPES;
-  const limit = isPhoto ? IMAGE_LIMIT : ASSET_LIMIT;
-  if (!allowed.has(type)) return res.status(400).json({ error: isPhoto ? "Use a JPG or PNG." : "Files must be 20 MB or smaller." });
   const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || []);
-  if (!body.length || body.length > limit) {
-    return res.status(400).json({ error: isPhoto ? "Photos must be 10 MB or smaller." : "Files must be 20 MB or smaller." });
+  const problem = uploadRequestProblem({
+    kind: isPhoto ? "photo" : "asset",
+    contentType: type,
+    name: isPhoto ? (fileName || "photo.jpg") : fileName,
+    size: body.length,
+  });
+  if (problem?.error) return res.status(400).json({ error: problem.error });
+  if (!isPhoto && isAudioPath(fileName)) {
+    const used = await countAudioObjects(applicationId);
+    if (used >= AUDIO_CAP) return res.status(400).json({ error: "You can add up to 3 audio files." });
   }
   await admin.storage().bucket().file(path).save(body, { contentType: type });
   return res.json({ ok: true });
+}));
+
+router.post("/delete-upload", asyncHandler(async (req, res) => {
+  const { applicationId, path, gigId, manageToken } = req.body || {};
+  if (!validApplicationId(applicationId) || !pathBelongs(path, [applicationId])) {
+    return res.status(400).json({ error: "Upload path is not valid." });
+  }
+  const stored = await applicationIsStored(applicationId);
+  const found = await ownedApplication(gigId, manageToken, applicationId);
+  if (stored && !found) return res.status(403).json({ error: "This file can't be removed." });
+  if (found) {
+    if (!applicationEditable(found.applicant)) {
+      return res.status(400).json({ error: "This application can no longer be edited." });
+    }
+    const saved = new Set((found.applicant.assets || []).map((asset) => asset?.path).filter(Boolean));
+    if (found.applicant.photo?.path) saved.add(found.applicant.photo.path);
+    if (saved.has(path)) return res.status(400).json({ error: "Save your changes to remove this file." });
+  }
+  await deleteStoredFile(path);
+  return res.json({ ok: true });
+}));
+
+router.get("/asset-read/:ticket", asyncHandler(async (req, res) => {
+  if (!process.env.STORAGE_EMULATOR_HOST) return res.status(404).json({ error: "Not found." });
+  const payload = readLocalTicket(req.params.ticket);
+  if (!payload?.path) return res.status(403).json({ error: "This link is not valid." });
+  const file = admin.storage().bucket().file(payload.path);
+  const [exists] = await file.exists();
+  if (!exists) return res.status(404).json({ error: "File not found." });
+  const [meta] = await file.getMetadata();
+  if (payload.disposition) res.setHeader("Content-Disposition", payload.disposition);
+  res.setHeader("Content-Type", meta.contentType || "application/octet-stream");
+  file.createReadStream().pipe(res);
 }));
 
 router.post("/lookup", asyncHandler(async (req, res) => {
@@ -703,16 +807,18 @@ router.post("/", asyncHandler(async (req, res) => {
     return res.status(409).json({ error: "This application already exists." });
   }
 
-  let photo = body.photo || null;
-  if (photo?.path) {
-    if (!String(photo.path).startsWith(`guest-applications/${submittedApplicationId}/`) && !String(photo.path).startsWith(`guest-applications/${body.applicationId}/`)) {
-      return res.status(400).json({ error: "Photo path is not valid." });
-    }
-    photo = { ...photo, url: await publicDownloadUrl(photo.path) };
-  }
+  const applicationIds = [submittedApplicationId, body.applicationId];
+  const acceptedPhoto = await acceptPhoto(body.photo || null, applicationIds);
+  if (acceptedPhoto.error) return res.status(400).json({ error: acceptedPhoto.error });
+  const photo = acceptedPhoto.photo;
+  const acceptedAssets = await acceptSubmittedAssets(body.assets, applicationIds);
+  if (acceptedAssets.error) return res.status(400).json({ error: acceptedAssets.error });
   const assets = [];
-  for (const asset of Array.isArray(body.assets) ? body.assets.slice(0, 5) : []) {
-    if (!asset?.path || (!String(asset.path).startsWith(`guest-applications/${submittedApplicationId}/`) && !String(asset.path).startsWith(`guest-applications/${body.applicationId}/`))) continue;
+  for (const asset of acceptedAssets.assets) {
+    if (String(asset.contentType || "").startsWith("audio/")) {
+      assets.push(asset);
+      continue;
+    }
     assets.push({ ...asset, url: await publicDownloadUrl(asset.path) });
   }
 
@@ -859,7 +965,7 @@ router.get("/:token", asyncHandler(async (req, res) => {
   const when = gigDate(found.gig.data);
   const expired = when ? Date.now() > when.getTime() + 7 * 24 * 60 * 60 * 1000 : false;
   if (expired) return res.status(410).json({ error: "This link has expired." });
-  return res.json(publicApplication(found.applicant, found.gig.data, found.night));
+  return res.json(await presentApplication(found.applicant, found.gig.data, found.night, req));
 }));
 
 router.patch("/:token", asyncHandler(async (req, res) => {
@@ -871,6 +977,33 @@ router.patch("/:token", asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "This application can no longer be edited." });
   }
   const body = req.body || {};
+  let photo = current.photo;
+  let photoUrl = current.photoUrl;
+  let assets = current.assets;
+  if (Object.prototype.hasOwnProperty.call(body, "photo") || Array.isArray(body.assets)) {
+    const applicationIds = [current.id];
+    if (Object.prototype.hasOwnProperty.call(body, "photo")) {
+      const acceptedPhoto = await acceptPhoto(body.photo || null, applicationIds);
+      if (acceptedPhoto.error) return res.status(400).json({ error: acceptedPhoto.error });
+      photo = acceptedPhoto.photo;
+      photoUrl = photo?.url || null;
+    }
+    if (Array.isArray(body.assets)) {
+      const acceptedAssets = await acceptSubmittedAssets(body.assets, applicationIds);
+      if (acceptedAssets.error) return res.status(400).json({ error: acceptedAssets.error });
+      const previous = new Set((acceptedAssets.assets || []).map((asset) => asset.path));
+      for (const asset of current.assets || []) {
+        if (asset?.path && !previous.has(asset.path) && pathBelongs(asset.path, applicationIds)) {
+          await deleteStoredFile(asset.path);
+        }
+      }
+      assets = [];
+      for (const asset of acceptedAssets.assets) {
+        if (String(asset.contentType || "").startsWith("audio/")) assets.push(asset);
+        else assets.push({ ...asset, url: await publicDownloadUrl(asset.path) });
+      }
+    }
+  }
   const contacts = body.contacts ? {
     email: emailNorm(body.contacts.email) || null,
     phone: String(body.contacts.phone || "").trim() || null,
@@ -908,9 +1041,9 @@ router.patch("/:token", asyncHandler(async (req, res) => {
     manageTokenHash: current.manageTokenHash,
     manageToken: current.manageToken,
     crmEntryId,
-    photo: current.photo,
-    photoUrl: current.photoUrl,
-    assets: current.assets,
+    photo,
+    photoUrl,
+    assets,
     appliedAt: current.appliedAt,
     timestamp: current.timestamp,
     gigName: current.gigName,
@@ -918,7 +1051,7 @@ router.patch("/:token", asyncHandler(async (req, res) => {
     dateLabel: current.dateLabel,
     gigId: current.gigId,
     venueId: current.venueId,
-  }, current.photoUrl);
+  }, photoUrl);
   try {
     await writeGuestApplication({
       gigId: current.gigId || gigId,
@@ -931,7 +1064,7 @@ router.patch("/:token", asyncHandler(async (req, res) => {
   }
   const fresh = await loadNightSlots(current.gigId || gigId);
   const night = readNight(fresh.slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
-  return res.json(publicApplication(next, found.gig.data, night));
+  return res.json(await presentApplication(next, found.gig.data, night, req));
 }));
 
 router.post("/:token/keep-profile", asyncHandler(async (req, res) => {
@@ -966,7 +1099,7 @@ router.post("/:token/withdraw", asyncHandler(async (req, res) => {
   const found = await findByToken(gigId, req.params.token);
   if (!found) return res.status(404).json({ error: "This link is not valid." });
   const current = found.applicant;
-  if (current.status === "withdrawn") return res.json(publicApplication(current, found.gig.data, found.night));
+  if (current.status === "withdrawn") return res.json(await presentApplication(current, found.gig.data, found.night, req));
   const wasAccepted = current.status === "confirmed" || current.status === "accepted";
   const next = await withdrawGuestApplication({ gigId, applicant: current });
   if (current.email && !wasAccepted) {
@@ -991,7 +1124,7 @@ router.post("/:token/withdraw", asyncHandler(async (req, res) => {
   }
   const fresh = await loadNightSlots(gigId);
   const night = readNight(fresh.slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
-  return res.json(publicApplication(next, found.gig.data, night));
+  return res.json(await presentApplication(next, found.gig.data, night, req));
 }));
 
 router.post("/account-check", asyncHandler(async (req, res) => {

@@ -58,28 +58,79 @@ export function decideGuestApplication({ applicationId, status }) {
   return httpClient.post('/guest-applications/decision', { body: { applicationId, status } });
 }
 
-export async function uploadGuestFile({ applicationId, file, kind }) {
+function putGuestFile(url, method, headers, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method || 'PUT', url);
+    Object.entries(headers).forEach(([key, value]) => {
+      if (value != null) xhr.setRequestHeader(key, value);
+    });
+    xhr.timeout = 3 * 60 * 1000;
+    xhr.upload.onprogress = (event) => {
+      if (!onProgress || !event.lengthComputable || !event.total) return;
+      onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(100);
+        resolve();
+        return;
+      }
+      let message = 'Upload failed';
+      try {
+        const body = JSON.parse(xhr.responseText || '');
+        if (body?.error) message = String(body.error);
+      } catch { /* a non-JSON failure is treated as a connection problem */ }
+      const error = new Error(message);
+      error.code = 'upload';
+      reject(error);
+    };
+    xhr.onerror = () => {
+      const error = new Error('Upload failed');
+      error.code = 'upload';
+      reject(error);
+    };
+    xhr.ontimeout = () => {
+      const error = new Error('Upload failed');
+      error.code = 'upload';
+      reject(error);
+    };
+    xhr.send(file);
+  });
+}
+
+export async function uploadGuestFile({ applicationId, file, kind, contentType, onProgress, gigId, manageToken, ignorePaths }) {
+  const type = contentType || file.type || 'application/octet-stream';
   const signed = await httpClient.post('/guest-applications/upload-url', {
     auth,
     body: {
       applicationId,
       kind,
-      contentType: file.type || 'application/octet-stream',
+      contentType: type,
       name: file.name,
       size: file.size,
+      ...(gigId ? { gigId } : {}),
+      ...(manageToken ? { manageToken } : {}),
+      ...(ignorePaths?.length ? { ignorePaths } : {}),
     },
   });
-  const response = await fetch(signed.uploadUrl, {
-    method: signed.method || 'PUT',
-    headers: { 'Content-Type': file.type || 'application/octet-stream' },
-    body: file,
+  await putGuestFile(signed.uploadUrl, signed.method || 'PUT', {
+    'Content-Type': type,
+    ...(signed.headers || {}),
+  }, file, onProgress);
+  return { path: signed.path, name: file.name, size: file.size, contentType: type };
+}
+
+export function releaseGuestUpload({ applicationId, path, gigId, manageToken }) {
+  return httpClient.post('/guest-applications/delete-upload', {
+    auth,
+    body: {
+      applicationId,
+      path,
+      ...(gigId ? { gigId } : {}),
+      ...(manageToken ? { manageToken } : {}),
+    },
   });
-  if (!response.ok) {
-    const error = new Error('Upload failed');
-    error.code = 'upload';
-    throw error;
-  }
-  return { path: signed.path, name: file.name, size: file.size, contentType: file.type };
 }
 
 export async function compressGuestPhoto(file) {

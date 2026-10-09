@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
-import { compressGuestPhoto, uploadGuestFile } from '@services/client-side/guestApplications';
+import { compressGuestPhoto, releaseGuestUpload, uploadGuestFile } from '@services/client-side/guestApplications';
+import { declaredContentType, guestFileProblem, isAudioAsset } from './guestAssetFiles';
+import { GuestAudioRow } from './GuestAudioRow';
 
 const LINKS = [
   ['spotify', 'Spotify', 'var(--gn-spotify-green, #1DB954)'],
@@ -8,15 +10,6 @@ const LINKS = [
   ['website', 'Website', '#111317'],
 ];
 const PHOTO_LIMIT = 10 * 1024 * 1024;
-const ASSET_LIMIT = 20 * 1024 * 1024;
-const ASSET_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-  'application/pdf',
-]);
 
 function sizeLabel(bytes) {
   if (!bytes) return '';
@@ -24,11 +17,33 @@ function sizeLabel(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function GuestAssetsStep({ draft, patch, bookerName = 'the venue' }) {
+function uploadFailureMessage(file, error) {
+  const message = String(error?.message || '');
+  const generic = !message || message === 'Failed to fetch' || message === 'Upload failed' || message === 'Request failed' || error?.name === 'AbortError';
+  if (generic) {
+    return `${file.name} didn't upload. Check your connection and try again. The rest of your application is still here.`;
+  }
+  return message;
+}
+
+export function GuestAssetsStep({
+  draft,
+  patch,
+  bookerName = 'the venue',
+  showPlayer = false,
+  gigId = '',
+  manageToken = '',
+  ignorePaths = [],
+  releaseOnRemove = true,
+  onRemoved,
+  onUploaded,
+}) {
   const photoRef = useRef(null);
   const filesRef = useRef(null);
   const [uploadError, setUploadError] = useState(null);
   const [fileError, setFileError] = useState(null);
+  const [pending, setPending] = useState(null);
+  const [busy, setBusy] = useState(false);
 
   const takePhoto = async (file) => {
     if (!file) return;
@@ -50,28 +65,67 @@ export function GuestAssetsStep({ draft, patch, bookerName = 'the venue' }) {
   };
 
   const addFiles = async (list) => {
-    const room = 5 - draft.assets.length;
-    const files = Array.from(list || []).slice(0, room);
-    if (!files.length) return;
+    if (busy) return;
+    const chosen = Array.from(list || []);
+    if (!chosen.length) return;
+    setBusy(true);
+    setFileError(null);
+    let assets = draft.assets;
     let nextError = null;
-    for (const file of files) {
-      const type = String(file.type || '').toLowerCase();
-      if (!ASSET_TYPES.has(type)) {
-        nextError = `${file.name} isn't supported. Use a PDF or image (up to 20 MB), or add a Spotify or YouTube link above.`;
-        continue;
+    try {
+      for (const file of chosen) {
+        if (assets.length >= 5) {
+          nextError = `You can add up to 5 files. ${file.name} wasn't added. Nothing else you've added has been lost.`;
+          break;
+        }
+        const audioCount = assets.filter(isAudioAsset).length;
+        const problem = guestFileProblem(file, { audioCount, assetCount: assets.length });
+        if (problem) {
+          nextError = problem;
+          continue;
+        }
+        const contentType = declaredContentType(file);
+        const audio = contentType.startsWith('audio/');
+        setPending({ name: file.name, progress: 0, failed: false, audio });
+        try {
+          const uploaded = await uploadGuestFile({
+            applicationId: draft.applicationId,
+            file,
+            kind: 'asset',
+            contentType,
+            gigId,
+            manageToken,
+            ignorePaths,
+            onProgress: (progress) => setPending({ name: file.name, progress, failed: false, audio }),
+          });
+          const previewUrl = contentType.startsWith('audio/') ? URL.createObjectURL(file) : '';
+          const next = { ...uploaded, ...(previewUrl ? { previewUrl } : {}) };
+          assets = [...assets, next];
+          patch({ assets });
+          onUploaded?.(next);
+          setPending(null);
+        } catch (error) {
+          setPending({ name: file.name, progress: 0, failed: true, audio });
+          nextError = uploadFailureMessage(file, error);
+        }
       }
-      if (file.size > ASSET_LIMIT) {
-        nextError = `${file.name} is ${sizeLabel(file.size)}, and the limit is 20 MB. Nothing else you've added has been lost.`;
-        continue;
-      }
-      try {
-        const uploaded = await uploadGuestFile({ applicationId: draft.applicationId, file, kind: 'asset' });
-        patch({ assets: [...draft.assets, uploaded] });
-      } catch {
-        nextError = `${file.name} didn't upload. The rest of your application is still here.`;
-      }
+    } finally {
+      setFileError(nextError);
+      setBusy(false);
     }
-    setFileError(nextError);
+  };
+
+  const removeAsset = async (asset) => {
+    if (busy) return;
+    if (asset.previewUrl) URL.revokeObjectURL(asset.previewUrl);
+    patch({ assets: draft.assets.filter((item) => item.path !== asset.path) });
+    onRemoved?.(asset);
+    if (!releaseOnRemove) return;
+    try {
+      await releaseGuestUpload({ applicationId: draft.applicationId, path: asset.path, gigId, manageToken });
+    } catch {
+      setFileError(`${asset.name} was removed from this application, but the file couldn't be deleted. If you can't add another audio file, try again.`);
+    }
   };
 
   return (
@@ -114,24 +168,37 @@ export function GuestAssetsStep({ draft, patch, bookerName = 'the venue' }) {
         ))}
       </div>
       <div className="ga-label">Other files</div>
-      <p className="ga-fine">PDF or image, up to 20 MB</p>
-      <ul className="ga-assets">
+      <p className="ga-fine">Photos and PDFs up to 20 MB, audio (MP3, M4A, WAV) up to 15 MB, or add a Spotify or YouTube link above.</p>
+      <ul className="ga-assets" aria-live="polite">
         {draft.assets.map((asset) => (
-          <li key={asset.path}>
-            <span>{asset.name}</span>
-            <button type="button" aria-label={`Remove ${asset.name}`} onClick={() => patch({ assets: draft.assets.filter((item) => item.path !== asset.path) })}>×</button>
-          </li>
+          isAudioAsset(asset) ? (
+            <GuestAudioRow key={asset.path} asset={asset} showPlayer={showPlayer} onRemove={busy ? undefined : () => removeAsset(asset)} />
+          ) : (
+            <li key={asset.path}>
+              <span>{asset.name}</span>
+              <button type="button" aria-label={`Remove ${asset.name}`} disabled={busy} onClick={() => removeAsset(asset)}>×</button>
+            </li>
+          )
         ))}
+        {pending?.audio ? <GuestAudioRow key="uploading" pending={pending} /> : null}
+        {pending && !pending.audio ? (
+          <li key="uploading" className={`ga-file-pending${pending.failed ? ' is-failed' : ''}`}>
+            <span>{pending.name}</span>
+            <em>{pending.failed ? "Didn't upload" : `Uploading… ${pending.progress}%`}</em>
+          </li>
+        ) : null}
       </ul>
       {draft.assets.length < 5 && (
-        <button type="button" className="ga-dashed" onClick={() => filesRef.current?.click()}>+ Add files</button>
+        <button type="button" className="ga-dashed" disabled={busy} onClick={() => filesRef.current?.click()}>
+          {busy ? 'Uploading…' : '+ Add files'}
+        </button>
       )}
       <input
         ref={filesRef}
         hidden
         type="file"
         multiple
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.pdf,audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav,.mp3,.m4a,.wav"
         onChange={(event) => {
           const chosen = Array.from(event.target.files || []);
           event.target.value = '';
@@ -142,7 +209,7 @@ export function GuestAssetsStep({ draft, patch, bookerName = 'the venue' }) {
         <div className="ga-soft">
           <p>{fileError}</p>
           <div className="ga-soft__actions">
-            <button type="button" className="ga-dark" onClick={() => { setFileError(null); filesRef.current?.click(); }}>Choose another file</button>
+            <button type="button" className="ga-dark" onClick={() => { setFileError(null); setPending(null); filesRef.current?.click(); }}>Choose another file</button>
           </div>
         </div>
       )}
