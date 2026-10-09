@@ -2338,6 +2338,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
                 slots={allSlots.length ? allSlots : [gigData]}
                 venue={venueProfile}
                 inviteId={inviteId}
+                returnToken={searchParams.get('return') || ''}
+                anotherAct={searchParams.get('anotherAct') === '1'}
                 coordinates={mapCoordinates}
                 onCreateAccount={(email) => {
                     setInitialEmail?.(email || '');

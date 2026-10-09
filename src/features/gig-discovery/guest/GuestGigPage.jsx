@@ -27,11 +27,13 @@ export function GuestGigPage({
   coordinates,
   onCreateAccount,
   onLogin,
+  returnToken = '',
+  anotherAct = false,
 }) {
   const { isMdUp } = useBreakpoint();
   const navigate = useNavigate();
   const mapRef = useRef(null);
-  const [applying, setApplying] = useState(false);
+  const [applying, setApplying] = useState(Boolean(returnToken || anotherAct));
   const [invite, setInvite] = useState(null);
   const [notYou, setNotYou] = useState(false);
   const booker = bookerLine(venue, gig);
@@ -120,6 +122,14 @@ export function GuestGigPage({
         onClose={() => setApplying(false)}
         onCreateAccount={onCreateAccount}
         onLogin={onLogin}
+        returnToken={returnToken}
+        anotherAct={anotherAct}
+        onReturnConsumed={() => {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('return');
+          url.searchParams.delete('anotherAct');
+          window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+        }}
       />
     );
   }

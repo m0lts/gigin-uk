@@ -29,6 +29,14 @@ import {
 import { dismissKeepOffer, keepProfileForGuest, noteProfileApplication } from "../lib/keepProfile.js";
 import { assertVenueCanOperate } from "../lib/venueApproval.js";
 import { ownerName } from "../lib/ownerName.js";
+import {
+  checkReturningGuest,
+  claimReturnToken,
+  guestCreateDecision,
+  lookupGuest,
+  redeemReturnToken,
+  returnCheckHttp,
+} from "../lib/guestReturn.js";
 const router = express.Router();
 
 const guestLimiter = rateLimit({
@@ -41,7 +49,7 @@ const guestLimiter = rateLimit({
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
   router.use((req, res, next) => {
-    if (req.path === "/manage-links") return next();
+    if (req.path === "/manage-links" || req.path === "/return-check") return next();
     return guestLimiter(req, res, next);
   });
 }
@@ -412,24 +420,38 @@ router.post("/direct-upload", express.raw({ type: "*/*", limit: "20mb" }), async
 }));
 
 router.post("/lookup", asyncHandler(async (req, res) => {
-  const gigId = String(req.body?.gigId || "");
-  const email = emailNorm(req.body?.email);
-  const phone = phoneNorm(req.body?.phone);
-  if (!gigId || (!email && !phone)) return res.json({ exists: false });
-  const { night } = await loadNightDocs(gigId);
-  const match = night.applications.find((entry) => {
-    if (entry.status === "withdrawn") return false;
-    return (email && emailNorm(entry.email) === email) || (phone && phoneNorm(entry.phone) === phone);
+  const result = await lookupGuest({
+    gigId: req.body?.gigId,
+    email: req.body?.email,
+    phone: req.body?.phone,
   });
-  if (!match) return res.json({ exists: false });
-  return res.json({
-    exists: true,
-    setLabel: match.setLabel || "a set",
-    preferredSlotGigIds: match.preferredSlotGigIds || [],
-    assignedSlotGigId: match.assignedSlotGigId || null,
-    appliedAt: match.appliedAt || null,
-    dateLabel: match.dateLabel || "",
-  });
+  return res.json({ exists: result.exists === true });
+}));
+
+router.post("/return-check", asyncHandler(async (req, res) => {
+  try {
+    const result = await checkReturningGuest({
+      email: req.body?.email,
+      gigId: req.body?.gigId,
+      ip: req.ip || req.socket?.remoteAddress || "unknown",
+    });
+    const http = returnCheckHttp(result);
+    return res.status(http.status).json(http.body);
+  } catch {
+    console.error("return check failed");
+    return res.status(500).json({ error: "Something went wrong." });
+  }
+}));
+
+router.post("/return", asyncHandler(async (req, res) => {
+  try {
+    const draft = await redeemReturnToken({ token: req.body?.token, gigId: req.body?.gigId });
+    if (!draft) return res.status(410).json({ error: "This link has expired." });
+    return res.json({ draft });
+  } catch {
+    console.error("return redeem failed");
+    return res.status(410).json({ error: "This link has expired." });
+  }
 }));
 
 router.post("/magic-link", asyncHandler(async (req, res) => {
@@ -637,28 +659,28 @@ router.post("/", asyncHandler(async (req, res) => {
 
   const group = groupForClose;
   const submittedApplicationId = String(body.applicationId);
-  let updatingExisting = null;
-  if (!body.anotherAct) {
+  const decision = await guestCreateDecision(body);
+  if (decision.action === "reject") {
+    return res.status(decision.status).json({ error: decision.error });
+  }
+  const allowAnother = decision.action === "another";
+  if (!allowAnother) {
     const { night } = await loadNightDocs(body.gigId);
     const email = emailNorm(body.contacts?.email);
     const phone = phoneNorm(body.contacts?.phone);
-    updatingExisting = night.applications.find((entry) => {
+    const liveMatch = night.applications.find((entry) => {
       const status = String(entry.status || "").toLowerCase();
       if (status === "withdrawn" || status === "declined") return false;
       if (String(entry.id) === submittedApplicationId) return false;
       return (email && emailNorm(entry.email) === email) || (phone && phoneNorm(entry.phone) === phone);
-    }) || null;
-    if (updatingExisting) {
-      const status = String(updatingExisting.status || "").toLowerCase();
-      if (status === "accepted" || status === "confirmed" || status === "paid") {
-        return res.status(409).json({ error: "You've already applied for this gig." });
-      }
-      body.applicationId = updatingExisting.id;
+    });
+    if (liveMatch) {
+      return res.status(409).json({ error: "You've already applied for this gig." });
     }
   }
   const manageTokenHash = hashToken(body.manageToken);
   const already = group.flatMap((doc) => doc.data.applicants || []).find((entry) => entry?.id === body.applicationId);
-  if (already && !updatingExisting) {
+  if (already) {
     let storedHash = null;
     for (const doc of group) {
       const priv = await db.doc(`gigs/${doc.id}/guestApplicants/${already.id}`).get();
@@ -668,6 +690,14 @@ router.post("/", asyncHandler(async (req, res) => {
       }
     }
     if (storedHash === manageTokenHash) {
+      if (decision.claimToken) {
+        await claimReturnToken({
+          token: body.returnToken,
+          email: body.contacts?.email,
+          gigId: body.gigId,
+          applicationId: body.applicationId,
+        });
+      }
       return res.json({ ok: true, applicationId: body.applicationId, already: true });
     }
     return res.status(409).json({ error: "This application already exists." });
@@ -764,6 +794,14 @@ router.post("/", asyncHandler(async (req, res) => {
     if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
     throw error;
   }
+  if (decision.claimToken) {
+    await claimReturnToken({
+      token: body.returnToken,
+      email: contacts.email,
+      gigId: body.gigId,
+      applicationId: body.applicationId,
+    });
+  }
   if (applicant.artistProfileId) {
     await noteProfileApplication({
       profileId: applicant.artistProfileId,
@@ -781,7 +819,7 @@ router.post("/", asyncHandler(async (req, res) => {
   }
   const manageUrl = `${process.env.BASE_URL || "https://giginmusic.com"}/gig/${body.gigId}/application/${body.manageToken}`;
   const first = record.contactName.split(/\s+/)[0];
-  if (contacts.email && !updatingExisting) {
+  if (contacts.email) {
     const built = await emailForAct({
       kind: "received",
       app: { ...applicant, email: contacts.email, members: record.members, preferredSlotGigIds: pref.preferredSlotGigIds },
@@ -792,7 +830,7 @@ router.post("/", asyncHandler(async (req, res) => {
     });
     await sendMail({ to: contacts.email, ...built.message });
   }
-  if (!updatingExisting && gig.venueId) {
+  if (gig.venueId) {
     await notifyVenueOfNewApplication({
       venueId: gig.venueId,
       venue,

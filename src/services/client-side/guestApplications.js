@@ -14,6 +14,14 @@ export function lookupGuestApplication({ gigId, email, phone }) {
   return httpClient.post('/guest-applications/lookup', { auth, body: { gigId, email, phone } });
 }
 
+export function checkReturningGuest({ email, gigId }) {
+  return httpClient.post('/guest-applications/return-check', { auth, body: { email, gigId } });
+}
+
+export function redeemReturnToken({ token, gigId }) {
+  return httpClient.post('/guest-applications/return', { auth, body: { token, gigId } });
+}
+
 export function sendGuestMagicLink({ gigId, email, phone }) {
   return httpClient.post('/guest-applications/magic-link', { auth, body: { gigId, email, phone } });
 }

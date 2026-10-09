@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { FEATURES } from '../../../config/features';
-import { createGuestApplication, newGuestIds } from '@services/client-side/guestApplications';
+import { createGuestApplication, newGuestIds, redeemReturnToken } from '@services/client-side/guestApplications';
 import { forgetProfileSession, getProfileSession, updateOwnProfile } from '@services/client-side/keepProfile';
 import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
 import { GuestApplied } from './GuestApplied';
@@ -17,6 +17,15 @@ function sectionSnapshot(draft) {
     assets: JSON.stringify([draft.photo?.path || draft.photo?.url || '', draft.links || {}]),
     tech: JSON.stringify([draft.members, draft.needs, draft.bringOwn]),
   };
+}
+
+const returnRedeems = new Map();
+const anotherActHandoff = new Map();
+
+function redeemOnce(token, gigId) {
+  const key = `${gigId}:${token}`;
+  if (!returnRedeems.has(key)) returnRedeems.set(key, redeemReturnToken({ token, gigId }));
+  return returnRedeems.get(key);
 }
 
 const STEPS = [
@@ -47,11 +56,15 @@ function emptyDraft(gig, invite, ids) {
     bringOwn: [],
     note: '',
     ignoreDuplicate: false,
+    emailVerified: false,
+    verifiedEmail: '',
+    returnToken: '',
+    priorManageToken: '',
     inviteId: invite?.inviteId || '',
   };
 }
 
-export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateAccount, onLogin }) {
+export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateAccount, onLogin, returnToken = '', anotherAct = false, onReturnConsumed }) {
   const { isMdUp } = useBreakpoint();
   const booker = bookerLine(venue, gig);
   const saved = readDraft(gig.gigId, invite?.inviteId);
@@ -65,22 +78,29 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
   const [sent, setSent] = useState(false);
   const [returning, setReturning] = useState(null);
   const [profileNote, setProfileNote] = useState('');
+  const [whoBlocked, setWhoBlocked] = useState(false);
   const baselineRef = useRef(null);
+  const whoRef = useRef(null);
+  const consumedRef = useRef(onReturnConsumed);
+  consumedRef.current = onReturnConsumed;
   const index = Math.max(0, STEPS.findIndex(([key]) => key === step));
 
   useEffect(() => {
     if (invite?.prefill && !saved) {
       const invitedSlot = invite.prefill.slotGigIds?.[0];
       const stillOpen = invitedSlot && slots.some((slot) => (slot.gigId || slot.id) === invitedSlot && !slot.taken && slot.applicationsOpen !== false);
-      setDraft((current) => ({
-        ...current,
-        contactName: invite.prefill.contactName || current.contactName,
-        actName: invite.prefill.actName || current.actName,
-        email: invite.prefill.email || current.email,
-        preferredSlotGigIds: stillOpen ? [invitedSlot] : current.preferredSlotGigIds,
-        slotGigIds: stillOpen ? [invitedSlot] : current.slotGigIds,
-        noPreference: stillOpen ? false : current.noPreference,
-      }));
+      setDraft((current) => {
+        if (current.emailVerified) return current;
+        return {
+          ...current,
+          contactName: invite.prefill.contactName || current.contactName,
+          actName: invite.prefill.actName || current.actName,
+          email: invite.prefill.email || current.email,
+          preferredSlotGigIds: stillOpen ? [invitedSlot] : current.preferredSlotGigIds,
+          slotGigIds: stillOpen ? [invitedSlot] : current.slotGigIds,
+          noPreference: stillOpen ? false : current.noPreference,
+        };
+      });
     }
   }, [invite, saved, slots]);
 
@@ -89,7 +109,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
   }, [draft, step, gig.gigId, invite?.inviteId]);
 
   useEffect(() => {
-    if (!FEATURES.keepProfile) return undefined;
+    if (!FEATURES.keepProfile || returnToken || anotherAct) return undefined;
     let cancelled = false;
     getProfileSession().then((data) => {
       if (cancelled || !data?.profile || data.profile.status !== 'live') return;
@@ -124,7 +144,90 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
       setStep('review');
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [gig.gigId]);
+  }, [gig.gigId, returnToken, anotherAct]);
+
+  useEffect(() => {
+    if (!returnToken) return undefined;
+    let cancelled = false;
+    redeemOnce(returnToken, gig.gigId).then((result) => {
+      if (cancelled) return;
+      const filled = result?.draft;
+      if (!filled) {
+        setSubmitError('This link has expired.');
+      } else {
+        const ids = newGuestIds();
+        setDraft((current) => ({
+          ...current,
+          ...ids,
+          actName: filled.actName || '',
+          contactName: filled.contactName || '',
+          email: filled.email || '',
+          phone: filled.phone || '',
+          instagram: filled.instagram || '',
+          links: { spotify: '', youtube: '', instagram: '', website: '', ...(filled.links || {}) },
+          members: filled.members?.length ? filled.members : [{ name: '', instruments: [] }],
+          needs: filled.needs || [],
+          bringOwn: filled.bringOwn || [],
+          note: filled.note || '',
+          photo: null,
+          assets: [],
+          emailVerified: true,
+          verifiedEmail: filled.email || '',
+          returnToken,
+          priorManageToken: '',
+        }));
+        setStep('who');
+      }
+      consumedRef.current?.();
+    }).catch(() => {
+      if (!cancelled) setSubmitError('This link has expired.');
+      consumedRef.current?.();
+    });
+    return () => { cancelled = true; };
+  }, [returnToken, gig.gigId]);
+
+  useEffect(() => {
+    if (!anotherAct) return undefined;
+    const key = gig.gigId;
+    if (!anotherActHandoff.has(key)) {
+      let storedRaw = '';
+      try { storedRaw = sessionStorage.getItem(`gigin-another-act:${key}`) || ''; } catch { storedRaw = ''; }
+      try { sessionStorage.removeItem(`gigin-another-act:${key}`); } catch { /* ignore */ }
+      anotherActHandoff.set(key, storedRaw);
+    }
+    const raw = anotherActHandoff.get(key) || '';
+    if (raw) {
+      try {
+        const stored = JSON.parse(raw);
+        const filled = stored.prefill || {};
+        const ids = newGuestIds();
+        setDraft({
+          ...emptyDraft(gig, invite, ids),
+          actName: filled.actName || '',
+          contactName: filled.contactName || '',
+          email: filled.email || '',
+          phone: filled.phone || '',
+          instagram: filled.instagram || '',
+          links: { spotify: '', youtube: '', instagram: '', website: '', ...(filled.links || {}) },
+          members: filled.members?.length ? filled.members : [{ name: '', instruments: [] }],
+          needs: filled.needs || [],
+          bringOwn: filled.bringOwn || [],
+          note: filled.note || '',
+          photo: null,
+          assets: [],
+          emailVerified: true,
+          verifiedEmail: filled.email || '',
+          priorManageToken: stored.priorManageToken || '',
+          returnToken: '',
+        });
+        setStep('who');
+      } catch {
+        setSubmitError('This link has expired.');
+      }
+    }
+    consumedRef.current?.();
+    return undefined;
+  }, [anotherAct, gig.gigId]);
 
   const patch = (partial) => setDraft((current) => ({ ...current, ...partial }));
   const whoOk = draft.actName.trim() && draft.contactName.trim() && (draft.email.trim() || draft.phone.trim() || draft.instagram.trim()) && !draft.accountBlocked;
@@ -136,6 +239,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
     }
     setSubmitting(true);
     setSubmitError('');
+    const proof = draft.emailVerified && String(draft.email || '').trim().toLowerCase() === String(draft.verifiedEmail || '').trim().toLowerCase();
     try {
       await createGuestApplication({
         applicationId: draft.applicationId,
@@ -153,13 +257,20 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
           instagram: draft.instagram,
         },
         photo: draft.photo ? { path: draft.photo.path, name: draft.photo.name, size: draft.photo.size } : null,
-        assets: draft.assets.map((asset) => ({ path: asset.path, name: asset.name, size: asset.size })),
+        assets: draft.assets.map((asset) => ({
+          path: asset.path,
+          name: asset.name,
+          size: asset.size,
+          contentType: asset.contentType,
+        })),
         links: draft.links,
         members: draft.members,
         needs: draft.needs,
         bringOwn: draft.bringOwn,
         note: draft.note,
-        anotherAct: draft.ignoreDuplicate === true,
+        returnToken: proof && draft.returnToken ? draft.returnToken : undefined,
+        anotherAct: Boolean(proof && draft.priorManageToken),
+        priorManageToken: proof && draft.priorManageToken ? draft.priorManageToken : undefined,
         artistProfileId: draft.artistProfileId || null,
       });
       if (draft.updateProfile && draft.artistProfileId) {
@@ -198,10 +309,14 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
     return () => window.removeEventListener('online', retry);
   }, [offline, draft]);
 
-  const goNext = () => {
-    if (step === 'who' && !whoOk) {
-      setShowErrors(true);
-      return;
+  const goNext = async () => {
+    if (step === 'who') {
+      if (!whoOk || whoBlocked) {
+        setShowErrors(true);
+        return;
+      }
+      const allowed = await whoRef.current?.checkBeforeLeave?.();
+      if (allowed === false) return;
     }
     if (editing) {
       setEditing(false);
@@ -256,6 +371,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
       <div className="ga-flow__body">
         {step === 'who' && (
           <GuestWhoStep
+            ref={whoRef}
             draft={draft}
             patch={patch}
             slots={slots}
@@ -263,10 +379,11 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
             venueName={venue?.name}
             onLogin={onLogin}
             showErrors={showErrors}
+            onBlocked={setWhoBlocked}
             inviteNote={invite?.prefill ? `Filled in from ${booker.name}'s invite. Change anything that's out of date.` : ''}
           />
         )}
-        {step === 'assets' && <GuestAssetsStep draft={draft} patch={patch} bookerName={booker.name} />}
+        {step === 'assets' && <GuestAssetsStep draft={draft} patch={patch} bookerName={booker.name} gigId={gig.gigId} />}
         {step === 'tech' && <GuestTechStep draft={draft} patch={patch} venue={venue} />}
         {returning && step === 'review' && (
           <p><strong>Welcome back, {(returning.contact?.contactName || returning.profile.name || '').split(' ')[0]}.</strong> We've filled this in from your Gigin profile. <button type="button" className="ga-text" onClick={() => { setReturning(null); setDraft(emptyDraft(gig, invite, newGuestIds())); setStep('who'); forgetProfileSession(); }}>Not you? Start blank</button></p>
@@ -300,11 +417,13 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         {returning && editing && (
           <label className="ga-note"><input type="checkbox" checked={Boolean(draft.updateProfile)} onChange={(event) => patch({ updateProfile: event.target.checked })} /> Also update my profile <small>Unticked, the change only goes to {booker.name} with this application.</small></label>
         )}
-        <div className={`ga-actions${isMdUp ? ' is-desktop' : ''}`}>
-          <button type="button" className={step === 'review' && !editing ? 'ga-orange' : 'ga-dark'} disabled={submitting || offline} onClick={() => (step === 'review' && !editing ? submit() : goNext())}>
-            {submitting ? 'Sending…' : primary}
-          </button>
-        </div>
+        {!(step === 'who' && whoBlocked) && (
+          <div className={`ga-actions${isMdUp ? ' is-desktop' : ''}`}>
+            <button type="button" className={step === 'review' && !editing ? 'ga-orange' : 'ga-dark'} disabled={submitting || offline} onClick={() => (step === 'review' && !editing ? submit() : goNext())}>
+              {submitting ? 'Sending…' : primary}
+            </button>
+          </div>
+        )}
       </div>
       {submitError && <p className="ga-error">{submitError}</p>}
       {offline && (

@@ -48,6 +48,19 @@ function fromApplication(application) {
   };
 }
 
+function nightAcceptsAnother(gig, application) {
+  if (!gig || !application) return false;
+  const status = String(application.gigStatus || gig.status || '').toLowerCase();
+  if (status === 'cancelled' || status === 'closed') return false;
+  if (gig.applicationsOpen === false || application.applicationsOpen === false) return false;
+  const raw = gig.startDateTime || gig.date;
+  if (!raw) return true;
+  const date = typeof raw.toDate === 'function'
+    ? raw.toDate()
+    : new Date(raw.seconds || raw._seconds ? (raw.seconds || raw._seconds) * 1000 : raw);
+  return !date.getTime() || date.getTime() >= Date.now();
+}
+
 export function ManageGuestApplication() {
   const { gigId, token } = useParams();
   const navigate = useNavigate();
@@ -147,6 +160,30 @@ export function ManageGuestApplication() {
     }
   };
 
+  const applyAnother = () => {
+    const prefill = {
+      actName: draft.actName || '',
+      contactName: draft.contactName || '',
+      email: draft.email || '',
+      phone: draft.phone || '',
+      instagram: draft.instagram || '',
+      links: {
+        spotify: draft.links?.spotify || '',
+        youtube: draft.links?.youtube || '',
+        instagram: draft.links?.instagram || '',
+        website: draft.links?.website || '',
+      },
+      members: draft.members || [],
+      needs: draft.needs || [],
+      bringOwn: draft.bringOwn || [],
+      note: draft.note || '',
+    };
+    try {
+      sessionStorage.setItem(`gigin-another-act:${gigId}`, JSON.stringify({ priorManageToken: token, prefill }));
+    } catch { /* the form starts blank if the browser blocks storage */ }
+    navigate(`/gig/${gigId}?anotherAct=1`);
+  };
+
   const withdraw = async () => {
     setSaving(true);
     try {
@@ -223,7 +260,7 @@ export function ManageGuestApplication() {
     : '';
   const cancelledGig = application.gigStatus === 'cancelled' || application.gigStatus === 'closed' || gig?.status === 'cancelled' || gig?.status === 'closed';
   const statusBits = cancelledGig
-    ? ['Gig cancelled', 'is-muted']
+    ? ['Cancelled by the venue', 'is-muted']
     : accepted
     ? [`Accepted · ${assigned ? setWhen : 'set time to be confirmed'}`, 'is-ok']
     : application.status === 'sent' || application.status === 'pending'
@@ -276,8 +313,8 @@ export function ManageGuestApplication() {
         <span className={`ga-pill ${statusClass}`}>{statusLabel}</span>
         {cancelledGig && (
           <div className="ga-banner is-cancel">
-            <strong>This gig has been cancelled</strong>
-            <p>{venue?.name || 'The venue'} has cancelled this gig. Your application is closed and there&apos;s nothing you need to do.</p>
+            <strong>Cancelled by the venue</strong>
+            <p>{venue?.name || 'The venue'} has cancelled this night. Your application is closed and there&apos;s nothing you need to do.</p>
           </div>
         )}
         {application.setChangedFrom && !application.setChangeSeenAt && (
@@ -356,7 +393,7 @@ export function ManageGuestApplication() {
         )}
         {editing ? (
           <div className="ga-step">
-            {editing === 'who' && <GuestWhoStep draft={draft} patch={(partial) => setDraft((current) => ({ ...current, ...partial }))} slots={slots.length ? slots : [gig].filter(Boolean)} bookerName={booker.name} showErrors={false} />}
+            {editing === 'who' && <GuestWhoStep mode="edit" draft={draft} patch={(partial) => setDraft((current) => ({ ...current, ...partial }))} slots={slots.length ? slots : [gig].filter(Boolean)} bookerName={booker.name} showErrors={false} />}
             {editing === 'assets' && <GuestAssetsStep draft={draft} patch={(partial) => setDraft((current) => ({ ...current, ...partial }))} bookerName={booker.name} />}
             {editing === 'tech' && <GuestTechStep draft={draft} patch={(partial) => setDraft((current) => ({ ...current, ...partial }))} venue={venue} />}
             {editing === 'note' && (
@@ -408,6 +445,9 @@ export function ManageGuestApplication() {
         )}
         {error && <p className="ga-error">{error}</p>}
         {toast && <p className="ga-toast" role="status">{toast}</p>}
+        {!editing && nightAcceptsAnother(gig, application) && (
+          <button type="button" className="ga-dark" onClick={applyAnother}>Apply with another act</button>
+        )}
         <button type="button" className="ga-text" onClick={() => navigate(`/gig/${gigId}`)}>Back to the gig</button>
       </main>
       {confirmWithdraw && (
