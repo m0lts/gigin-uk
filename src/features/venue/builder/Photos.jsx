@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CameraIcon, DeleteGigIcon, FilmIcon, PlayIcon } from '../../shared/ui/extras/Icons';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
+import { isHeicFile, jpegFromHeic } from './heicPhoto';
 
 const MAX_IMAGES = 1;
 const IMAGE_MIME = /^image\//i;
 const VIDEO_MIME = /^video\//i;
+const HEIC_READ_ERROR = "We couldn't read that photo. Try a JPG or PNG.";
 const MAX_VIDEO_STORAGE_BYTES = 100 * 1024 * 1024; // 100MB
 
 // Helper function to generate video thumbnail
@@ -309,6 +311,7 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
     const [primaryImage, setPrimaryImage] = useState(getInitialPrimaryImage());
     const [isRepositioning, setIsRepositioning] = useState(false);
     const [isBlurring, setIsBlurring] = useState(false);
+    const [readingPhoto, setReadingPhoto] = useState(false);
     
     // Calculate video storage usage
     const videoStorageUsage = useMemo(() => {
@@ -386,11 +389,27 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
       }
     }, [images, formData.primaryImageOffsetY, primaryImage, setStepError]);
 
-      const handleFileChange = (event) => {
+      const takePhotos = async (fileList) => {
+        const chosen = Array.from(fileList || []);
+        if (!chosen.length || readingPhoto) return;
+        setStepError?.(null);
+        setReadingPhoto(true);
+        let files;
+        try {
+          files = [];
+          for (const file of chosen) {
+            files.push(isHeicFile(file) ? await jpegFromHeic(file) : file);
+          }
+        } catch {
+          setStepError?.(HEIC_READ_ERROR);
+          return;
+        } finally {
+          setReadingPhoto(false);
+        }
         const currentCount = images.length;
-        const triedNonImage = Array.from(event.target.files).some(f => !IMAGE_MIME.test(f.type));
-        const overCap = currentCount + Array.from(event.target.files).length > MAX_IMAGES;
-      
+        const triedNonImage = files.some((file) => !IMAGE_MIME.test(file.type));
+        const overCap = currentCount + files.length > MAX_IMAGES;
+
         if (triedNonImage) {
           setStepError?.('Only image files are allowed.');
           return;
@@ -399,30 +418,21 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
           setStepError?.(`You can upload up to ${MAX_IMAGES} image.`);
           return;
         }
-        
-        const wrappedFiles = prepareIncomingFiles(event.target.files, currentCount, setStepError);
+
+        const wrappedFiles = prepareIncomingFiles(files, currentCount, setStepError);
         if (wrappedFiles.length === 0) return;
         setImages(wrappedFiles);
       };
-      
+
+      const handleFileChange = (event) => {
+        const chosen = Array.from(event.target.files || []);
+        event.target.value = '';
+        takePhotos(chosen);
+      };
+
       const handleDrop = (event) => {
         event.preventDefault();
-        const currentCount = images.length;
-        const triedNonImage = Array.from(event.dataTransfer.files).some(f => !IMAGE_MIME.test(f.type));
-        const overCap = currentCount + Array.from(event.dataTransfer.files).length > MAX_IMAGES;
-      
-        if (triedNonImage) {
-          setStepError?.('Only image files are allowed.');
-          return;
-        }
-        if (overCap) {
-          setStepError?.(`You can upload up to ${MAX_IMAGES} image.`);
-          return;
-        }
-        
-        const wrappedFiles = prepareIncomingFiles(event.dataTransfer.files, currentCount, setStepError);
-        if (wrappedFiles.length === 0) return;
-        setImages(wrappedFiles);
+        takePhotos(event.dataTransfer.files);
       };
 
     const handleDragOver = (event) => {
@@ -570,20 +580,21 @@ export const Photos = ({ formData, handleInputChange, stepError, setStepError })
                         >
                             <input
                                 type='file'
-                                accept="image/*" 
+                                accept="image/*"
                                 onChange={handleFileChange}
                                 onClick={() => setStepError(null)}
                                 style={{ display: 'none' }}
                                 id='fileInput'
+                                disabled={readingPhoto}
                             />
                         <label
                           htmlFor="fileInput"
                           className={`upload-label ${images.length >= MAX_IMAGES ? 'disabled' : ''}`}
-                          style={{ pointerEvents: images.length >= MAX_IMAGES ? 'none' : 'auto', opacity: images.length >= MAX_IMAGES ? 0.6 : 1 }}
+                          style={{ pointerEvents: images.length >= MAX_IMAGES || readingPhoto ? 'none' : 'auto', opacity: images.length >= MAX_IMAGES ? 0.6 : 1 }}
                         >
                           <CameraIcon />
                           <div className="text">
-                            <h4>{images.length >= MAX_IMAGES ? 'Image uploaded' : 'Click here to upload an image, or drag and drop it here.'}</h4>
+                            <h4>{readingPhoto ? 'Reading photo…' : images.length >= MAX_IMAGES ? 'Image uploaded' : 'Click here to upload an image, or drag and drop it here.'}</h4>
                             <p>Add 1 image.</p>
                           </div>
                         </label>
