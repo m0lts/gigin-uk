@@ -212,6 +212,44 @@ export const VenueDashboardProvider = ({ user, children }) => {
       console.error('Error refreshing gigs:', err);
     }
   };
+
+  // Public gig snapshots do not include pending, declined, or withdrawn
+  // applications. Those live on the private bundle, so reload it on focus and
+  // while the dashboard tab is visible. The gig page and the sidebar badge
+  // both read this list.
+  const refreshGigsRef = useRef(refreshGigs);
+  refreshGigsRef.current = refreshGigs;
+  useEffect(() => {
+    if (!venueProfiles.length) return undefined;
+    let intervalId = 0;
+    let lastAt = 0;
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'hidden') return;
+      const now = Date.now();
+      if (now - lastAt < 1000) return;
+      lastAt = now;
+      refreshGigsRef.current?.();
+    };
+    const arm = () => {
+      window.clearInterval(intervalId);
+      intervalId = 0;
+      if (document.visibilityState === 'hidden') return;
+      intervalId = window.setInterval(refreshIfVisible, 30000);
+    };
+    const onFocus = () => refreshIfVisible();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshIfVisible();
+      arm();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    arm();
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [venueProfiles.length]);
   
   const refreshTemplates = async () => {
     try {

@@ -165,6 +165,16 @@ function canonicalStatus(status) {
   return value;
 }
 
+function isWithdrawn(app) {
+  return canonicalStatus(app?.status) === "withdrawn";
+}
+
+function withdrawnRefusal() {
+  const error = new Error("This act has withdrawn.");
+  error.statusCode = 409;
+  return error;
+}
+
 function projectNight(slots, rootId, allApps) {
   const onlySlot = slots.length < 2;
   return slots.map((slot) => {
@@ -570,6 +580,12 @@ export async function acceptApplication({ gigId, applicantId, slotGigId }) {
     error.statusCode = 404;
     throw error;
   }
+  if (isWithdrawn(app)) throw withdrawnRefusal();
+  if (canonicalStatus(app.status) === "declined") {
+    const error = new Error("This act has been declined.");
+    error.statusCode = 409;
+    throw error;
+  }
   const views = night.slots;
   const oneSet = views.length < 2;
   let target = slotGigId || null;
@@ -638,7 +654,8 @@ export async function acceptApplication({ gigId, applicantId, slotGigId }) {
 export async function assignApplication({ gigId, applicantId, slotGigId }) {
   const { slots, rootId } = await loadNightSlots(gigId);
   const root = slots.find((slot) => slot.id === rootId) || slots[0];
-  const { night } = findApp(slots, applicantId);
+  const { night, app } = findApp(slots, applicantId);
+  if (isWithdrawn(app)) throw withdrawnRefusal();
   const planned = planAssignment(night.applications, applicantId, slotGigId || null);
   if (planned.error) {
     const error = new Error(planned.error);
@@ -747,6 +764,7 @@ export async function declineApplication({ gigId, applicantId }) {
 export async function undoApplication({ gigId, applicantId }) {
   const { slots, rootId } = await loadNightSlots(gigId);
   const { app } = findApp(slots, applicantId);
+  if (isWithdrawn(app)) throw withdrawnRefusal();
   if (!app?.undo?.until || new Date(app.undo.until).getTime() < Date.now()) {
     const error = new Error("That can't be undone now.");
     error.statusCode = 409;
@@ -767,7 +785,7 @@ export async function undoApplication({ gigId, applicantId }) {
     const occupant = findApp(slots, applicantId).night.applications.find((entry) => (
       entry.assignedSlotGigId === restored.assignedSlotGigId && String(entry.id) !== String(applicantId)
     ));
-    if (occupant?.undo) {
+    if (occupant?.undo && !isWithdrawn(occupant)) {
       also.push({ ...occupant, assignedSlotGigId: occupant.undo.assignedSlotGigId || null, undo: null, status: occupant.undo.status || "accepted" });
     }
   }
@@ -846,7 +864,7 @@ export async function undoClose({ gigId }) {
   const restored = [];
   for (const id of undo.applicantIds || []) {
     const { app } = findApp(slots, id);
-    if (!app) continue;
+    if (!app || isWithdrawn(app)) continue;
     restored.push({ ...app, status: "pending", undo: null, declineEmailSendAt: null });
   }
   const current = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data }))).applications;

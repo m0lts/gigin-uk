@@ -16,6 +16,7 @@ import {
 } from '@services/api/gigs';
 import { formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
 import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
+import { reportApplicationActionError } from '@features/venue/gigs/utils/applicationActionError';
 import { ApplicantProfileModal, useApplicantQuery } from '@features/venue/gigs/components/ApplicantProfileModal';
 import '@styles/host/night-apply.styles.css';
 
@@ -143,7 +144,7 @@ export function NightApplyReview({
 
   const flash = (message, undo) => setToastNote({ message, undo });
 
-  const run = (work, optimistic) => {
+  const run = (work, optimistic, { refreshOnConflict = false } = {}) => {
     if (!canUpdate) return Promise.resolve(null);
     const job = queueRef.current.then(async () => {
       if (optimistic) setLocalApps(optimistic);
@@ -155,7 +156,11 @@ export function NightApplyReview({
         return result;
       } catch (err) {
         setLocalApps(null);
-        toast.error(err?.message || 'Something went wrong.');
+        await reportApplicationActionError(err, {
+          notify: (message) => toast.error(message),
+          refresh: () => refreshGigs?.(),
+          refreshOnConflict,
+        });
         return null;
       } finally {
         setBusy(false);
@@ -170,6 +175,7 @@ export function NightApplyReview({
     applications.map((item) => (item.id === app.id
       ? { ...item, status: 'accepted', assignedSlotGigId: slotGigId || null, viewed: true }
       : item)),
+    { refreshOnConflict: true },
   );
 
   const assign = (appId, slotGigId) => {
@@ -183,6 +189,7 @@ export function NightApplyReview({
     run(
       () => assignNightApplication({ rootGigId: rootId, applicantId: appId, slotGigId }),
       planned.applications,
+      { refreshOnConflict: true },
     );
   };
 
