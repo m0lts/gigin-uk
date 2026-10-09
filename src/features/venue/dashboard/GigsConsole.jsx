@@ -20,6 +20,7 @@ import { updateGigDocument } from '@services/api/gigs';
 import Portal from '../../shared/components/Portal';
 import { NewGigSplitButton } from './new-gig/NewGigSplitButton';
 import { toast } from 'sonner';
+import { isNightModelGroup, nightAudienceCounts } from '../gigs/utils/nightCancel';
 
 const TILES = [
   { key: 'all', label: 'All upcoming', dot: '#0F1115' },
@@ -35,6 +36,7 @@ function baseGigName(group) {
 
 const PILL_LABELS = {
   confirmed: 'Confirmed',
+  cancelled: 'Cancelled',
   awaiting: 'Awaiting payment',
   negotiating: 'Negotiating',
   open: 'Open for applications',
@@ -67,6 +69,7 @@ function OptionsMenu({
   setConfirmType,
   setConfirmModal,
   setConfirmMessage,
+  onCancelNight,
   handleCloneAsTemplate,
   refreshGigs,
 }) {
@@ -76,6 +79,10 @@ function OptionsMenu({
   const isFuture = gig.dateTime > now;
   const blocked = gig.status === 'confirmed' || gig.status === 'accepted' || gig.status === 'awaiting payment';
   const hasAccepted = gig?.applicants?.some((applicant) => applicant.status === 'accepted' || applicant.status === 'confirmed');
+  const venue = (venues || []).find((row) => row.venueId === gig.venueId) || null;
+  const nightModel = isNightModelGroup(group.allGigs, venue);
+  const nightCounts = nightAudienceCounts(group.allGigs);
+  const nightCancelled = gig.status === 'cancelled' || group.allGigs.every((slot) => slot.status === 'cancelled');
 
   return (
     <div className="gigs-console__options options-cell" onClick={(event) => event.stopPropagation()}>
@@ -133,7 +140,22 @@ function OptionsMenu({
           Make Gig a Template <TemplateIcon />
         </button>
       )}
-      {isFuture && !blocked && canUpdate ? (
+      {nightModel && isFuture && !nightCancelled && canUpdate && (
+        <button type="button" className="is-danger" onClick={() => {
+          closeOptionsMenu();
+          onCancelNight?.(group);
+        }}>Cancel night <CancelIcon /></button>
+      )}
+      {nightModel && isFuture && nightCounts.total === 0 && canUpdate && (
+        <button type="button" className="is-danger" onClick={() => {
+          closeOptionsMenu();
+          setSelectedGigs(group.gigIds);
+          setConfirmType('delete');
+          setConfirmModal(true);
+          setConfirmMessage("Delete this night? This can't be undone.");
+        }}>Delete night <DeleteGigIcon /></button>
+      )}
+      {!nightModel && isFuture && !blocked && canUpdate ? (
         <button type="button" className="is-danger" onClick={() => {
           closeOptionsMenu();
           setSelectedGigs(group.gigIds);
@@ -141,7 +163,7 @@ function OptionsMenu({
           setConfirmModal(true);
           setConfirmMessage('Are you sure you want to delete this gig? This action cannot be undone.');
         }}>Delete <DeleteGigIcon /></button>
-      ) : isFuture && gig.status === 'confirmed' && canUpdate && (
+      ) : !nightModel && isFuture && gig.status === 'confirmed' && canUpdate && (
         <button type="button" className="is-danger" onClick={() => {
           closeOptionsMenu();
           setSelectedGigs(group.gigIds);
@@ -275,6 +297,7 @@ export function GigsConsole({
   setConfirmType,
   setConfirmModal,
   setConfirmMessage,
+  onCancelNight,
   handleCloneAsTemplate,
   refreshGigs,
   handleDuplicateSelected,
@@ -534,6 +557,7 @@ export function GigsConsole({
               setConfirmType={setConfirmType}
               setConfirmModal={setConfirmModal}
               setConfirmMessage={setConfirmMessage}
+              onCancelNight={onCancelNight}
               handleCloneAsTemplate={handleCloneAsTemplate}
               refreshGigs={refreshGigs}
             />

@@ -7,6 +7,7 @@
 const BOOKED_STATUSES = new Set(["confirmed", "accepted", "paid"]);
 
 const STATUS_RANK = {
+  cancelled: 0,
   withdrawn: 1,
   declined: 2,
   pending: 3,
@@ -178,13 +179,13 @@ const PUBLIC_LINEUP_STATUSES = new Set(["accepted", "confirmed", "paid"]);
  * One confirmed act, safe to leave on a world-readable gig document:
  * act name and the set they are playing.
  */
-export function publicLineupEntry(applicant, slotId) {
+export function publicLineupEntry(applicant, slotId, options = {}) {
   const name = applicant?.name || applicant?.artistName || applicant?.actName || "";
   return {
     id: applicant.id,
     name,
     artistName: applicant?.artistName || applicant?.name || name,
-    status: "confirmed",
+    status: options.cancelled ? "cancelled" : "confirmed",
     assignedSlotGigId: applicant?.assignedSlotGigId || slotId || null,
   };
 }
@@ -210,7 +211,7 @@ export function publicLineup(applicants, slotId, options = {}) {
     const key = String(entry.id);
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push(publicLineupEntry(entry, slotId));
+    out.push(publicLineupEntry(entry, slotId, options));
   }
   return out;
 }

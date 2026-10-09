@@ -136,6 +136,9 @@ export function NightApplyReview({
 
   const applications = (localApps || night.applications).map((app) => mergeGuest(app, guestPrivate));
   const closed = closedOverride ?? serverClosed;
+  const nightCancelled = ordered.some((slot) => String(slot.status || '').toLowerCase() === 'cancelled')
+    || String(rawGig?.status || '').toLowerCase() === 'cancelled';
+  const canChangeLineup = canUpdate && !nightCancelled;
   const filledCount = ordered.filter((slot) => applications.some((app) => isAccepted(app) && app.assignedSlotGigId === (slot.gigId || slot.id))).length;
   const waiting = applications.filter(isWaiting);
   const accepted = applications.filter(isAccepted);
@@ -145,7 +148,7 @@ export function NightApplyReview({
   const flash = (message, undo) => setToastNote({ message, undo });
 
   const run = (work, optimistic, { refreshOnConflict = false } = {}) => {
-    if (!canUpdate) return Promise.resolve(null);
+    if (!canChangeLineup) return Promise.resolve(null);
     const job = queueRef.current.then(async () => {
       if (optimistic) setLocalApps(optimistic);
       setBusy(true);
@@ -234,7 +237,7 @@ export function NightApplyReview({
   };
 
   const beginDrag = (app, event) => {
-    if (!canUpdate || !isAccepted(app)) return;
+    if (!canChangeLineup || !isAccepted(app)) return;
     event.preventDefault();
     setDraggingId(app.id);
     const move = (ev) => {
@@ -342,6 +345,7 @@ export function NightApplyReview({
 
   return (
     <div className={`na${ordered.length >= 4 ? ' is-compact' : ''}`}>
+      {nightCancelled && <p className="na-empty">This night has been cancelled.</p>}
       <div className="na-grid">
         <section>
           <div className="na-tabs" role="tablist">
@@ -386,7 +390,7 @@ export function NightApplyReview({
                     ordered={ordered}
                     oneSet={oneSet}
                     venue={venue}
-                    canUpdate={canUpdate}
+                    canUpdate={canChangeLineup}
                     panel={panel?.id === app.id ? panel.kind : ''}
                     applications={applications}
                     onOpen={(kind) => setPanel(panel?.id === app.id && panel.kind === kind ? null : { id: app.id, kind })}
@@ -416,7 +420,7 @@ export function NightApplyReview({
               applications={applications}
               draggingId={draggingId}
               hoverSlot={hoverSlot}
-              canUpdate={canUpdate}
+              canUpdate={canChangeLineup}
               onDrag={beginDrag}
               onAssign={assign}
               slotLabel={slotLabel}
@@ -436,7 +440,7 @@ export function NightApplyReview({
             occupant={occupant}
             draggingId={draggingId}
             hoverSlot={hoverSlot}
-            canUpdate={canUpdate}
+            canUpdate={canChangeLineup}
             onDrag={beginDrag}
             onAssign={assign}
             slotLabel={slotLabel}
@@ -459,9 +463,9 @@ export function NightApplyReview({
               await reopenNightApplications({ rootGigId: rootId });
               return { toast: '' };
             })}
-            canUpdate={canUpdate}
+            canUpdate={canChangeLineup}
           />
-          {!closed && (
+          {!closed && !nightCancelled && (
             <section className="na-card">
               <h2>Share the gig</h2>
               <div className="na-share">
@@ -513,7 +517,7 @@ export function NightApplyReview({
           venueGigs={gigs}
           user={user}
           venues={venues}
-          canUpdate={canUpdate}
+          canUpdate={canChangeLineup}
           busy={busy}
           onClose={closeApplicant}
           onMove={moveApplicant}

@@ -15,6 +15,8 @@ import { applicationNoticeMessage, planVenueNotice, shouldNotify } from "./venue
 import { appendPlayedAt, keepReminderHtml, markBookingCancelled } from "./keepProfile.js";
 import { icsAttachment, icsEvent, renderArtistEmail } from "./artistEmails.js";
 import { ownerName } from "./ownerName.js";
+import { assertVenuePerm } from "../utils/permissions.js";
+import { assertVenueCanPublishNights } from "./venueApproval.js";
 
 const DELAY_MS = 10 * 1000;
 const DECLINE_DELAY_MS = 5 * 60 * 1000;
@@ -175,10 +177,21 @@ function withdrawnRefusal() {
   return error;
 }
 
-function projectNight(slots, rootId, allApps) {
+function nightIsCancelled(slots) {
+  return slots.length > 0 && slots.every((slot) => String(slot.data?.status || "").toLowerCase() === "cancelled");
+}
+
+function assertNightNotCancelled(slots) {
+  if (!nightIsCancelled(slots)) return;
+  const error = new Error("This night has been cancelled.");
+  error.statusCode = 409;
+  throw error;
+}
+
+function projectNight(slots, rootId, allApps, options = {}) {
   const onlySlot = slots.length < 2;
   return slots.map((slot) => {
-    const lineup = publicLineup(allApps, slot.id, { onlySlot });
+    const lineup = publicLineup(allApps, slot.id, { onlySlot, cancelled: options.cancelled === true });
     return {
       ref: slot.ref,
       id: slot.id,
@@ -296,6 +309,8 @@ export async function loadNightSlots(gigId) {
       const data = { ...root.data, applicants: stored.applicants };
       if (stored.closeUndo) data.closeUndo = stored.closeUndo;
       else delete data.closeUndo;
+      if (stored.cancelUndo) data.cancelUndo = stored.cancelUndo;
+      else delete data.cancelUndo;
       root.data = data;
     }
   }
@@ -370,7 +385,7 @@ function slotMoment(gig, slot, end = false) {
   return new Date(start.getTime() + (Number(slot.duration) || 60) * 60000);
 }
 
-export async function emailForAct({ kind, app, slots, venue, gig, token, later, other }) {
+export async function emailForAct({ kind, app, slots, venue, gig, token, later, other, reason }) {
   const booker = ownerName(venue, gig);
   const venueName = venue?.name || venue?.venueName || gig?.venue?.venueName || "the venue";
   const name = gigTitle(gig);
@@ -507,6 +522,28 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       extra: keepUrl ? { title: "Keep your details for next time?", body: "Turn this application into a Gigin profile with a link you can send to other venues. You'll create a password when you confirm.", link: ["Keep my profile", keepUrl] } : null,
       footer: foot,
     });
+  } else if (kind === "cancelled-accepted" || kind === "cancelled-waiting") {
+    const why = String(reason || "").trim();
+    const booked = kind === "cancelled-accepted";
+    rendered = renderArtistEmail({
+      subject: booked
+        ? `${venueName} has cancelled ${name} on ${short}`
+        : `This night has been cancelled: ${name} on ${short}`,
+      preheader: `${escapeHtml(venueName)} has cancelled ${escapeHtml(name)} on ${escapeHtml(short)}.`,
+      eyebrow: "NIGHT CANCELLED",
+      heading: booked
+        ? `${escapeHtml(venueName)} has cancelled ${escapeHtml(name)}`
+        : "This night has been cancelled",
+      paras: [
+        hi,
+        booked
+          ? `${escapeHtml(booker)} at ${escapeHtml(venueName)} has cancelled ${escapeHtml(name)} on <b>${escapeHtml(when)}</b>.`
+          : `${escapeHtml(venueName)} has cancelled ${escapeHtml(name)} on <b>${escapeHtml(when)}</b>. This night has been cancelled.`,
+        why ? escapeHtml(why) : null,
+      ].filter(Boolean),
+      button: token ? ["View your application", url] : ["View the night", url],
+      footer: foot,
+    });
   } else if (kind === "venue-withdraw") {
     const open = app._freedSet ? `${escapeHtml(app._freedSet)} is open again. ` : "";
     legacy = {
@@ -554,7 +591,9 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
 async function mailAct(kind, ctx) {
   const built = await emailForAct({ ...ctx, kind });
   if (!built.to) return null;
-  const delay = kind === "declined" ? DECLINE_DELAY_MS : (kind === "received" || kind === "venue-withdraw" ? 0 : DELAY_MS);
+  const delay = (kind === "declined" || kind === "cancelled-accepted" || kind === "cancelled-waiting")
+    ? DECLINE_DELAY_MS
+    : (kind === "received" || kind === "venue-withdraw" ? 0 : DELAY_MS);
   if (delay === 0) {
     await queueMail(built);
     return null;
@@ -580,6 +619,7 @@ export async function acceptApplication({ gigId, applicantId, slotGigId }) {
     error.statusCode = 404;
     throw error;
   }
+  assertNightNotCancelled(slots);
   if (isWithdrawn(app)) throw withdrawnRefusal();
   if (canonicalStatus(app.status) === "declined") {
     const error = new Error("This act has been declined.");
@@ -654,6 +694,7 @@ export async function acceptApplication({ gigId, applicantId, slotGigId }) {
 export async function assignApplication({ gigId, applicantId, slotGigId }) {
   const { slots, rootId } = await loadNightSlots(gigId);
   const root = slots.find((slot) => slot.id === rootId) || slots[0];
+  assertNightNotCancelled(slots);
   const { night, app } = findApp(slots, applicantId);
   if (isWithdrawn(app)) throw withdrawnRefusal();
   const planned = planAssignment(night.applications, applicantId, slotGigId || null);
@@ -720,6 +761,7 @@ export async function assignApplication({ gigId, applicantId, slotGigId }) {
 export async function declineApplication({ gigId, applicantId }) {
   const { slots, rootId } = await loadNightSlots(gigId);
   const root = slots.find((slot) => slot.id === rootId) || slots[0];
+  assertNightNotCancelled(slots);
   const { night, app } = findApp(slots, applicantId);
   if (!app) {
     const error = new Error("Application not found.");
@@ -763,6 +805,7 @@ export async function declineApplication({ gigId, applicantId }) {
 
 export async function undoApplication({ gigId, applicantId }) {
   const { slots, rootId } = await loadNightSlots(gigId);
+  assertNightNotCancelled(slots);
   const { app } = findApp(slots, applicantId);
   if (isWithdrawn(app)) throw withdrawnRefusal();
   if (!app?.undo?.until || new Date(app.undo.until).getTime() < Date.now()) {
@@ -801,6 +844,7 @@ export async function undoApplication({ gigId, applicantId }) {
 
 export async function closeApplications({ gigId, declineWaiting }) {
   const { slots, rootId } = await loadNightSlots(gigId);
+  assertNightNotCancelled(slots);
   const root = slots.find((slot) => slot.id === rootId) || slots[0];
   const night = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
   const waiting = declineWaiting
@@ -853,6 +897,7 @@ export async function closeApplications({ gigId, declineWaiting }) {
 
 export async function undoClose({ gigId }) {
   const { slots, rootId } = await loadNightSlots(gigId);
+  assertNightNotCancelled(slots);
   const root = slots.find((slot) => slot.id === rootId);
   const undo = root?.data?.closeUndo;
   if (!undo?.until || new Date(undo.until).getTime() < Date.now()) {
@@ -885,11 +930,137 @@ export async function undoClose({ gigId }) {
 
 export async function reopenApplications({ gigId }) {
   const { slots, rootId } = await loadNightSlots(gigId);
+  assertNightNotCancelled(slots);
   const batch = db.batch();
   for (const slot of slots) {
     batch.update(slot.ref, { applicationsOpen: true, applicationsRootGigId: rootId });
   }
   await batch.commit();
+  return { ok: true };
+}
+
+async function assertCanEditNight(callerUid, venueId) {
+  if (!callerUid) {
+    const error = new Error("PERMISSION_DENIED");
+    error.code = "permission-denied";
+    error.statusCode = 401;
+    throw error;
+  }
+  await assertVenuePerm(db, callerUid, venueId, "gigs.update");
+  await assertVenueCanPublishNights(venueId);
+}
+
+function cancelKind(app) {
+  const status = canonicalStatus(app?.status);
+  if (status === "accepted") return "cancelled-accepted";
+  if (status === "pending") return "cancelled-waiting";
+  return null;
+}
+
+export async function cancelNight({ gigId, reason, callerUid }) {
+  const { slots, rootId } = await loadNightSlots(gigId);
+  const root = slots.find((slot) => slot.id === rootId) || slots[0];
+  if (!root) {
+    const error = new Error("Gig not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+  await assertCanEditNight(callerUid, root.data.venueId);
+  if (nightIsCancelled(slots)) return { ok: true, already: true };
+  const night = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
+  const venue = await loadVenue(root.data.venueId);
+  const note = String(reason || "").trim().slice(0, 500);
+  const mailIds = [];
+  let accepted = 0;
+  let waiting = 0;
+  for (const app of night.applications) {
+    const kind = cancelKind(app);
+    if (!kind) continue;
+    if (kind === "cancelled-accepted") accepted += 1;
+    else waiting += 1;
+    const priv = await readPrivate(rootId, app.id);
+    const next = {
+      ...app,
+      email: app.email || priv.email || null,
+      manageToken: priv.manageToken || app.manageToken || null,
+      contactName: app.contactName || priv.contactName || "",
+    };
+    const mailId = await mailAct(kind, {
+      app: next,
+      slots: night.slots,
+      venue,
+      gig: root.data,
+      token: next.manageToken,
+      reason: note,
+    });
+    if (mailId) mailIds.push(mailId);
+  }
+  const cancelUndo = {
+    until: new Date(Date.now() + DECLINE_DELAY_MS).toISOString(),
+    mailIds,
+    reason: note,
+    slots: slots.map((slot) => ({
+      id: slot.id,
+      status: slot.data.status || "open",
+      applicationsOpen: slot.data.applicationsOpen !== false,
+    })),
+  };
+  await db.runTransaction(async (tx) => {
+    for (const slot of slots) await tx.get(slot.ref);
+    for (const write of projectNight(slots, rootId, night.applications, { cancelled: true })) {
+      tx.update(write.ref, {
+        ...write.patch,
+        status: "cancelled",
+        applicationsOpen: false,
+        cancellationReason: note || FieldValue.delete(),
+        cancelledAt: new Date().toISOString(),
+      });
+    }
+    tx.set(db.doc(`gigs/${rootId}/private/applications`), {
+      gigId: rootId,
+      applicants: night.applications.map(operationalApplicant).filter(Boolean),
+      cancelUndo,
+    }, { merge: true });
+  });
+  return { ok: true, accepted, waiting, undoUntil: cancelUndo.until };
+}
+
+export async function undoCancelNight({ gigId, callerUid }) {
+  const { slots, rootId } = await loadNightSlots(gigId);
+  const root = slots.find((slot) => slot.id === rootId) || slots[0];
+  if (!root) {
+    const error = new Error("Gig not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+  await assertCanEditNight(callerUid, root.data.venueId);
+  const undo = root.data.cancelUndo;
+  if (!undo?.until || new Date(undo.until).getTime() < Date.now()) {
+    const error = new Error("That can't be undone now.");
+    error.statusCode = 409;
+    throw error;
+  }
+  for (const id of undo.mailIds || []) await cancelMail(id);
+  const previous = new Map((undo.slots || []).map((slot) => [slot.id, slot]));
+  const night = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
+  await db.runTransaction(async (tx) => {
+    for (const slot of slots) await tx.get(slot.ref);
+    for (const write of projectNight(slots, rootId, night.applications)) {
+      const prior = previous.get(write.id) || {};
+      tx.update(write.ref, {
+        ...write.patch,
+        status: prior.status || "open",
+        applicationsOpen: prior.applicationsOpen !== false,
+        cancellationReason: FieldValue.delete(),
+        cancelledAt: FieldValue.delete(),
+      });
+    }
+    tx.set(db.doc(`gigs/${rootId}/private/applications`), {
+      gigId: rootId,
+      applicants: night.applications.map(operationalApplicant).filter(Boolean),
+      cancelUndo: FieldValue.delete(),
+    }, { merge: true });
+  });
   return { ok: true };
 }
 
@@ -915,6 +1086,7 @@ export async function placeLoggedInApplication({ gigId, application, preferredSl
   const root = slots.find((slot) => slot.id === rootId) || slots[0];
   if (!root) return { applicants: null, rootGigId: null };
   const requested = slots.find((slot) => slot.id === gigId) || root;
+  assertNightNotCancelled(slots);
   if (requested.data.applicationsOpen === false || root.data.applicationsOpen === false) {
     const error = new Error("Applications for this gig are closed.");
     error.statusCode = 409;
@@ -1003,6 +1175,7 @@ export async function writeGuestApplication({ gigId, applicant, preferredSlotGig
     error.statusCode = 404;
     throw error;
   }
+  assertNightNotCancelled(slots);
   if (root.data.applicationsOpen === false || slots.some((slot) => (
     (slot.id === gigId || pref.preferredSlotGigIds.includes(slot.id)) && slot.data.applicationsOpen === false
   ))) {

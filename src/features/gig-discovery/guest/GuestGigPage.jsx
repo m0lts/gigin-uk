@@ -141,7 +141,7 @@ export function GuestGigPage({
           {past && <div className="ga-banner">This gig has already happened. <button type="button" onClick={() => navigate(venuePath)}>See upcoming gigs at the bar</button></div>}
           {cancelled && (
             <div className="ga-banner is-cancel">
-              <strong>This gig has been cancelled</strong>
+              <strong>This night has been cancelled</strong>
               <p>{venue?.name || 'The venue'} has cancelled {title} on {formatGigDay(gig)}. If you&apos;d applied, your application is closed and there&apos;s nothing you need to do.</p>
               <button type="button" onClick={() => navigate(venuePath)}>See upcoming gigs at the bar</button>
             </div>
@@ -254,18 +254,20 @@ export function GuestGigPage({
               );
             })}
           </ul>
-          <button
-            type="button"
-            className={remembered && !past && !closed ? 'ga-dark' : 'ga-orange'}
-            disabled={(closed || past) && !remembered}
-            onClick={() => (remembered ? navigate(`/gig/${remembered.gigId}/application/${remembered.token}`) : setApplying(true))}
-          >
-            {cancelled ? 'Gig cancelled' : past ? 'This gig has happened' : remembered ? 'View my application' : allTaken ? 'All sets filled' : applicationsClosed ? 'Applications closed' : 'Apply to play'}
-          </button>
-          {!closed && !past && !remembered && <small>About 2 minutes · no account needed</small>}
+          {!cancelled && (
+            <button
+              type="button"
+              className={remembered && !past && !closed ? 'ga-dark' : 'ga-orange'}
+              disabled={(closed || past) && !remembered}
+              onClick={() => (remembered ? navigate(`/gig/${remembered.gigId}/application/${remembered.token}`) : setApplying(true))}
+            >
+              {past ? 'This gig has happened' : remembered ? 'View my application' : allTaken ? 'All sets filled' : applicationsClosed ? 'Applications closed' : 'Apply to play'}
+            </button>
+          )}
+          {!cancelled && !closed && !past && !remembered && <small>About 2 minutes · no account needed</small>}
         </aside>
       </div>
-      {!isMdUp && (
+      {!isMdUp && !cancelled && (
         <div className="ga-sticky">
           <button
             type="button"
@@ -273,7 +275,7 @@ export function GuestGigPage({
             disabled={(closed || past) && !remembered}
             onClick={() => (remembered ? navigate(`/gig/${remembered.gigId}/application/${remembered.token}`) : setApplying(true))}
           >
-            {cancelled ? 'Gig cancelled' : past ? 'This gig has happened' : remembered ? 'View my application' : allTaken ? 'All sets filled' : applicationsClosed ? 'Applications closed' : 'Apply to play'}
+            {past ? 'This gig has happened' : remembered ? 'View my application' : allTaken ? 'All sets filled' : applicationsClosed ? 'Applications closed' : 'Apply to play'}
           </button>
           {!closed && !past && !remembered && <small>About 2 minutes · no account needed</small>}
         </div>

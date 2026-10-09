@@ -21,7 +21,7 @@ import {
 import { publicLineup } from "../lib/nightApplications.js";
 import { queueMail } from "../lib/queueMail.js";
 import { keepReminderHtml } from "../lib/keepProfile.js";
-import { placeLoggedInApplication, acceptApplication, assignApplication, declineApplication, undoApplication, closeApplications, undoClose, reopenApplications, saveSoundTech, readNightApplications, publishNightApplicants, withdrawGuestApplication } from "../lib/nightApplicationOps.js";
+import { placeLoggedInApplication, acceptApplication, assignApplication, declineApplication, undoApplication, closeApplications, undoClose, reopenApplications, saveSoundTech, readNightApplications, publishNightApplicants, withdrawGuestApplication, cancelNight, undoCancelNight } from "../lib/nightApplicationOps.js";
 import { assertVenueCanOperate, assertVenueCanPublishNights } from "../lib/venueApproval.js";
 import { readGigsByIds, readNearbyGigs } from "../lib/gigReads.js";
 
@@ -2044,6 +2044,24 @@ async function assertGigUpdate(req, gigId) {
   await assertVenuePerm(db, req.auth.uid, gig.venueId, "gigs.update");
   return gig;
 }
+
+router.post("/:rootGigId/cancel", requireAuth, asyncHandler(async (req, res) => {
+  await assertGigUpdate(req, req.params.rootGigId);
+  const reason = typeof req.body?.reason === "string" ? req.body.reason : "";
+  res.json(await cancelNight({
+    gigId: req.params.rootGigId,
+    reason,
+    callerUid: req.auth.uid,
+  }));
+}));
+
+router.post("/:rootGigId/cancel/undo", requireAuth, asyncHandler(async (req, res) => {
+  await assertGigUpdate(req, req.params.rootGigId);
+  res.json(await undoCancelNight({
+    gigId: req.params.rootGigId,
+    callerUid: req.auth.uid,
+  }));
+}));
 
 router.post("/:rootGigId/applications/:id/accept", requireAuth, asyncHandler(async (req, res) => {
   await assertGigUpdate(req, req.params.rootGigId);

@@ -102,4 +102,12 @@ export function saveNightSoundTech({ rootGigId, soundTech }) {
   return post(`/gigs/${rootGigId}/sound-tech`, { body: { soundTech } });
 }
 
+export function cancelNight({ rootGigId, reason }) {
+  return post(`/gigs/${rootGigId}/cancel`, { body: { reason: reason || '' } });
+}
+
+export function undoCancelNight({ rootGigId }) {
+  return post(`/gigs/${rootGigId}/cancel/undo`, { body: {} });
+}
+
 

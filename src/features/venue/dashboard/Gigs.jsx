@@ -31,7 +31,9 @@ import { duplicateGig, updateGigDocument } from '@services/api/gigs';
 import { saveGigTemplate, deleteGigTemplate, renameGigTemplate } from '@services/api/venues';
 import { cancelledGigMusicianProfileUpdate } from '@services/api/artists';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
-import { logGigCancellation, revertGigAfterCancellationVenue } from '../../../services/api/gigs';
+import { logGigCancellation, revertGigAfterCancellationVenue, cancelNight, undoCancelNight } from '../../../services/api/gigs';
+import { CancelNightDialog } from '../components/CancelNightDialog';
+import { isNightModelGroup, nightAudienceCounts, toastNightCancelled } from '../gigs/utils/nightCancel';
 import { GigInvitesModal } from '../components/GigInvitesModal';
 import { unreviewedApplicationCount } from '../gigs/utils/multiSlotGigGroup';
 import { isNewApplicant } from '../gigs/utils/isNewApplicant';
@@ -57,6 +59,7 @@ function getLocalHireDateTime(hire) {
 
 function consolePillKey(group, statusDisplay) {
   const gig = group.primaryGig;
+  if (gig.status === 'cancelled') return 'cancelled';
   if (gig.status === 'in dispute' || gig.disputeLogged) return 'dispute';
   if (statusDisplay.statusClass === 'expired') return 'expired';
   if (statusDisplay.statusClass === 'past') return 'played';
@@ -120,6 +123,8 @@ export const Gigs = ({
       reason: '',
       extraDetails: '',
     });
+    const [cancelNightTarget, setCancelNightTarget] = useState(null);
+    const [cancelNightBusy, setCancelNightBusy] = useState(false);
     const [loading, setLoading] = useState(false);
     const [editingSoundManager, setEditingSoundManager] = useState(null);
     const [soundManagerValue, setSoundManagerValue] = useState('');
@@ -827,6 +832,19 @@ export const Gigs = ({
             }
             
             const primaryGig = allGigsToCancel[0];
+            const listedVenue = (venues || []).find((venue) => venue.venueId === primaryGig.venueId) || null;
+            if (isNightModelGroup(allGigsToCancel, listedVenue)) {
+              const counts = nightAudienceCounts(allGigsToCancel);
+              setLoading(false);
+              setConfirmModal(false);
+              setConfirmType(null);
+              setCancelNightTarget({
+                rootGigId: primaryGig.applicationsRootGigId || primaryGig.gigId,
+                accepted: counts.accepted,
+                waiting: counts.waiting,
+              });
+              return;
+            }
             const venueProfile = await getVenueProfileById(primaryGig.venueId);
             
             const handleMusicianCancellation = async (musician, gigData) => {
@@ -1263,6 +1281,23 @@ export const Gigs = ({
   
     const selectedCount = consoleRows?.future.filter((row) => groupIsSelected(row.group)).length || 0;
 
+    const confirmCancelNight = async (reason) => {
+      const target = cancelNightTarget;
+      if (!target?.rootGigId) return;
+      setCancelNightBusy(true);
+      try {
+        await cancelNight({ rootGigId: target.rootGigId, reason });
+        setCancelNightTarget(null);
+        toastNightCancelled({ rootGigId: target.rootGigId, undo: undoCancelNight, refresh: refreshGigs });
+        refreshGigs?.();
+      } catch (error) {
+        console.error(error);
+        toast.error(error?.message || 'Failed to cancel the night.');
+      } finally {
+        setCancelNightBusy(false);
+      }
+    };
+
     const navigateToGig = (group) => {
       navigate('/venues/dashboard/gigs/gig-applications', {
         state: {
@@ -1320,6 +1355,15 @@ export const Gigs = ({
             setConfirmType={setConfirmType}
             setConfirmModal={setConfirmModal}
             setConfirmMessage={setConfirmMessage}
+            onCancelNight={(group) => {
+              const counts = nightAudienceCounts(group.allGigs);
+              const root = group.primaryGig;
+              setCancelNightTarget({
+                rootGigId: root.applicationsRootGigId || root.gigId,
+                accepted: counts.accepted,
+                waiting: counts.waiting,
+              });
+            }}
             handleCloneAsTemplate={handleCloneAsTemplate}
             refreshGigs={refreshGigs}
             handleDuplicateSelected={handleDuplicateSelected}
@@ -2103,7 +2147,55 @@ export const Gigs = ({
                                     </button>
                                   )}
                                   {/* Private gig invite links are now managed through the Gig Invites modal */}
-                                  {gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' && hasVenuePerm(venues, gig.venueId, 'gigs.update') ? (
+                                  {(() => {
+                                    const rowVenue = (venues || []).find((venue) => venue.venueId === gig.venueId) || null;
+                                    const rowGroup = groupedGigs.find((entry) => entry.gigIds.includes(gig.gigId));
+                                    const rowSlots = rowGroup ? rowGroup.allGigs : [gig];
+                                    const rowNight = isNightModelGroup(rowSlots, rowVenue);
+                                    const rowCounts = nightAudienceCounts(rowSlots);
+                                    const rowCancelled = gig.status === 'cancelled' || rowSlots.every((slot) => slot.status === 'cancelled');
+                                    if (!hasVenuePerm(venues, gig.venueId, 'gigs.update') || !(gig.dateTime > now)) return null;
+                                    if (rowNight && !rowCancelled) {
+                                      return (
+                                        <button onClick={() => {
+                                          closeOptionsMenu();
+                                          setCancelNightTarget({
+                                            rootGigId: gig.applicationsRootGigId || gig.gigId,
+                                            accepted: rowCounts.accepted,
+                                            waiting: rowCounts.waiting,
+                                          });
+                                        }}>
+                                          Cancel night
+                                          <CancelIcon />
+                                        </button>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                  {(() => {
+                                    const rowVenue = (venues || []).find((venue) => venue.venueId === gig.venueId) || null;
+                                    const rowGroup = groupedGigs.find((entry) => entry.gigIds.includes(gig.gigId));
+                                    const rowSlots = rowGroup ? rowGroup.allGigs : [gig];
+                                    const rowNight = isNightModelGroup(rowSlots, rowVenue);
+                                    const rowCounts = nightAudienceCounts(rowSlots);
+                                    if (rowNight && gig.dateTime > now && rowCounts.total === 0 && hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
+                                      return (
+                                        <button onClick={() => {
+                                          closeOptionsMenu();
+                                          const gigIdsToDelete = rowGroup ? rowGroup.gigIds : [gig.gigId];
+                                          setSelectedGigs(gigIdsToDelete);
+                                          setConfirmType('delete');
+                                          setConfirmModal(true);
+                                          setConfirmMessage("Delete this night? This can't be undone.");
+                                        }}>
+                                          Delete night
+                                          <DeleteGigIcon />
+                                        </button>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                  {gig.dateTime > now && gig.status !== 'confirmed' && gig.status !== 'accepted' && gig.status !== 'awaiting payment' && hasVenuePerm(venues, gig.venueId, 'gigs.update') && !isNightModelGroup((groupedGigs.find((entry) => entry.gigIds.includes(gig.gigId))?.allGigs) || [gig], (venues || []).find((venue) => venue.venueId === gig.venueId)) ? (
                                       <button 
                                           onClick={() => {
                                               if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
@@ -2121,7 +2213,7 @@ export const Gigs = ({
                                               Delete
                                               <DeleteGigIcon />
                                       </button>
-                                  ) : gig.dateTime > now && gig.status === 'confirmed' && hasVenuePerm(venues, gig.venueId, 'gigs.update') && (
+                                  ) : gig.dateTime > now && gig.status === 'confirmed' && hasVenuePerm(venues, gig.venueId, 'gigs.update') && !isNightModelGroup((groupedGigs.find((entry) => entry.gigIds.includes(gig.gigId))?.allGigs) || [gig], (venues || []).find((venue) => venue.venueId === gig.venueId)) && (
                                         <button 
                                           onClick={() => {
                                               if (!hasVenuePerm(venues, gig.venueId, 'gigs.update')) {
@@ -2160,6 +2252,17 @@ export const Gigs = ({
             </table>
         </div>
         ))}
+            {cancelNightTarget && (
+              <Portal>
+                <CancelNightDialog
+                  accepted={cancelNightTarget.accepted}
+                  waiting={cancelNightTarget.waiting}
+                  busy={cancelNightBusy}
+                  onClose={() => { if (!cancelNightBusy) setCancelNightTarget(null); }}
+                  onConfirm={confirmCancelNight}
+                />
+              </Portal>
+            )}
             {confirmModal && (
               <Portal>
                 {!loading ? (

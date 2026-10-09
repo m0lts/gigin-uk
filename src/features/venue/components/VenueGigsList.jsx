@@ -308,7 +308,9 @@ export const VenueGigsList = ({ title, gigs, groupedGigs = [], hireOpportunities
                       </div>
                 )}
     
-                {title !== "Upcoming" && !isVenue ? (
+                {gig.status === 'cancelled' ? (
+                  <p>This night has been cancelled</p>
+                ) : title !== "Upcoming" && !isVenue ? (
                   <button
                     className="btn artist-profile"
                     onClick={(e) => openInNewTab(linkUrl, e)}

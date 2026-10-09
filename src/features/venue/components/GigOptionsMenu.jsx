@@ -19,8 +19,10 @@ export function GigOptionsMenu({
   onEditGig,
   showCancelGig,
   onCancelGig,
+  cancelGigLabel = 'Cancel gig',
   showDeleteGig,
   onDeleteGig,
+  deleteGigLabel = 'Delete gig',
   /** `icon` is the 34×34 ellipsis trigger used on the console gig-details bar. */
   appearance = 'default',
 }) {
@@ -84,7 +86,7 @@ export function GigOptionsMenu({
               className={`${itemClass}${dangerClass}`}
               onClick={() => { onCancelGig(); onToggle(); }}
             >
-              Cancel gig <CancelIcon />
+              {cancelGigLabel} <CancelIcon />
             </button>
           )}
           {hasDelete && (
@@ -93,7 +95,7 @@ export function GigOptionsMenu({
               className={`${itemClass}${dangerClass}`}
               onClick={() => { onDeleteGig(); onToggle(); }}
             >
-              Delete gig <DeleteGigIcon />
+              {deleteGigLabel} <DeleteGigIcon />
             </button>
           )}
         </div>

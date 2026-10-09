@@ -8,7 +8,7 @@ import { ArtistFillThisSlotTile } from '@features/venue/gigs/components/ArtistFi
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { getLocalGigDateTime } from '@services/utils/filtering';
 import { getGigsByIds, deleteGigsBatch } from '@services/client-side/gigs';
-import { updateGigDocument } from '@services/api/gigs';
+import { updateGigDocument, cancelNight, undoCancelNight } from '@services/api/gigs';
 import { updateVenueHireOpportunity, deleteVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { postCancellationMessage } from '@services/api/messages';
 import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
@@ -21,6 +21,8 @@ import { BookingSummarySidebar } from '../components/BookingSummarySidebar';
 import { isGuestApplyGig } from '@features/gig-discovery/guest/guestFormat';
 import { GigInvitesModal } from '../../components/GigInvitesModal';
 import { GigOptionsMenu } from '../../components/GigOptionsMenu';
+import { CancelNightDialog } from '../../components/CancelNightDialog';
+import { isNightModelGig, nightAudienceCounts, toastNightCancelled, usesPaymentsCancel } from '../utils/nightCancel';
 import { getMainPanelComponent } from './panels';
 
 function calculateEndTime(startTime, duration) {
@@ -100,6 +102,9 @@ function artistBookingStatusPill(slots, now) {
   if (!primary) return { key: 'open', label: ARTIST_BOOKING_PILL_LABELS.open };
   if (primary.status === 'in dispute' || primary.disputeLogged) {
     return { key: 'dispute', label: ARTIST_BOOKING_PILL_LABELS.dispute };
+  }
+  if (primary.status === 'cancelled' || (slots || []).every((slot) => slot?.status === 'cancelled')) {
+    return { key: 'closed', label: 'Cancelled' };
   }
   const dateTime = getLocalGigDateTime(primary);
   if (dateTime && dateTime < now) {
@@ -212,6 +217,8 @@ export function VenueGigPageShell({
   const [showInviteToApplyModal, setShowInviteToApplyModal] = useState(false);
   const [showArtistInviteModal, setShowArtistInviteModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCancelNight, setShowCancelNight] = useState(false);
+  const [cancelNightBusy, setCancelNightBusy] = useState(false);
   const optionsMenuRef = React.useRef(null);
   /**
    * For multi-set nights, always anchor the page on the earliest slot (one combined details view).
@@ -484,8 +491,17 @@ export function VenueGigPageShell({
     );
   const isVenueHire = normalisedGig?.bookingMode === 'venue_hire';
   const hasVenueHireBooker = isVenueHire && !!(gigInfo?.renterName && String(gigInfo.renterName).trim());
-  const showCancelGigOption = (hasAnyConfirmed || hasVenueHireBooker) && hasVenuePerm(venues, gigInfo?.venueId, 'gigs.update');
-  const showDeleteGigOption = !hasAnyConfirmed && !hasVenueHireBooker && hasVenuePerm(venues, gigInfo?.venueId, 'gigs.update');
+  const nightSlots = [gigInfo, ...relatedSlots].filter(Boolean);
+  const nightModel = !isVenueHire && isNightModelGig(gigInfo, venueRowForGig) && !nightSlots.some(usesPaymentsCancel);
+  const nightCounts = nightAudienceCounts(allSlots.length ? allSlots : nightSlots);
+  const nightCancelled = nightSlots.length > 0 && nightSlots.every((slot) => slot.status === 'cancelled');
+  const canUpdateThisGig = hasVenuePerm(venues, gigInfo?.venueId, 'gigs.update');
+  const showCancelGigOption = nightModel
+    ? canUpdateThisGig && !nightCancelled
+    : hasVenueHireBooker && canUpdateThisGig;
+  const showDeleteGigOption = nightModel
+    ? canUpdateThisGig && nightCounts.total === 0
+    : !hasAnyConfirmed && !hasVenueHireBooker && canUpdateThisGig;
   // When cancel confirm opens for venue hire, resolve whether booking is via Gigin (for "Notify booker").
   useEffect(() => {
     if (!showCancelConfirm || !isVenueHire || !gigInfo?.gigId || !user?.uid) {
@@ -529,13 +545,27 @@ export function VenueGigPageShell({
         toast.success('Booking cancelled.');
         refreshGigs?.();
         navigate('/venues/dashboard/gigs', { replace: true });
-      } else {
-        toast.info('To cancel an artist booking, use the Options menu on the Gigs list.');
-        navigate('/venues/dashboard/gigs');
       }
     } catch (err) {
       console.error(err);
       toast.error('Failed to cancel booking.');
+    }
+  };
+
+  const confirmCancelNight = async (reason) => {
+    const rootGigId = gigInfo?.applicationsRootGigId || gigInfo?.gigId;
+    if (!rootGigId) return;
+    setCancelNightBusy(true);
+    try {
+      await cancelNight({ rootGigId, reason });
+      setShowCancelNight(false);
+      toastNightCancelled({ rootGigId, undo: undoCancelNight, refresh: refreshGigs });
+      refreshGigs?.();
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || 'Failed to cancel the night.');
+    } finally {
+      setCancelNightBusy(false);
     }
   };
 
@@ -547,6 +577,10 @@ export function VenueGigPageShell({
         const hireId = gigInfo.id || gigInfo.gigId;
         await deleteVenueHireOpportunity(hireId);
         toast.success('Venue hire opportunity removed.');
+      } else if (nightModel) {
+        const ids = [...new Set((allSlots.length ? allSlots : [gigInfo]).map((slot) => slot.gigId || slot.id).filter(Boolean))];
+        await deleteGigsBatch(ids);
+        toast.success('Night deleted.');
       } else {
         await deleteGigsBatch([gigInfo.gigId]);
         toast.success('Gig deleted.');
@@ -573,7 +607,8 @@ export function VenueGigPageShell({
   const isConfirmedVenueHire = isVenueHirePage && normalisedGig.status === 'confirmed';
   const isOpenArtistBookingPage = normalisedGig.bookingMode === 'artist_booking' && normalisedGig.status === 'open';
   const isConfirmedArtistBookingPage = normalisedGig.bookingMode === 'artist_booking' && normalisedGig.status === 'confirmed';
-  const isArtistBookingPage = isOpenArtistBookingPage || isConfirmedArtistBookingPage;
+  const isCancelledArtistBooking = normalisedGig.bookingMode === 'artist_booking' && (normalisedGig.status === 'cancelled' || gigInfo?.status === 'cancelled');
+  const isArtistBookingPage = isOpenArtistBookingPage || isConfirmedArtistBookingPage || isCancelledArtistBooking;
   const guestNightReview = isArtistBookingPage && isGuestApplyGig(gigInfo, venueRowForGig);
   const noBookerYet = isVenueHirePage && !hasVenueHireBooker;
   // Both venue-hire-with-no-booker and open artist bookings show the "invite UI" state:
@@ -661,11 +696,10 @@ export function VenueGigPageShell({
               showEditGig={showEditGigOption}
               onEditGig={openEditGigModal}
               showCancelGig={gigDateTime > now && showCancelGigOption}
-              onCancelGig={() => {
-                toast.info('To cancel an artist booking, use the Options menu on the Gigs list.');
-                navigate('/venues/dashboard/gigs');
-              }}
+              cancelGigLabel={nightModel ? 'Cancel night' : 'Cancel gig'}
+              onCancelGig={() => { if (nightModel) setShowCancelNight(true); }}
               showDeleteGig={gigDateTime > now && showDeleteGigOption}
+              deleteGigLabel={nightModel ? 'Delete night' : 'Delete gig'}
               onDeleteGig={() => setShowDeleteConfirm(true)}
             />
           </div>
@@ -756,14 +790,13 @@ export function VenueGigPageShell({
                   showEditGig={showEditGigOption}
                   onEditGig={openEditGigModal}
                   showCancelGig={gigDateTime > now && showCancelGigOption}
+                  cancelGigLabel={nightModel ? 'Cancel night' : 'Cancel gig'}
                   onCancelGig={() => {
-                    if (isVenueHire) setShowCancelConfirm(true);
-                    else {
-                      toast.info('To cancel an artist booking, use the Options menu on the Gigs list.');
-                      navigate('/venues/dashboard/gigs');
-                    }
+                    if (nightModel) setShowCancelNight(true);
+                    else if (isVenueHire) setShowCancelConfirm(true);
                   }}
                   showDeleteGig={gigDateTime > now && showDeleteGigOption}
+                  deleteGigLabel={nightModel ? 'Delete night' : 'Delete gig'}
                   onDeleteGig={() => setShowDeleteConfirm(true)}
                 />
               </div>
@@ -908,6 +941,18 @@ export function VenueGigPageShell({
         </Portal>
       )}
 
+      {showCancelNight && (
+        <Portal>
+          <CancelNightDialog
+            accepted={nightCounts.accepted}
+            waiting={nightCounts.waiting}
+            busy={cancelNightBusy}
+            onClose={() => { if (!cancelNightBusy) setShowCancelNight(false); }}
+            onConfirm={confirmCancelNight}
+          />
+        </Portal>
+      )}
+
       {showDeleteConfirm && (
         <Portal>
           <div
@@ -917,7 +962,7 @@ export function VenueGigPageShell({
             aria-modal="true"
           >
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>{isVenueHire ? 'Delete this venue hire?' : 'Delete this gig?'}</h3>
+              <h3>{isVenueHire ? 'Delete this venue hire?' : nightModel ? 'Delete this night?' : 'Delete this gig?'}</h3>
               <p>Are you sure? This action cannot be undone.</p>
               <div className="two-buttons" style={{ marginTop: '1rem' }}>
                 <button type="button" className="btn tertiary" onClick={() => setShowDeleteConfirm(false)}>

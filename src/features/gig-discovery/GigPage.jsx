@@ -2184,8 +2184,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
     const hasValidInvite = inviteValid && hasAccessToPrivateGig;
 
     // Visibility per your spec
+    const nightCancelled = String(currentSlot?.status || gigData?.status || '').toLowerCase() === 'cancelled';
     const showApply =
-    !invited && !isPrivate && !applied && !accepted && !declinedForOtherSet && !slotClosedToNewApplicants;
+    !nightCancelled && !invited && !isPrivate && !applied && !accepted && !declinedForOtherSet && !slotClosedToNewApplicants;
 
     const showApplied =
     (( // already applied covers both public and private
@@ -2394,6 +2395,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
                             <div className='head'>
                                 <div className='title'>
                                     <h1>{getBaseGigName(gigData.gigName)}</h1>
+                                    {(gigData?.status === 'cancelled' || currentSlot?.status === 'cancelled') && (
+                                      <p><strong>This night has been cancelled</strong></p>
+                                    )}
                                 </div>
                             </div>
                             <div className='images-and-location'>
@@ -2914,6 +2918,9 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
                             <div className='main'>
                                 <div className="section">
                                     <h1>{getBaseGigName(gigData.gigName)}</h1>
+                                    {(gigData?.status === 'cancelled' || currentSlot?.status === 'cancelled') && (
+                                      <p><strong>This night has been cancelled</strong></p>
+                                    )}
                                     <div className="divider">
                                         <span className="line"></span>
                                         <h6>@</h6>
