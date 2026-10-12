@@ -142,6 +142,12 @@ export function keepRememberedApplication({ status, httpStatus } = {}) {
   return true;
 }
 
+export function showsManageReview({ status, accepted } = {}) {
+  if (accepted) return false;
+  const value = String(status || '').toLowerCase();
+  return value !== 'declined' && value !== 'withdrawn';
+}
+
 export function icsForSet({ title, start, end, location, description, uid, sequence = 0 }) {
   const stamp = (date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const body = [

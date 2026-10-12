@@ -14,7 +14,7 @@ import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
 import { GuestWhoStep } from './GuestWhoStep';
 import { FEATURES } from '../../../config/features';
-import { bookerLine, firstName, forgetApplication, formatClock, formatGigDay, formatShortDay, icsForSet, preferenceReview, slotDate, slotEnd } from './guestFormat';
+import { bookerLine, firstName, forgetApplication, formatClock, formatGigDay, formatShortDay, icsForSet, preferenceReview, showsManageReview, slotDate, slotEnd } from './guestFormat';
 
 const STATUS = {
   sent: ['Sent', 'is-wait'],
@@ -477,7 +477,7 @@ export function ManageGuestApplication() {
               <button type="button" className="ga-ghost" onClick={cancelEdit}>Cancel</button>
             </div>
           </div>
-        ) : !accepted && application.status !== 'declined' && (
+        ) : showsManageReview({ status: application.status, accepted }) && (
           <GuestReviewStep
             draft={draft}
             slots={slots.length ? slots : [gig].filter(Boolean)}
@@ -496,7 +496,7 @@ export function ManageGuestApplication() {
             }}
           />
         )}
-        {!editing && !accepted && application.status !== 'declined' && (
+        {!editing && showsManageReview({ status: application.status, accepted }) && (
           <div className="ga-review">
             <div className="ga-review__row">
               <span>Note to {booker.name}</span>

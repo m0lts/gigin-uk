@@ -1,11 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   bookerLine,
   forgetApplication,
   keepRememberedApplication,
   rememberApplication,
   rememberedApplication,
+  showsManageReview,
 } from './guestFormat.js';
 
 function memoryStorage() {
@@ -47,6 +51,23 @@ test('booker wording uses the venue owner first name', () => {
   assert.equal(bookerLine({}).name, 'the venue');
   assert.equal(bookerLine({ accountName: 'Sam Hart', bookerRole: 'Bar manager' }).role, 'Bar manager');
   assert.equal(bookerLine({ name: 'Jesus College Bar' }).role, '');
+});
+
+test('a withdrawn application shows the explainer without the review list', () => {
+  assert.equal(showsManageReview({ status: 'withdrawn' }), false);
+  assert.equal(showsManageReview({ status: 'declined' }), false);
+  assert.equal(showsManageReview({ status: 'accepted', accepted: true }), false);
+  assert.equal(showsManageReview({ status: 'pending' }), true);
+  assert.equal(showsManageReview({ status: 'sent' }), true);
+});
+
+test('the withdrawn page and the sent page each have one Back to the gig control', () => {
+  const dir = dirname(fileURLToPath(import.meta.url));
+  const manage = readFileSync(join(dir, 'ManageGuestApplication.jsx'), 'utf8');
+  const applied = readFileSync(join(dir, 'GuestApplied.jsx'), 'utf8');
+  assert.equal(manage.split('Back to the gig').length - 1, 1);
+  assert.equal(applied.split('Back to the gig').length - 1, 1);
+  assert.equal(manage.includes('GuestApplied'), false);
 });
 
 test('a withdrawn or missing application does not keep the applied banner', () => {
