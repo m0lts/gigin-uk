@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { finishSetupPath, loginLandingPath } from './loginDestination.js';
+import { finishSetupPath, loginLandingPath, logoutDestination } from './loginDestination.js';
 
 test('a login with no profile finishes venue setup', () => {
   assert.equal(finishSetupPath({}), '/venues/add-venue');
@@ -19,6 +19,12 @@ test('a keep-profile login with no artistProfiles on the user doc goes home', ()
     loginLandingPath({ venueProfiles: [{ id: 'venue-1' }] }, features, { hasArtistSession: true }),
     '/venues/dashboard',
   );
+});
+
+test('logout sends a venue and an artist to the site root', () => {
+  assert.equal(logoutDestination(), '/');
+  assert.equal(logoutDestination(null), '/');
+  assert.equal(logoutDestination('/join-venue?invite=abc'), '/join-venue?invite=abc');
 });
 
 test('a known artist signup still uses the artist destination', () => {

@@ -33,3 +33,12 @@ export function loginLandingPath(user, features = {}, { hasArtistSession = false
   if (features.keepProfile && hasArtistSession) return '/home';
   return finishSetupPath(user, features);
 }
+
+/**
+ * Where to send someone who just logged out.
+ * Venue and artist accounts both go to the site root.
+ * An explicit redirect (for example an invite page) is kept.
+ */
+export function logoutDestination(redirect = null) {
+  return redirect || '/';
+}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { auth, firestore, googleProvider } from '@lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
+import { logoutDestination } from '../config/loginDestination';
 import { httpClient } from '@services/http/client';
 import { doc, getDoc, setDoc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
@@ -286,19 +287,8 @@ const resetPassword = async (rawEmail) => {
 
   const logout = async (redirect = null) => {
     try {
-      // Check user type before signing out (user will be null after signOut)
-      const userType = user?.venueProfiles && user.venueProfiles.length > 0 ? 'venue' : 
-                      user?.artistProfiles && user.artistProfiles.length > 0 ? 'artist' : null;
-      
       await signOut(auth);
-      
-      if (redirect) {
-        navigate(redirect, { replace: true });
-      } else if (userType === 'venue') {
-        navigate('/venues', { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+      navigate(logoutDestination(redirect), { replace: true });
     } catch (error) {
       console.error('Logout failed', error);
     }
