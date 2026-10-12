@@ -14,7 +14,8 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { FEATURES } from '../../../config/features';
 import { artistDestination } from '../../../config/artistDestination';
-import { finishSetupPath } from '../../../config/loginDestination';
+import { loginLandingPath } from '../../../config/loginDestination';
+import { getArtistHome, getProfileSession } from '@services/client-side/keepProfile';
 
 
 
@@ -35,29 +36,33 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
   }, [linkWait]);
 
   useEffect(() => {
-    if (justLoggedIn && user && !loading) {
-      // Close modal immediately if email is verified
-      const u = auth.currentUser;
-      if (u && u.emailVerified) {
-        setAuthModal(false);
-      }
-      
-      // Wait a bit for user data to fully load before redirecting
-      const timer = setTimeout(() => {
-        if (user.artistProfiles && user.artistProfiles.length > 0) {
-          navigate(FEATURES.keepProfile ? '/home' : artistDestination(user, FEATURES));
-          setJustLoggedIn(false);
-        } else if (user.venueProfiles && user.venueProfiles.length > 0) {
-          navigate('/venues/dashboard');
-          setJustLoggedIn(false);
-        } else {
-          navigate(finishSetupPath(user, FEATURES));
-          setJustLoggedIn(false);
-        }
-      }, 500); // Small delay to ensure user data is loaded
-      
-      return () => clearTimeout(timer);
+    if (!(justLoggedIn && user && !loading)) return undefined;
+    const u = auth.currentUser;
+    if (u && u.emailVerified) {
+      setAuthModal(false);
     }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const hasArtist = Array.isArray(user.artistProfiles) && user.artistProfiles.length > 0;
+      const hasVenue = Array.isArray(user.venueProfiles) && user.venueProfiles.length > 0;
+      let hasArtistSession = false;
+      if (FEATURES.keepProfile && !hasArtist && !hasVenue) {
+        const [session, home] = await Promise.all([
+          getProfileSession().catch(() => null),
+          getArtistHome().catch(() => null),
+        ]);
+        hasArtistSession = Boolean(session?.profile || home?.profile);
+      }
+      if (cancelled) return;
+      navigate(loginLandingPath(user, FEATURES, { hasArtistSession }));
+      setJustLoggedIn(false);
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [user, justLoggedIn, loading, navigate, setAuthModal]);
 
   const handleFocus = () => {

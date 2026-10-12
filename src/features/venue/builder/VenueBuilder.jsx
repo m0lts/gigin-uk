@@ -26,7 +26,7 @@ import { clearUserArrayField, updateUserArrayField } from '@services/api/users';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { FEATURES } from '../../../config/features';
-import { canCreateVenue } from '../../../config/venueAccess';
+import { canCreateVenue, signedInWithoutVenue } from '../../../config/venueAccess';
 import { AccessCard } from '../../landing-page/LandingPage';
 import '../../landing-page/landing.css';
 
@@ -756,7 +756,11 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                     <MobileIcon />
                     <h2>Not supported on mobile</h2>
                     <p>Sorry, but you can't build a venue profile on a mobile device. Please use a desktop computer to build your venue profile.</p>
-                    <button className="btn primary" onClick={() => navigate(-1)}>Go Back</button>
+                    {signedInWithoutVenue(user) ? (
+                        <p>This page stays open. Add the venue from a desktop computer.</p>
+                    ) : (
+                        <button className="btn primary" onClick={() => navigate(-1)}>Go Back</button>
+                    )}
                 </div>
             </div>
         );

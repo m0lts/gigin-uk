@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canCreateVenue, canJoinInvitedVenue } from './venueAccess.js';
+import { canCreateVenue, canJoinInvitedVenue, pathWhenSignedInWithoutVenue, signedInWithoutVenue } from './venueAccess.js';
 
 const ciBuild = {};
 
@@ -17,6 +17,15 @@ test('an invited venue member can still join', () => {
 
 test('an existing venue can still be edited when creation is closed', () => {
   assert.equal(canCreateVenue(ciBuild, { exists: true }), true);
+});
+
+test('a signed-in user with no venue profile is not sent to the site root', () => {
+  assert.equal(signedInWithoutVenue({ uid: 'a' }), true);
+  assert.equal(signedInWithoutVenue({ uid: 'a', venueProfiles: [] }), true);
+  assert.equal(signedInWithoutVenue({ uid: 'a', venueProfiles: [{ id: 'v' }] }), false);
+  assert.equal(signedInWithoutVenue(null), false);
+  assert.equal(pathWhenSignedInWithoutVenue(), '/venues/add-venue');
+  assert.notEqual(pathWhenSignedInWithoutVenue(), '/');
 });
 
 test('the venue signup flag turns self-serve venue creation on', () => {

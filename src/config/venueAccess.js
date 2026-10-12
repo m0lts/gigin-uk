@@ -37,3 +37,16 @@ export function gigCreationClosed(venues, venueId) {
 export function canJoinInvitedVenue() {
   return true;
 }
+
+/** Signed in, and the account has no venue profile to edit. */
+export function signedInWithoutVenue(user) {
+  return Boolean(user) && !(Array.isArray(user.venueProfiles) && user.venueProfiles.length > 0);
+}
+
+/**
+ * A signed-in user with no venue profile used to be sent from the venue
+ * dashboard to "/" on a narrow window. Keep them on the venue builder.
+ */
+export function pathWhenSignedInWithoutVenue() {
+  return '/venues/add-venue';
+}
