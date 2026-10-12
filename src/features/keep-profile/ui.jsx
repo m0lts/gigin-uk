@@ -30,8 +30,9 @@ export function Toggle({ on, disabled, label, onChange }) {
 export function CopyButton({ text, label = 'Copy' }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button type="button" className="kp-inline" onClick={async () => {
-      try { await navigator.clipboard.writeText(text); } catch { /* ignore */ }
+    <button type="button" className="kp-inline" onClick={() => {
+      const write = navigator.clipboard?.writeText(text);
+      if (write?.then) write.catch(() => {});
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     }}>{copied ? 'Copied ✓' : label}</button>

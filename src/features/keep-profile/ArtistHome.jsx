@@ -9,6 +9,11 @@ function first(name) {
   return String(name || '').trim().split(/\s+/)[0] || 'there';
 }
 
+function initials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2);
+  return parts.map((part) => part[0]).join('').toUpperCase() || '?';
+}
+
 function pill(status) {
   const value = String(status || '').toLowerCase();
   if (value === 'confirmed' || value === 'accepted' || value === 'paid') return ['Confirmed', 'kp-pill-ok'];
@@ -37,10 +42,18 @@ export function ArtistHome({ user, logout }) {
       setWelcome(Boolean(oldAccount));
     });
   }, [user]);
-  if (!data) return <div className="kp"><div className="kp-wrap"><p>Loading…</p></div></div>;
+  if (!data) {
+    return (
+      <div className="kp kp-home">
+        <header className="kp-top"><span className="kp-logo">gigin.</span></header>
+        <div className="kp-wrap"><p>Loading…</p></div>
+      </div>
+    );
+  }
   if (!data.profile) {
     return (
-      <div className="kp">
+      <div className="kp kp-home">
+        <header className="kp-top"><span className="kp-logo">gigin.</span></header>
         <div className="kp-wrap">
           <h1>Hi</h1>
           <p>Sign in, or open the link from your confirm email, to see your gigs and profile.</p>
@@ -51,17 +64,22 @@ export function ArtistHome({ user, logout }) {
   const url = data.profile.slug ? profileLink(data.profile.slug) : '';
   const nothingYet = data.gigs.length === 0 && data.applications.length === 0;
   const unpublished = data.profile.status === 'hidden' || data.profile.status === 'pending';
+  const photo = data.profile.heroMedia?.url || '';
   return (
-    <div className="kp">
+    <div className="kp kp-home">
       <header className="kp-top">
         <span className="kp-logo">gigin.</span>
-        <span>{data.profile.name} · <button type="button" className="kp-text" onClick={logout}>Sign out</button></span>
+        <span className="kp-top-user">
+          {data.profile.name}
+          <span aria-hidden="true"> · </span>
+          <button type="button" className="kp-text" onClick={logout}>Sign out</button>
+        </span>
       </header>
       <div className="kp-wrap kp-public">
         <div className="kp-split">
           <div>
             <h1>Hi {first(data.contactName || data.profile.name)}</h1>
-            <p>{data.profile.name}</p>
+            <p className="kp-act">{data.profile.name}</p>
             {welcome && (
               <p className="kp-card"><strong>Welcome to the new Gigin.</strong> Your profile, applications and gigs from the old app are all here.</p>
             )}
@@ -74,16 +92,19 @@ export function ArtistHome({ user, logout }) {
             ) : data.gigs.length === 0 ? (
               <p>No confirmed gigs yet. When a venue confirms you, the gig shows here.</p>
             ) : null}
-            {unpublished ? <p>Your profile is empty. <Link to="/profile/edit">Fill it in</Link>, then publish it when you want a public link.</p> : null}
-            {data.gigs.map((gig) => (
-              <article className="kp-home-gig" key={gig.gigId}>
-                <p className="kp-mono">{gig.date || ''}</p>
-                <strong>{gig.name}</strong>
-                <p>{gig.venue}{gig.city ? `, ${gig.city}` : ''}</p>
-                <span className="kp-pill kp-pill-ok">Confirmed</span>
-                {gig.gigId && <Link to={`/gig/${gig.gigId}`}>Details</Link>}
-              </article>
-            ))}
+            {unpublished ? <p>Your profile is empty. <Link className="kp-text" to="/profile/edit">Fill it in</Link>, then publish it when you want a public link.</p> : null}
+            {data.gigs.map((gig) => {
+              const setLabel = gig.setLabel || gig.set || '';
+              return (
+                <article className="kp-home-gig" key={gig.gigId}>
+                  <p className="kp-mono">{gig.date || ''}</p>
+                  <strong>{gig.name}</strong>
+                  <p>{gig.venue}{gig.city ? `, ${gig.city}` : ''}</p>
+                  <span className="kp-pill kp-pill-ok">{setLabel ? `Confirmed · ${setLabel}` : 'Confirmed'}</span>
+                  {gig.gigId && <Link className="kp-text" to={`/gig/${gig.gigId}`}>Details</Link>}
+                </article>
+              );
+            })}
             <h2>MY APPLICATIONS</h2>
             {data.applications.map((application) => {
               const [label, tone] = pill(application.status);
@@ -97,13 +118,18 @@ export function ArtistHome({ user, logout }) {
           </div>
           <aside className="kp-aside kp-card">
             <p className="kp-mono">MY PROFILE</p>
-            <strong>{data.profile.name}</strong>
-            {unpublished ? <p>Not public yet.</p> : null}
-            {url && !unpublished && <p className="kp-mono">{url.replace('https://', '')}</p>}
-            <div className="kp-links">
-              {data.profile.slug && <Link to={`/artist/${data.profile.slug}`}>View</Link>}
-              <Link to="/profile/edit">Edit</Link>
-              {url && <CopyButton text={url} />}
+            <div className="kp-profile-id">
+              {photo ? <img className="kp-home-avatar" alt="" src={photo} /> : <span className="kp-home-avatar" aria-hidden="true">{initials(data.profile.name)}</span>}
+              <div>
+                <strong>{data.profile.name}</strong>
+                {unpublished ? <p>Not public yet.</p> : null}
+                {url && !unpublished && <p className="kp-mono">{url.replace('https://', '')}</p>}
+              </div>
+            </div>
+            <div className="kp-profile-actions">
+              {data.profile.slug && <Link className="kp-inline" to={`/artist/${data.profile.slug}`}>View</Link>}
+              <Link className="kp-inline" to="/profile/edit">Edit</Link>
+              {url && <CopyButton text={url} label="Copy link" />}
             </div>
             {FEATURES.pressKit && (
               <div className="kp-row">
@@ -111,7 +137,7 @@ export function ArtistHome({ user, logout }) {
                   <strong>Press kit</strong>
                   <small>Not set up yet</small>
                 </div>
-                <Link to="/profile/press-kit">Set up</Link>
+                <Link className="kp-text" to="/profile/press-kit">Set up</Link>
               </div>
             )}
           </aside>
