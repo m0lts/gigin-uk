@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://giginmusic.com", "https://www.giginmusic.com"],
+    "method": ["PUT"],
+    "responseHeader": ["Content-Type", "x-goog-resumable"],
+    "maxAgeSeconds": 3600
+  }
+]
