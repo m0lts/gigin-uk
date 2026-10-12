@@ -14,7 +14,7 @@ import {
   undoCloseNightApplications,
   undoNightApplication,
 } from '@services/api/gigs';
-import { formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
+import { bandMemberPhrase, formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
 import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 import { reportApplicationActionError } from '@features/venue/gigs/utils/applicationActionError';
 import { ApplicantProfileModal, useApplicantQuery } from '@features/venue/gigs/components/ApplicantProfileModal';
@@ -558,7 +558,7 @@ function ApplicantCard({
   const withdrawn = app.status === 'withdrawn';
   const unviewed = isNewApplicant(app);
   const status = statusChip(app, assigned, ordered, oneSet);
-  const members = (app.members || []).filter((member) => member?.name || member?.instruments?.length);
+  const bandPhrase = bandMemberPhrase(app.members);
   return (
     <article className={`na-app${withdrawn ? ' is-muted' : ''}${unviewed ? ' is-unviewed' : ''}`}>
       {unviewed ? <span className="na-app__dot" aria-label="New application" /> : null}
@@ -569,7 +569,7 @@ function ApplicantCard({
           {(app.type === 'guest' || app.guest) && <em>Guest</em>}
           <span className={status.className}>{status.label}</span>
         </header>
-        <p>{app.kind || 'Act'} · {members.length || 1} {members.length === 1 ? 'member' : 'members'} · applied {when(app.createdAt || app.appliedAt) || 'recently'}</p>
+        <p>{[app.kind || 'Act', bandPhrase, `applied ${when(app.createdAt || app.appliedAt) || 'recently'}`].filter(Boolean).join(' · ')}</p>
         {!oneSet && <div className="na-tags"><span className={conflict ? 'is-warn' : (app.preferredSlotGigIds || []).length ? 'is-pref' : ''}>{conflict || prefersLabel}</span></div>}
         {music && <p className="na-music"><i />{music.provider}{preview?.title ? ` · ${preview.title}` : ''}</p>}
         {(app.assets || []).some(isAudioAsset) && (

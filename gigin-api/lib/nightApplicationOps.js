@@ -13,7 +13,7 @@ import {
 } from "./nightApplications.js";
 import { applicationNoticeMessage, planVenueNotice, shouldNotify } from "./venueApplicationNotice.js";
 import { appendPlayedAt, keepReminderHtml, markBookingCancelled } from "./keepProfile.js";
-import { icsAttachment, icsEvent, renderArtistEmail } from "./artistEmails.js";
+import { bandMemberRow, icsAttachment, icsEvent, renderArtistEmail } from "./artistEmails.js";
 import { ownerName } from "./ownerName.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 import { assertVenueCanPublishNights } from "./venueApproval.js";
@@ -400,7 +400,6 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
   const address = addressOf(venue);
   const arrival = venue?.arrivalNotes || "";
   const door = doors(gig);
-  const members = Array.isArray(app.members) ? app.members.filter((member) => member?.name).length : 0;
   const role = venue?.bookerRole || venue?.role || "";
   const where = [address, arrival].filter(Boolean).join(". ");
   const venueUrl = `${process.env.BASE_URL || "https://giginmusic.com"}/venues/${venue?.venueId || gig?.venueId || ""}`;
@@ -427,7 +426,7 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       eyebrow: "APPLICATION SENT",
       heading: `${escapeHtml(booker)} has your application`,
       paras: [hi, `Thanks for applying. ${escapeHtml(booker)} at ${escapeHtml(venueName)} has your application for <b>${escapeHtml(when)}</b>, and will get back to you${reach}.`],
-      boxes: [{ label: "YOUR APPLICATION", rows: [["Act", escapeHtml(act)], setCopy ? ["Set", setCopy] : null, members ? ["Band", `${members} members`] : null].filter(Boolean) }],
+      boxes: [{ label: "YOUR APPLICATION", rows: [["Act", escapeHtml(act)], setCopy ? ["Set", setCopy] : null, bandMemberRow(app.members)].filter(Boolean) }],
       pre: "Need to change something, or can't make it any more? Use your private link:",
       button: ["Change or withdraw your application", url],
       small: "This link is private, so don't forward it. It works until 7 days after the gig.",

@@ -4,7 +4,9 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  bandMemberPhrase,
   bookerLine,
+  filledBandMembers,
   forgetApplication,
   keepRememberedApplication,
   rememberApplication,
@@ -68,6 +70,14 @@ test('the withdrawn page and the sent page each have one Back to the gig control
   assert.equal(manage.split('Back to the gig').length - 1, 1);
   assert.equal(applied.split('Back to the gig').length - 1, 1);
   assert.equal(manage.includes('GuestApplied'), false);
+});
+
+test('an empty band is left off the application', () => {
+  assert.equal(bandMemberPhrase([{ name: '', instruments: [] }]), '');
+  assert.equal(bandMemberPhrase(undefined), '');
+  assert.equal(filledBandMembers([{ name: '  ', instruments: [''] }]).length, 0);
+  assert.equal(bandMemberPhrase([{ name: 'Ada', instruments: ['Vocals'] }]), '1 member');
+  assert.equal(bandMemberPhrase([{ name: 'Ada' }, { instruments: ['Guitar'] }]), '2 members');
 });
 
 test('a withdrawn or missing application does not keep the applied banner', () => {

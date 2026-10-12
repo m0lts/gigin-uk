@@ -25,6 +25,25 @@ function strip(value) {
   return String(value || "").replace(/<[^>]+>/g, "");
 }
 
+function instrumentGiven(member) {
+  const raw = member?.instruments ?? member?.instrument ?? "";
+  if (Array.isArray(raw)) return raw.some((item) => String(item || "").trim());
+  return Boolean(String(raw || "").trim());
+}
+
+/**
+ * Band line for the application email.
+ * A blank member row is not a band, so the row is left out.
+ */
+export function bandMemberRow(members) {
+  const count = (Array.isArray(members) ? members : []).filter((member) => {
+    const name = String(member?.name || member?.userName || "").trim();
+    return Boolean(name || instrumentGiven(member));
+  }).length;
+  if (!count) return null;
+  return ["Band", `${count} member${count === 1 ? "" : "s"}`];
+}
+
 export function renderArtistEmail(email) {
   const home = String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
   const styles = `:root{color-scheme:light dark;supported-color-schemes:light dark;}

@@ -13,7 +13,7 @@ import {
 import { get } from '@services/http';
 import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
 import { preferencePhrase } from '@services/utils/nightApplications';
-import { formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
+import { bandMemberPhrase, filledBandMembers, formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
 import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 import { InviteToGigModal } from '@features/venue/dashboard/ArtistCRM';
 import { GuestAudioRow } from '@features/gig-discovery/guest/GuestAudioRow';
@@ -622,23 +622,16 @@ function ApplicantProfileDialog({
   const heroY = typeof profile?.heroPositionY === 'number' ? profile.heroPositionY : (typeof profile?.heroPosition === 'number' ? profile.heroPosition : 50);
   const heroBrightness = typeof profile?.heroBrightness === 'number' ? profile.heroBrightness : 100;
   const members = useMemo(() => {
-    if (!gigin) {
-      return (applicant.members || []).filter((member) => member?.name || member?.instruments?.length).map((member) => ({
-        name: member.name || 'Member',
-        instruments: memberLine(member),
-      }));
-    }
-    const fromProfile = (profile?.bandMembers || []).map((member) => ({
-      name: member.userName || member.name || 'Member',
+    const source = gigin ? (profile?.bandMembers || []) : (applicant.members || []);
+    return filledBandMembers(source).map((member) => ({
+      name: String(member.userName || member.name || '').trim() || 'Member',
       instruments: memberLine(member),
-    })).filter((member) => member.name);
-    return fromProfile;
+    }));
   }, [gigin, applicant.members, profile]);
-  const memberCount = members.length || Number(applicant.numberOfPeople) || 1;
-  const shownMembers = members.length ? members : [{ name: actName(applicant, profile), instruments: kindOf(applicant, profile) }];
+  const bandPhrase = bandMemberPhrase(members);
   const kind = kindOf(applicant, profile);
   const town = townOf(applicant, profile);
-  const meta = [kind, `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`, town].filter(Boolean).join(' · ');
+  const meta = [kind, bandPhrase, town].filter(Boolean).join(' · ');
 
   const gallery = useMemo(() => {
     const items = [];
@@ -739,14 +732,17 @@ function ApplicantProfileDialog({
   const gigsOnGigin = Array.isArray(profile?.confirmedGigs)
     ? profile.confirmedGigs.length
     : (profileLoaded ? 0 : null);
+  const memberStat = bandPhrase
+    ? [{ value: String(members.length), label: members.length === 1 ? 'member' : 'members' }]
+    : [];
   const stats = gigin
     ? [
       { value: gigsOnGigin == null ? '—' : String(gigsOnGigin), label: 'gigs on Gigin' },
       { value: String(played.length), label: 'times at the bar' },
-      { value: String(memberCount), label: memberCount === 1 ? 'member' : 'members' },
+      ...memberStat,
     ]
     : [
-      { value: String(memberCount), label: memberCount === 1 ? 'member' : 'members' },
+      ...memberStat,
       { value: 'New', label: 'to the bar' },
       { value: 'Guest', label: 'no Gigin profile yet' },
     ];
@@ -1033,7 +1029,7 @@ function ApplicantProfileDialog({
                 <p className={`ap-note${note ? '' : ' is-empty'}`}>{note ? `“${note}”` : 'No note with this application.'}</p>
                 <div className="ap-pills">
                   {!oneSet ? <span className={`ap-pill${preference ? ' is-pref' : ''}`}>{preference ? `Prefers ${preference}` : 'No preference'}</span> : null}
-                  <span className="ap-pill is-plain">{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
+                  {bandPhrase ? <span className="ap-pill is-plain">{bandPhrase}</span> : null}
                 </div>
               </section>
               <section className="ap-card">
@@ -1093,15 +1089,17 @@ function ApplicantProfileDialog({
                 </p>
               </section>
               <div className="ap-split">
-                <section className="ap-card">
-                  <h2>Who&apos;s in the band</h2>
-                  {shownMembers.map((member) => (
-                    <div className="ap-member" key={`${member.name}-${member.instruments}`}>
-                      <b>{initials(member.name)}</b>
-                      <span><strong>{member.name}</strong>{member.instruments ? <small>{member.instruments}</small> : null}</span>
-                    </div>
-                  ))}
-                </section>
+                {members.length > 0 && (
+                  <section className="ap-card">
+                    <h2>Who&apos;s in the band</h2>
+                    {members.map((member) => (
+                      <div className="ap-member" key={`${member.name}-${member.instruments}`}>
+                        <b>{initials(member.name)}</b>
+                        <span><strong>{member.name}</strong>{member.instruments ? <small>{member.instruments}</small> : null}</span>
+                      </div>
+                    ))}
+                  </section>
+                )}
                 <section className="ap-card">
                   <h2>Tech and the bar</h2>
                   {compatRows.length ? compatRows.map((row) => (

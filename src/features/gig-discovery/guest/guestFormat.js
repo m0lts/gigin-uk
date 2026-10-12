@@ -148,6 +148,27 @@ export function showsManageReview({ status, accepted } = {}) {
   return value !== 'declined' && value !== 'withdrawn';
 }
 
+function instrumentGiven(member) {
+  const raw = member?.instruments ?? member?.instrument ?? '';
+  if (Array.isArray(raw)) return raw.some((item) => String(item || '').trim());
+  return Boolean(String(raw || '').trim());
+}
+
+/** Members the act actually filled in. A blank placeholder row does not count. */
+export function filledBandMembers(members) {
+  return (Array.isArray(members) ? members : []).filter((member) => {
+    const name = String(member?.name || member?.userName || '').trim();
+    return Boolean(name || instrumentGiven(member));
+  });
+}
+
+export function bandMemberPhrase(members, stated) {
+  const named = filledBandMembers(members).length;
+  const count = named || (Number(stated) > 0 ? Number(stated) : 0);
+  if (!count) return '';
+  return `${count} ${count === 1 ? 'member' : 'members'}`;
+}
+
 export function icsForSet({ title, start, end, location, description, uid, sequence = 0 }) {
   const stamp = (date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const body = [
