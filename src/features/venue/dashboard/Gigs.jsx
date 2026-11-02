@@ -9,7 +9,7 @@ import {
     PreviousIcon,
     TickIcon,
 CloseIcon, RightArrowIcon } from '@features/shared/ui/extras/Icons';
-import { CalendarIconSolid, CalendarPlusIcon, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DownChevronIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, LocationPinIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, SolidCalendarRotateFullIcon, TemplateIcon, InviteIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
+import { CalendarIconSolid, CancelIcon, DeleteGigIcon, DeleteGigsIcon, DeleteIcon, DownChevronIcon, DuplicateGigIcon, EditIcon, ErrorIcon, ExclamationIcon, ExclamationIconSolid, FilterIconEmpty, GigIcon, LinkIcon, LocationPinIcon, MicrophoneIcon, MicrophoneIconSolid, NewTabIcon, OptionsIcon, SearchIcon, ShieldIcon, TemplateIcon, InviteIcon, InviteIconSolid } from '../../shared/ui/extras/Icons';
 import { deleteGigsBatch } from '@services/client-side/gigs';
 import { deleteVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { v4 as uuidv4 } from 'uuid';
@@ -39,6 +39,7 @@ import { unreviewedApplicationCount } from '../gigs/utils/multiSlotGigGroup';
 import { isNewApplicant } from '../gigs/utils/isNewApplicant';
 import { GigsCalendarReact } from './GigsCalendarReact';
 import { GigsConsole } from './GigsConsole';
+import { NewGigSplitButton } from './new-gig/NewGigSplitButton';
 import { getCalendarFeedUrl } from '@services/api/calendar';
 import {
   filterBookNewEventTemplatesForVenue,
@@ -137,7 +138,6 @@ export const Gigs = ({
     const [showSubscribeModal, setShowSubscribeModal] = useState(false);
     const [calendarFeedUrl, setCalendarFeedUrl] = useState(null);
     const [subscribeLoading, setSubscribeLoading] = useState(false);
-    const [addGigsChoiceDateIso, setAddGigsChoiceDateIso] = useState(null);
     const [showManageTemplatesModal, setShowManageTemplatesModal] = useState(false);
     const [manageTemplatesVenueId, setManageTemplatesVenueId] = useState('');
     const [renamingTemplateId, setRenamingTemplateId] = useState(null);
@@ -1469,38 +1469,13 @@ export const Gigs = ({
               </div>
             </div>
             <div className="gigs-head-create-buttons">
-              {gigsView === 'react' && (
-                <div className="gigs-head-create-buttons-calendar-stack">
-                  <div className="gigs-head-create-buttons-calendar-row">
-                    <button
-                      type="button"
-                      className="btn primary gigs-react-book-gig-btn"
-                      onClick={() => openNewGig({ route: 'full', entry: 'menu', kind: 'bookNew' })}
-                    >
-                      <CalendarIconSolid />
-                      <span>Create a gig</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="btn secondary gigs-react-add-booking-btn"
-                      onClick={() => openNewGig({ route: 'full', entry: 'menu', kind: 'addExisting' })}
-                    >
-                      <CalendarPlusIcon />
-                      <span>Add existing gig</span>
-                    </button>
-                  </div>
-                  {canShowTemplatesButton && (
-                    <button
-                      type="button"
-                      className="btn tertiary gigs-react-templates-btn"
-                      onClick={openManageTemplatesModal}
-                    >
-                      <SolidCalendarRotateFullIcon />
-                      <span>Templates</span>
-                    </button>
-                  )}
-                </div>
+              {canShowTemplatesButton && (
+                <button type="button" className="gigs-console__secondary" onClick={openManageTemplatesModal}>Templates</button>
               )}
+              <NewGigSplitButton
+                onOpen={openNewGig}
+                legacyHire={() => openNewGig({ legacy: true, kind: 'bookNew', entry: 'menu' })}
+              />
             </div>
           </div>
           {gigsView === 'table' && (
@@ -2329,62 +2304,6 @@ export const Gigs = ({
               />
             )}
 
-        {/* Modals below render for both table and calendar view so Add/Book a Gig / Subscribe work on calendar page */}
-        {addGigsChoiceDateIso && (
-          <Portal>
-            <div
-              className="modal add-gigs-choice-modal"
-              onClick={() => setAddGigsChoiceDateIso(null)}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="add-gigs-choice-title"
-            >
-              <div className="modal-content add-gigs-choice-modal__content" onClick={(e) => e.stopPropagation()}>
-                <h3 id="add-gigs-choice-title">
-                  Add event for {format(new Date(addGigsChoiceDateIso + 'T12:00:00'), 'EEEE d MMMM')}
-                </h3>
-                <div className="add-gigs-choice-modal__buttons">
-                  <button
-                    type="button"
-                    className="btn primary gigs-react-book-gig-btn"
-                    onClick={() => {
-                      if (gigCreationClosed(venues, selectedVenue)) {
-                        toast.error(NIGHTS_CLOSED_MESSAGE);
-                        return;
-                      }
-                      setAddGigsEditData(null);
-                      setAddGigsInitialDateIso(addGigsChoiceDateIso);
-                      setAddGigsMode?.('bookNew');
-                      setShowAddGigsModal(true);
-                      setAddGigsChoiceDateIso(null);
-                    }}
-                  >
-                    <CalendarIconSolid />
-                    <span>Create a gig</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn secondary gigs-react-add-booking-btn"
-                    onClick={() => {
-                      if (gigCreationClosed(venues, selectedVenue)) {
-                        toast.error(NIGHTS_CLOSED_MESSAGE);
-                        return;
-                      }
-                      setAddGigsEditData(null);
-                      setAddGigsInitialDateIso(addGigsChoiceDateIso);
-                      setAddGigsMode?.('addExisting');
-                      setShowAddGigsModal(true);
-                      setAddGigsChoiceDateIso(null);
-                    }}
-                  >
-                    <CalendarPlusIcon />
-                    <span>Add existing gig</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </Portal>
-        )}
         {showManageTemplatesModal && (
           <Portal>
             <div

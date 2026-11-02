@@ -307,8 +307,13 @@
 .window.venues .head.gigs .gigs-head-create-buttons {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin-left: auto;
+}
+
+.window.venues .head.gigs .ng-split__menu {
+    width: min(320px, calc(100vw - 24px));
 }
 
 .window.venues .head.gigs .gigs-head-create-buttons-calendar-stack {
