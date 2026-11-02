@@ -439,7 +439,7 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       preheader: `Your set time is still to be confirmed.`,
       eyebrow: "YOU'RE BOOKED",
       heading: "You're in",
-      paras: [hi, `Good news. ${escapeHtml(booker)} has accepted ${escapeHtml(act)} for ${escapeHtml(name)} at ${escapeHtml(venueName)} on <b>${escapeHtml(when)}</b>.`, `Your set time is still to be confirmed. ${escapeHtml(booker)} will choose which set you're playing, and we'll email you again as soon as it's set.${prefer}`],
+      paras: [hi, `Good news. ${escapeHtml(booker)} has accepted ${escapeHtml(act)} for ${escapeHtml(name)} at ${escapeHtml(venueName)} on <b>${escapeHtml(when)}</b>.`, `We'll confirm your set time. ${escapeHtml(booker)} will choose which set you're playing, and we'll email you again as soon as it's set.${prefer}`],
       boxes: [{ label: "YOUR BOOKING", rows: [["Act", escapeHtml(act)], ["When", escapeHtml(when)], ["Set", "To be confirmed"], door ? ["Doors", escapeHtml(door)] : null, where ? ["Where", escapeHtml(where)] : null].filter(Boolean) }],
       pre: `Can't make it after all? Let ${escapeHtml(booker)} know from your private link, so the set can go to someone else.`,
       button: ["View your booking", url],
@@ -609,7 +609,7 @@ function stampUndo(app, mailIds, previous) {
   };
 }
 
-export async function acceptApplication({ gigId, applicantId, slotGigId }) {
+export async function acceptApplication({ gigId, applicantId, slotGigId, deferSet = false }) {
   const { slots, rootId } = await loadNightSlots(gigId);
   const root = slots.find((slot) => slot.id === rootId) || slots[0];
   const { night, app } = findApp(slots, applicantId);
@@ -628,7 +628,10 @@ export async function acceptApplication({ gigId, applicantId, slotGigId }) {
   const views = night.slots;
   const oneSet = views.length < 2;
   let target = slotGigId || null;
-  if (oneSet && !target && !views[0]?.taken) target = views[0].gigId;
+  // "Choose later" sends slotGigId: null. That must stay unassigned, including
+  // when this gig is the only slot the server could load. A one-set accept
+  // that omits the field still lands on the only open set.
+  if (!deferSet && oneSet && !target && !views[0]?.taken) target = views[0].gigId;
   if (target && !views.some((slot) => slot.gigId === target)) {
     const error = new Error("That set is not part of this gig.");
     error.statusCode = 400;

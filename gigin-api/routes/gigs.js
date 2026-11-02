@@ -2068,10 +2068,13 @@ router.post("/:rootGigId/cancel/undo", requireAuth, asyncHandler(async (req, res
 
 router.post("/:rootGigId/applications/:id/accept", requireAuth, asyncHandler(async (req, res) => {
   await assertGigUpdate(req, req.params.rootGigId);
+  const body = req.body || {};
+  const slotGigId = body.slotGigId || null;
   res.json(await acceptApplication({
     gigId: req.params.rootGigId,
     applicantId: req.params.id,
-    slotGigId: req.body?.slotGigId || null,
+    slotGigId,
+    deferSet: Object.prototype.hasOwnProperty.call(body, "slotGigId") && !slotGigId,
   }));
 }));
 

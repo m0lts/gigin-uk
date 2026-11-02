@@ -97,7 +97,10 @@ export function assignedSlotGigId(applicant, copies = null) {
     const set = explicit.find((copy) => copy.assignedSlotGigId);
     return set ? set.assignedSlotGigId : null;
   }
-  const booked = list.find((copy) => copy?._slotGigId && isBookedStatus(copy.status));
+  const booked = list.find((copy) => {
+    const status = String(copy?.status || "").toLowerCase();
+    return copy?._slotGigId && (status === "confirmed" || status === "paid");
+  });
   return booked ? booked._slotGigId : (applicant?.assignedSlotGigId || null);
 }
 
@@ -156,13 +159,24 @@ export function dedupeApplicants(entries) {
   return [...groups.values()].map((copies) => mergeApplicantCopies(copies));
 }
 
+/**
+ * A booked row occupies this slot.
+ * An explicit assignment has to name the slot. Accepted with no assignment
+ * does not. Older confirmed rows, which have no assignment field, do.
+ */
+function occupiesSlot(entry, slotId) {
+  if (!entry?.id || !isBookedStatus(entry.status)) return false;
+  if (hasOwn(entry, "assignedSlotGigId")) return entry.assignedSlotGigId === slotId;
+  const status = String(entry.status || "").toLowerCase();
+  return status === "confirmed" || status === "paid";
+}
+
 /** Stored `bookedApplicantId`, or the confirmed mirror on an old slot doc. */
 export function bookedApplicantId(slot) {
   if (!slot) return null;
   if (hasOwn(slot, "bookedApplicantId")) return slot.bookedApplicantId || null;
-  const booked = (Array.isArray(slot.applicants) ? slot.applicants : []).find((entry) => (
-    entry?.id != null && isBookedStatus(entry.status)
-  ));
+  const id = slotGigId(slot);
+  const booked = (Array.isArray(slot.applicants) ? slot.applicants : []).find((entry) => occupiesSlot(entry, id));
   return booked ? booked.id : null;
 }
 

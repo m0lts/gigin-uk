@@ -92,6 +92,26 @@ test("a confirmed copy is the assignment and the stronger status", () => {
   assert.equal(night.slots[0].taken, false);
 });
 
+test("an accepted act with no assignment is not placed on the first set", () => {
+  const night = readNight([
+    slot("set-1", "20:00", {
+      applicationsRootGigId: "set-1",
+      applicants: [{ id: "ada", name: "Ada", status: "accepted" }],
+    }),
+    slot("set-2", "21:30", {
+      applicationsRootGigId: "set-1",
+      applicants: [],
+    }),
+  ]);
+  assert.equal(night.applications[0].assignedSlotGigId, null);
+  assert.equal(night.slots[0].taken, false);
+  assert.equal(night.slots[1].taken, false);
+  assert.equal(slotTaken({
+    gigId: "set-1",
+    applicants: [{ id: "ada", status: "accepted", assignedSlotGigId: null }],
+  }), false);
+});
+
 test("an explicit empty assignment is not inferred from a confirmed row", () => {
   const night = readNight([
     slot("set-1", "20:00", {
