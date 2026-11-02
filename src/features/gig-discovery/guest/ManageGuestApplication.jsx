@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import '@styles/artists/gig-page.styles.css';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getGuestApplication, markSetChangeSeen, releaseGuestUpload, updateGuestApplication, withdrawGuestApplication } from '@services/client-side/guestApplications';
@@ -9,7 +9,7 @@ import { getVenueProfileById } from '@services/client-side/venues';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { GuestAssetsStep } from './GuestAssetsStep';
 import { GuestAudioRow } from './GuestAudioRow';
-import { isAudioAsset } from './guestAssetFiles';
+import { continueDisabledByUploads, isAudioAsset, uploadContinueNote } from './guestAssetFiles';
 import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
 import { GuestWhoStep } from './GuestWhoStep';
@@ -76,6 +76,10 @@ export function ManageGuestApplication() {
   const [editing, setEditing] = useState('');
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadRows, setUploadRows] = useState([]);
+  const onUploadChange = useCallback((rows) => setUploadRows(rows), []);
+  const uploadBlocked = continueDisabledByUploads(uploadRows);
+  const uploadNote = uploadContinueNote(uploadRows);
   const [saveError, setSaveError] = useState('');
   const [toast, setToast] = useState('');
   const [linkEmail, setLinkEmail] = useState('');
@@ -136,7 +140,7 @@ export function ManageGuestApplication() {
   }, [application?.status, gigId, token]);
 
   const save = async () => {
-    if (!draft) return;
+    if (!draft || uploadBlocked) return;
     setSaving(true);
     setSaveError('');
     try {
@@ -448,6 +452,7 @@ export function ManageGuestApplication() {
                 onUploaded={(asset) => {
                   if (isAudioAsset(asset) && !sessionUploads.current.includes(asset.path)) sessionUploads.current.push(asset.path);
                 }}
+                onUploadChange={onUploadChange}
                 onRemoved={(asset) => {
                   const saved = (application.assets || []).some((item) => item.path === asset.path);
                   if (saved) {
@@ -473,7 +478,8 @@ export function ManageGuestApplication() {
               </div>
             )}
             <div className="ga-actions">
-              <button type="button" className="ga-dark" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
+              <button type="button" className="ga-dark" disabled={saving || uploadBlocked} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
+              {uploadNote ? <p className="ga-wait" role="status">{uploadNote}</p> : null}
               <button type="button" className="ga-ghost" onClick={cancelEdit}>Cancel</button>
             </div>
           </div>

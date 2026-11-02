@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AUDIO_LIMIT, ASSET_LIMIT, declaredContentType, guestFileProblem } from './guestAssetFiles.js';
+import { AUDIO_LIMIT, ASSET_LIMIT, continueDisabledByUploads, declaredContentType, guestFileProblem, uploadContinueNote } from './guestAssetFiles.js';
 
 const room = { audioCount: 0, assetCount: 0 };
 
@@ -32,4 +32,17 @@ test('audio is capped at 15 MB and 3 files, and photos and PDFs stay at 20 MB', 
   assert.equal(guestFileProblem({ name: 'rider.pdf', type: 'application/pdf', size: ASSET_LIMIT }, room), '');
   assert.match(guestFileProblem({ name: 'rider.pdf', type: 'application/pdf', size: ASSET_LIMIT + 1 }, room), /20 MB/);
   assert.equal(guestFileProblem({ name: 'press.jpg', type: 'image/jpeg', size: 1000 }, room), '');
+});
+
+test('Continue stays disabled while a photo or file is uploading or has failed', () => {
+  assert.equal(continueDisabledByUploads([]), false);
+  assert.equal(continueDisabledByUploads([{ status: 'done' }]), false);
+  assert.equal(continueDisabledByUploads([{ status: 'uploading' }]), true);
+  assert.equal(continueDisabledByUploads([{ status: 'done' }, { status: 'uploading' }]), true);
+  assert.equal(continueDisabledByUploads([{ status: 'failed' }]), true);
+  assert.equal(continueDisabledByUploads([{ status: 'failed' }, { status: 'uploading' }]), true);
+  assert.equal(continueDisabledByUploads([]), false);
+  assert.equal(uploadContinueNote([{ status: 'uploading' }]), 'Waiting for your upload to finish');
+  assert.equal(uploadContinueNote([{ status: 'failed' }]), '');
+  assert.equal(uploadContinueNote([{ status: 'done' }]), '');
 });

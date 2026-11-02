@@ -1,4 +1,4 @@
-import { sizeLabel } from './guestAssetFiles';
+import { sizeLabel, UPLOAD_ROW_ERROR } from './guestAssetFiles';
 import './guest-audio.css';
 
 function AudioMark() {
@@ -9,18 +9,26 @@ function AudioMark() {
   );
 }
 
-export function GuestAudioRow({ asset, onRemove, showPlayer = false, pending = null }) {
+export function GuestAudioRow({ asset, onRemove, onRetry, showPlayer = false, pending = null }) {
   const src = asset?.playUrl || asset?.previewUrl || '';
   const download = asset?.downloadUrl || asset?.previewUrl || '';
+  const progress = pending?.progress > 0 ? ` ${pending.progress}%` : '';
   return (
-    <li className={`ga-audio${pending?.failed ? ' is-failed' : ''}${pending ? ' is-pending' : ''}`}>
+    <li className={`ga-audio${pending?.failed ? ' is-failed' : ''}${pending ? ' is-pending' : ''}`} aria-busy={pending && !pending.failed}>
       <span className="ga-audio__mark" aria-hidden="true"><AudioMark /></span>
       <span className="ga-audio__meta">
         <strong>{pending?.name || asset?.name}</strong>
-        <em>{pending ? (pending.failed ? "Didn't upload" : `Uploading… ${pending.progress}%`) : sizeLabel(asset?.size)}</em>
+        {pending?.failed ? (
+          <em className="ga-upload-fail">{pending.message || UPLOAD_ROW_ERROR}</em>
+        ) : pending ? (
+          <em className="ga-uploading"><span className="ga-spin" aria-hidden="true" />{`Uploading…${progress}`}</em>
+        ) : (
+          <em>{sizeLabel(asset?.size)}</em>
+        )}
       </span>
       {showPlayer && src ? <audio controls preload="none" src={src} /> : null}
       {showPlayer && download ? <a href={download} download={asset?.name || 'audio'}>Download</a> : null}
+      {pending?.failed && onRetry ? <button type="button" onClick={onRetry}>Try again</button> : null}
       {onRemove ? <button type="button" onClick={onRemove}>Remove</button> : null}
     </li>
   );

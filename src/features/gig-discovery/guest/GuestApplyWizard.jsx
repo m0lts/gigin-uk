@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { FEATURES } from '../../../config/features';
 import { createGuestApplication, newGuestIds, redeemReturnToken } from '@services/client-side/guestApplications';
@@ -9,6 +9,7 @@ import { GuestAssetsStep } from './GuestAssetsStep';
 import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
 import { GuestWhoStep } from './GuestWhoStep';
+import { continueDisabledByUploads, uploadContinueNote } from './guestAssetFiles';
 import { bookerLine, clearDraft, formatShortDay, readDraft, rememberApplication, writeDraft } from './guestFormat';
 
 function sectionSnapshot(draft) {
@@ -79,6 +80,10 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
   const [returning, setReturning] = useState(null);
   const [profileNote, setProfileNote] = useState('');
   const [whoBlocked, setWhoBlocked] = useState(false);
+  const [uploadRows, setUploadRows] = useState([]);
+  const onUploadChange = useCallback((rows) => setUploadRows(rows), []);
+  const uploadBlocked = continueDisabledByUploads(uploadRows);
+  const uploadNote = uploadContinueNote(uploadRows);
   const baselineRef = useRef(null);
   const whoRef = useRef(null);
   const consumedRef = useRef(onReturnConsumed);
@@ -233,6 +238,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
   const whoOk = draft.actName.trim() && draft.contactName.trim() && (draft.email.trim() || draft.phone.trim() || draft.instagram.trim()) && !draft.accountBlocked;
 
   const submit = async () => {
+    if (continueDisabledByUploads(uploadRows)) return;
     if (!navigator.onLine) {
       setOffline(true);
       return;
@@ -310,6 +316,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
   }, [offline, draft]);
 
   const goNext = async () => {
+    if (uploadBlocked) return;
     if (step === 'who') {
       if (!whoOk || whoBlocked) {
         setShowErrors(true);
@@ -362,7 +369,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
           <strong>{STEPS[index][1]}</strong>
         </div>
         {(step === 'assets' || step === 'tech') && !editing ? (
-          <button type="button" className="ga-text" onClick={() => setStep(STEPS[index + 1][0])}>Skip</button>
+          <button type="button" className="ga-text" disabled={uploadBlocked} onClick={() => { if (!uploadBlocked) setStep(STEPS[index + 1][0]); }}>Skip</button>
         ) : <span />}
       </header>
       <div className="ga-progress" aria-hidden>
@@ -383,7 +390,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
             inviteNote={invite?.prefill ? `Filled in from ${booker.name}'s invite. Change anything that's out of date.` : ''}
           />
         )}
-        {step === 'assets' && <GuestAssetsStep draft={draft} patch={patch} bookerName={booker.name} gigId={gig.gigId} />}
+        {step === 'assets' && <GuestAssetsStep draft={draft} patch={patch} bookerName={booker.name} gigId={gig.gigId} onUploadChange={onUploadChange} />}
         {step === 'tech' && <GuestTechStep draft={draft} patch={patch} venue={venue} />}
         {returning && step === 'review' && (
           <p><strong>Welcome back, {(returning.contact?.contactName || returning.profile.name || '').split(' ')[0]}.</strong> We've filled this in from your Gigin profile. <button type="button" className="ga-text" onClick={() => { setReturning(null); setDraft(emptyDraft(gig, invite, newGuestIds())); setStep('who'); forgetProfileSession(); }}>Not you? Start blank</button></p>
@@ -419,9 +426,10 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         )}
         {!(step === 'who' && whoBlocked) && (
           <div className={`ga-actions${isMdUp ? ' is-desktop' : ''}`}>
-            <button type="button" className={step === 'review' && !editing ? 'ga-orange' : 'ga-dark'} disabled={submitting || offline} onClick={() => (step === 'review' && !editing ? submit() : goNext())}>
+            <button type="button" className={step === 'review' && !editing ? 'ga-orange' : 'ga-dark'} disabled={submitting || offline || uploadBlocked} onClick={() => (step === 'review' && !editing ? submit() : goNext())}>
               {submitting ? 'Sending…' : primary}
             </button>
+            {uploadNote ? <p className="ga-wait" role="status">{uploadNote}</p> : null}
           </div>
         )}
       </div>

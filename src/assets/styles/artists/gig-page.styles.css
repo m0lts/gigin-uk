@@ -2345,6 +2345,7 @@
 .ga-hello > span { width: 40px; height: 40px; border-radius: 999px; background: var(--gn-ink); color: #fff; display: grid; place-items: center; font-weight: 600; flex: none; }
 .ga-hello p { margin: 0; font-size: 15px; line-height: 1.45; }
 .ga-hello button, .ga-text, .ga-banner button { background: none; border: 0; color: var(--gn-new-text); font-weight: 600; padding: 0; cursor: pointer; min-height: 44px; }
+.ga-text:disabled { opacity: 0.4; cursor: not-allowed; }
 .ga-banner { background: var(--gn-chip); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; }
 .ga-banner.is-warn { background: oklch(0.95 0.05 80); color: oklch(0.48 0.11 60); }
 .ga-banner.is-closed { background: #F3F4F6; }
@@ -2404,7 +2405,17 @@
 .ga-soft__actions, .ga-actions, .ga-add-own { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .ga-drop, .ga-dashed { width: 100%; min-height: 44px; border: 1.5px dashed #C9CDD4; border-radius: 12px; background: #fff; cursor: pointer; }
 .ga-drop { min-height: 168px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-.ga-file { display: flex; gap: 12px; align-items: center; }
+.ga-file { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.ga-file__meta, .ga-file-pending__copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 140px; }
+.ga-file__meta em, .ga-upload-fail { font-style: normal; color: #6B7280; font-size: 13px; line-height: 1.35; }
+.ga-file.is-failed .ga-upload-fail, .ga-file-pending.is-failed .ga-upload-fail, .ga-audio.is-failed .ga-upload-fail,
+.ga-file__meta em.ga-uploading, .ga-file-pending em.ga-uploading, .ga-audio__meta em.ga-uploading { color: #92400E; }
+.ga-uploading { display: inline-flex; align-items: center; gap: 8px; font-style: normal; font-size: 13px; }
+.ga-spin { width: 14px; height: 14px; border: 2px solid #E5E7EB; border-top-color: #111317; border-radius: 50%; animation: ga-spin 0.7s linear infinite; flex: none; }
+@keyframes ga-spin { to { transform: rotate(360deg); } }
+.ga-upload-actions { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-left: auto; }
+.ga-upload-actions button { min-height: 44px; border: 0; background: none; color: #111317; font-weight: 600; cursor: pointer; padding: 0; }
+.ga-wait { margin: 0; color: var(--gn-muted, #6B7280); font-size: 13px; }
 .ga-thumb { width: 88px; height: 88px; border-radius: 10px; background: #EDEEF1 center/cover; flex: none; }
 .ga-dot { width: 10px; height: 10px; border-radius: 99px; flex: none; }
 .ga-assets { list-style: none; padding: 0; margin: 8px 0; }

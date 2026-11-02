@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { compressGuestPhoto, releaseGuestUpload, uploadGuestFile } from '@services/client-side/guestApplications';
-import { declaredContentType, guestFileProblem, isAudioAsset } from './guestAssetFiles';
+import { declaredContentType, guestFileProblem, isAudioAsset, sizeLabel, UPLOAD_ROW_ERROR } from './guestAssetFiles';
 import { GuestAudioRow } from './GuestAudioRow';
 
 const LINKS = [
@@ -11,19 +11,25 @@ const LINKS = [
 ];
 const PHOTO_LIMIT = 10 * 1024 * 1024;
 
-function sizeLabel(bytes) {
-  if (!bytes) return '';
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function uploadFailureMessage(file, error) {
+  if (error?.message === 'too big') {
+    const failed = error.file || file;
+    return `${failed.name} is ${sizeLabel(failed.size) || 'too large'}, and the limit is 10 MB. Nothing else you've added has been lost.`;
+  }
+  return UPLOAD_ROW_ERROR;
 }
 
-function uploadFailureMessage(file, error) {
-  const message = String(error?.message || '');
-  const generic = !message || message === 'Failed to fetch' || message === 'Upload failed' || message === 'Request failed' || error?.name === 'AbortError';
-  if (generic) {
-    return `${file.name} didn't upload. Check your connection and try again. The rest of your application is still here.`;
+function UploadStatus({ row }) {
+  if (row.status === 'failed') {
+    return <em className="ga-upload-fail">{row.message || UPLOAD_ROW_ERROR}</em>;
   }
-  return message;
+  const progress = row.progress > 0 ? ` ${row.progress}%` : '';
+  return (
+    <em className="ga-uploading">
+      <span className="ga-spin" aria-hidden="true" />
+      {`Uploading…${progress}`}
+    </em>
+  );
 }
 
 export function GuestAssetsStep({
@@ -37,86 +43,196 @@ export function GuestAssetsStep({
   releaseOnRemove = true,
   onRemoved,
   onUploaded,
+  onUploadChange,
 }) {
   const photoRef = useRef(null);
   const filesRef = useRef(null);
-  const [uploadError, setUploadError] = useState(null);
+  const photoAttempt = useRef(0);
+  const fileAttempts = useRef(new Map());
   const [fileError, setFileError] = useState(null);
-  const [pending, setPending] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [photoRow, setPhotoRow] = useState(null);
+  const [fileRows, setFileRows] = useState([]);
 
-  const takePhoto = async (file) => {
-    if (!file) return;
-    setUploadError(null);
+  const activity = useMemo(() => [
+    ...(photoRow ? [{ status: photoRow.status }] : []),
+    ...fileRows.map((row) => ({ status: row.status })),
+  ], [photoRow, fileRows]);
+  const uploading = activity.some((row) => row.status === 'uploading');
+  const filesUploading = fileRows.some((row) => row.status === 'uploading');
+
+  const report = (photo, files) => {
+    onUploadChange?.([
+      ...(photo ? [{ status: photo.status }] : []),
+      ...(files || []).map((row) => ({ status: row.status })),
+    ]);
+  };
+
+  useEffect(() => {
+    onUploadChange?.(activity);
+  }, [activity, onUploadChange]);
+
+  useEffect(() => () => onUploadChange?.([]), [onUploadChange]);
+
+  const uploadPhoto = async (row) => {
+    const attempt = photoAttempt.current + 1;
+    photoAttempt.current = attempt;
+    const live = () => photoAttempt.current === attempt;
     try {
-      if (file.size > PHOTO_LIMIT && !file.type.startsWith('image/')) {
-        throw Object.assign(new Error('too big'), { file });
+      if (row.file.size > PHOTO_LIMIT && !String(row.file.type || '').startsWith('image/')) {
+        throw Object.assign(new Error('too big'), { file: row.file });
       }
-      const compressed = await compressGuestPhoto(file);
+      const compressed = await compressGuestPhoto(row.file);
+      if (!live()) return;
       if (compressed.size > PHOTO_LIMIT) {
         throw Object.assign(new Error('too big'), { file: compressed });
       }
-      const uploaded = await uploadGuestFile({ applicationId: draft.applicationId, file: compressed, kind: 'photo' });
-      patch({ photo: { ...uploaded, previewUrl: URL.createObjectURL(compressed) } });
+      const uploaded = await uploadGuestFile({
+        applicationId: draft.applicationId,
+        file: compressed,
+        kind: 'photo',
+        onProgress: (progress) => {
+          if (!live()) return;
+          setPhotoRow((current) => (current?.status === 'uploading' ? { ...current, progress } : current));
+        },
+      });
+      if (!live()) return;
+      const previous = draft.photo?.previewUrl;
+      patch({ photo: { ...uploaded, previewUrl: row.previewUrl } });
+      if (previous && previous !== row.previewUrl) URL.revokeObjectURL(previous);
+      setPhotoRow(null);
     } catch (error) {
-      const failed = error.file || file;
-      setUploadError(`${failed.name} is ${sizeLabel(failed.size) || 'too large'}, and the limit is 10 MB. Nothing else you've added has been lost.`);
+      if (!live()) return;
+      setPhotoRow((current) => (current ? {
+        ...current,
+        status: 'failed',
+        progress: 0,
+        message: uploadFailureMessage(row.file, error),
+      } : current));
+    }
+  };
+
+  const takePhoto = (file) => {
+    if (!file || photoRow?.status === 'uploading') return;
+    if (photoRow?.previewUrl) URL.revokeObjectURL(photoRow.previewUrl);
+    const next = {
+      name: file.name,
+      size: file.size,
+      previewUrl: URL.createObjectURL(file),
+      progress: 0,
+      status: 'uploading',
+      file,
+    };
+    setPhotoRow(next);
+    report(next, fileRows);
+    uploadPhoto(next);
+  };
+
+  const dismissPhoto = () => {
+    photoAttempt.current += 1;
+    if (photoRow?.previewUrl && photoRow.previewUrl !== draft.photo?.previewUrl) URL.revokeObjectURL(photoRow.previewUrl);
+    setPhotoRow(null);
+    report(null, fileRows);
+  };
+
+  const retryPhoto = () => {
+    if (!photoRow?.file || photoRow.status === 'uploading') return;
+    const next = { ...photoRow, status: 'uploading', progress: 0, message: '' };
+    setPhotoRow(next);
+    report(next, fileRows);
+    uploadPhoto(next);
+  };
+
+  const storeFile = async (row, assets) => {
+    const attempt = (fileAttempts.current.get(row.id) || 0) + 1;
+    fileAttempts.current.set(row.id, attempt);
+    const live = () => fileAttempts.current.get(row.id) === attempt;
+    const contentType = declaredContentType(row.file);
+    const audioCount = assets.filter(isAudioAsset).length;
+    const problem = guestFileProblem(row.file, { audioCount, assetCount: assets.length });
+    if (problem) {
+      if (!live()) return assets;
+      setFileRows((current) => current.map((item) => (item.id === row.id ? { ...item, status: 'failed', message: problem, progress: 0 } : item)));
+      return assets;
+    }
+    setFileRows((current) => current.map((item) => (item.id === row.id ? { ...item, status: 'uploading', progress: 0, message: '' } : item)));
+    try {
+      const uploaded = await uploadGuestFile({
+        applicationId: draft.applicationId,
+        file: row.file,
+        kind: 'asset',
+        contentType,
+        gigId,
+        manageToken,
+        ignorePaths,
+        onProgress: (progress) => {
+          if (!live()) return;
+          setFileRows((current) => current.map((item) => (
+            item.id === row.id && item.status === 'uploading' ? { ...item, progress } : item
+          )));
+        },
+      });
+      if (!live()) return assets;
+      const next = { ...uploaded, ...(row.previewUrl ? { previewUrl: row.previewUrl } : {}) };
+      const saved = [...assets, next];
+      patch({ assets: saved });
+      onUploaded?.(next);
+      setFileRows((current) => current.filter((item) => item.id !== row.id));
+      fileAttempts.current.delete(row.id);
+      return saved;
+    } catch {
+      if (!live()) return assets;
+      setFileRows((current) => current.map((item) => (item.id === row.id ? { ...item, status: 'failed', progress: 0, message: UPLOAD_ROW_ERROR } : item)));
+      return assets;
     }
   };
 
   const addFiles = async (list) => {
-    if (busy) return;
+    if (filesUploading) return;
     const chosen = Array.from(list || []);
     if (!chosen.length) return;
-    setBusy(true);
     setFileError(null);
+    const seeded = chosen.map((file) => {
+      const contentType = declaredContentType(file);
+      const audio = contentType.startsWith('audio/');
+      return {
+        id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
+        name: file.name,
+        file,
+        progress: 0,
+        status: 'uploading',
+        audio,
+        previewUrl: audio ? URL.createObjectURL(file) : '',
+        message: '',
+      };
+    });
+    const visible = [...fileRows, ...seeded];
+    setFileRows(visible);
+    report(photoRow, visible);
     let assets = draft.assets;
-    let nextError = null;
-    try {
-      for (const file of chosen) {
-        if (assets.length >= 5) {
-          nextError = `You can add up to 5 files. ${file.name} wasn't added. Nothing else you've added has been lost.`;
-          break;
-        }
-        const audioCount = assets.filter(isAudioAsset).length;
-        const problem = guestFileProblem(file, { audioCount, assetCount: assets.length });
-        if (problem) {
-          nextError = problem;
-          continue;
-        }
-        const contentType = declaredContentType(file);
-        const audio = contentType.startsWith('audio/');
-        setPending({ name: file.name, progress: 0, failed: false, audio });
-        try {
-          const uploaded = await uploadGuestFile({
-            applicationId: draft.applicationId,
-            file,
-            kind: 'asset',
-            contentType,
-            gigId,
-            manageToken,
-            ignorePaths,
-            onProgress: (progress) => setPending({ name: file.name, progress, failed: false, audio }),
-          });
-          const previewUrl = contentType.startsWith('audio/') ? URL.createObjectURL(file) : '';
-          const next = { ...uploaded, ...(previewUrl ? { previewUrl } : {}) };
-          assets = [...assets, next];
-          patch({ assets });
-          onUploaded?.(next);
-          setPending(null);
-        } catch (error) {
-          setPending({ name: file.name, progress: 0, failed: true, audio });
-          nextError = uploadFailureMessage(file, error);
-        }
-      }
-    } finally {
-      setFileError(nextError);
-      setBusy(false);
+    for (const row of seeded) {
+      assets = await storeFile(row, assets);
     }
   };
 
+  const retryFile = (row) => {
+    if (row.status === 'uploading') return;
+    const visible = fileRows.map((item) => (item.id === row.id ? { ...item, status: 'uploading', progress: 0, message: '' } : item));
+    setFileRows(visible);
+    report(photoRow, visible);
+    storeFile({ ...row, status: 'uploading' }, draft.assets);
+  };
+
+  const removeFileRow = (row) => {
+    if (row.status === 'uploading') return;
+    fileAttempts.current.set(row.id, (fileAttempts.current.get(row.id) || 0) + 1);
+    if (row.previewUrl) URL.revokeObjectURL(row.previewUrl);
+    const visible = fileRows.filter((item) => item.id !== row.id);
+    setFileRows(visible);
+    report(photoRow, visible);
+  };
+
   const removeAsset = async (asset) => {
-    if (busy) return;
+    if (uploading) return;
     if (asset.previewUrl) URL.revokeObjectURL(asset.previewUrl);
     patch({ assets: draft.assets.filter((item) => item.path !== asset.path) });
     onRemoved?.(asset);
@@ -132,7 +248,21 @@ export function GuestAssetsStep({
     <div className="ga-step">
       <h2>Photo and links</h2>
       <p className="ga-sub">{bookerName} uses these to promote the night on the bar's socials. Optional.</p>
-      {!draft.photo ? (
+      {photoRow ? (
+        <div className={`ga-file${photoRow.status === 'failed' ? ' is-failed' : ''}`} aria-busy={photoRow.status === 'uploading'}>
+          <span className="ga-thumb" style={photoRow.previewUrl ? { backgroundImage: `url(${photoRow.previewUrl})` } : undefined} />
+          <span className="ga-file__meta">
+            <strong>{photoRow.name}</strong>
+            <UploadStatus row={photoRow} />
+          </span>
+          {photoRow.status === 'failed' && (
+            <span className="ga-upload-actions">
+              <button type="button" onClick={retryPhoto}>Try again</button>
+              <button type="button" onClick={dismissPhoto}>Remove</button>
+            </span>
+          )}
+        </div>
+      ) : !draft.photo ? (
         <button type="button" className="ga-drop" onClick={() => photoRef.current?.click()}>
           <strong>Add a press photo</strong>
           <span>From your camera roll · JPG or PNG, up to 10 MB</span>
@@ -140,24 +270,27 @@ export function GuestAssetsStep({
       ) : (
         <div className="ga-file">
           <span className="ga-thumb" style={draft.photo.previewUrl ? { backgroundImage: `url(${draft.photo.previewUrl})` } : undefined} />
-          <span>
+          <span className="ga-file__meta">
             <strong>{draft.photo.name}</strong>
             <em>{sizeLabel(draft.photo.size)}</em>
           </span>
-          <button type="button" onClick={() => photoRef.current?.click()}>Replace</button>
-          <button type="button" onClick={() => patch({ photo: null })}>Remove</button>
+          <span className="ga-upload-actions">
+            <button type="button" onClick={() => photoRef.current?.click()}>Replace</button>
+            <button type="button" onClick={() => patch({ photo: null })}>Remove</button>
+          </span>
         </div>
       )}
-      <input ref={photoRef} hidden type="file" accept="image/jpeg,image/png,image/webp,image/heic" onChange={(event) => takePhoto(event.target.files?.[0])} />
-      {uploadError && (
-        <div className="ga-soft">
-          <p>{uploadError}</p>
-          <div className="ga-soft__actions">
-            <button type="button" className="ga-dark" onClick={() => { setUploadError(null); photoRef.current?.click(); }}>Choose another photo</button>
-            <button type="button" className="ga-ghost" onClick={() => setUploadError(null)}>Skip photo</button>
-          </div>
-        </div>
-      )}
+      <input
+        ref={photoRef}
+        hidden
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/heic"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          takePhoto(file);
+        }}
+      />
       <div className="ga-links">
         {LINKS.map(([key, label, color]) => (
           <label key={key}>
@@ -172,25 +305,46 @@ export function GuestAssetsStep({
       <ul className="ga-assets" aria-live="polite">
         {draft.assets.map((asset) => (
           isAudioAsset(asset) ? (
-            <GuestAudioRow key={asset.path} asset={asset} showPlayer={showPlayer} onRemove={busy ? undefined : () => removeAsset(asset)} />
+            <GuestAudioRow key={asset.path} asset={asset} showPlayer={showPlayer} onRemove={uploading ? undefined : () => removeAsset(asset)} />
           ) : (
             <li key={asset.path}>
               <span>{asset.name}</span>
-              <button type="button" aria-label={`Remove ${asset.name}`} disabled={busy} onClick={() => removeAsset(asset)}>×</button>
+              <button type="button" aria-label={`Remove ${asset.name}`} disabled={uploading} onClick={() => removeAsset(asset)}>×</button>
             </li>
           )
         ))}
-        {pending?.audio ? <GuestAudioRow key="uploading" pending={pending} /> : null}
-        {pending && !pending.audio ? (
-          <li key="uploading" className={`ga-file-pending${pending.failed ? ' is-failed' : ''}`}>
-            <span>{pending.name}</span>
-            <em>{pending.failed ? "Didn't upload" : `Uploading… ${pending.progress}%`}</em>
-          </li>
-        ) : null}
+        {fileRows.map((row) => (
+          row.audio ? (
+            <GuestAudioRow
+              key={row.id}
+              pending={{
+                name: row.name,
+                progress: row.progress,
+                failed: row.status === 'failed',
+                message: row.message,
+              }}
+              onRetry={row.status === 'failed' ? () => retryFile(row) : undefined}
+              onRemove={row.status === 'failed' ? () => removeFileRow(row) : undefined}
+            />
+          ) : (
+            <li key={row.id} className={`ga-file-pending${row.status === 'failed' ? ' is-failed' : ''}`} aria-busy={row.status === 'uploading'}>
+              <span className="ga-file-pending__copy">
+                <strong>{row.name}</strong>
+                <UploadStatus row={row} />
+              </span>
+              {row.status === 'failed' && (
+                <span className="ga-upload-actions">
+                  <button type="button" onClick={() => retryFile(row)}>Try again</button>
+                  <button type="button" onClick={() => removeFileRow(row)}>Remove</button>
+                </span>
+              )}
+            </li>
+          )
+        ))}
       </ul>
       {draft.assets.length < 5 && (
-        <button type="button" className="ga-dashed" disabled={busy} onClick={() => filesRef.current?.click()}>
-          {busy ? 'Uploading…' : '+ Add files'}
+        <button type="button" className="ga-dashed" disabled={filesUploading} onClick={() => filesRef.current?.click()}>
+          {filesUploading ? 'Uploading…' : '+ Add files'}
         </button>
       )}
       <input
@@ -208,9 +362,6 @@ export function GuestAssetsStep({
       {fileError && (
         <div className="ga-soft">
           <p>{fileError}</p>
-          <div className="ga-soft__actions">
-            <button type="button" className="ga-dark" onClick={() => { setFileError(null); setPending(null); filesRef.current?.click(); }}>Choose another file</button>
-          </div>
         </div>
       )}
     </div>

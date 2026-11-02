@@ -20,6 +20,8 @@ const AUDIO_RULES = [
 const AUDIO_EXTENSIONS = new Set(AUDIO_RULES.flatMap((rule) => rule.extensions));
 
 export const SUPPORTED_FILE = 'Use a photo or PDF (up to 20 MB) or audio (MP3, M4A, WAV, up to 15 MB), or add a Spotify or YouTube link above.';
+export const UPLOAD_ROW_ERROR = "Couldn't upload this, try again or remove it";
+export const UPLOAD_WAITING_NOTE = 'Waiting for your upload to finish';
 
 export function fileExtension(name) {
   const match = String(name || '').toLowerCase().match(/\.([a-z0-9]+)$/);
@@ -86,4 +88,12 @@ export function guestFileProblem(file, { audioCount = 0, assetCount = 0 } = {}) 
   if (size > ASSET_LIMIT) return `${name} is ${sizeLabel(size)}, and the limit is 20 MB. Nothing else you've added has been lost.`;
   if (assetCount >= ASSET_CAP) return `You can add up to 5 files. ${name} wasn't added. Nothing else you've added has been lost.`;
   return '';
+}
+
+export function continueDisabledByUploads(rows) {
+  return (rows || []).some((row) => row?.status === 'uploading' || row?.status === 'failed');
+}
+
+export function uploadContinueNote(rows) {
+  return (rows || []).some((row) => row?.status === 'uploading') ? UPLOAD_WAITING_NOTE : '';
 }
