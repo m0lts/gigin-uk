@@ -55,6 +55,32 @@ function sortGigSlotsByStartTime(a, b) {
   return aH * 60 + (aM || 0) - (bH * 60 + (bM || 0));
 }
 
+/**
+ * Photos and the private media link belong to the earliest set.
+ * When every set is already in memory, that id is known immediately.
+ * Otherwise a multi-set night waits, so an upload cannot start on one set
+ * and the share link get created on another.
+ */
+function settledMediaGigId({ gigInfo, gigs, linkedGigIds, relatedSlots }) {
+  if (!gigInfo?.gigId) return null;
+  const ids = [
+    gigInfo.gigId,
+    ...(Array.isArray(linkedGigIds) ? linkedGigIds : []),
+    ...(Array.isArray(gigInfo.gigSlots) ? gigInfo.gigSlots : []),
+    ...(relatedSlots || []).map((slot) => slot?.gigId || slot?.id),
+  ].filter(Boolean);
+  const uniqueIds = [...new Set(ids)];
+  if (uniqueIds.length <= 1) return gigInfo.gigId;
+  const docs = uniqueIds.map((id) => {
+    if (id === gigInfo.gigId) return gigInfo;
+    const listed = (gigs || []).find((gig) => gig?.gigId === id);
+    if (listed) return listed;
+    return (relatedSlots || []).find((slot) => (slot?.gigId || slot?.id) === id) || null;
+  });
+  if (docs.some((doc) => !doc)) return null;
+  return dedupeGigSlots(docs)[0]?.gigId || null;
+}
+
 /** Unique slot docs by gigId (avoids duplicate Set 1 when anchor gig also appears in `relatedSlots`). */
 function dedupeGigSlots(slots) {
   const byId = new Map();
@@ -602,6 +628,13 @@ export function VenueGigPageShell({
     return <LoadingScreen />;
   }
 
+  const mediaGigId = settledMediaGigId({
+    gigInfo,
+    gigs,
+    linkedGigIds: linkedGigIdsFromNav,
+    relatedSlots,
+  });
+
   const MainPanel = getMainPanelComponent(normalisedGig);
   const isVenueHirePage = normalisedGig.bookingMode === 'venue_hire';
   const isConfirmedVenueHire = isVenueHirePage && normalisedGig.status === 'confirmed';
@@ -826,6 +859,7 @@ export function VenueGigPageShell({
                 <MainPanel
                   normalisedGig={normalisedGig}
                   rawGig={gigInfo}
+                  mediaGigId={mediaGigId}
                   setGigInfo={setGigInfo}
                   gigs={gigs}
                   venues={venues}

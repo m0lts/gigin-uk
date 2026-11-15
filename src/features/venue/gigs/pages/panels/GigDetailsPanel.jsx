@@ -288,6 +288,7 @@ function slotTimeRangeLabel(slotGig) {
 export function GigDetailsPanel({
   normalisedGig,
   rawGig,
+  mediaGigId = rawGig?.gigId,
   setGigInfo,
   gigs,
   venues,
@@ -2236,13 +2237,15 @@ export function GigDetailsPanel({
               venues={venues}
               gigs={gigs}
             />
+            {mediaGigId ? (
             <GigMediaPanel
-              gigId={rawGig?.gigId}
+              gigId={mediaGigId}
               media={privateBundle?.media || []}
               hasShareLink={Boolean(privateBundle?.hasShareLink)}
               canUpdate={canUpdate}
               onShareLinkChange={(live) => setPrivateBundle((prev) => ({ ...(prev || {}), hasShareLink: live }))}
             />
+            ) : null}
           </>
         ) : (
         <div className="venue-hire-confirmed-panel gig-details-main">
@@ -2253,13 +2256,15 @@ export function GigDetailsPanel({
             onSlotBodyMount={setRunningOrderSlotEl}
           />
           {renderConfirmedActRequirements()}
+          {mediaGigId ? (
           <GigMediaPanel
-            gigId={rawGig?.gigId}
+            gigId={mediaGigId}
             media={privateBundle?.media || []}
             hasShareLink={Boolean(privateBundle?.hasShareLink)}
             canUpdate={canUpdate}
             onShareLinkChange={(live) => setPrivateBundle((prev) => ({ ...(prev || {}), hasShareLink: live }))}
           />
+          ) : null}
           <GigApplications
             rawGig={rawGig}
             guestPrivate={privateBundle?.guests || {}}
