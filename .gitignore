@@ -47,3 +47,9 @@ scripts/firestore-backup-*.json
 scripts/firestore-backup-latest.json
 scripts/artistProfileMigrations.output.json
 scripts/legacyArtistProfiles.output.json
+
+dist/
+test-results/
+firebase-debug.log
+*.zip
+design-archive/

@@ -201,7 +201,43 @@ test('guest apply, close applications, linking, and media share', async () => {
       note: 'Same act again',
     },
   });
-  assert.equal(again.status, 200, JSON.stringify(again.json));
+  assert.equal(again.status, 409, JSON.stringify(again.json));
+  assert.equal(again.json?.error, 'Confirm this email from the link we sent.');
+
+  const checked = await api('/guest-applications/return-check', {
+    method: 'POST',
+    body: { email: guestEmail, gigId: secondGig },
+  });
+  assert.equal(checked.status, 200, JSON.stringify(checked.json));
+  assert.deepEqual(checked.json, { known: true, sameGig: false });
+  const returnMail = await db.collection('mail').where('to', '==', guestEmail).get();
+  const returnToken = returnMail.docs.map((doc) => {
+    const html = doc.data()?.message?.html || '';
+    const match = html.match(/[?&]return=([a-f0-9]{64})/);
+    return match ? match[1] : '';
+  }).find(Boolean);
+  assert.ok(returnToken, 'the return link should be in the welcome email');
+  const redeemed = await api('/guest-applications/return', {
+    method: 'POST',
+    body: { token: returnToken, gigId: secondGig },
+  });
+  assert.equal(redeemed.status, 200, JSON.stringify(redeemed.json));
+
+  const confirmed = await api('/guest-applications', {
+    method: 'POST',
+    body: {
+      applicationId: crypto.randomUUID(),
+      manageToken: crypto.randomBytes(32).toString('hex'),
+      gigId: secondGig,
+      slotGigIds: [secondGig],
+      actName: 'The Test Act',
+      contactName: 'Guest Tester',
+      contacts: { email: guestEmail },
+      note: 'Same act again',
+      returnToken,
+    },
+  });
+  assert.equal(confirmed.status, 200, JSON.stringify(confirmed.json));
   const contacts = await db.collection('users').doc(venue.uid).collection('artistCRM').get();
   const sameEmail = contacts.docs.filter((doc) => String(doc.data().email || '').toLowerCase() === guestEmail);
   assert.equal(sameEmail.length, 1, 'same email must reuse one contact');
