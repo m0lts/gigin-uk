@@ -15,23 +15,23 @@ import {
     YoutubeIcon } from '@features/shared/ui/extras/Icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-    faGuitar,
-    faDrum,
-    faPiano,
-    faKeyboard,
-    faSaxophone,
-    faTrumpet,
-    faFlute,
-    faViolin,
-    faMicrophone,
-    faBanjo,
-    faMandolin,
-    faHeadphones,
-    faLaptop,
-    faMusic,
-    faTurntable,
-    faLightbulb
-} from '@fortawesome/pro-light-svg-icons';
+  faGuitar,
+  faDrumLight as faDrum,
+  faPianoLight as faPiano,
+  faKeyboard,
+  faSaxophoneLight as faSaxophone,
+  faTrumpetLight as faTrumpet,
+  faFlute,
+  faViolin,
+  faMicrophone,
+  faBanjo,
+  faMandolin,
+  faHeadphones,
+  faLaptop,
+  faMusic,
+  faTurntableLight as faTurntable,
+  faLightbulbLight as faLightbulb,
+} from '@features/shared/ui/extras/proIcons';
 import { EmptyIcon, NewTabIcon, QuestionCircleIcon } from '../../shared/ui/extras/Icons';
 import { useMapbox } from '../../../hooks/useMapbox';
 import { ensureProtocol, openInNewTab } from '../../../services/utils/misc';

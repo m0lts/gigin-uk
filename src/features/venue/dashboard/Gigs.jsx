@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  faList,
+  faWifi,
+} from '@features/shared/ui/extras/proIcons';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faList, faWifi } from '@fortawesome/pro-solid-svg-icons';
 import { 
     ClockIcon,
     DotIcon,

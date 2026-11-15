@@ -1,39 +1,164 @@
 import { faApple, faFacebook, faFacebookSquare, faGoogle, faInstagram, faInstagramSquare, faSoundcloud, faSpotify, faStripe, faTwitter, faTwitterSquare, faXTwitter, faYoutube, faYoutubeSquare } from '@fortawesome/free-brands-svg-icons'
 import { faArrowLeft, faBoxArchive, faEye, faFileLines, faInbox, faPlayCircle, faUserCircle, faFileImport, faSquareMinus, faChevronUp, faChevronLeft, faChevronRight, faX } from '@fortawesome/free-solid-svg-icons'
-import { faAddressCard, faArrowLeftFromArc, faBeerFoam, faCameraViewfinder, faCastle, faCoin, faCutlery, faDrum, faEnvelope, faGlassesRound, faGraduationCap, faLightbulb, faLocationPin, faMuseum, faPencil, faPiano, faPlaceOfWorship,  faPlayPause, faQuestionCircle, faReel, faSpeakers, faTelescope, faTurntable, faXmarkCircle, faStarShooting, faTrashCan, faTicket as faTicketLight } from '@fortawesome/pro-regular-svg-icons'
-import { faComments, faFaceFrown, faFaceMeh, faFaceSmile, faFaceSmileHearts, faPencilSquare, faTableTree, faClock, faCircleArrowLeft, faChartPieSimple, faCreditCard, faFileInvoice, faPartyHorn, faListMusic, faCircleExclamation, faBan, faCirclePlus, faMapLocation, faDesktop, faAmpGuitar, faPlug,  } from '@fortawesome/pro-regular-svg-icons'
-import { faShieldCheck, faCirclePlus as faCirclePlusSolid, faAsterisk, faKey, faUserMinus, faDoorOpen, faPhotoFilmMusic, faSquareInfo, faHashtag, faPiggyBank, faCircleExclamation as faCircleExclamationSolid, faWarning, faMoneyBillTransfer, faBadgeCheck, faMoneyBillsSimple, faEmptySet, faCircleVideo, faRingsWedding, faTicket, faVolume, faExpand, faArrowUp, faArrowUpRightFromSquare, faImage, faExcavator, faThumbsUp, faThumbsDown, faUserLock, faMobileRetro, faSpeaker, faGuitarElectric, faDna, faFilmAlt, faCompactDisc, faGuitars, faSun, faMoon, faArrowRightLong, faArrowLeftLong, faArrowUpLong, faArrowDownLong, faGlobePointer, faTachographDigital, faPenToSquare, faPlay, faPause, faSparkles, faVideo, faFaceParty, faSliders, faTrumpet, faSaxophone } from '@fortawesome/pro-solid-svg-icons';
+
+
+import {
+  faAddressCard,
+  faArrowLeftFromArc,
+  faBeerFoam,
+  faCameraViewfinder,
+  faCastle,
+  faCoin,
+  faCutlery,
+  faDrumRegular as faDrum,
+  faEnvelope,
+  faGlassesRound,
+  faGraduationCap,
+  faLightbulbRegular as faLightbulb,
+  faLocationPin,
+  faMuseum,
+  faPencil,
+  faPianoRegular as faPiano,
+  faPlaceOfWorship,
+  faPlayPause,
+  faQuestionCircle,
+  faReel,
+  faSpeakers,
+  faTelescope,
+  faTurntableRegular as faTurntable,
+  faXmarkCircle,
+  faStarShooting,
+  faTrashCan,
+  faTicketLight,
+  faComments,
+  faFaceFrown,
+  faFaceMeh,
+  faFaceSmile,
+  faFaceSmileHearts,
+  faPencilSquare,
+  faTableTree,
+  faClock,
+  faCircleArrowLeft,
+  faChartPieSimple,
+  faCreditCard,
+  faFileInvoice,
+  faPartyHorn,
+  faListMusic,
+  faCircleExclamation,
+  faBan,
+  faCirclePlus,
+  faMapLocation,
+  faDesktop,
+  faAmpGuitar,
+  faPlug,
+  faShieldCheck,
+  faCirclePlusSolid,
+  faAsterisk,
+  faKey,
+  faUserMinus,
+  faDoorOpen,
+  faPhotoFilmMusic,
+  faSquareInfo,
+  faHashtag,
+  faPiggyBank,
+  faCircleExclamationSolid,
+  faWarning,
+  faMoneyBillTransfer,
+  faBadgeCheck,
+  faMoneyBillsSimple,
+  faEmptySet,
+  faCircleVideo,
+  faRingsWedding,
+  faTicket,
+  faVolume,
+  faExpand,
+  faArrowUp,
+  faArrowUpRightFromSquare,
+  faImage,
+  faExcavator,
+  faThumbsUp,
+  faThumbsDown,
+  faUserLock,
+  faMobileRetro,
+  faSpeaker,
+  faGuitarElectric,
+  faDna,
+  faFilmAlt,
+  faCompactDisc,
+  faGuitars,
+  faSun,
+  faMoon,
+  faArrowRightLong,
+  faArrowLeftLong,
+  faArrowUpLong,
+  faArrowDownLong,
+  faGlobePointer,
+  faTachographDigital,
+  faPenToSquare,
+  faPlay,
+  faPause,
+  faSparkles,
+  faVideo,
+  faFaceParty,
+  faSliders,
+  faTrumpetSolid as faTrumpet,
+  faSaxophoneSolid as faSaxophone,
+  faSaveIcon,
+  faEmptyStar,
+  faPeopleGroupLight,
+  faPeopleRoofLight,
+  faAddressCardSolid,
+  faMicrophoneLines,
+  faFileMp4,
+  faCamcorder,
+  faFileMp3,
+  faFilm,
+  faCheckCircle,
+  faUserPlus,
+  faAlbumCollectionCircleUser,
+  faFileUser,
+  faCalendarCirclePlus,
+  faGridHorizontalLight,
+  faGridHorizontalSolid,
+  faMessageMusic,
+  faMagnifyingGlass,
+  faSort,
+  faLandmarkLight,
+  faLandmarkSolid,
+  faBeerFoamSolid,
+  faEnvelopeSolid,
+  faMuseumSolid,
+  faCutlerySolid,
+  faPlaceOfWorshipSolid,
+  faTurntableSolid,
+  faMusicLight,
+  faEmptyFilter,
+  faTrashMultiple,
+  faTrash,
+  faClone,
+  faEllipsis,
+  faMailbox,
+  faMailboxSolid,
+  faMailboxFlagUp,
+  faMailboxFlagUpSolid,
+} from './proIcons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBookmark as faSaveIcon } from '@fortawesome/pro-regular-svg-icons'
 import { faBookmark as faSavedIcon } from '@fortawesome/free-solid-svg-icons'
 import { faStar as faFullStar } from '@fortawesome/free-solid-svg-icons'
-import { faStar as faEmptyStar } from '@fortawesome/pro-regular-svg-icons'
-import { faPeopleGroup as faPeopleGroupLight } from '@fortawesome/pro-light-svg-icons';
+
 import { faPeopleGroup as faPeopleGroupSolid } from '@fortawesome/free-solid-svg-icons';
-import { faPeopleRoof as faPeopleRoofLight } from '@fortawesome/pro-regular-svg-icons';
 import { faPeopleRoof as faPeopleRoofSolid } from '@fortawesome/free-solid-svg-icons';
-import { faAddressCard as faAddressCardSolid, faMicrophoneLines, faFileMp4, faCamcorder, faFileMp3, faFilm, faCheckCircle, faUserPlus, faAlbumCollectionCircleUser, faFileUser  } from '@fortawesome/pro-solid-svg-icons';
-import { faCalendarCirclePlus } from '@fortawesome/pro-solid-svg-icons';
-import { faRectanglesMixed as faGridHorizontalLight } from '@fortawesome/pro-regular-svg-icons';
-import { faRectanglesMixed as faGridHorizontalSolid } from '@fortawesome/pro-solid-svg-icons';
-import { faMessageMusic, faMagnifyingGlass, faSort } from '@fortawesome/pro-solid-svg-icons'
-import { faLandmark as faLandmarkLight } from '@fortawesome/pro-regular-svg-icons';
-import { faLandmark as faLandmarkSolid } from '@fortawesome/pro-solid-svg-icons';
-import { faBeerFoam as faBeerFoamSolid } from '@fortawesome/pro-solid-svg-icons';
-import { faEnvelope as faEnvelopeSolid } from '@fortawesome/pro-solid-svg-icons';
-import { faMuseum as faMuseumSolid } from '@fortawesome/pro-solid-svg-icons';
-import { faCutlery as faCutlerySolid } from '@fortawesome/pro-solid-svg-icons';
-import { faPlaceOfWorship as faPlaceOfWorshipSolid } from '@fortawesome/pro-solid-svg-icons';
-import { faTurntable as faTurntableSolid } from '@fortawesome/pro-solid-svg-icons';
-import { faMusic as faMusicLight } from '@fortawesome/pro-light-svg-icons'
+
+
+
+
 import { faMusic as faMusicSolid } from '@fortawesome/free-solid-svg-icons'
 import { faFilter as faFullFilter } from '@fortawesome/free-solid-svg-icons'
-import { faFilter as faEmptyFilter } from '@fortawesome/pro-regular-svg-icons'
-import { faTrashList as faTrashMultiple, faTrash, faClone, faEllipsis } from '@fortawesome/pro-solid-svg-icons'
-import { faMailbox as faMailbox } from '@fortawesome/pro-regular-svg-icons';
-import { faMailbox as faMailboxSolid } from '@fortawesome/pro-solid-svg-icons';
-import { faMailboxFlagUp as faMailboxFlagUp } from '@fortawesome/pro-regular-svg-icons';
-import { faMailboxFlagUp as faMailboxFlagUpSolid } from '@fortawesome/pro-solid-svg-icons';
+
+
+
+
+
 
 export {
   HouseIconLight, HouseIconSolid, CalendarIconLight, CalendarIconSolid,

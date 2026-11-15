@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import {
+  faWaveformLines,
+} from '@features/shared/ui/extras/proIcons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWaveformLines } from '@fortawesome/pro-regular-svg-icons';
 import { DownChevronIcon, RightChevronIcon } from '@features/shared/ui/extras/Icons';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { getArtistProfileById } from '@services/client-side/artists';

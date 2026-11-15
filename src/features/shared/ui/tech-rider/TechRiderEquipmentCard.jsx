@@ -1,6 +1,9 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheckCircle } from '@fortawesome/pro-solid-svg-icons';
-import { faXmarkCircle } from '@fortawesome/pro-regular-svg-icons';
+import {
+  faCheckCircle,
+  faXmarkCircle,
+} from '@features/shared/ui/extras/proIcons';
+
 import { 
     SpeakersIcon, 
     AmpIcon, 

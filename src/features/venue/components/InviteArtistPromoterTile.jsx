@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import {
+  faPaperPlaneTop,
+} from '@features/shared/ui/extras/proIcons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPaperPlaneTop } from '@fortawesome/pro-solid-svg-icons';
 import Portal from '@features/shared/components/Portal';
 import { AddressBookIcon, CloseIcon, CopyIcon, EditIcon, InviteIconSolid, ShareIcon, TickIcon } from '@features/shared/ui/extras/Icons';
 
