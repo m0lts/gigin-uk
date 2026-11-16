@@ -157,8 +157,9 @@ async function collectIds(startId) {
   return [...visited];
 }
 
-function slotView(snap) {
-  return { gigId: snap.id, ...(snap.data() || {}) };
+export function slotView(snap) {
+  const data = typeof snap?.data === "function" ? (snap.data() || {}) : (snap?.data || {});
+  return { ...data, gigId: snap.id };
 }
 
 function canonicalStatus(status) {
@@ -301,7 +302,7 @@ export async function loadNightSlots(gigId) {
     const snap = await db.doc(`gigs/${id}`).get();
     if (snap.exists) slots.push({ id, ref: snap.ref, data: snap.data() || {} });
   }
-  const views = slots.map((slot) => slotView({ id: slot.id, data: () => slot.data }));
+  const views = slots.map((slot) => slotView(slot));
   const rootId = applicationsRootGigId(views);
   const stored = await loadPrivateApplications(rootId);
   if (stored && Array.isArray(stored.applicants)) {
@@ -319,7 +320,7 @@ export async function loadNightSlots(gigId) {
 }
 
 function takenIds(slots) {
-  const night = readNight(slots.map((slot) => slotView({ id: slot.id, data: () => slot.data })));
+  const night = readNight(slots.map((slot) => slotView(slot)));
   return new Set(night.slots.filter((slot) => slot.taken).map((slot) => slot.gigId));
 }
 
@@ -346,7 +347,7 @@ async function readPrivate(rootId, applicantId) {
 }
 
 async function commitApps({ slots, rootId, apps, privatePatch, applicantId }) {
-  const current = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data }))).applications;
+  const current = readNight(slots.map((slot) => slotView(slot))).applications;
   const next = mergeChanged(current, apps);
   const writes = projectNight(slots, rootId, next);
   const operational = next.map(operationalApplicant).filter(Boolean);
@@ -364,7 +365,7 @@ async function commitApps({ slots, rootId, apps, privatePatch, applicantId }) {
 }
 
 function findApp(slots, applicantId) {
-  const night = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
+  const night = readNight(slots.map((slot) => slotView(slot)));
   return {
     night,
     app: night.applications.find((entry) => String(entry.id) === String(applicantId)) || null,
@@ -854,7 +855,7 @@ export async function closeApplications({ gigId, declineWaiting }) {
   const { slots, rootId } = await loadNightSlots(gigId);
   assertNightNotCancelled(slots);
   const root = slots.find((slot) => slot.id === rootId) || slots[0];
-  const night = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
+  const night = readNight(slots.map((slot) => slotView(slot)));
   const waiting = declineWaiting
     ? night.applications.filter((entry) => canonicalStatus(entry.status) === "pending")
     : [];
@@ -920,7 +921,7 @@ export async function undoClose({ gigId }) {
     if (!app || isWithdrawn(app)) continue;
     restored.push({ ...app, status: "pending", undo: null, declineEmailSendAt: null });
   }
-  const current = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data }))).applications;
+  const current = readNight(slots.map((slot) => slotView(slot))).applications;
   const next = mergeChanged(current, restored);
   await db.runTransaction(async (tx) => {
     for (const slot of slots) await tx.get(slot.ref);
@@ -975,7 +976,7 @@ export async function cancelNight({ gigId, reason, callerUid }) {
   }
   await assertCanEditNight(callerUid, root.data.venueId);
   if (nightIsCancelled(slots)) return { ok: true, already: true };
-  const night = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
+  const night = readNight(slots.map((slot) => slotView(slot)));
   const venue = await loadVenue(root.data.venueId);
   const note = String(reason || "").trim().slice(0, 500);
   const mailIds = [];
@@ -1050,7 +1051,7 @@ export async function undoCancelNight({ gigId, callerUid }) {
   }
   for (const id of undo.mailIds || []) await cancelMail(id);
   const previous = new Map((undo.slots || []).map((slot) => [slot.id, slot]));
-  const night = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
+  const night = readNight(slots.map((slot) => slotView(slot)));
   await db.runTransaction(async (tx) => {
     for (const slot of slots) await tx.get(slot.ref);
     for (const write of projectNight(slots, rootId, night.applications)) {
@@ -1101,7 +1102,7 @@ export async function placeLoggedInApplication({ gigId, application, preferredSl
     error.code = "APPLICATIONS_CLOSED";
     throw error;
   }
-  const night = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
+  const night = readNight(slots.map((slot) => slotView(slot)));
   if (night.slots.length && night.slots.every((slot) => slot.taken)) {
     const error = new Error("This gig is no longer accepting applications.");
     error.statusCode = 409;
@@ -1150,7 +1151,7 @@ export async function placeLoggedInApplication({ gigId, application, preferredSl
 
 export async function readNightApplications(gigId) {
   const { slots, rootId } = await loadNightSlots(gigId);
-  const night = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data })));
+  const night = readNight(slots.map((slot) => slotView(slot)));
   return { slots, rootId, applications: night.applications };
 }
 
@@ -1205,7 +1206,7 @@ export async function writeGuestApplication({ gigId, applicant, preferredSlotGig
     applicantId: next.id,
     privatePatch: guestPrivate(next, rootId),
   });
-  const views = sortSlots(slots.map((slot) => ({ gigId: slot.id, ...slot.data, applicants: [] })));
+  const views = sortSlots(slots.map((slot) => ({ ...slotView(slot), applicants: [] })));
   return { rootId, preferredSlotGigIds: pref.preferredSlotGigIds, slots: views };
 }
 
@@ -1214,7 +1215,7 @@ export async function withdrawGuestApplication({ gigId, applicant }) {
   const root = slots.find((slot) => slot.id === rootId) || slots[0];
   const wasAccepted = ["accepted", "confirmed", "paid"].includes(String(applicant.status || "").toLowerCase());
   const freed = applicant.assignedSlotGigId || null;
-  const views = readNight(slots.map((slot) => ({ gigId: slot.id, ...slot.data }))).slots;
+  const views = readNight(slots.map((slot) => slotView(slot))).slots;
   const next = {
     ...applicant,
     status: "withdrawn",

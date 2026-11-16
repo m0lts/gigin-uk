@@ -2294,13 +2294,15 @@ export function AddGigsModal({
               ? gig.timingSoundcheckTime.trim()
               : undefined;
             const baseArtistTitle = String(gig.gigName ?? '').trim() || (venue ? `Gig at ${venue.name}` : 'Gig');
+            const groupIds = effectiveSlots.map(() => uuidv4());
 
             effectiveSlots.forEach((slot, slotIndex) => {
               const startTimeBn = (slot?.startTime ?? '').toString().trim();
-              const durationBn = Number.isFinite(Number(slot?.duration)) && Number(slot.duration) > 0
+              const durationBn = Number.isFinite(Number(slot.duration)) && Number(slot.duration) > 0
                 ? Number(slot.duration)
                 : 60;
-              const slotGigId = uuidv4();
+              const slotGigId = groupIds[slotIndex];
+              const gigSlotsForThis = groupIds.length > 1 ? groupIds.filter((id) => id !== slotGigId) : undefined;
               // In single-slot mode the wizard only writes to `unifiedFeeAmount`,
               // not `slotBudgets`, so fall back to it when the slot entry is
               // the default '£' placeholder.
@@ -2315,6 +2317,7 @@ export function AddGigsModal({
               const artistTitle = multiSlot ? `${baseArtistTitle} (Set ${slotIndex + 1})` : baseArtistTitle;
               gigDocuments.push({
                 gigId: slotGigId,
+                ...(gigSlotsForThis != null && { gigSlots: gigSlotsForThis }),
                 venueId,
                 ...(startDateTimeBn && { date: startDateTimeBn, startDateTime: startDateTimeBn }),
                 ...(startTimeBn && { startTime: startTimeBn }),
