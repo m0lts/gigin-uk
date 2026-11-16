@@ -2475,13 +2475,74 @@
 .ga-toast { position: sticky; bottom: 12px; margin: 12px 18px; background: #111317; color: #fff; border-radius: 12px; padding: 14px; }
 .ga-toast button { margin-top: 8px; background: #fff; color: #111317; border: 0; min-height: 44px; border-radius: 8px; font-weight: 600; width: 100%; }
 .ga-icon { width: 44px; height: 44px; border: 0; background: transparent; font-size: 22px; cursor: pointer; }
-.ga-applied { max-width: 640px; margin: 0 auto; padding: 28px 18px 40px; }
-.ga-check { width: 56px; height: 56px; border-radius: 99px; display: grid; place-items: center; background: var(--launch-good-bg); color: var(--launch-good); font-size: 28px; }
-.ga-applied h2 { font-size: 40px; font-weight: 300; }
-.ga-next span.is-done { background: var(--launch-good-bg); color: var(--launch-good); }
-.ga-next { list-style: none; padding: 0; }
-.ga-next li { display: flex; gap: 12px; margin: 14px 0; }
-.ga-next span { width: 28px; height: 28px; border-radius: 99px; background: #111317; color: #fff; display: grid; place-items: center; flex: none; }
+.ga-applied { max-width: 560px; margin: 0 auto; padding: 0 18px 48px; }
+.ga-applied__bar { height: 64px; display: flex; align-items: center; }
+.ga-mark { width: 56px; height: 56px; border-radius: 99px; display: grid; place-items: center; background: var(--launch-good-bg); color: var(--launch-good); margin: 4px 0 18px; }
+.ga-applied h2 { font-size: 40px; font-weight: 300; margin: 0 0 8px; }
+.ga-applied__lead, .ga-applied__note { margin: 0 0 20px; color: var(--launch-text); font-size: 16px; line-height: 1.45; }
+.ga-applied .ga-next {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 22px;
+  background: var(--launch-card);
+  border-radius: var(--launch-radius-card);
+  box-shadow: var(--launch-shadow);
+}
+.ga-applied .ga-next li { display: flex; gap: 14px; align-items: flex-start; margin: 0; padding: 8px 0; }
+.ga-applied .ga-next strong { display: block; font-size: 15px; font-weight: 650; color: var(--launch-ink); }
+.ga-applied .ga-next p { margin: 2px 0 0; color: var(--launch-muted); font-size: 14px; line-height: 1.4; }
+.ga-step-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 99px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: #fff;
+  color: #8B909A;
+  border: 1.5px solid #D5D8DE;
+}
+.ga-step-mark.is-done { background: var(--launch-good-bg); color: var(--launch-good); border-color: transparent; }
+.ga-step-mark.is-current { background: #111317; color: #fff; border-color: #111317; }
+.ga-save {
+  background: #111317;
+  color: #fff;
+  border-radius: var(--launch-radius-card);
+  padding: 22px 20px 12px;
+  margin: 0 0 16px;
+}
+.ga-save strong { display: block; font-size: 18px; font-weight: 650; color: #fff; margin: 0 0 8px; }
+.ga-save p { margin: 0 0 16px; color: #C8CCD3; font-size: 15px; line-height: 1.45; }
+.ga-save__error { color: #FFD2C6; }
+.ga-save__field { display: flex; flex-direction: column; gap: 6px; margin: 0 0 14px; font-size: 14px; font-weight: 600; color: #fff; }
+.ga-save__field input { min-height: 48px; border: 0; border-radius: 12px; padding: 0 14px; font: inherit; color: var(--launch-ink); }
+.ga-save__btn {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #111317;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.ga-save__btn:disabled { background: #E5E7EB; color: #9AA0AA; cursor: default; }
+.ga-save__later {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  min-height: 44px;
+  background: none;
+  border: 0;
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
 .ga-account { background: var(--launch-btn); color: #fff; border-radius: var(--launch-radius-card); padding: 18px; position: relative; margin: 16px 0; }
 .ga-account p, .ga-account strong { color: #fff; }
 .ga-account .ga-dark { background: #fff; color: var(--launch-ink); }
@@ -2527,8 +2588,8 @@
   .ga-progress,
   .ga-flow__body,
   .ga-applied { max-width: 560px; margin-left: auto; margin-right: auto; }
-  .ga-flow__body,
-  .ga-applied { padding: 22px 18px 48px; }
+  .ga-flow__body { padding: 22px 18px 48px; }
+  .ga-applied { padding: 0 18px 48px; }
   .ga-flow .ga-actions.is-desktop .ga-orange,
   .ga-flow .ga-actions.is-desktop .ga-dark,
   .ga-flow .ga-actions.is-desktop .ga-ghost { width: 100%; min-width: 0; }

@@ -94,6 +94,11 @@ test('the withdrawn page and the sent page each have one Back to the gig control
   assert.equal(manage.split('Back to the gig').length - 1, 1);
   assert.equal(applied.split('Back to the gig').length - 1, 1);
   assert.equal(manage.includes('GuestApplied'), false);
+  assert.equal(applied.includes('tech rider'), false);
+  assert.equal(applied.includes('✓'), false);
+  assert.equal(applied.includes("It's free"), false);
+  assert.equal(applied.includes('Save your details for next time') || applied.includes('SaveDetailsCard'), true);
+  assert.equal(applied.includes('<svg'), true);
 });
 
 test('an empty band is left off the application', () => {

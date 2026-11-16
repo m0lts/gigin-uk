@@ -10,7 +10,7 @@ import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
 import { GuestWhoStep } from './GuestWhoStep';
 import { continueDisabledByUploads, uploadContinueNote } from './guestAssetFiles';
-import { bookerLine, clearDraft, formatShortDay, readDraft, rememberApplication, writeDraft } from './guestFormat';
+import { bookerLine, clearDraft, formatGigSentence, formatShortDay, readDraft, rememberApplication, writeDraft } from './guestFormat';
 
 function sectionSnapshot(draft) {
   return {
@@ -347,7 +347,8 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         <GuestApplied
           draft={{ ...draft, slots }}
           bookerName={booker.name}
-          dateLabel={formatShortDay(gig)}
+          nightName={String(gig.gigName || '').replace(/\s*\(Set\s+\d+\)\s*$/, '').trim()}
+          dateLabel={formatGigSentence(gig)}
           onClose={onClose}
           onCreateAccount={onCreateAccount}
           profileNote={profileNote}

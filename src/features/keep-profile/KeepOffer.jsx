@@ -14,7 +14,33 @@ function subLine(draft) {
   return instruments ? `${kind} · ${instruments}` : kind;
 }
 
-export function KeepOffer({ draft, bookerName, onLogin }) {
+export const SAVE_DETAILS_COPY = 'Apply to the next gig in one tap and see all your applications in one place. No password: we email you a link.';
+
+export function SaveDetailsCard({
+  title = 'Save your details for next time',
+  body = SAVE_DETAILS_COPY,
+  actionLabel = 'Save my details',
+  onAction,
+  onDismiss,
+  busy = false,
+  error = '',
+  children = null,
+}) {
+  return (
+    <aside className="ga-save">
+      <strong>{title}</strong>
+      <p>{body}</p>
+      {children}
+      {error ? <p className="ga-save__error">{error}</p> : null}
+      <button type="button" className="ga-save__btn" disabled={busy} onClick={onAction}>{actionLabel}</button>
+      {onDismiss ? (
+        <button type="button" className="ga-save__later" onClick={onDismiss}>Not now</button>
+      ) : null}
+    </aside>
+  );
+}
+
+export function KeepOffer({ draft, bookerName, onLogin, variant = '' }) {
   const navigate = useNavigate();
   const [phase, setPhase] = useState(draft.keepProfileOffer === 'dismissed' ? 'dismissed' : 'offer');
   const [email, setEmail] = useState(draft.email || '');
@@ -63,6 +89,42 @@ export function KeepOffer({ draft, bookerName, onLogin }) {
     }
   };
 
+  const dismiss = async () => {
+    setPhase('dismissed');
+    try { await dismissKeepOffer(draft.manageToken, draft.gigId); } catch { /* ignore */ }
+  };
+
+  if (variant === 'sent') {
+    if (phase === 'dismissed') return null;
+    if (phase === 'sent') {
+      return (
+        <SaveDetailsCard
+          title="Check your email"
+          body={`We sent a link to ${sentTo}. Tap it to save your details.`}
+          actionLabel="Resend the link"
+          onAction={keep}
+          busy={busy}
+          error={error}
+        />
+      );
+    }
+    return (
+      <SaveDetailsCard
+        onAction={() => { if (hasAccount) onLogin?.(); else keep(); }}
+        onDismiss={dismiss}
+        busy={busy}
+        error={error}
+      >
+        {!draft.email && (
+          <label className="ga-save__field">
+            Your email
+            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </label>
+        )}
+      </SaveDetailsCard>
+    );
+  }
+
   if (phase === 'dismissed') {
     return (
       <div className="kp-dismiss">
@@ -99,10 +161,7 @@ export function KeepOffer({ draft, bookerName, onLogin }) {
           try { sessionStorage.setItem('gigin.reviewAdd', '1'); } catch { /* ignore */ }
           onLogin?.();
         }}>Sign in instead</button>
-        <button type="button" className="kp-ghost" onClick={async () => {
-          setPhase('dismissed');
-          try { await dismissKeepOffer(draft.manageToken, draft.gigId); } catch { /* ignore */ }
-        }}>Not now</button>
+        <button type="button" className="kp-ghost" onClick={dismiss}>Not now</button>
       </aside>
     );
   }
@@ -153,10 +212,7 @@ export function KeepOffer({ draft, bookerName, onLogin }) {
       {error && <p className="kp-error">{error}</p>}
       <button type="button" className="kp-btn" disabled={busy} onClick={keep}>Keep my profile</button>
       <p className="kp-fine">We&apos;ll email you a link to confirm. You&apos;ll create a password when you confirm.</p>
-      <button type="button" className="kp-ghost" onClick={async () => {
-        setPhase('dismissed');
-        try { await dismissKeepOffer(draft.manageToken, draft.gigId); } catch { /* ignore */ }
-      }}>Not now</button>
+      <button type="button" className="kp-ghost" onClick={dismiss}>Not now</button>
     </aside>
   );
 }
