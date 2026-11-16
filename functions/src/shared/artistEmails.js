@@ -1,6 +1,7 @@
 /* Artist emails. Table markup and inline styles match design_handoff_artist_experience/emails. */
 
 const FONT = "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const HEAD = "'Newsreader', Georgia, 'Times New Roman', serif";
 const MONO = "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 const DARK = [
   [".bg", "background:#0F1115 !important"],
@@ -75,14 +76,13 @@ ${darkCss("[data-ogsc] ")}`;
     : "";
   const openGigs = Array.isArray(email.openGigs) ? email.openGigs.filter((gig) => gig?.url && gig?.name) : [];
   const listings = openGigs.length
-    ? `<div class="ink" style="margin:4px 0 10px;font-family:${FONT};font-size:16px;line-height:22px;font-weight:600;color:#0F1115;">Gigs looking for acts like you</div>${openGigs.map((gig) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="box" style="margin:0 0 8px;background:#F6F7F9;border:1px solid #F0F1F3;border-radius:12px;"><tr><td style="padding:12px 14px;font-family:${FONT};"><a class="ink" href="${escapeEmail(gig.url)}" style="color:#0F1115;text-decoration:none;font-weight:600;">${escapeEmail(gig.when ? `${gig.when} · ` : "")}${escapeEmail(gig.name)}</a><div class="muted" style="font-size:13.5px;line-height:18px;color:#6B7280;padding-top:2px;">${escapeEmail(gig.place || "")}</div></td></tr></table>`).join("")}`
+    ? `<div class="ink" style="margin:4px 0 10px;font-family:${FONT};font-size:16px;line-height:22px;font-weight:600;color:#0F1115;">Gigs looking for acts like you</div>${openGigs.map((gig) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="box" style="margin:0 0 8px;background:#F6F7F9;border:1px solid #F0F1F3;border-radius:16px;"><tr><td style="padding:12px 14px;font-family:${FONT};"><a class="ink" href="${escapeEmail(gig.url)}" style="color:#0F1115;text-decoration:none;font-weight:600;">${escapeEmail(gig.name)}</a><div class="muted" style="font-size:13.5px;line-height:18px;color:#6B7280;padding-top:2px;">${escapeEmail([gig.when, gig.place].filter(Boolean).join(" · "))}</div></td><td align="right" style="padding-right:14px;"><span style="display:inline-block;background:#FDE6DF;color:#FF6C4B;border-radius:999px;padding:3px 8px;font-family:${FONT};font-size:12px;font-weight:600;">Open</span></td></tr></table>`).join("")}`
     : "";
   const callout = email.callout?.body
     ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 18px;background:#FDF2EC;border-radius:12px;"><tr><td style="padding:14px 16px;font-family:${FONT};"><div class="ink" style="font-size:15px;line-height:22px;font-weight:600;color:#0F1115;">${escapeEmail(email.callout.title || "")}</div><div class="ink" style="font-size:15px;line-height:22px;color:#4B5160;padding-top:4px;">${email.callout.body}</div></td></tr></table>`
     : "";
   const pre = email.pre ? paragraph(email.pre, "ink", "font-size:15px;line-height:22px;color:#0F1115;") : "";
-  const background = email.buttonDark ? "#111317" : "#FF6C4B";
-  const button = email.button ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="${email.buttonDark ? "btn btnd" : "btn"}" style="margin:4px 0 18px;"><tr><td class="${email.buttonDark ? "btnd" : ""}" style="background:${background};border-radius:10px;"><a href="${email.button[1]}" style="display:inline-block;padding:14px 22px;font-family:${FONT};font-size:15px;line-height:20px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:10px;min-width:200px;text-align:center;">${email.button[0]}</a></td></tr></table>` : "";
+  const button = email.button ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btn btnd" style="margin:4px 0 18px;"><tr><td class="btnd" style="background:#111317;border-radius:999px;"><a href="${email.button[1]}" style="display:inline-block;padding:14px 22px;font-family:${FONT};font-size:15px;line-height:20px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:999px;min-width:200px;text-align:center;">${email.button[0]}</a></td></tr></table>` : "";
   const after = email.after ? paragraph(`${email.after[0]} <a class="link" href="${email.after[2]}" style="color:#B5462C;font-weight:500;">${email.after[1]}</a>`, "ink", "font-size:14.5px;line-height:22px;color:#0F1115;") : "";
   const extra = email.extra ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="box" style="margin:4px 0 18px;background:#F6F7F9;border:1px solid #F0F1F3;border-radius:12px;"><tr><td style="padding:14px 16px;font-family:${FONT};"><div class="ink" style="font-size:15px;line-height:22px;font-weight:600;color:#0F1115;">${email.extra.title}</div><div class="muted" style="font-size:14px;line-height:21px;color:#4B5160;padding:2px 0 8px;">${email.extra.body}</div><a class="link" href="${email.extra.link[1]}" style="font-size:14.5px;font-weight:600;color:#B5462C;">${email.extra.link[0]} →</a></td></tr></table>` : "";
   const small = email.small ? paragraph(email.small, "muted", "font-size:13.5px;line-height:20px;color:#6B7280;margin:0;") : "";
@@ -98,15 +98,14 @@ ${darkCss("[data-ogsc] ")}`;
 ${styles}
 </style>
 </head>
-<body class="bg" style="margin:0;padding:0;background:#F6F7F9;">
+<body class="bg" style="margin:0;padding:0;background:#ECEFF4;">
 <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;">${email.preheader || ""}${"&#847;&zwnj;&nbsp;".repeat(30)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg" style="background:#F6F7F9;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg" style="background:#ECEFF4;">
 <tr><td align="center" style="padding:28px 12px 32px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
-<tr><td class="card" style="background:#FFFFFF;border:1px solid #E5E7EB;border-radius:16px;padding:32px 28px;">
-<div class="ink" style="font-family:${FONT};font-size:24px;line-height:28px;font-weight:700;letter-spacing:-0.01em;color:#0F1115;padding-bottom:22px;">gigin<span style="color:#FF6C4B;">.</span></div>
-<div class="eyebrow" style="font-family:${MONO};font-size:12px;line-height:16px;letter-spacing:0.06em;font-weight:500;color:#B5462C;padding-bottom:8px;">${email.eyebrow || ""}</div>
-<h1 class="ink" style="margin:0 0 18px;font-family:${FONT};font-size:24px;line-height:30px;font-weight:600;letter-spacing:-0.01em;color:#0F1115;">${email.heading || ""}</h1>
+<tr><td class="card" style="background:#FFFFFF;border:0;border-radius:24px;padding:32px 28px;">
+${email.brand?.name ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;"><tr><td style="width:36px;height:36px;background:#111317;border-radius:10px;color:#fff;font-family:${FONT};font-size:12px;font-weight:700;text-align:center;">${escapeEmail(email.brand.initials || email.brand.name.slice(0, 2))}</td><td style="padding-left:10px;font-family:${FONT};"><div class="ink" style="font-size:14px;font-weight:600;color:#0F1115;">${escapeEmail(email.brand.name)}</div><div class="muted" style="font-size:12px;color:#5B606B;">via gigin<span style="color:#FF6C4B;">.</span></div></td></tr></table>` : `<div class="ink" style="font-family:${FONT};font-size:24px;line-height:28px;font-weight:700;letter-spacing:-0.01em;color:#0F1115;padding-bottom:22px;">gigin<span style="color:#FF6C4B;">.</span></div>`}
+<h1 class="ink" style="margin:0 0 18px;font-family:${HEAD};font-size:36px;line-height:40px;font-weight:300;letter-spacing:-0.02em;color:#0F1115;">${email.heading || ""}</h1>
 ${paras}${boxes}${quote}${listings}${callout}${pre}${button}${after}${extra}${small}
 </td></tr>
 <tr><td class="muted" style="padding:16px 10px 0;font-family:${FONT};font-size:12.5px;line-height:19px;color:#6B7280;">${email.footer || ""}<br>Gigin · <a class="link" href="${home}" style="color:#6B7280;">giginmusic.com</a> · <a class="link" href="${home}/privacy-policy" style="color:#6B7280;">Privacy</a></td></tr>

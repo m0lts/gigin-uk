@@ -139,6 +139,7 @@ export function declinedApplicationMessage({
     buttonDark: true,
     small: "Your application is saved, so applying next time takes one tap.",
     extra: extra || null,
+    brand: { name: place, initials: place.slice(0, 2).toUpperCase() },
     footer: `Sent by Gigin for ${escapeHtml(place)}.`,
   });
 }
