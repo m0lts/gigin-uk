@@ -254,6 +254,7 @@ export const useAuth = () => {
       await setDoc(userRef, {
         name: credentials.name || '',
         marketingConsent: !!marketingConsent,
+        ...(credentials.signupAs ? { signupAs: credentials.signupAs } : {}),
       }, { merge: true });
       const redirect = sessionStorage.getItem('redirect');
       if (redirect) sessionStorage.removeItem('redirect');

@@ -5,12 +5,13 @@ import { useAuth } from '@hooks/useAuth';
 import { toast } from 'sonner';
 import { getPhoneExistsBoolean } from '@services/api/users';
 // Components
-import { NoTextLogo } from '@features/shared/ui/logos/Logos';
+import { AuthCard } from './AuthCard';
 import { GoogleIcon, SeeIcon, QuestionCircleIcon } from '@icons';
 import { LoadingSpinner } from '../ui/loading/Loading';
 import { PhoneField, isValidE164 } from './PhoneField';
 // Styles
 import '@styles/forms/forms.styles.css';
+import '@styles/shared/modals.styles.css';
 import { isBlockedEmail } from '../../../services/utils/validation';
 import { FEATURES } from '../../../config/features';
 import { artistDestination } from '../../../config/artistDestination';
@@ -47,6 +48,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [role, setRole] = useState('');
 
   const handleFocus = () => {
     setPasswordFocused(true);
@@ -150,14 +152,49 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
     setShowPasswordInfo(!showPasswordInfo);
   };
 
+  const close = () => {
+    if (!authClosable) return;
+    setAuthModal(false);
+  };
+
+  if (!role) {
+    return (
+      <AuthCard title="Join Gigin" lede="Free to start. Which one are you?" closable={authClosable} onClose={close}>
+        <button
+          type="button"
+          className="auth-card__choice"
+          onClick={() => {
+            setCredentials((current) => ({ ...current, signupAs: '' }));
+            setRole('venue');
+          }}
+        >
+          <i aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z" stroke="currentColor" strokeWidth="1.6" /></svg></i>
+          <span><strong>I book live music</strong>Post gigs, pick your line-up and get promo in one place.</span>
+        </button>
+        <button
+          type="button"
+          className="auth-card__choice"
+          onClick={() => {
+            setCredentials((current) => ({ ...current, signupAs: 'artist' }));
+            setRole('artist');
+          }}
+        >
+          <i aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 18a3 3 0 1 1-2-2.83V6.5l10-2v9.67A3 3 0 1 1 15 17V8.2l-6 1.2v8.8Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg></i>
+          <span><strong>I&apos;m an artist</strong>Make your page, apply to gigs and get booked.</span>
+        </button>
+        <p className="auth-card__note">Applied to a gig before? Use the same email and we&apos;ll link it to your account.</p>
+        <p className="auth-card__foot">Already on Gigin? <button type="button" className="auth-card__link" onClick={() => { setAuthType('login'); clearCredentials(); clearError(); }}>Sign in</button></p>
+      </AuthCard>
+    );
+  }
+
   return (
     <div className={`modal-padding auth ${loading ? 'loading' : ''}`} onClick={(e) => e.stopPropagation()}>
       <div className='modal-content auth scrollable'>
         {!loading && (
         <div className='head'>
-          <NoTextLogo />
-          <h1>Welcome to Gigin</h1>
-          <p>Sign up to create your account. Then create a venue or musician profile.</p>
+          <h1>{role === 'artist' ? 'Your artist account' : 'Your venue account'}</h1>
+          <p>Create the account, then we&apos;ll take you through the rest.</p>
         </div>
         )}
         <form className='auth-form' onSubmit={handleSignup}>
@@ -334,7 +371,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
       {!loading && (
       <div className="change-auth-type">
         <h4 className='change-auth-type-text'>Already have an account? </h4>
-        <button className='btn text' type='button' disabled={loading} onClick={() => { setAuthType('login'); clearCredentials(); clearError(); }}>Login</button>
+        <button className='btn text' type='button' disabled={loading} onClick={() => { setAuthType('login'); clearCredentials(); clearError(); }}>Sign in</button>
       </div>
       )}
     </div>
