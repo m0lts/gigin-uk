@@ -4,6 +4,8 @@ import { queueMail } from "./queueMail.js";
 import { loadPrivateApplications } from "./gigPrivacy.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 import { emailLinkOrigin } from "./legacyMail.js";
+import { renderArtistEmail } from "./artistEmails.js";
+import { ownerName } from "./ownerName.js";
 
 export const MAIL_RECIPIENT_CAP = 5;
 
@@ -88,6 +90,103 @@ function formatWhen(value) {
   const date = toJsDate(value);
   if (!date) return "";
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function lineupDate(value) {
+  const date = toJsDate(value);
+  if (!date) return "";
+  return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+}
+
+function siteOrigin() {
+  return String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
+}
+
+/**
+ * The decline an act receives. Names come from the venue and the gig.
+ * A kind word and other open gigs are included only when they exist.
+ */
+export function declinedApplicationMessage({
+  firstName,
+  booker,
+  venueName,
+  gigName,
+  when,
+  kindWord,
+  openGigs,
+  venueUrl,
+  extra,
+}) {
+  const who = plain(booker, 80) || "The venue";
+  const place = plain(venueName, 120) || "the venue";
+  const gig = plain(gigName, 120) || "the gig";
+  const night = plain(when, 60) || "the night";
+  const hello = plain(firstName, 40) || "there";
+  const note = plain(kindWord, 500);
+  const gigs = (Array.isArray(openGigs) ? openGigs : []).filter((item) => item?.url && item?.name).slice(0, 3);
+  return renderArtistEmail({
+    subject: `Update on your application for ${gig}`,
+    preheader: `${escapeHtml(who)} has picked the line-up for ${escapeHtml(night)}.`,
+    eyebrow: "APPLICATION UPDATE",
+    heading: `Thanks for applying to ${escapeHtml(gig)}`,
+    paras: [
+      `Hi ${escapeHtml(hello)},`,
+      `${escapeHtml(who)} has picked the line-up for ${escapeHtml(night)} and couldn't fit you in this time. Thanks for applying. ${escapeHtml(place)} has your details for future nights.`,
+    ],
+    quote: note ? { label: `${who} wrote`, text: note } : null,
+    openGigs: gigs,
+    button: venueUrl ? [`See upcoming gigs at ${escapeHtml(place)}`, venueUrl] : null,
+    buttonDark: true,
+    small: "Your application is saved, so applying next time takes one tap.",
+    extra: extra || null,
+    footer: `Sent by Gigin for ${escapeHtml(place)}.`,
+  });
+}
+
+export async function listOtherOpenGigs({ excludeIds = [] } = {}) {
+  const skip = new Set((excludeIds || []).filter(Boolean).map(String));
+  let snap;
+  try {
+    snap = await db.collection("gigs").where("applicationsOpen", "==", true).limit(40).get();
+  } catch {
+    return [];
+  }
+  const now = Date.now();
+  const rows = [];
+  for (const doc of snap.docs || []) {
+    if (skip.has(doc.id)) continue;
+    const data = doc.data() || {};
+    if (data.gigId && skip.has(String(data.gigId))) continue;
+    const status = String(data.status || "").toLowerCase();
+    if (status === "cancelled") continue;
+    if (data.itemType === "venue_hire" || data.bookingMode === "rental" || data.kind === "Venue Rental") continue;
+    const rawName = String(data.gigName || data.eventName || data.title || "");
+    if (/\(Set\s+[2-9]\d*\)\s*$/i.test(rawName)) continue;
+    const name = rawName.replace(/\s*\(Set\s+\d+\)\s*$/i, "").trim();
+    if (!name) continue;
+    const date = toJsDate(data.startDateTime || data.date);
+    if (!date || date.getTime() < now) continue;
+    const venueName = data.venue?.venueName || data.venue?.name || data.venueName || "";
+    const city = data.venue?.address?.city || data.address?.city || data.city || "";
+    rows.push({
+      url: `${siteOrigin()}/gig/${doc.id}`,
+      name,
+      place: [venueName, city].filter(Boolean).join(" · "),
+      when: date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" }),
+      time: date.getTime(),
+    });
+  }
+  rows.sort((a, b) => a.time - b.time);
+  const seen = new Set();
+  const unique = [];
+  for (const row of rows) {
+    const key = `${row.name}|${row.place}|${row.when}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push({ url: row.url, name: row.name, place: row.place, when: row.when });
+    if (unique.length === 3) break;
+  }
+  return unique;
 }
 
 function gigTitle(gig) {
@@ -321,6 +420,25 @@ async function sendDecision(uid, body, accepted) {
   const applicantId = requireId(body.applicantId, "applicantId");
   const gig = await loadGig(gigId);
   if (!gig.venueId) throw fail(400, "Gig has no venue");
+  if (!accepted && await callerIsVenue(uid, gig.venueId, "gigs.applications.manage")) {
+    const applicant = await findApplicant(gig, applicantId);
+    if (!applicant) throw fail(404, "Applicant not found");
+    const venue = await loadVenue(gig.venueId);
+    const venueName = venue.name || venue.venueName || gig.venue?.venueName || "the venue";
+    const recipients = await emailsForApplicant(gigId, applicant);
+    const slots = Array.isArray(gig.gigSlots) ? gig.gigSlots : [];
+    const message = declinedApplicationMessage({
+      firstName: plain(applicant.contactName || applicant.name || applicant.artistName, 80).split(/\s+/)[0],
+      booker: ownerName(venue, gig),
+      venueName,
+      gigName: gigTitle(gig),
+      when: lineupDate(gig.startDateTime || gig.date),
+      kindWord: body.kindWord || applicant.kindWord || "",
+      openGigs: await listOtherOpenGigs({ excludeIds: [gigId, gig.id, ...slots] }),
+      venueUrl: `${siteOrigin()}/venues/${venue.id || gig.venueId}`,
+    });
+    return queueTo(recipients, message);
+  }
   return emailApplicantOrVenue(uid, gig, applicantId, accepted ? {
     artistSubject: "Your Gig Application Has Been Accepted!",
     venueSubject: "Your Invitation Was Accepted!",

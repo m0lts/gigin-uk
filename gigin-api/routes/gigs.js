@@ -2089,7 +2089,11 @@ router.post("/:rootGigId/applications/:id/assign", requireAuth, asyncHandler(asy
 
 router.post("/:rootGigId/applications/:id/decline", requireAuth, asyncHandler(async (req, res) => {
   await assertGigUpdate(req, req.params.rootGigId);
-  res.json(await declineApplication({ gigId: req.params.rootGigId, applicantId: req.params.id }));
+  res.json(await declineApplication({
+    gigId: req.params.rootGigId,
+    applicantId: req.params.id,
+    kindWord: req.body?.kindWord,
+  }));
 }));
 
 router.post("/:rootGigId/applications/:id/undo", requireAuth, asyncHandler(async (req, res) => {

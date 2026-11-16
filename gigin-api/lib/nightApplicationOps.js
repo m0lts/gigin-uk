@@ -15,6 +15,7 @@ import { applicationNoticeMessage, planVenueNotice, shouldNotify } from "./venue
 import { appendPlayedAt, keepReminderHtml, markBookingCancelled } from "./keepProfile.js";
 import { bandMemberRow, icsAttachment, icsEvent, renderArtistEmail } from "./artistEmails.js";
 import { ownerName } from "./ownerName.js";
+import { declinedApplicationMessage, listOtherOpenGigs } from "./outboundMail.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 import { assertVenueCanPublishNights } from "./venueApproval.js";
 
@@ -510,16 +511,20 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       venueName,
     });
     const keepUrl = nudge.match(/href="([^"]+)"/)?.[1] || "";
-    rendered = renderArtistEmail({
-      subject: `Update on your application for ${name}`,
-      preheader: `${escapeHtml(booker)} has picked the line-up for ${escapeHtml(when)}.`,
-      eyebrow: "APPLICATION UPDATE",
-      heading: `Thanks for applying to ${escapeHtml(name)}`,
-      paras: [hi, `${escapeHtml(booker)} has picked the line-up for ${escapeHtml(when)} and couldn't fit ${escapeHtml(act)} in this time. Thanks for applying. The bar has your details for future nights.`],
-      button: ["See upcoming gigs at the bar", venueUrl],
-      buttonDark: true,
+    const openGigs = await listOtherOpenGigs({
+      excludeIds: [rootId, ...(slots || []).map((slot) => slotGigId(slot) || slot.id)],
+    });
+    const kindWord = String(app.kindWord || "").trim();
+    rendered = declinedApplicationMessage({
+      firstName: first,
+      booker,
+      venueName,
+      gigName: name,
+      when: formatShort(gigDate(gig)),
+      kindWord,
+      openGigs,
+      venueUrl,
       extra: keepUrl ? { title: "Keep your details for next time?", body: "Turn this application into a Gigin profile with a link you can send to other venues. You'll create a password when you confirm.", link: ["Keep my profile", keepUrl] } : null,
-      footer: foot,
     });
   } else if (kind === "cancelled-accepted" || kind === "cancelled-waiting") {
     const why = String(reason || "").trim();
@@ -760,7 +765,7 @@ export async function assignApplication({ gigId, applicantId, slotGigId }) {
   return { ok: true, toast, undo: { applicationId: applicantId } };
 }
 
-export async function declineApplication({ gigId, applicantId }) {
+export async function declineApplication({ gigId, applicantId, kindWord }) {
   const { slots, rootId } = await loadNightSlots(gigId);
   const root = slots.find((slot) => slot.id === rootId) || slots[0];
   assertNightNotCancelled(slots);
@@ -782,6 +787,7 @@ export async function declineApplication({ gigId, applicantId }) {
     assignedSlotGigId: null,
     email: app.email || priv.email || null,
     manageToken: priv.manageToken || null,
+    kindWord: String(kindWord || app.kindWord || priv.kindWord || "").trim().slice(0, 500),
   };
   const venue = await loadVenue(root.data.venueId);
   const mailId = await mailAct("declined", { app: next, slots: night.slots, venue, gig: root.data, token: next.manageToken });
