@@ -1,0 +1,30 @@
+/* Launch tokens. Import this file once. Existing pages keep their own variables. */
+:root {
+  --launch-page-bg: linear-gradient(160deg, #E2E8F0 0%, #ECEFF4 35%, #F6F7F9 70%, #F6F7F9 100%);
+  --launch-ink: #0F1115;
+  --launch-text: #4B5160;
+  --launch-muted: #5B606B;
+  --launch-line: #E5E7EB;
+  --launch-soft: #F0F2F5;
+  --launch-card: #FFFFFF;
+  --launch-radius-card: 24px;
+  --launch-radius-modal: 28px;
+  --launch-radius-input: 14px;
+  --launch-radius-pill: 999px;
+  --launch-shadow: 0 1px 2px rgba(20, 25, 22, 0.04);
+  --launch-btn: #111317;
+  --launch-btn-text: #FFFFFF;
+  --launch-accent: #FF6C4B;
+  --launch-good: #2F6B43;
+  --launch-good-bg: #E5F0E7;
+  --launch-warning: #7A4B0B;
+  --launch-warning-bg: #F8EBD2;
+  --launch-error: #B42318;
+  --launch-error-line: #C2410C;
+  --launch-input-height: 52px;
+  --launch-heading-size: 52px;
+  --launch-heading-size-modal: 38px;
+  --launch-heading-size-phone: 32px;
+  --launch-body-size: 16px;
+  --launch-backdrop: rgba(15, 17, 21, 0.42);
+}
