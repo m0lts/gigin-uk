@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:wght@300&display=swap');
+
 @font-face {
     font-family: 'Visby CF';
     src: url(./visby-font/Fontspring-DEMO-visbycf-thin.otf) format('opentype');
@@ -50,4 +52,6 @@
 :root {
     font-style: normal;
     --gn-logo-font: 'Visby CF', sans-serif;
+    --gn-heading-font: 'Newsreader', Georgia, 'Times New Roman', serif;
+    --gn-body-font: 'Geist', 'Inter', sans-serif;
 }
