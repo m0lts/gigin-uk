@@ -37,15 +37,14 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
 
   return (
     <div className="ng-wizard">
-      <aside className="ng-rail">
-        <div className="ng-logo">gigin.</div>
-        <div className="ng-kicker ng-kicker--light">New gig</div>
-        <ol>
+      <header className="ng-wizard__top">
+        <button type="button" className="ng-icon ng-icon--light" aria-label="Close" onClick={onClose}>×</button>
+        <ol className="ng-wizard__steps">
           {labels.map((label, index) => {
             const state = index < safeStep ? 'done' : index === safeStep ? 'current' : 'future';
             return (
               <li key={label}>
-                <button type="button" disabled={index > step} onClick={() => index <= step && setStep(index)}>
+                <button type="button" disabled={index > step} aria-current={state === 'current' ? 'step' : undefined} onClick={() => index <= step && setStep(index)}>
                   <span className={`ng-step ${state}`}>{state === 'done' ? '✓' : index + 1}</span>
                   <span>
                     <strong>{label}</strong>
@@ -56,24 +55,16 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
             );
           })}
         </ol>
-        <div className="ng-tip">
-          <strong>First time?</strong>
-          <p>{tipFor(labels[safeStep])}</p>
-        </div>
-      </aside>
+        <button type="button" className="ng-text" onClick={onSaveDraft}>Save draft</button>
+      </header>
       <div className="ng-wizard__main">
-        <header>
-          <span className="ng-mono">STEP {safeStep + 1} OF {labels.length}</span>
-          <div className="ng-progress">{labels.map((label, index) => <span key={label} className={index <= safeStep ? 'is-on' : ''} />)}</div>
-          <button type="button" className="ng-text ng-text--light" onClick={onSaveDraft}>Save draft</button>
-          <button type="button" className="ng-icon ng-icon--light" aria-label="Close" onClick={onClose}>×</button>
-        </header>
         <div className="ng-wizard__body">
           {labels[safeStep] === 'Start' && (
-            <Question title="How do you want to start?" sub="You can change this later.">
+            <Question title="How do you want to fill this night?" sub="You can change this later.">
+              <p className="ng-tip">{tipFor(labels[safeStep])}</p>
               {[
-                ['find', 'Find an artist', 'Offer it to people you know, or publish a listing.'],
-                ['booked', "I've already booked someone", 'Adds a confirmed gig to your calendar.'],
+                ['find', 'Find acts', 'Post the night and let acts apply, or offer it to people you know.'],
+                ['booked', 'Already booked', 'Put the night on your calendar with the acts already on it.'],
                 ['template', 'Start from a template', 'Reuse times, fee and description.'],
               ].map(([key, titleText, desc]) => (
                 <button key={key} type="button" className={`ng-radio-card${(key === 'template' ? !!draft.templateId : draft.kind === key && !draft.templateId) ? ' is-on' : ''}`} onClick={() => patch(key === 'template' ? { kind: 'find' } : { kind: key, templateId: '' })}>
@@ -95,6 +86,7 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
           )}
           {labels[safeStep] === 'Date & time' && (
             <Question title="When is it?" sub={booked ? 'Pick one night.' : 'Pick one night, or several.'}>
+              <p className="ng-tip">{tipFor(labels[safeStep])}</p>
               <div className="ng-month-nav">
                 <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
                 <span>{month.toLocaleString('en-GB', { month: 'long', year: 'numeric' })}</span>
@@ -136,6 +128,7 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
           )}
           {labels[safeStep] === 'Fee & tickets' && (
             <Question title="What are you paying?" sub="Artists see this on the listing.">
+              <p className="ng-tip">{tipFor(labels[safeStep])}</p>
               {FEATURES.payments && (
                 <div className="ng-kind">
                   <button type="button" className={draft.pay === 'fee' ? 'is-on' : ''} onClick={() => patch({ pay: 'fee' })}><strong>I'll pay a fee</strong><span>Paid when you confirm them.</span></button>
@@ -160,6 +153,7 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
           )}
           {labels[safeStep] === "Who's playing" && (
             <Question title="Who's playing?" sub="They'll show as confirmed.">
+              <p className="ng-tip">{tipFor(labels[safeStep])}</p>
               <div className="ng-contact-grid">
                 {contacts.map((contact) => {
                   const id = contact.id || contact.artistId;
@@ -181,6 +175,7 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
           )}
           {labels[safeStep] === 'Listing' && (
             <Question title="What should the listing say?" sub="This is what artists read before they apply.">
+              <p className="ng-tip">{tipFor('Listing')}</p>
               <input className="ng-input" placeholder="Title" value={draft.title} onChange={(event) => patch({ title: event.target.value })} />
               <textarea className="ng-input" maxLength={250} rows={4} placeholder="Description" value={draft.description} onChange={(event) => patch({ description: event.target.value.slice(0, 250) })} />
               <div className="ng-chips">{LOOKING_FOR.map((option) => <button key={option} type="button" className={draft.lookingFor.includes(option) ? 'is-on' : ''} onClick={() => patch({ lookingFor: draft.lookingFor.includes(option) ? draft.lookingFor.filter((item) => item !== option) : [...draft.lookingFor, option] })}>{option}</button>)}</div>
@@ -190,6 +185,7 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
           )}
           {labels[safeStep] === 'Review' && (
             <Question title="Ready to create it?" sub="You can still offer it or publish after this.">
+              <p className="ng-tip">{tipFor('Review')}</p>
               <div className="ng-summary">
                 <Row label="When" value={draft.dates.map(dateChip).join(', ') || '—'} onEdit={() => setStep(1)} />
                 <Row label="Time" value={`${draft.start || '—'}–${draft.end || '—'}`} onEdit={() => setStep(1)} />
@@ -322,7 +318,7 @@ function hintFor(label) {
 }
 
 function summaryFor(draft, label) {
-  if (label === 'Start') return draft.kind === 'booked' ? 'Already booked' : 'Find an artist';
+  if (label === 'Start') return draft.kind === 'booked' ? 'Already booked' : 'Find acts';
   if (label === 'Date & time') return draft.dates[0] ? dateChip(draft.dates[0]) : '';
   if (label === "Who's playing") return draft.artistName;
   if (label === 'Listing') return draft.title;
@@ -330,7 +326,7 @@ function summaryFor(draft, label) {
 }
 
 function tipFor(label) {
-  if (label === 'Start') return 'Most venues start with Find an artist, then offer it to a few people they already know.';
+  if (label === 'Start') return 'Most venues start with Find acts, then offer it to a few people they already know.';
   if (label === 'Date & time') return 'A single set is enough. Split the night only when different artists play each set.';
   if (label === 'Fee & tickets') return 'A fee of £0 is fine. Artists still need to know whether the night is ticketed.';
   if (label === "Who's playing") return 'This adds them as confirmed. They won’t be asked to apply.';

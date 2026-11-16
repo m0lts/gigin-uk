@@ -1303,3 +1303,137 @@ textarea.ng-input { height: auto; padding: 10px; }
   }
 }
 
+.ng-wizard {
+  display: flex;
+  flex-direction: column;
+  background: var(--launch-page-bg);
+  color: #0F1115;
+}
+
+.ng-wizard__top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 28px 8px;
+  min-height: 72px;
+}
+
+.ng-wizard__steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 22px;
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.ng-wizard__steps button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #5B606B;
+  text-align: left;
+  padding: 0;
+}
+
+.ng-wizard__steps strong { font-size: 14px; font-weight: 500; }
+.ng-wizard__steps em { display: block; font-style: normal; font-size: 12px; color: #5B606B; }
+.ng-wizard__steps button[aria-current="step"] { color: #0F1115; }
+.ng-wizard__steps button[aria-current="step"] strong { font-weight: 600; }
+
+.ng-wizard .ng-step {
+  width: 28px;
+  height: 28px;
+  background: #fff;
+  color: #0F1115;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 2px rgba(20, 25, 22, 0.04);
+}
+
+.ng-wizard .ng-step.current { background: #111317; color: #fff; border-color: #111317; }
+.ng-wizard .ng-step.done { background: #111317; color: #fff; border-color: #111317; }
+.ng-wizard .ng-step.future { background: #fff; color: #5B606B; box-shadow: none; }
+
+.ng-wizard .ng-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.ng-wizard .ng-question { max-width: 760px; padding-top: 28px; }
+.ng-wizard .ng-question h2 {
+  font-family: var(--gn-heading-font);
+  font-weight: 300;
+  font-size: 48px;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.ng-wizard .ng-radio-card {
+  border-radius: 20px;
+  padding: 22px 22px 22px 56px;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(20, 25, 22, 0.04);
+}
+
+.ng-wizard .ng-radio-card::before {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: 24px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #C9CDD4;
+  background: #fff;
+}
+
+.ng-wizard .ng-radio-card.is-on::before {
+  border-color: #111317;
+  box-shadow: inset 0 0 0 5px #111317;
+}
+
+.ng-wizard .ng-radio-card strong { font-size: 16px; }
+.ng-wizard .ng-tip {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: #4B5160;
+  font-size: 15px;
+}
+
+.ng-wizard__main { background: transparent; }
+.ng-wizard__main footer {
+  background: transparent;
+  border-top: 0;
+  justify-content: space-between;
+  padding: 8px 28px 28px;
+}
+
+.ng-wizard .ng-dark,
+.ng-wizard .ng-primary,
+.ng-wizard .ng-primary--inline,
+.ng-wizard .ng-ghost {
+  border-radius: 999px;
+  height: 48px;
+  padding: 0 22px;
+}
+
+.ng-wizard .ng-ghost:disabled { opacity: 0.45; }
+
+@media (max-width: 767.98px) {
+  .ng-wizard__top { padding: 16px; align-items: flex-start; }
+  .ng-wizard__steps { justify-content: flex-start; margin: 0; }
+  .ng-wizard .ng-question h2 { font-size: 36px; }
+  .ng-wizard .ng-question { padding: 16px 16px 48px; }
+}
+
