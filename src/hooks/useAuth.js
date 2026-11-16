@@ -12,6 +12,20 @@ import { sendVerificationEmail as sendVerificationEmailApi } from '../services/a
 import { FEATURES } from '../config/features';
 import { artistLoginRedirect } from '../config/artistDestination';
 
+const POST_LOGIN_EVENT = 'gigin-post-login';
+let postLoginPending = false;
+let postLoginStarted = 0;
+
+function beginPostLogin() {
+  postLoginPending = true;
+  postLoginStarted = Date.now();
+  window.dispatchEvent(new Event(POST_LOGIN_EVENT));
+}
+
+function cancelPostLogin() {
+  postLoginPending = false;
+}
+
 export const useAuth = () => {
 
   const [user, setUser] = useState(null);
@@ -23,8 +37,6 @@ export const useAuth = () => {
   const artistProfileUnsubsRef = useRef(new Map());
   const currentArtistProfileIdsRef = useRef([]);
   const artistProfilesDataRef = useRef({});
-  const postLoginRef = useRef(false);
-  const postLoginStartedRef = useRef(0);
   const [postLoginTick, setPostLoginTick] = useState(0);
 
   const cleanupArtistProfileSubscriptions = () => {
@@ -174,21 +186,17 @@ export const useAuth = () => {
     };
   }, []);
 
-  const beginPostLogin = () => {
-    postLoginRef.current = true;
-    postLoginStartedRef.current = Date.now();
-    setPostLoginTick((tick) => tick + 1);
-  };
-
-  const cancelPostLogin = () => {
-    postLoginRef.current = false;
-  };
+  useEffect(() => {
+    const onPostLogin = () => setPostLoginTick((tick) => tick + 1);
+    window.addEventListener(POST_LOGIN_EVENT, onPostLogin);
+    return () => window.removeEventListener(POST_LOGIN_EVENT, onPostLogin);
+  }, []);
 
   useEffect(() => {
-    if (!postLoginRef.current || loading || !user) return undefined;
+    if (!postLoginPending || loading || !user) return undefined;
     const ids = Array.isArray(user.artistProfileIds) ? user.artistProfileIds : [];
     const loaded = Array.isArray(user.artistProfiles) ? user.artistProfiles : [];
-    const elapsed = Date.now() - postLoginStartedRef.current;
+    const elapsed = Date.now() - postLoginStarted;
     if (ids.length > 0 && loaded.length < ids.length && elapsed < 800) {
       const timer = setTimeout(() => setPostLoginTick((tick) => tick + 1), 800 - elapsed);
       return () => clearTimeout(timer);
@@ -196,6 +204,8 @@ export const useAuth = () => {
 
     let cancelled = false;
     (async () => {
+      await Promise.resolve();
+      if (cancelled || !postLoginPending) return;
       const emailVerified = auth.currentUser?.emailVerified !== false;
       let hasArtistSession = false;
       const hasVenue = Array.isArray(user.venueProfiles) && user.venueProfiles.length > 0;
@@ -206,8 +216,8 @@ export const useAuth = () => {
         ]);
         hasArtistSession = Boolean(session?.profile || home?.profile);
       }
-      if (cancelled || !postLoginRef.current) return;
-      postLoginRef.current = false;
+      if (cancelled || !postLoginPending) return;
+      postLoginPending = false;
       if (!emailVerified) return;
       let storedRedirect = '';
       try {

@@ -1,6 +1,6 @@
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { VenueLogoLink, MusicianLogoLink, TextLogoLink } from '@features/shared/ui/logos/Logos';
-import { GuitarsIcon, LogOutIcon, TelescopeIcon, UserIcon, VenueBuilderIcon } from '@features/shared/ui/extras/Icons';
+import { LogOutIcon, TelescopeIcon, UserIcon, VenueBuilderIcon } from '@features/shared/ui/extras/Icons';
 import '@styles/shared/header.styles.css';
 import { useAuth } from '@hooks/useAuth'
 import { useState, useEffect } from 'react'
@@ -15,10 +15,9 @@ import Portal from './Portal';
 import { LoadingSpinner } from '../ui/loading/Loading';
 import { NoTextLogoLink, NoTextMusicianLogoLink, NoTextVenueLogoLink } from '../ui/logos/Logos';
 import { FEATURES } from '../../../config/features';
-import { artistDestination } from '../../../config/artistDestination';
+import { AccountChip, SignedInHomeButton } from './AccountChip';
 
 export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoProfileModal, noProfileModalClosable = false, setNoProfileModalClosable }) => {
-  const navigate = useNavigate();
   const { logout } = useAuth();
     const location = useLocation();
     const { isMdUp } = useBreakpoint();
@@ -111,37 +110,24 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                                 </Link>
                                 )}
                             </div>
-                            {user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? (
-                                <div className="right">
-                                    <button className={`btn text-no-underline ${noProfileModal ? 'disabled' : ''}`}  onClick={() => navigate(artistDestination(user, FEATURES))}>
-                                        <GuitarsIcon />
-                                        My profile
-                                    </button>
-                                    <button
-                                        className='btn icon hamburger-menu-btn'
-                                        aria-label='Open menu'
-                                        aria-expanded={mobileOpen}
-                                        aria-controls='mobile-menu'
-                                        onClick={(e) => {setMobileOpen(o => !o); e.stopPropagation();}}
-                                    >
-                                        <HamburgerMenuIcon />
-                                    </button>
-                                </div>
-                            ) : (
-                            <div className='right'>
-                                <Link className='link' to={'/venues/add-venue'}>
-                                    <button className='btn text-no-underline'>
-                                        I'm a Venue
-                                    </button>
-                                </Link>
+                            <div className="right">
+                                <SignedInHomeButton
+                                  user={user}
+                                  className="btn primary"
+                                  setAuthType={setAuthType}
+                                  setAuthModal={setAuthModal}
+                                />
+                                <AccountChip user={user} logout={handleLogout} />
                                 <button
                                     className='btn icon hamburger-menu-btn'
-                                    onClick={(e) => {e.stopPropagation(); setMobileOpen(o => !o)}}
+                                    aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+                                    aria-expanded={mobileOpen}
+                                    aria-controls='mobile-menu'
+                                    onClick={(e) => {setMobileOpen(o => !o); e.stopPropagation();}}
                                 >
                                     {mobileOpen ? <CloseIcon /> : <HamburgerMenuIcon />}
                                 </button>
                             </div>
-                            )}
                         </>
                     ) : (
                         <>
@@ -220,6 +206,7 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                     setMobileOpen={setMobileOpen}
                     user={user}
                     showAuthModal={showAuthModal}
+                    setAuthModal={setAuthModal}
                     setAuthType={setAuthType}
                     handleLogout={handleLogout}
                     setNoProfileModal={setNoProfileModal}

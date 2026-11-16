@@ -6,8 +6,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { FEATURES } from "../../../config/features";
 import { artistDestination } from "../../../config/artistDestination";
+import { SignedInHomeButton } from "./AccountChip";
 
-export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, handleLogout, newMessages, isMobile, menuStyle, setNoProfileModal, setNoProfileModalClosable, noProfileModal, noProfileModalClosable, setShowFeedbackModal, showFeedbackModal, feedback, setFeedback }) => {
+export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthModal, setAuthType, handleLogout, newMessages, isMobile, menuStyle, setNoProfileModal, setNoProfileModalClosable, noProfileModal, noProfileModalClosable, setShowFeedbackModal, showFeedbackModal, feedback, setFeedback }) => {
   const navigate = useNavigate();
   const { isLgUp, isXlUp, isMdUp } = useBreakpoint();
     const location = useLocation();
@@ -43,6 +44,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                     </>
                 ) : user && !user?.artistProfiles && !user?.venueProfiles ? (
                     <>
+                        <SignedInHomeButton user={user} className="btn primary" setAuthType={setAuthType} setAuthModal={setAuthModal} onDone={() => setMobileOpen(false)} />
                         <div className='item name-and-email no-margin'>
                             <h6>{user.name}</h6>
                             <p>{user.email}</p>

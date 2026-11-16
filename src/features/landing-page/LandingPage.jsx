@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { auth } from '@lib/firebase';
 import { FEATURES } from '../../config/features';
+import { AccountChip, SignedInHomeButton } from '../shared/components/AccountChip';
 import { PROOF } from './landing.config';
 import { submitAccessRequest } from '../../services/api/accessRequests';
 import { requestManageLinks } from '../../services/api/manageLinks';
@@ -143,13 +144,8 @@ function scrollToSection(id, focusId) {
 
 export const LandingPage = ({ setAuthModal, setAuthType, setAuthClosable }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const hasVenueProfile = Boolean(user?.venueProfiles?.length);
+  const { user, logout } = useAuth();
   useLandingHead();
-
-  useEffect(() => {
-    if (hasVenueProfile) navigate('/venues/dashboard/gigs');
-  }, [hasVenueProfile, navigate]);
 
   const openLogin = () => {
     setAuthType?.('login');
@@ -182,10 +178,25 @@ export const LandingPage = ({ setAuthModal, setAuthType, setAuthClosable }) => {
         <div className="lp-wrap lp-header__bar">
           <Link to="/" className="lp-wordmark" aria-label="Gigin">gigin<span>.</span></Link>
           <div className="lp-header__actions">
-            <button type="button" className="lp-login" onClick={openLogin}>Sign in</button>
-            <button type="button" className="lp-btn lp-btn--dark lp-btn--header" onClick={FEATURES.venueSignup ? startVenueAccount : () => scrollToSection('request-access', 'access-name')}>
-              {FEATURES.venueSignup ? 'Create a venue account' : 'Request access'}
-            </button>
+            {user ? (
+              <>
+                <AccountChip user={user} logout={logout} />
+                <SignedInHomeButton
+                  user={user}
+                  className="lp-btn lp-btn--dark lp-btn--header"
+                  setAuthType={setAuthType}
+                  setAuthModal={setAuthModal}
+                  setAuthClosable={setAuthClosable}
+                />
+              </>
+            ) : (
+              <>
+                <button type="button" className="lp-login" onClick={openLogin}>Sign in</button>
+                <button type="button" className="lp-btn lp-btn--dark lp-btn--header" onClick={FEATURES.venueSignup ? startVenueAccount : () => scrollToSection('request-access', 'access-name')}>
+                  {FEATURES.venueSignup ? 'Create a venue account' : 'Request access'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -197,7 +208,15 @@ export const LandingPage = ({ setAuthModal, setAuthType, setAuthClosable }) => {
             <h1>Run your gig nights without the inbox chaos</h1>
             <p className="lp-hero__sub">One application link for each night. Acts apply in one place, you pick the line-up and give each act a set, and Gigin sends the emails.</p>
             <div className="lp-hero__actions">
-              {FEATURES.venueSignup ? (
+              {user ? (
+                <SignedInHomeButton
+                  user={user}
+                  className="lp-btn lp-btn--orange"
+                  setAuthType={setAuthType}
+                  setAuthModal={setAuthModal}
+                  setAuthClosable={setAuthClosable}
+                />
+              ) : FEATURES.venueSignup ? (
                 <button type="button" className="lp-btn lp-btn--orange" onClick={startVenueAccount}>
                   Create a venue account
                 </button>
@@ -271,7 +290,7 @@ export const LandingPage = ({ setAuthModal, setAuthType, setAuthClosable }) => {
               <p className="lp-eyebrow">FOR VENUES</p>
               <h2>Request access</h2>
               <p className="lp-lead">Gigin is invite-only for now. We&apos;re setting up a small number of venues by hand, starting in Cambridge. Tell us about your nights and the founder will be in touch.</p>
-              <p className="lp-already">Already invited? <button type="button" onClick={openLogin}>Sign in</button></p>
+              {user ? null : <p className="lp-already">Already invited? <button type="button" onClick={openLogin}>Sign in</button></p>}
             </div>
             <AccessCard />
           </div>
@@ -287,7 +306,11 @@ export const LandingPage = ({ setAuthModal, setAuthType, setAuthClosable }) => {
           <nav>
             <Link to="/terms-and-conditions">Terms</Link>
             <Link to="/privacy-policy">Privacy</Link>
-            <button type="button" onClick={openLogin}>Sign in</button>
+            {user ? (
+              <SignedInHomeButton user={user} setAuthType={setAuthType} setAuthModal={setAuthModal} setAuthClosable={setAuthClosable} />
+            ) : (
+              <button type="button" onClick={openLogin}>Sign in</button>
+            )}
           </nav>
         </div>
       </footer>

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { featureRedirectTarget, finishSetupPath, loginLandingPath, loginLandingState, logoutDestination, signInNotice, venueBuilderPath } from './loginDestination.js';
+import { accountInitials, featureRedirectTarget, finishSetupPath, loginLandingPath, loginLandingState, logoutDestination, signInNotice, signedInHomeAction, venueBuilderPath } from './loginDestination.js';
 
 test('a login with no profile finishes venue setup', () => {
   assert.equal(finishSetupPath({}), '/venues/add-venue');
@@ -93,6 +93,26 @@ test('a stored landing path does not override the account state', () => {
     loginLandingPath(approved, {}, { storedRedirect: '/gig/night-1' }),
     '/gig/night-1',
   );
+});
+
+test('the landing header offers setup or the dashboard', () => {
+  assert.deepEqual(signedInHomeAction({ signupAs: 'venue', name: 'Maya Reid' }), {
+    label: 'Continue setting up',
+    path: '/venues/add-venue',
+    verify: false,
+  });
+  assert.equal(signedInHomeAction({ signupAs: 'venue' }, {}, { emailVerified: false }).label, 'Continue setting up');
+  assert.equal(signedInHomeAction({ signupAs: 'venue' }, {}, { emailVerified: false }).verify, true);
+  const pending = { venueProfiles: [{ id: 'venue-1', completed: true, approvalStatus: 'pending' }] };
+  assert.equal(signedInHomeAction(pending).label, 'Go to dashboard');
+  assert.equal(signedInHomeAction(pending).path, '/venues/dashboard');
+  assert.equal(
+    signedInHomeAction({ venueProfiles: [{ id: 'venue-1', approvalStatus: 'approved' }] }).path,
+    '/venues/dashboard/gigs',
+  );
+  assert.equal(signedInHomeAction({ signupAs: 'artist' }, { keepProfile: true }).path, '/home');
+  assert.equal(accountInitials({ name: 'Maya Reid' }), 'MR');
+  assert.equal(accountInitials({ email: 'maya.reid@gmail.com' }), 'MA');
 });
 
 test('a signed-out feature redirect opens sign-in, and a signed-in one follows the account', () => {

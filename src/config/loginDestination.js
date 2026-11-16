@@ -108,6 +108,29 @@ export function loginLandingState(user) {
 }
 
 /**
+ * The landing header action for someone who is already signed in.
+ * Setup still to do uses Continue setting up. A finished account uses Go to dashboard.
+ */
+export function signedInHomeAction(user, features = {}, options = {}) {
+  const path = loginLandingPath(user, features, options);
+  const settingUp = !path || path === '/' || String(path).startsWith('/venues/add-venue');
+  return {
+    label: settingUp ? 'Continue setting up' : 'Go to dashboard',
+    path,
+    verify: !path,
+  };
+}
+
+export function accountInitials(user) {
+  const name = String(user?.name || '').trim();
+  const email = String(user?.email || '').trim();
+  const source = name || email.split('@')[0] || '';
+  const words = source.split(/[\s._-]+/).filter(Boolean);
+  if (name && words.length >= 2) return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  return (words[0] || '?').slice(0, 2).toUpperCase();
+}
+
+/**
  * A signed-in visitor on a page that has no marketing screen.
  * Logged out opens sign-in. Unverified email opens the confirm card.
  * Everyone else goes to the same place as sign-in.

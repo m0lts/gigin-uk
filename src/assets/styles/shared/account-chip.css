@@ -1,0 +1,60 @@
+.account-chip {
+  position: relative;
+}
+
+.account-chip__button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: #111317;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.account-chip__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  min-width: 220px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(15, 17, 21, 0.12);
+}
+
+.account-chip__name,
+.account-chip__email {
+  margin: 0;
+}
+
+.account-chip__name {
+  color: #0F1115;
+  font-weight: 600;
+}
+
+.account-chip__email {
+  margin-bottom: 8px;
+  color: #5B606B;
+  font-size: 13px;
+}
+
+.account-chip__menu a,
+.account-chip__menu button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: #0F1115;
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
