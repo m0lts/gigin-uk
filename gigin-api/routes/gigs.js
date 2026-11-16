@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { db, admin, FieldValue, Timestamp, GeoPoint } from "../config/admin.js";
-import { assertVenuePerm, assertArtistPerm } from "../utils/permissions.js";
+import { assertVenuePerm, assertArtistPerm, permissionForNightAction } from "../utils/permissions.js";
 import {
   isGuestApplicant,
   loadGuestPrivate,
@@ -2038,7 +2038,7 @@ router.delete("/invites/:inviteId", requireAuth, asyncHandler(async (req, res) =
   return res.json({ data: { success: true } });
 }));
 
-async function assertGigUpdate(req, gigId) {
+async function assertGigPermission(req, gigId, permKey) {
   const snap = await db.doc(`gigs/${gigId}`).get();
   if (!snap.exists) {
     const error = new Error("Gig not found.");
@@ -2046,8 +2046,12 @@ async function assertGigUpdate(req, gigId) {
     throw error;
   }
   const gig = snap.data() || {};
-  await assertVenuePerm(db, req.auth.uid, gig.venueId, "gigs.update");
+  await assertVenuePerm(db, req.auth.uid, gig.venueId, permKey);
   return gig;
+}
+
+async function assertGigUpdate(req, gigId) {
+  return assertGigPermission(req, gigId, permissionForNightAction("edit"));
 }
 
 router.post("/:rootGigId/cancel", requireAuth, asyncHandler(async (req, res) => {
@@ -2069,7 +2073,7 @@ router.post("/:rootGigId/cancel/undo", requireAuth, asyncHandler(async (req, res
 }));
 
 router.post("/:rootGigId/applications/:id/accept", requireAuth, asyncHandler(async (req, res) => {
-  await assertGigUpdate(req, req.params.rootGigId);
+  await assertGigPermission(req, req.params.rootGigId, permissionForNightAction("accept"));
   const body = req.body || {};
   const slotGigId = body.slotGigId || null;
   res.json(await acceptApplication({
@@ -2081,7 +2085,7 @@ router.post("/:rootGigId/applications/:id/accept", requireAuth, asyncHandler(asy
 }));
 
 router.post("/:rootGigId/applications/:id/assign", requireAuth, asyncHandler(async (req, res) => {
-  await assertGigUpdate(req, req.params.rootGigId);
+  await assertGigPermission(req, req.params.rootGigId, permissionForNightAction("assign"));
   res.json(await assignApplication({
     gigId: req.params.rootGigId,
     applicantId: req.params.id,
@@ -2090,7 +2094,7 @@ router.post("/:rootGigId/applications/:id/assign", requireAuth, asyncHandler(asy
 }));
 
 router.post("/:rootGigId/applications/:id/decline", requireAuth, asyncHandler(async (req, res) => {
-  await assertGigUpdate(req, req.params.rootGigId);
+  await assertGigPermission(req, req.params.rootGigId, permissionForNightAction("decline"));
   res.json(await declineApplication({
     gigId: req.params.rootGigId,
     applicantId: req.params.id,
@@ -2099,7 +2103,7 @@ router.post("/:rootGigId/applications/:id/decline", requireAuth, asyncHandler(as
 }));
 
 router.post("/:rootGigId/applications/:id/undo", requireAuth, asyncHandler(async (req, res) => {
-  await assertGigUpdate(req, req.params.rootGigId);
+  await assertGigPermission(req, req.params.rootGigId, permissionForNightAction("undo"));
   res.json(await undoApplication({ gigId: req.params.rootGigId, applicantId: req.params.id }));
 }));
 
@@ -2132,6 +2136,7 @@ router.get("/:rootGigId/promo.zip", requireAuth, asyncHandler(async (req, res) =
 
 router.post("/:rootGigId/promo-reminder", requireAuth, asyncHandler(async (req, res) => {
   const pack = await readPromoNight(req.params.rootGigId, req.auth.uid);
+  await assertVenuePerm(db, req.auth.uid, pack.gig?.venueId, permissionForNightAction("promoReminder"));
   res.json({ data: await queuePromoReminder(pack, req.body?.applicantId) });
 }));
 

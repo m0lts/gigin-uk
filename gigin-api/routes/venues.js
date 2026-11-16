@@ -4,7 +4,7 @@ import { asyncHandler } from "../middleware/errorHandler.js";
 import { requireAuth } from "../middleware/auth.js";
 import { admin, db, FieldValue } from "../config/admin.js";
 import { v4 as uuidv4 } from "uuid";
-import { assertVenuePerm, assertArtistPerm, PERM_DEFAULTS, PERM_KEYS, sanitizePermissions } from "../utils/permissions.js";
+import { assertVenuePerm, assertArtistPerm, PERM_DEFAULTS, PERM_KEYS, sanitizePermissions, viewOnlyPermissions } from "../utils/permissions.js";
 import { addUserToAccountConversations } from "../utils/conversations.js";
 import { createPendingVenue, decideApproval, readApproval, resendVenueApproval } from "../lib/venueApproval.js";
 
@@ -214,7 +214,10 @@ router.post("/createVenueInvite", requireAuth, asyncHandler(async (req, res) => 
     }
   }
   
-  const safePermissions = sanitizePermissions(permissionsInput || {});
+  const requested = permissionsInput && typeof permissionsInput === "object" && Object.keys(permissionsInput).length
+    ? permissionsInput
+    : viewOnlyPermissions();
+  const safePermissions = sanitizePermissions(requested);
   const boundedDays = Math.max(1, Math.min(30, Number(ttlDays) || 7));
   const inviteId = uuidv4();
   

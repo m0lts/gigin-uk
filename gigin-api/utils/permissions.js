@@ -18,7 +18,27 @@ export const PERM_DEFAULTS = {
     "members.invite": false,
     "members.update": false,
 };
-  
+
+/** See gigs, line-ups and promo, and download promo. No accept, decline, edit or invite. */
+export function viewOnlyPermissions() {
+    return { ...PERM_DEFAULTS };
+}
+
+const NIGHT_ACTION_PERMISSION = {
+    accept: "gigs.applications.manage",
+    decline: "gigs.applications.manage",
+    assign: "gigs.applications.manage",
+    undo: "gigs.applications.manage",
+    edit: "gigs.update",
+    invite: "gigs.invite",
+    promoDownload: "gigs.read",
+    promoReminder: "gigs.update",
+};
+
+export function permissionForNightAction(action) {
+    return NIGHT_ACTION_PERMISSION[action] || "";
+}
+
 export function sanitizePermissions(input = {}) {
     const out = { ...PERM_DEFAULTS };
     if (input && typeof input === "object") {

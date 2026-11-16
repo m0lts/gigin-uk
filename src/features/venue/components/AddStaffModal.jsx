@@ -3,7 +3,7 @@ import { sendVenueInviteEmail } from "../../../services/client-side/emails";
 import { toast } from "sonner";
 import { LoadingSpinner } from "../../shared/ui/loading/Loading";
 import { AddMember } from "../../shared/ui/extras/Icons";
-import { PERMS_DISPLAY, PERM_DEFAULTS, PERM_KEYS, hasVenuePerm } from "../../../services/utils/permissions";
+import { PERMS_DISPLAY, hasVenuePerm, viewOnlyPermissions } from "../../../services/utils/permissions";
 import { useVenueDashboard } from "../../../context/VenueDashboardContext";
 import { createVenueInvite } from "@services/api/venues";
 
@@ -11,7 +11,7 @@ export const AddStaffModal = ({user, venue, onClose}) => {
     const {venueProfiles} = useVenueDashboard();
     const [emailToInvite, setEmailToInvite] = useState('');
     const [loading, setLoading] = useState(false);
-    const [permissions, setPermissions] = useState(PERM_DEFAULTS);
+    const [permissions, setPermissions] = useState(viewOnlyPermissions);
     const [showPermissions, setShowPermissions] = useState(false);
 
     const togglePerm = (key) => setPermissions((p) => ({ ...p, [key]: !p[key] }));
@@ -78,6 +78,9 @@ export const AddStaffModal = ({user, venue, onClose}) => {
 
                             {showPermissions && (
                                 <div className="permissions-list">
+                                    <button type="button" className="btn text" onClick={() => setPermissions(viewOnlyPermissions())}>
+                                        View only
+                                    </button>
                                     <label className="permission">
                                         <input type="checkbox" checked readOnly disabled />
                                         View gigs
