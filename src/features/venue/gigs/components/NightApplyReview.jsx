@@ -124,6 +124,8 @@ export function NightApplyReview({
   const [busy, setBusy] = useState(false);
   const queueRef = useRef(Promise.resolve());
   const [copied, setCopied] = useState(false);
+  const [shortlist, setShortlist] = useState([]);
+  const [pickedId, setPickedId] = useState('');
   const [sound, setSound] = useState(soundTech || venue?.defaultSoundTech || null);
   const [soundEdit, setSoundEdit] = useState(null);
   const [noteEdit, setNoteEdit] = useState(null);
@@ -353,6 +355,10 @@ export function NightApplyReview({
   };
 
   const showOverview = section === 'overview';
+  const showApplications = section === 'applications';
+  const toggleShortlist = (id) => setShortlist((current) => (
+    current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+  ));
 
   return (
     <div className={`na${ordered.length >= 4 ? ' is-compact' : ''}${showOverview ? ' na-overview' : ''}`}>
@@ -416,6 +422,31 @@ export function NightApplyReview({
               return { toast: '' };
             }),
             canUpdate: canChangeLineup,
+          }}
+        />
+      ) : showApplications ? (
+        <NightApplications
+          ordered={ordered}
+          oneSet={oneSet}
+          applications={applications}
+          occupant={occupant}
+          slotLabel={slotLabel}
+          canUpdate={canChangeLineup}
+          bucket={bucket}
+          setBucket={setBucket}
+          prefer={prefer}
+          setPrefer={setPrefer}
+          shortlist={shortlist}
+          onToggleShortlist={toggleShortlist}
+          pickedId={pickedId}
+          setPickedId={setPickedId}
+          onAccept={accept}
+          onDecline={decline}
+          onUndo={undo}
+          onAssign={assign}
+          onOpenProfile={(id, trigger) => {
+            markOpened([id]);
+            openApplicant(id, trigger);
           }}
         />
       ) : (
@@ -787,6 +818,212 @@ function NightOverview({
           onSave={onSaveNotes}
           canUpdate={canUpdate}
         />
+      </div>
+    </div>
+  );
+}
+
+function clockLabel(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '';
+  const total = Math.round(seconds);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function sinceLabel(value) {
+  if (!value) return '';
+  const date = typeof value?.toDate === 'function'
+    ? value.toDate()
+    : new Date(value.seconds ? value.seconds * 1000 : value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `Since ${date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`;
+}
+
+function TrackPlayer({ app }) {
+  const file = (app.assets || []).find((asset) => isAudioAsset(asset) && (asset.playUrl || asset.previewUrl));
+  const music = musicOf(app);
+  const audioRef = useRef(null);
+  const [progress, setProgress] = useState(0);
+  const [length, setLength] = useState('');
+  if (file) {
+    const src = file.playUrl || file.previewUrl;
+    return (
+      <div className="night-app__track">
+        <button
+          type="button"
+          aria-label={progress > 0 && progress < 1 ? 'Pause' : 'Play'}
+          onClick={() => {
+            const audio = audioRef.current;
+            if (!audio) return;
+            if (audio.paused) audio.play();
+            else audio.pause();
+          }}
+        >
+          ▶
+        </button>
+        <strong>{file.name || 'Track'}</strong>
+        <i><b style={{ width: `${Math.round(progress * 100)}%` }} /></i>
+        <span>{length}</span>
+        <audio
+          ref={audioRef}
+          src={src}
+          preload="metadata"
+          onLoadedMetadata={(event) => setLength(clockLabel(event.currentTarget.duration))}
+          onTimeUpdate={(event) => {
+            const audio = event.currentTarget;
+            setProgress(audio.duration ? audio.currentTime / audio.duration : 0);
+          }}
+        />
+      </div>
+    );
+  }
+  if (!music || music.provider === 'Instagram') return null;
+  return (
+    <a className="night-app__track night-app__track--link" href={music.url} target="_blank" rel="noreferrer">
+      <span>▶</span>
+      <strong>{music.provider}</strong>
+    </a>
+  );
+}
+
+function NightApplications({
+  ordered, oneSet, applications, occupant, slotLabel, canUpdate, bucket, setBucket, prefer, setPrefer,
+  shortlist, onToggleShortlist, pickedId, setPickedId, onAccept, onDecline, onUndo, onAssign, onOpenProfile,
+}) {
+  const view = bucket === 'all' ? 'waiting' : bucket;
+  const rows = applications.filter((app) => {
+    if (view === 'short' && !shortlist.includes(app.id)) return false;
+    if (view === 'waiting' && !isWaiting(app)) return false;
+    if (view === 'accepted' && !isAccepted(app)) return false;
+    if (view === 'declined' && app.status !== 'declined') return false;
+    if (prefer === 'any' || oneSet) return true;
+    const ids = app.preferredSlotGigIds || [];
+    return !ids.length || ids.includes(prefer);
+  });
+  const selected = rows.find((app) => app.id === pickedId) || rows[0] || null;
+  const openSlots = ordered.filter((slot) => {
+    const holder = occupant(slot);
+    return !holder || holder.id === selected?.id;
+  });
+  const counts = {
+    waiting: applications.filter(isWaiting).length,
+    short: shortlist.length,
+    accepted: applications.filter(isAccepted).length,
+    declined: applications.filter((app) => app.status === 'declined').length,
+  };
+  return (
+    <div className="night-app">
+      <div className="night-app__sets">
+        {ordered.map((slot) => {
+          const id = slot.gigId || slot.id;
+          const holder = occupant(slot);
+          return (
+            <button
+              key={id}
+              type="button"
+              className={`night-app__set${holder ? '' : ' is-open'}${prefer === id ? ' is-on' : ''}`}
+              onClick={() => {
+                if (holder) {
+                  setPickedId(holder.id);
+                  setBucket('accepted');
+                  setPrefer('any');
+                } else {
+                  setPrefer(id);
+                  setBucket('waiting');
+                }
+              }}
+            >
+              <small>{oneSet ? 'The set' : slotLabel(slot)} · {formatClock(slot.startTime)}</small>
+              <strong>{holder ? actName(holder) : 'Open'}</strong>
+              <em>{holder ? 'Booked' : 'Pick from applications'}</em>
+            </button>
+          );
+        })}
+      </div>
+      <div className="night-app__filters">
+        {[
+          ['waiting', `To review ${counts.waiting}`],
+          ['short', `Shortlist ${counts.short}`],
+          ['accepted', `Booked ${counts.accepted}`],
+        ].map(([key, label]) => (
+          <button key={key} type="button" className={view === key ? 'is-on' : ''} onClick={() => setBucket(key)}>{label}</button>
+        ))}
+      </div>
+      <button type="button" className={`night-app__passed${view === 'declined' ? ' is-on' : ''}`} onClick={() => setBucket('declined')}>
+        Not this time {counts.declined}
+      </button>
+      <div className="night-app__split">
+        <div className="night-app__list">
+          {rows.length === 0 && <p className="na-empty">No applications in this view.</p>}
+          {rows.map((app) => (
+            <button
+              key={app.id}
+              type="button"
+              className={`night-app__row${selected?.id === app.id ? ' is-on' : ''}`}
+              onClick={() => setPickedId(app.id)}
+            >
+              <span className="night-overview__avatar" style={app.photoUrl ? { backgroundImage: `url(${app.photoUrl})` } : undefined}>
+                {app.photoUrl ? '' : initials(actName(app))}
+              </span>
+              <span>
+                <strong>{actName(app)}</strong>
+                <small>{actLine(app)}</small>
+              </span>
+              {isNewApplicant(app) ? <em>New</em> : null}
+            </button>
+          ))}
+        </div>
+        {selected && (
+          <Card className="night-app__detail">
+            <header>
+              <span className="night-app__photo" style={selected.photoUrl ? { backgroundImage: `url(${selected.photoUrl})` } : undefined}>
+                {selected.photoUrl ? '' : initials(actName(selected))}
+              </span>
+              <span>
+                <strong>{actName(selected)}</strong>
+                <small>{actLine(selected)}</small>
+                <button type="button" onClick={(event) => onOpenProfile(selected.id, event.currentTarget)}>See full profile</button>
+              </span>
+              {isNewApplicant(selected) ? <em>New</em> : null}
+            </header>
+            <TrackPlayer app={selected} />
+            {selected.promo?.played ? (
+              <p><span>Played at</span><b>{selected.promo.played}</b></p>
+            ) : null}
+            <p><span>On Gigin</span><b>{sinceLabel(selected.createdAt || selected.appliedAt) || 'Applied'}</b></p>
+            {canUpdate && isWaiting(selected) && (
+              <div className="night-app__book">
+                <span>Book them for</span>
+                {openSlots.map((slot) => (
+                  <Button key={slot.gigId || slot.id} onClick={() => onAccept(selected, slot.gigId || slot.id)}>
+                    {oneSet ? 'The set' : slotLabel(slot)}{formatClock(slot.startTime) ? `, ${formatClock(slot.startTime)}` : ''}
+                  </Button>
+                ))}
+                {!openSlots.length && <Button onClick={() => onAccept(selected, null)}>Accept, choose a set later</Button>}
+                <Button variant="secondary" onClick={() => onToggleShortlist(selected.id)}>
+                  {shortlist.includes(selected.id) ? 'Shortlisted' : 'Shortlist'}
+                </Button>
+                <button type="button" className="night-app__no" onClick={() => onDecline(selected)}>Not this time</button>
+              </div>
+            )}
+            {canUpdate && isAccepted(selected) && !oneSet && (
+              <div className="night-app__book">
+                <span>Book them for</span>
+                {ordered.map((slot) => {
+                  const id = slot.gigId || slot.id;
+                  const current = selected.assignedSlotGigId === id;
+                  return (
+                    <Button key={id} variant={current ? 'primary' : 'secondary'} onClick={() => { if (!current) onAssign(selected.id, id); }}>
+                      {slotLabel(slot)}{formatClock(slot.startTime) ? `, ${formatClock(slot.startTime)}` : ''}
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
+            {canUpdate && selected.status === 'declined' && (
+              <button type="button" className="night-app__no" onClick={() => onUndo(selected)}>Undo</button>
+            )}
+          </Card>
+        )}
       </div>
     </div>
   );

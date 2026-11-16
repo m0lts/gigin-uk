@@ -896,6 +896,13 @@ export function VenueGigPageShell({
                         {promoBusy ? 'Preparing…' : 'Download promo'}
                       </Button>
                     </div>
+                  ) : nightTab === 'applications' ? (
+                    <div className="night-head__actions">
+                      <Button variant="secondary" onClick={copyGigLink}>Share the link</Button>
+                      {showArtistInviteInApplications && (
+                        <Button onClick={() => setShowArtistInviteModal(true)}>Offer to an act</Button>
+                      )}
+                    </div>
                   ) : null}
                 </div>
               ) : (

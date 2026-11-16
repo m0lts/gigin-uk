@@ -296,3 +296,262 @@
   flex-direction: column;
   gap: 16px;
 }
+
+.night-app__sets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.night-app__set {
+  text-align: left;
+  background: var(--launch-card);
+  border: 1px solid transparent;
+  border-radius: var(--launch-radius-card);
+  box-shadow: var(--launch-shadow);
+  padding: 16px 18px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font: inherit;
+  color: var(--launch-ink);
+}
+
+.night-app__set.is-open {
+  background: transparent;
+  border: 1px dashed var(--launch-muted);
+  box-shadow: none;
+}
+
+.night-app__set.is-on {
+  outline: 2px solid var(--launch-ink);
+}
+
+.night-app__set small,
+.night-app__set em,
+.night-app__row small,
+.night-app__detail small {
+  color: var(--launch-muted);
+  font-style: normal;
+  font-size: 13px;
+}
+
+.night-app__set strong,
+.night-app__row strong,
+.night-app__detail header strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.night-app__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.night-app__filters button,
+.night-app__passed {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: var(--launch-radius-pill);
+  border: 1px solid var(--launch-line);
+  background: var(--launch-card);
+  color: var(--launch-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.night-app__filters button.is-on {
+  background: var(--launch-btn);
+  color: #fff;
+  border-color: var(--launch-btn);
+}
+
+.night-app__passed {
+  margin-top: 8px;
+}
+
+.night-app__passed.is-on {
+  background: var(--launch-soft);
+}
+
+.night-app__split {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+.night-app__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.night-app__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  background: var(--launch-card);
+  box-shadow: var(--launch-shadow);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.night-app__row.is-on {
+  border-color: var(--launch-ink);
+}
+
+.night-app__row > span:nth-child(2) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.night-app__row em,
+.night-app__detail header > em {
+  margin-left: auto;
+  background: #fff1ec;
+  color: var(--launch-accent);
+  border-radius: var(--launch-radius-pill);
+  padding: 2px 8px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.night-app__row .night-overview__avatar {
+  background-size: cover;
+  background-position: center;
+}
+
+.night-app__detail {
+  padding: 22px 24px;
+}
+
+.night-app__detail header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.night-app__photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: var(--launch-soft) center/cover;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.night-app__detail header > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.night-app__detail header button,
+.night-app__no {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--launch-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.night-app__detail > p {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--launch-line);
+  font-size: 14px;
+}
+
+.night-app__detail > p span {
+  color: var(--launch-muted);
+}
+
+.night-app__track {
+  display: grid;
+  grid-template-columns: 40px 1fr minmax(80px, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin: 16px 0;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--launch-soft);
+  color: inherit;
+  text-decoration: none;
+}
+
+.night-app__track button,
+.night-app__track > span {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--launch-btn);
+  color: #fff;
+  cursor: pointer;
+}
+
+.night-app__track i {
+  height: 4px;
+  border-radius: 99px;
+  background: #dddfe4;
+  display: block;
+}
+
+.night-app__track i b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--launch-btn);
+}
+
+.night-app__track audio {
+  display: none;
+}
+
+.night-app__book {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.night-app__book > span {
+  width: 100%;
+  font-weight: 600;
+}
+
+.night-app__book .gn-btn {
+  min-height: 44px;
+  padding: 0 16px;
+}
+
+@media (max-width: 860px) {
+  .night-app__split {
+    grid-template-columns: 1fr;
+  }
+}
