@@ -241,7 +241,7 @@ export function bookText(value) {
 export function appOrigin() {
   return String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
 }
-export const MAIL_FROM = "Gigin <noreply@giginmusic.com>";
+export { MAIL_FROM } from "./mailFrom.js";
 
 export function profileUrl(slug) {
   return `${appOrigin()}/artist/${slug}`;

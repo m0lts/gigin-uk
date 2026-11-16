@@ -5,13 +5,14 @@ import { admin } from "../config/admin.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { queueMail } from "../lib/queueMail.js";
 import { renderArtistEmail } from "../lib/artistEmails.js";
+import { MAIL_FROM } from "../lib/mailFrom.js";
 
 const router = express.Router();
 
 function appOrigin() {
   return String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
 }
-const FROM = "Gigin <noreply@giginmusic.com>";
+const FROM = MAIL_FROM;
 
 const limiter = rateLimit({
   windowMs: 60 * 60 * 1000,

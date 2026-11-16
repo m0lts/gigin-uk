@@ -12,6 +12,7 @@ import { venueIsApproved } from "../lib/venueApprovalPolicy.js";
 import { loadGuestPrivates, loadPrivateDetails, mergeApplicants, savePrivateDetails } from "../lib/gigPrivacy.js";
 import { queueMail } from "../lib/queueMail.js";
 import { renderArtistEmail } from "../lib/artistEmails.js";
+import { MAIL_FROM } from "../lib/mailFrom.js";
 
 const router = express.Router();
 
@@ -314,7 +315,7 @@ router.post("/:gigId/share/email", requireAuth, asyncHandler(async (req, res) =>
       small: "This link is private, so only share it with your band. The venue can turn it off at any time.",
       footer: `You're getting this because you played ${title} at ${venueName}.`,
     });
-    await queueMail({ to: recipient.email, from: "Gigin <noreply@giginmusic.com>", message });
+    await queueMail({ to: recipient.email, from: MAIL_FROM, message });
   }
   return res.json({ sent: recipients.length });
 }));

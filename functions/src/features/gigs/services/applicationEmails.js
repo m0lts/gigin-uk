@@ -2,10 +2,12 @@
 import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
 import { earliestFlush, planFlush, planRecipientWindow, sendsReviewApplicationEmail } from "./applicationEmailPlan.js";
 import { durableEmailImageUrl } from "../../../shared/emailImages.js";
+import { MAIL_FROM } from "../../../shared/mailFrom.js";
+
 function appOrigin() {
   return String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
 }
-const FROM = "Gigin <notifications@giginmusic.com>";
+const FROM = MAIL_FROM;
 const ZONE = "Europe/London";
 
 export async function ingestNewApplicants(gigId, applicantIds) {

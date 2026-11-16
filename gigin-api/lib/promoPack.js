@@ -8,6 +8,7 @@ import { queueMail } from "./queueMail.js";
 import { renderArtistEmail } from "./artistEmails.js";
 import { emailThumbUrl } from "./emailThumbs.js";
 import { ownerName } from "./ownerName.js";
+import { MAIL_FROM } from "./mailFrom.js";
 import { formatPromoDay, promoDueKey, promoReminderCopy, promoZipPlan, safeZipName } from "./promo.js";
 
 const ACTIVE = new Set(["accepted", "confirmed", "paid"]);
@@ -123,6 +124,6 @@ export async function queuePromoReminder(pack, applicantId) {
     bookerName,
     bookerPhotoUrl,
   }));
-  await queueMail({ to: email, from: "Gigin <noreply@giginmusic.com>", message });
+  await queueMail({ to: email, from: MAIL_FROM, message });
   return { sent: true };
 }

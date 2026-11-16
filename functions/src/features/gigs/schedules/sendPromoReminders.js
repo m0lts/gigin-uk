@@ -10,8 +10,9 @@ import {
   storageObjectPath,
 } from "../../../shared/emailImages.js";
 import { formatPromoDay, londonDayKey, promoDueKey, promoReminderCopy, promoReminderDue } from "../../../shared/promo.js";
+import { MAIL_FROM } from "../../../shared/mailFrom.js";
 
-const FROM = "Gigin <noreply@giginmusic.com>";
+const FROM = MAIL_FROM;
 const ORIGIN = process.env.BASE_URL || "https://giginmusic.com";
 
 function firebaseDownloadUrl(bucketName, objectPath, token) {

@@ -2,8 +2,9 @@
 import { schedule } from "../../../lib/schedule.js";
 import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
 import { icsAttachment, icsEvent, renderArtistEmail } from "../../../shared/artistEmails.js";
+import { MAIL_FROM } from "../../../shared/mailFrom.js";
 
-const FROM = "Gigin <noreply@giginmusic.com>";
+const FROM = MAIL_FROM;
 const ORIGIN = process.env.BASE_URL || "https://giginmusic.com";
 
 function londonKey(date) {

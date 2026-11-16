@@ -2,8 +2,10 @@
 
 import rateLimit from "express-rate-limit";
 
+import { MAIL_FROM } from "./mailFrom.js";
+
 export const DEFAULT_NOTIFY_EMAIL = "gardner.b.toby@gmail.com";
-export const MAIL_FROM = "Gigin <noreply@giginmusic.com>";
+export { MAIL_FROM };
 export const RATE_WINDOW_MS = 60 * 60 * 1000;
 export const RATE_MAX = 5;
 

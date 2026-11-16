@@ -26,6 +26,7 @@ import { assertVenueCanOperate, assertVenueCanPublishNights } from "../lib/venue
 import { readGigsByIds, readNearbyGigs } from "../lib/gigReads.js";
 import { withAudioReadUrls } from "../lib/guestAssets.js";
 import { pipePromoZip, queuePromoReminder, readPromoNight } from "../lib/promoPack.js";
+import { MAIL_FROM } from "../lib/mailFrom.js";
 
 function visibleApplicants(list, gigId, viewerId, showAll) {
   if (showAll) return list || [];
@@ -275,7 +276,7 @@ async function emailGuest(gigId, applicant, { subject, text, remind = false }) {
   }
   await queueMail({
     to,
-    from: "Gigin <noreply@giginmusic.com>",
+    from: MAIL_FROM,
     message: {
       subject,
       text,

@@ -18,6 +18,7 @@ import { emailThumbUrl } from "./emailThumbs.js";
 import { appendPlayedAt, keepReminderHtml, markBookingCancelled } from "./keepProfile.js";
 import { bandMemberRow, icsAttachment, icsEvent, renderArtistEmail } from "./artistEmails.js";
 import { ownerName } from "./ownerName.js";
+import { MAIL_FROM } from "./mailFrom.js";
 import { declinedApplicationMessage, listOtherOpenGigs } from "./outboundMail.js";
 import { formatPromoDay, promoDueKey } from "./promo.js";
 import { assertVenuePerm } from "../utils/permissions.js";
@@ -620,7 +621,7 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       rendered.text += `\n\nKeep your details for next time?\n${keepUrl}\n`;
     }
   }
-  const from = "Gigin <noreply@giginmusic.com>";
+  const from = MAIL_FROM;
   if (legacy) {
     return {
       to: null,
