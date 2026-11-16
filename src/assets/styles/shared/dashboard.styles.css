@@ -1109,3 +1109,136 @@
         transition: none;
     }
 }
+
+/* Launch shell. The sidebar sits on the page gradient. The pages inside keep their own styles. */
+.dashboard:has(.sidebar.sidebar--console) {
+    background: var(--launch-page-bg);
+}
+
+.dashboard:has(.sidebar.sidebar--console) .window {
+    background: transparent;
+}
+
+.dashboard .sidebar.sidebar--console {
+    background: transparent;
+    color: var(--launch-ink);
+    font-family: var(--gn-body-font);
+}
+
+.dashboard .sidebar.sidebar--console,
+.dashboard .sidebar.sidebar--console button,
+.dashboard .sidebar.sidebar--console a,
+.dashboard .sidebar.sidebar--console li,
+.dashboard .sidebar.sidebar--console span,
+.dashboard .sidebar.sidebar--console p {
+    font-family: var(--gn-body-font);
+    color: var(--launch-ink);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__wordmark,
+.dashboard .sidebar.sidebar--console .sidebar__wordmark span {
+    font-family: var(--gn-logo-font);
+    font-weight: 600;
+    color: var(--launch-ink);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__wordmark-dot {
+    color: var(--launch-accent);
+}
+
+.dashboard .sidebar.sidebar--console .menu-item {
+    height: 40px;
+    border-radius: 12px;
+    color: var(--launch-text);
+    font-weight: 500;
+}
+
+.dashboard .sidebar.sidebar--console .menu-item .sidebar__nav-label,
+.dashboard .sidebar.sidebar--console .menu-item .sidebar__nav-icon {
+    color: inherit;
+}
+
+.dashboard .sidebar.sidebar--console .menu-item:hover {
+    background: rgba(255, 255, 255, 0.55);
+    color: var(--launch-ink);
+}
+
+.dashboard .sidebar.sidebar--console .menu-item.active,
+.dashboard .sidebar.sidebar--console .menu-item.active:hover {
+    background: var(--launch-card);
+    color: var(--launch-ink);
+    box-shadow: var(--launch-shadow);
+}
+
+.dashboard .sidebar.sidebar--console .menu-item.active .sidebar__nav-icon,
+.dashboard .sidebar.sidebar--console .menu-item.active .icon {
+    color: var(--launch-ink);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__help {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    color: var(--launch-text);
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__help-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid currentColor;
+    border-radius: var(--launch-radius-pill);
+    font-size: 12px;
+    line-height: 1;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__account-wrap {
+    border-top: 0;
+    padding: 0;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__account {
+    height: auto;
+    min-height: 56px;
+    padding: 8px 10px;
+    background: var(--launch-card);
+    border-radius: 16px;
+    box-shadow: var(--launch-shadow);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__account-name {
+    color: var(--launch-ink);
+    font-size: 14px;
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__account-email {
+    color: var(--launch-muted);
+}
+
+.dashboard .sidebar.sidebar--console .sidebar__avatar {
+    background: var(--launch-soft);
+    color: var(--launch-ink);
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .sidebar__help .sidebar__nav-label {
+    display: none;
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item.active,
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item.active:hover {
+    background: var(--launch-card);
+    color: var(--launch-ink);
+}
+
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item.active .sidebar__nav-icon,
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item.active .icon,
+.dashboard .sidebar.sidebar--collapsed.sidebar--console .menu-item.active:hover .icon {
+    color: var(--launch-ink);
+}

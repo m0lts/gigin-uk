@@ -61,8 +61,6 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
   const { sidebarCollapsed, setSidebarCollapsed, venueProfiles, gigs } = useVenueDashboard();
   const pathname = useMemo(() => location.pathname, [location.pathname]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [venueMenuOpen, setVenueMenuOpen] = useState(false);
-  const venueMenuRef = useRef(null);
   const accountMenuRef = useRef(null);
 
   const venues = venueProfiles || [];
@@ -81,24 +79,24 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
   };
 
   useEffect(() => {
-    if (!venueMenuOpen && !showDropdown) return undefined;
+    if (!showDropdown) return undefined;
     const onPointerDown = (event) => {
-      if (venueMenuRef.current && !venueMenuRef.current.contains(event.target)) {
-        setVenueMenuOpen(false);
-      }
       if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
         setShowDropdown(false);
       }
     };
     window.addEventListener('pointerdown', onPointerDown);
     return () => window.removeEventListener('pointerdown', onPointerDown);
-  }, [venueMenuOpen, showDropdown]);
+  }, [showDropdown]);
 
   const collapsed = sidebarCollapsed && !forceExpanded;
   const newApplications = countNewApplications(
     selectedVenueId ? (gigs || []).filter((gig) => gig.venueId === selectedVenueId) : gigs,
   );
 
+  const venuePagePath = displayedVenue?.venueId
+    ? `/venues/${displayedVenue.venueId}`
+    : '/venues/dashboard/my-venues';
   const menuItems = [
     {
       path: '/venues/dashboard',
@@ -123,7 +121,7 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
     }] : []),
     {
       path: '/venues/dashboard/artists',
-      label: 'My Contacts',
+      label: 'Contacts',
       icon: <AddressBookIcon />,
       iconActive: <AddressBookIcon />,
     },
@@ -134,8 +132,8 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
       iconActive: <CoinsIconSolid />,
     }] : []),
     {
-      path: '/venues/dashboard/my-venues',
-      label: 'Venue Settings',
+      path: venuePagePath,
+      label: 'Venue page',
       icon: <HouseIconLight />,
       iconActive: <HouseIconSolid />,
     },
@@ -152,10 +150,8 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
     if (venueId) next.set('venue', venueId);
     else next.delete('venue');
     setSearchParams(next);
-    setVenueMenuOpen(false);
+    setShowDropdown(false);
   };
-
-  const venueCountLabel = `${venues.length} venue${venues.length === 1 ? '' : 's'}`;
 
   return (
     <div className={`sidebar sidebar--console${collapsed ? ' sidebar--collapsed' : ''}`}>
@@ -172,7 +168,6 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
             type="button"
             className="sidebar__collapse"
             onClick={() => {
-              setVenueMenuOpen(false);
               setShowDropdown(false);
               setSidebarCollapsed((value) => !value);
             }}
@@ -183,62 +178,6 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
           </button>
         )}
       </div>
-
-      {venues.length > 0 && (
-        <div className="sidebar__venue-wrap" ref={venueMenuRef}>
-          {canSwitchVenue ? (
-            <button
-              type="button"
-              className="sidebar__venue"
-              aria-expanded={venueMenuOpen}
-              aria-haspopup="listbox"
-              aria-label={displayedVenue?.name || 'All venues'}
-              title={collapsed ? (displayedVenue?.name || 'All venues') : undefined}
-              onClick={() => {
-                setShowDropdown(false);
-                setVenueMenuOpen((open) => !open);
-              }}
-            >
-              <span className="sidebar__venue-copy">
-                <span className="sidebar__venue-name">{displayedVenue?.name || 'All venues'}</span>
-                <span className="sidebar__venue-meta">{venueCountLabel}</span>
-              </span>
-              <span className="sidebar__chevron" aria-hidden="true"><DownChevronIcon /></span>
-            </button>
-          ) : (
-            <div className="sidebar__venue" title={collapsed ? venues[0].name : undefined}>
-              <span className="sidebar__venue-copy">
-                <span className="sidebar__venue-name">{venues[0].name}</span>
-                <span className="sidebar__venue-meta">{venueCountLabel}</span>
-              </span>
-              <span className="sidebar__chevron sidebar__chevron--when-collapsed" aria-hidden="true"><DownChevronIcon /></span>
-            </div>
-          )}
-          {venueMenuOpen && (
-            <div className="sidebar__popover sidebar__venue-menu" role="listbox" aria-label="Venues">
-              <button
-                type="button"
-                className={`sidebar__popover-item${!selectedVenueId ? ' is-selected' : ''}`}
-                onClick={() => selectVenue('')}
-              >
-                All venues
-              </button>
-              {venues.map((venue) => (
-                <button
-                  type="button"
-                  key={venue.venueId}
-                  className={`sidebar__popover-item${selectedVenueId === venue.venueId ? ' is-selected' : ''}`}
-                  onClick={() => selectVenue(venue.venueId)}
-                >
-                  {venue.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      <span className="sidebar__section" aria-hidden={collapsed || undefined}>Manage</span>
 
       <ul className="menu">
         {menuItems.map(({ path, label, icon, iconActive, exact, notification, count }) => {
@@ -273,6 +212,11 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
 
       <div className="sidebar__spacer" aria-hidden="true" />
 
+      <a className="sidebar__help" href="mailto:toby@giginmusic.com?subject=Help%20and%20feedback">
+        <span className="sidebar__help-mark" aria-hidden="true">?</span>
+        <span className="sidebar__nav-label">Help and feedback</span>
+      </a>
+
       <div className="sidebar__account-wrap" ref={accountMenuRef}>
         <button
           type="button"
@@ -281,7 +225,6 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
           aria-expanded={showDropdown}
           aria-haspopup="menu"
           onClick={() => {
-            setVenueMenuOpen(false);
             if (collapsed) {
               setSidebarCollapsed(false);
               setShowDropdown(true);
@@ -290,15 +233,26 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
             }
           }}
         >
-          <span className="sidebar__avatar">{nameInitials(user?.name)}</span>
+          <span className="sidebar__avatar">{nameInitials(displayedVenue?.name || user?.name)}</span>
           <span className="sidebar__account-copy">
-            <span className="sidebar__account-name">{user?.name}</span>
-            <span className="sidebar__account-email">{user?.email}</span>
+            <span className="sidebar__account-name">{displayedVenue?.name || 'Your venue'}</span>
+            <span className="sidebar__account-email">{user?.name || user?.email}</span>
           </span>
           <span className="sidebar__chevron" aria-hidden="true"><DownChevronIcon /></span>
         </button>
         {showDropdown && !collapsed && (
           <div className="sidebar__popover sidebar__account-menu" role="menu">
+            {canSwitchVenue && venues.map((venue) => (
+              <button
+                type="button"
+                key={venue.venueId}
+                className={`sidebar__popover-item${displayedVenue?.venueId === venue.venueId ? ' is-selected' : ''}`}
+                role="menuitem"
+                onClick={() => selectVenue(venue.venueId)}
+              >
+                {venue.name}
+              </button>
+            ))}
             <button
               type="button"
               className="sidebar__popover-item"
