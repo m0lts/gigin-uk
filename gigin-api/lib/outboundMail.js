@@ -116,6 +116,7 @@ export function declinedApplicationMessage({
   openGigs,
   venueUrl,
   extra,
+  markUrl,
 }) {
   const who = plain(booker, 80) || "The venue";
   const place = plain(venueName, 120) || "the venue";
@@ -139,7 +140,7 @@ export function declinedApplicationMessage({
     buttonDark: true,
     small: "Your application is saved, so applying next time takes one tap.",
     extra: extra || null,
-    brand: { name: place, initials: place.slice(0, 2).toUpperCase() },
+    brand: { name: place, imageUrl: markUrl || "" },
     footer: `Sent by Gigin for ${escapeHtml(place)}.`,
   });
 }

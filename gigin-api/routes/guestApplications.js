@@ -15,6 +15,7 @@ import {
   savePrivateApplications,
 } from "../lib/gigPrivacy.js";
 import { queueMail } from "../lib/queueMail.js";
+import { emailThumbUrl } from "../lib/emailThumbs.js";
 import { MAIL_FROM } from "../lib/accessRequest.js";
 import { applicationDateLabel, createWindowLimiter, isUpcomingOrRecent, manageLinksText } from "../lib/manageLinks.js";
 import { preferencePhrase, publicLineup, readNight } from "../lib/nightApplications.js";
@@ -435,6 +436,7 @@ async function presentApplication(applicant, gig, night, req) {
 async function acceptPhoto(photo, applicationIds) {
   if (!photo) return { photo: null };
   if (!photo.path || !pathBelongs(photo.path, applicationIds)) return { error: "Photo path is not valid." };
+  const emailUrl = await emailThumbUrl(photo.path);
   return {
     photo: {
       path: photo.path,
@@ -442,6 +444,7 @@ async function acceptPhoto(photo, applicationIds) {
       size: Number(photo.size) || 0,
       contentType: String(photo.contentType || "").split(";")[0].trim().toLowerCase(),
       url: await publicDownloadUrl(photo.path),
+      ...(emailUrl ? { emailUrl } : {}),
     },
   };
 }

@@ -13,6 +13,8 @@ import {
   sortSlots,
 } from "./nightApplications.js";
 import { actKind, applicationNoticeMessage, applicationReviewUrl, noticeTrack, planVenueNotice, shouldNotify } from "./venueApplicationNotice.js";
+import { venueImageSource } from "./emailImages.js";
+import { emailThumbUrl } from "./emailThumbs.js";
 import { appendPlayedAt, keepReminderHtml, markBookingCancelled } from "./keepProfile.js";
 import { bandMemberRow, icsAttachment, icsEvent, renderArtistEmail } from "./artistEmails.js";
 import { ownerName } from "./ownerName.js";
@@ -256,18 +258,14 @@ function openSetLine(slots) {
   }).join(", ");
 }
 
-function photoUrlOf(app) {
-  const direct = app?.photoUrl || app?.photo?.url || "";
-  return /^https?:\/\//i.test(String(direct)) ? String(direct) : "";
-}
-
-function venueNoticeItem({ app, slots, gig, rootId, othersWaiting = 0 }) {
+function venueNoticeItem({ app, slots, gig, rootId, othersWaiting = 0, photoUrl = "", venueMarkUrl = "" }) {
   const track = noticeTrack(app);
   return {
     applicantId: String(app?.id || ""),
     actName: actName(app),
     gigName: gigTitle(gig),
-    photoUrl: photoUrlOf(app),
+    photoUrl,
+    venueMarkUrl,
     actType: actKind(app?.members),
     trackUrl: track.trackUrl || "",
     trackName: track.trackName || "",
@@ -290,7 +288,9 @@ export async function notifyVenueOfNewApplication({ venueId, venue, app, slots, 
     const status = String(entry?.status || "pending").toLowerCase();
     return ["pending", "sent", ""].includes(status) && String(entry?.id) !== String(app?.id);
   }).length;
-  const item = venueNoticeItem({ app, slots, gig, rootId, othersWaiting });
+  const photoUrl = await emailThumbUrl(app?.photo?.emailUrl || app?.photo?.path || app?.photoUrl || app?.photo?.url || "");
+  const venueMarkUrl = await emailThumbUrl(venueImageSource(venue) || venueImageSource(profile));
+  const item = venueNoticeItem({ app, slots, gig, rootId, othersWaiting, photoUrl, venueMarkUrl });
   const ref = db.doc(`venueApplicationNotices/${venueId}`);
   const now = Date.now();
   let batched = false;
@@ -424,6 +424,7 @@ function slotMoment(gig, slot, end = false) {
 export async function emailForAct({ kind, app, slots, venue, gig, token, later, other, reason }) {
   const booker = ownerName(venue, gig);
   const venueName = venue?.name || venue?.venueName || gig?.venue?.venueName || "the venue";
+  const markUrl = await emailThumbUrl(venueImageSource(venue));
   const name = gigTitle(gig);
   const when = formatLong(gigDate(gig));
   const short = formatShort(gigDate(gig));
@@ -474,7 +475,7 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       subject: `You're in: ${name} at ${venueName}`,
       preheader: `Your set time is still to be confirmed.`,
       eyebrow: "YOU'RE BOOKED",
-      brand: { name: venueName, initials: String(venueName).slice(0, 2).toUpperCase() },
+      brand: { name: venueName, imageUrl: markUrl },
       heading: `You're playing ${escapeHtml(name)}`,
       paras: [hi, `Good news. ${escapeHtml(booker)} has accepted ${escapeHtml(act)} for ${escapeHtml(name)} at ${escapeHtml(venueName)} on <b>${escapeHtml(when)}</b>.`, `We'll confirm your set time. ${escapeHtml(booker)} will choose which set you're playing, and we'll email you again as soon as it's set.${prefer}`],
       boxes: [{ label: "YOUR BOOKING", rows: [["Act", escapeHtml(act)], ["When", escapeHtml(when)], ["Set", "To be confirmed"], door ? ["Doors", escapeHtml(door)] : null, where ? ["Where", escapeHtml(where)] : null].filter(Boolean) }],
@@ -507,7 +508,7 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       subject,
       preheader: changed ? `${escapeHtml(setLine)}. Everything else stays the same.` : `${escapeHtml(setLine)}.${door ? ` Doors ${escapeHtml(door)}.` : ""}`,
       eyebrow: changed ? "SET CHANGED" : "YOU'RE BOOKED",
-      brand: { name: venueName, initials: String(venueName).slice(0, 2).toUpperCase() },
+      brand: { name: venueName, imageUrl: markUrl },
       heading: changed ? `You're now playing ${escapeHtml(setLabel)}` : `You're playing ${escapeHtml(name)}`,
       paras: [changed ? `${hi} ${lead}` : `Hi ${escapeHtml(first)}, we loved your music and would love to have you on ${escapeHtml(short)}. Here's everything you need.`],
       boxes: [{
@@ -564,6 +565,7 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       kindWord,
       openGigs,
       venueUrl,
+      markUrl,
       extra: keepUrl ? { title: "Keep your details for next time?", body: "Turn this application into a Gigin profile with a link you can send to other venues. You'll create a password when you confirm.", link: ["Keep my profile", keepUrl] } : null,
     });
   } else if (kind === "cancelled-accepted" || kind === "cancelled-waiting") {

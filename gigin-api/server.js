@@ -29,6 +29,7 @@ import finderRoutes from "./routes/finder.js";
 import accessRequestRoutes from "./routes/accessRequests.js";
 import authLinkRoutes from "./routes/authLinks.js";
 import mailRoutes from "./routes/mail.js";
+import emailImageRoutes from "./routes/emailImages.js";
 import { seedListedVenuesIfEmpty } from "./lib/keepProfile.js";
 // Initialize Firebase Admin (must be done before importing routes that use it)
 initializeAdmin();
@@ -148,7 +149,7 @@ const limiter = rateLimit({
 // Apply rate limiting to all requests except health check and OPTIONS (preflight)
 app.use((req, res, next) => {
   // Skip rate limiting for health check endpoint
-  if (req.path === "/health") {
+  if (req.path === "/health" || req.path.startsWith("/api/email-images")) {
     return next();
   }
   // Skip rate limiting for OPTIONS (preflight requests)
@@ -197,6 +198,7 @@ app.use("/api/finder", finderRoutes);
 app.use("/api/access-requests", accessRequestRoutes);
 app.use("/api/auth", authLinkRoutes);
 app.use("/api/mail", mailRoutes);
+app.use("/api/email-images", emailImageRoutes);
 app.use("/api/artists", artistExtra);
 
 // 404 handler (must come after all routes)

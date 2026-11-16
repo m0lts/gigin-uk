@@ -1,11 +1,11 @@
 /* eslint-disable */
 import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
 import { earliestFlush, planFlush, planRecipientWindow } from "./applicationEmailPlan.js";
+import { durableEmailImageUrl } from "../../../shared/emailImages.js";
 
 function appOrigin() {
   return String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
 }
-const LOGO = "https://firebasestorage.googleapis.com/v0/b/giginltd-dev.firebasestorage.app/o/gigin.png?alt=media&token=efd9ba79-f580-454c-98f6-b4a391e0d636";
 const FROM = "Gigin <notifications@giginmusic.com>";
 const ZONE = "Europe/London";
 
@@ -219,7 +219,7 @@ async function enrichApplicant(gigId, stub, slots) {
     town,
     members,
     note,
-    photo: extra.photoUrl || extra.photo?.url || extra.picture || extra.heroMedia?.url || "",
+    photo: extra.photo?.emailUrl || extra.emailPhotoUrl || "",
     preferred: Array.isArray(stub.preferredSlotGigIds) ? stub.preferredSlotGigIds : (Array.isArray(extra.preferredSlotGigIds) ? extra.preferredSlotGigIds : []),
     at: toDate(stub.appliedAt || stub.createdAt || stub.timestamp || extra.appliedAt),
     slots,
@@ -253,6 +253,7 @@ function singleEmail(context, person, recipient) {
   ].filter(Boolean);
   const review = `${appOrigin()}/venues/dashboard/gigs/gig-applications?gigId=${encodeURIComponent(context.gigId)}&applicant=${encodeURIComponent(person.id)}`;
   const note = person.note ? truncate(person.note, 280) : "";
+  const photo = emailPhoto(person.photo, 72);
   const heading = `${person.name} applied to play ${context.name}`;
   const footnote = `${context.totalApps} application${context.totalApps === 1 ? "" : "s"} so far for this night.`;
   const text = [
@@ -270,7 +271,7 @@ function singleEmail(context, person, recipient) {
     preheader,
     eyebrow: "NEW APPLICATION",
     heading,
-    body: `${facts(rows)}${note ? noteBlock(note) : ""}`,
+    body: `${photo}${facts(rows)}${note ? noteBlock(note) : ""}`,
     button: "Review application",
     href: review,
     footnote,
@@ -325,9 +326,7 @@ function shell({ preheader, eyebrow, heading, sub, body, button, href, footnote,
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F6F7F9;padding:28px 12px;">
       <tr><td align="center">
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border:1px solid #E5E7EB;border-radius:16px;">
-          <tr><td style="padding:28px 24px 0;">
-            <img src="${LOGO}" alt="gigin." height="24" style="display:block;border:0;height:24px;width:auto;">
-          </td></tr>
+          <tr><td style="padding:28px 24px 0;font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:24px;font-weight:700;color:#0F1115;">gigin.</td></tr>
           <tr><td style="padding:20px 24px 0;font-family:Geist, -apple-system, 'Segoe UI', Arial, sans-serif;">
             <div style="font-family:'Geist Mono', ui-monospace, Menlo, monospace;font-size:12px;font-weight:500;letter-spacing:.06em;color:#B5462C;">${escapeHtml(eyebrow)}</div>
             <h1 style="margin:8px 0 0;font-size:22px;line-height:28px;font-weight:600;color:#0F1115;">${escapeHtml(heading)}</h1>
@@ -373,13 +372,11 @@ function batchList(people, more, context) {
     const tag = person.guest
       ? `<span style="display:inline-block;margin-left:6px;padding:1px 6px;border:1px solid #E5E7EB;border-radius:4px;font-size:11.5px;font-weight:500;color:#4B5160;background:#fff;">Guest</span>`
       : `<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:11.5px;font-weight:500;color:#3d7a52;background:#eef8f1;">✓ On Gigin</span>`;
-    const photo = person.photo && /^https?:\/\//.test(person.photo)
-      ? `<img src="${escapeHtml(person.photo)}" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border-radius:50%;object-fit:cover;">`
-      : `<div style="width:36px;height:36px;border-radius:50%;background:#2A2E36;color:#fff;font-size:12px;font-weight:600;line-height:36px;text-align:center;">${escapeHtml(initials(person.name))}</div>`;
+    const photo = emailPhoto(person.photo, 36);
     return `<tr>
       <td style="padding:12px 14px;border-top:${index ? "1px solid #E5E7EB" : "0"};">
         <table role="presentation" width="100%"><tr>
-          <td width="36" valign="middle">${photo}</td>
+          ${photo ? `<td width="36" valign="middle" style="padding-right:10px;">${photo}</td>` : ""}
           <td style="padding-left:10px;font-family:Geist, -apple-system, 'Segoe UI', Arial, sans-serif;">
             <div style="font-size:15px;font-weight:600;color:#0F1115;">${escapeHtml(person.name)}${tag}</div>
             ${pref ? `<div style="font-size:13.5px;color:#4B5160;margin-top:2px;">${escapeHtml(pref)}</div>` : ""}
@@ -518,8 +515,10 @@ function firstText(...values) {
   return "";
 }
 
-function initials(name) {
-  return String(name || "?").trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("") || "?";
+function emailPhoto(url, size) {
+  const src = durableEmailImageUrl(url);
+  if (!src) return "";
+  return `<img src="${escapeHtml(src)}" alt="" width="${size}" height="${size}" style="display:block;border:0;width:${size}px;height:${size}px;border-radius:8px;object-fit:cover;">`;
 }
 
 function truncate(value, max) {

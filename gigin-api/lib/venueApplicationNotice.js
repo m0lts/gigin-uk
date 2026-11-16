@@ -1,5 +1,7 @@
 /** Pure rules for the venue "someone applied" email. No Firebase. */
 
+import { durableEmailImageUrl } from "./emailImages.js";
+
 export const NOTICE_WINDOW_MS = 60 * 60 * 1000;
 
 export function shouldNotify(to) {
@@ -106,12 +108,20 @@ function textCard(item) {
 
 function htmlRow(label, value) {
   if (!value) return "";
-  return `<tr><td style="padding:6px 12px 6px 0;color:#6B7280;font-family:Geist,Arial,sans-serif;font-size:14px;vertical-align:top;">${escapeHtml(label)}</td><td style="padding:6px 0;color:#0F1115;font-family:Geist,Arial,sans-serif;font-size:14px;">${value}</td></tr>`;
+  return `<tr><td style="padding:6px 12px 6px 0;color:#4B5160;font-family:Arial,Helvetica,sans-serif;font-size:14px;vertical-align:top;">${escapeHtml(label)}</td><td style="padding:6px 0;color:#0F1115;font-family:Arial,Helvetica,sans-serif;font-size:14px;">${value}</td></tr>`;
+}
+
+function emailImg(url, size) {
+  const src = durableEmailImageUrl(url);
+  if (!src) return "";
+  return `<img src="${escapeHtml(src)}" alt="" width="${size}" height="${size}" style="display:block;border:0;border-radius:8px;object-fit:cover;">`;
 }
 
 function htmlCard(item) {
-  const photo = httpUrl(item.photoUrl)
-    ? `<img src="${escapeHtml(item.photoUrl)}" alt="" width="72" height="72" style="display:block;border-radius:12px;object-fit:cover;margin-bottom:8px;">`
+  const photo = emailImg(item.photoUrl, 72);
+  const mark = emailImg(item.venueMarkUrl, 36);
+  const images = photo || mark
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 12px;"><tr>${mark ? `<td style="padding-right:10px;vertical-align:middle;">${mark}</td>` : ""}${photo ? `<td style="vertical-align:middle;">${photo}</td>` : ""}</tr></table>`
     : "";
   const track = httpUrl(item.trackUrl)
     ? `<a href="${escapeHtml(item.trackUrl)}">${escapeHtml(item.trackUrl)}</a>`
@@ -123,7 +133,7 @@ function htmlCard(item) {
     item.played ? htmlRow("Where you've played", escapeHtml(item.played)) : "",
     htmlRow("Sets still open", escapeHtml(item.openSets)),
   ].join("");
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#F6F7F9;border-radius:16px;"><tr><td style="padding:16px;">${photo}<h2 style="margin:0 0 4px;font-family:Georgia,serif;font-weight:300;font-size:28px;color:#0F1115;">${escapeHtml(item.actName)}</h2><p style="margin:0 0 10px;color:#4B5160;font-family:Geist,Arial,sans-serif;">for ${escapeHtml(item.gigName || "the gig")}</p><table role="presentation">${rows}</table><p style="margin:14px 0 0;"><a href="${escapeHtml(item.reviewUrl)}" style="display:inline-block;background:#111317;color:#ffffff;text-decoration:none;font-family:Geist,Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 18px;border-radius:999px;">Listen and decide</a></p></td></tr></table>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;"><tr><td style="padding:0 0 8px;font-family:Arial,Helvetica,sans-serif;">${images}<h2 style="margin:0 0 4px;font-family:Georgia,serif;font-weight:400;font-size:24px;color:#0F1115;">${escapeHtml(item.actName)}</h2><p style="margin:0 0 10px;color:#4B5160;font-family:Arial,Helvetica,sans-serif;">for ${escapeHtml(item.gigName || "the gig")}</p><table role="presentation">${rows}</table><p style="margin:14px 0 0;"><a href="${escapeHtml(item.reviewUrl)}" style="display:inline-block;background:#111317;color:#ffffff;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;padding:12px 18px;border-radius:999px;">Listen and decide</a></p></td></tr></table>`;
 }
 
 export function applicationNoticeMessage(items) {
@@ -138,6 +148,6 @@ export function applicationNoticeMessage(items) {
     ? `${others} more ${others === 1 ? "request is" : "requests are"} waiting.`
     : "";
   const text = [...rows.map(textCard), more].filter(Boolean).join("\n\n");
-  const html = `<div style="background:#ECEFF4;padding:24px;font-family:Geist,Arial,sans-serif;"><div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:24px;padding:28px;">${rows.map(htmlCard).join("")}${more ? `<p style="color:#4B5160;">${escapeHtml(more)}</p>` : ""}</div></div>`;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#0F1115;">${rows.map(htmlCard).join("")}${more ? `<p style="color:#4B5160;">${escapeHtml(more)}</p>` : ""}</div>`;
   return { subject, text, html };
 }

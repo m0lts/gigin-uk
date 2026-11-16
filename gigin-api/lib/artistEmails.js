@@ -1,26 +1,10 @@
-/* Artist emails. Table markup and inline styles match design_handoff_artist_experience/emails. */
+/* Artist emails. Inline styles only, plus one small rule so the button stays tappable on a phone. */
 
-const FONT = "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
-const HEAD = "'Newsreader', Georgia, 'Times New Roman', serif";
-const MONO = "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-const DARK = [
-  [".bg", "background:#0F1115 !important"],
-  [".card", "background:#1A1D22 !important;border-color:#2A2E36 !important"],
-  [".ink", "color:#F2F3F5 !important"],
-  [".muted", "color:#A3A9B5 !important"],
-  [".eyebrow", "color:#FF8A70 !important"],
-  [".box", "background:#22262D !important;border-color:#2E333B !important"],
-  [".boxg", "background:#1C2A22 !important;border-color:#2B4434 !important"],
-  [".labg", "color:#7FD49A !important"],
-  [".rule", "border-color:#2E333B !important"],
-  [".link", "color:#FF8A70 !important"],
-  [".btnd", "background:#F2F3F5 !important"],
-  [".btnd a", "color:#0F1115 !important"],
-];
+import { durableEmailImageUrl } from "./emailImages.js";
 
-function darkCss(prefix) {
-  return DARK.map(([selector, rule]) => `${prefix}${selector}{${rule}}`).join("\n");
-}
+const FONT = "Arial, Helvetica, sans-serif";
+const HEAD = "Georgia, 'Times New Roman', serif";
+const MONO = "Consolas, Menlo, monospace";
 
 function strip(value) {
   return String(value || "").replace(/<[^>]+>/g, "");
@@ -53,16 +37,27 @@ export function bandMemberRow(members) {
   return ["Band", `${count} member${count === 1 ? "" : "s"}`];
 }
 
+function emailImg(url, size) {
+  const src = durableEmailImageUrl(url);
+  if (!src) return "";
+  return `<img src="${escapeEmail(src)}" alt="" width="${size}" height="${size}" style="display:block;border:0;border-radius:8px;object-fit:cover;">`;
+}
+
+function brandBlock(email) {
+  if (!email.brand?.name) {
+    return `<div style="font-family:${FONT};font-size:22px;line-height:26px;font-weight:700;color:#0F1115;padding-bottom:18px;">gigin<span style="color:#FF6C4B;">.</span></div>`;
+  }
+  const name = `<div style="font-size:14px;font-weight:600;color:#0F1115;">${escapeEmail(email.brand.name)}</div><div style="font-size:12px;color:#5B606B;">via gigin<span style="color:#FF6C4B;">.</span></div>`;
+  const mark = emailImg(email.brand.imageUrl, 36);
+  if (!mark) return `<div style="margin:0 0 18px;font-family:${FONT};">${name}</div>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;"><tr><td style="padding-right:10px;vertical-align:middle;">${mark}</td><td style="font-family:${FONT};">${name}</td></tr></table>`;
+}
+
 export function renderArtistEmail(email) {
   const home = String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
-  const styles = `:root{color-scheme:light dark;supported-color-schemes:light dark;}
-body{margin:0;padding:0;-webkit-text-size-adjust:100%;}
+  const styles = `body{margin:0;padding:0;}
 a{text-decoration:underline;}
-@media (max-width:620px){.card{padding:24px 18px !important;}.btn,.btn td,.btn a{display:block !important;width:100% !important;text-align:center !important;box-sizing:border-box;}}
-@media (prefers-color-scheme: dark){
-${darkCss("")}
-}
-${darkCss("[data-ogsc] ")}`;
+@media (max-width:620px){.card{padding:24px 18px !important;}.btn,.btn td,.btn a{display:block !important;width:100% !important;text-align:center !important;box-sizing:border-box;}}`;
   const paragraph = (text, cls, style) => `<p class="${cls}" style="margin:0 0 14px;font-family:${FONT};${style}">${text}</p>`;
   const paras = (email.paras || []).map((text) => paragraph(text, "ink", "font-size:16px;line-height:24px;color:#0F1115;")).join("");
   const boxes = (email.boxes || []).map((box) => {
@@ -91,20 +86,18 @@ ${darkCss("[data-ogsc] ")}`;
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
-<meta name="supported-color-schemes" content="light dark">
 <title>${strip(email.subject)}</title>
 <style>
 ${styles}
 </style>
 </head>
 <body class="bg" style="margin:0;padding:0;background:#ECEFF4;">
-<div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;">${email.preheader || ""}${"&#847;&zwnj;&nbsp;".repeat(30)}</div>
+<div style="display:none;max-height:0;overflow:hidden;">${email.preheader || ""}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg" style="background:#ECEFF4;">
 <tr><td align="center" style="padding:28px 12px 32px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
 <tr><td class="card" style="background:#FFFFFF;border:0;border-radius:24px;padding:32px 28px;">
-${email.brand?.name ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;"><tr><td style="width:36px;height:36px;background:#111317;border-radius:10px;color:#fff;font-family:${FONT};font-size:12px;font-weight:700;text-align:center;">${escapeEmail(email.brand.initials || email.brand.name.slice(0, 2))}</td><td style="padding-left:10px;font-family:${FONT};"><div class="ink" style="font-size:14px;font-weight:600;color:#0F1115;">${escapeEmail(email.brand.name)}</div><div class="muted" style="font-size:12px;color:#5B606B;">via gigin<span style="color:#FF6C4B;">.</span></div></td></tr></table>` : `<div class="ink" style="font-family:${FONT};font-size:24px;line-height:28px;font-weight:700;letter-spacing:-0.01em;color:#0F1115;padding-bottom:22px;">gigin<span style="color:#FF6C4B;">.</span></div>`}
+${brandBlock(email)}
 <h1 class="ink" style="margin:0 0 18px;font-family:${HEAD};font-size:36px;line-height:40px;font-weight:300;letter-spacing:-0.02em;color:#0F1115;">${email.heading || ""}</h1>
 ${paras}${boxes}${quote}${listings}${callout}${pre}${button}${after}${extra}${small}
 </td></tr>
