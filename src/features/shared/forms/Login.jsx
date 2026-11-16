@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '@lib/firebase';
 import { sendSignInLinkToEmail } from 'firebase/auth';
 // Components
-import { GoogleIcon } from '../ui/extras/Icons';
-import { AuthCard, EyeButton, isGmail } from './AuthCard';
+import { AuthCard, EyeButton, GoogleMark, isGmail } from './AuthCard';
 import { toast } from 'sonner';
 import { FEATURES } from '../../../config/features';
 import { artistDestination } from '../../../config/artistDestination';
@@ -210,7 +209,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
           }
         }}
       >
-        <GoogleIcon />
+        <GoogleMark />
         Continue with Google
       </button>
       <div className="auth-card__or" aria-hidden="true"><span /><em>or</em><span /></div>

@@ -2,13 +2,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
-import { toast } from 'sonner';
-import { getPhoneExistsBoolean } from '@services/api/users';
 // Components
-import { AuthCard } from './AuthCard';
-import { GoogleIcon, SeeIcon, QuestionCircleIcon } from '@icons';
-import { LoadingSpinner } from '../ui/loading/Loading';
-import { PhoneField, isValidE164 } from './PhoneField';
+import { AuthCard, EyeButton, GoogleMark } from './AuthCard';
 // Styles
 import '@styles/forms/forms.styles.css';
 import '@styles/shared/modals.styles.css';
@@ -44,19 +39,9 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
 
   const { signup, continueWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordInfo, setShowPasswordInfo] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
   const [role, setRole] = useState('');
-
-  const handleFocus = () => {
-    setPasswordFocused(true);
-  };
-
-  const handleBlur = () => {
-    setPasswordFocused(false);
-  };
 
   const handleChange = (e) => {
   if (loading) return;
@@ -133,7 +118,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
           setError({ status: true, input: '', message: '*Operation not allowed.' });
           break;
         case 'auth/password-does-not-meet-requirements':
-          setShowPasswordInfo(true);
+          setError({ status: true, input: 'password', message: 'Use at least 6 characters, with a capital letter, a lowercase letter, a number and a symbol.' });
           break;
         default:
           setError({ status: true, input: '', message: '*An error occurred. Please try again.' });
@@ -146,10 +131,6 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
 
   const toggleShowPassword = () => {
     setShowPassword(!showPassword);
-  };
-
-  const togglePasswordInfo = () => {
-    setShowPasswordInfo(!showPasswordInfo);
   };
 
   const close = () => {
@@ -188,192 +169,116 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
     );
   }
 
+  const venueAccount = role !== 'artist';
+  const canSubmit = !loading && !error.status && credentials.name && credentials.email && credentials.password && termsAccepted;
+
   return (
-    <div className={`modal-padding auth ${loading ? 'loading' : ''}`} onClick={(e) => e.stopPropagation()}>
-      <div className='modal-content auth scrollable'>
-        {!loading && (
-        <div className='head'>
-          <h1>{role === 'artist' ? 'Your artist account' : 'Your venue account'}</h1>
-          <p>Create the account, then we&apos;ll take you through the rest.</p>
+    <AuthCard
+      title={venueAccount ? 'Create your venue account' : 'Create your artist account'}
+      lede={venueAccount ? "Then we'll set up your venue together." : "Then we'll set up your page together."}
+      closable={authClosable && !loading}
+      onClose={close}
+    >
+      <button
+        type="button"
+        className="auth-card__google"
+        disabled={loading}
+        onClick={async () => {
+          try {
+            setLoading(true);
+            const signupResponse = await continueWithGoogle(marketingConsent);
+            if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
+              setAuthModal(false);
+              setAuthClosable(true);
+              navigate(artistDestination(null, FEATURES));
+            } else {
+              setAuthModal(false);
+              setAuthClosable(true);
+            }
+          } catch (err) {
+            setError({ status: true, input: '', message: err?.error?.message || 'Google sign up failed' });
+          } finally {
+            setLoading(false);
+          }
+        }}
+      >
+        <GoogleMark />
+        Continue with Google
+      </button>
+      <p className="auth-card__fine">
+        By signing up with Google, you agree to our <Link to="/terms-and-conditions">terms and conditions</Link>.
+      </p>
+      <div className="auth-card__or" aria-hidden="true"><span /><em>or</em><span /></div>
+      <form onSubmit={handleSignup} noValidate>
+        <label htmlFor="name">Name</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          value={credentials.name}
+          onChange={(e) => { handleChange(e); clearError(); }}
+          autoComplete="name"
+          required
+          disabled={loading}
+        />
+        <label htmlFor="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          value={credentials.email}
+          onChange={(e) => { handleChange(e); clearError(); }}
+          autoComplete="email"
+          required
+          disabled={loading}
+          className={String(error.input || '').includes('email') ? 'is-error' : ''}
+        />
+        <label htmlFor="password">Password</label>
+        <div className="auth-card__password">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            name="password"
+            id="password"
+            value={credentials.password}
+            onChange={(e) => { handleChange(e); clearError(); }}
+            autoComplete="new-password"
+            required
+            disabled={loading}
+            className={error.input === 'password' ? 'is-error' : ''}
+          />
+          <EyeButton shown={showPassword} onClick={toggleShowPassword} />
         </div>
-        )}
-        <form className='auth-form' onSubmit={handleSignup}>
-          {!loading && (
-            <>
-              <button
-                type="button"
-                className="btn secondary google"
-                disabled={loading}
-                onClick={async () => {
-                  try {
-                    setLoading(true);
-                    const signupResponse = await continueWithGoogle(marketingConsent);
-                    if (signupResponse && signupResponse.redirect === 'create-musician-profile') {
-                      setAuthModal(false);
-                      setAuthClosable(true);
-                      navigate(artistDestination(null, FEATURES));
-                    } else {        
-                      setAuthModal(false);
-                      setAuthClosable(true);
-                    }
-                  } catch (err) {
-                    setError({ status: true, input: '', message: err?.error?.message || 'Google sign up failed' });
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-              >
-                <GoogleIcon />
-                Continue With Google
-              </button>
-              <div className="disclaimer">
-                <p>By signing up with Google, you agree to our <Link className='tc-link' to={'/terms-and-conditions'}>terms and conditions.</Link></p>
-              </div>
-              <div className="oauth-divider">
-                <span className="line" />
-                <h6>OR</h6>
-                <span className="line" />
-              </div>
-              <div className='input-group'>
-                <label htmlFor='name'>Name</label>
-                <input
-                  type='text'
-                  id='name'
-                  name='name'
-                  value={credentials.name}
-                  onChange={(e) => { handleChange(e); clearError(); }}
-                  placeholder='Your Name'
-                  className={`input ${loading ? 'disabled' : ''}`}
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <div className='input-group'>
-                <label htmlFor='email'>Email</label>
-                <input
-                  type='text'
-                  id='email'
-                  name='email'
-                  value={credentials.email}
-                  onChange={(e) => { handleChange(e); clearError(); }}
-                  placeholder='e.g. johnsmith@gigin.com'
-                  required
-                  className={`${error.input.includes('email') && 'error'} ${loading ? 'disabled' : ''}`}
-                  disabled={loading}
-                />
-              </div>
-              {/* <div className="input-group">
-                <PhoneField
-                  initialCountry="GB"
-                  value={credentials.phoneNumber}
-                  disabled={loading}
-                  onChange={(e164) => {
-                    setCredentials(prev => ({ ...prev, phoneNumber: e164 }));
-                    if (error.input === 'phoneNumber') clearError();
-                  }}
-                  error={error}
-                  loading={loading}
-                />
-                {(error.input.includes('phoneNumber') && error.message !== '*Phone number already in use.') && (
-                  <p className="error-msg">* Please enter a valid phone number</p>
-                )}
-              </div> */}
-              <div className='input-group'>
-                <label htmlFor='password'>
-                  Password
-                  <button className='btn text' type='button' onClick={togglePasswordInfo}>
-                    <QuestionCircleIcon />
-                  </button>
-                </label>
-                <div className={`password ${passwordFocused ? 'focused' : ''} ${loading ? 'disabled' : ''}`}>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name='password'
-                      id='password'
-                      value={credentials.password}
-                      onChange={(e) => { handleChange(e); clearError(); setShowPasswordInfo(false) }}
-                      placeholder='Password'
-                      required
-                      className={`${error.input === 'password' && 'error'} ${loading ? 'disabled' : ''}`}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                      disabled={loading}
-                    />
-                    <button type='button' className='btn tertiary' onClick={toggleShowPassword}>
-                      <SeeIcon />
-                    </button>
-                  </div>
-                {showPasswordInfo && <p className='password-info'>
-                  Password must be at least 6 characters long, include an uppercase character, a lowercase character, a number, and a special character.
-                </p>}
-              </div>
-            </>
-          )}
-          {error.status && (
-            <div className='error-box'>
-              <p className='error-msg'>{error.message}</p>
-            </div>
-          )}
-          {!loading && (
-          <div className='tick-boxes'>
-            <div className='input-group'>
-              <label>
-                <input
-                  type='checkbox'
-                  name='terms'
-                  style={{ marginRight: 5 }}
-                  checked={termsAccepted}
-                  onChange={(e) => setTermsAccepted(e.target.checked)}
-                  required
-                  disabled={loading}
-                />
-                <span>
-                  I accept Gigin's{' '}
-                  <Link className="tc-link" to="/terms-and-conditions" onClick={(e) => e.stopPropagation()}>
-                    terms and conditions
-                  </Link>.
-                </span>
-              </label>
-            </div>
-            <div className='input-group'>
-              <label>
-                <input
-                  type='checkbox'
-                  name='marketingConsent'
-                  style={{ marginRight: 5 }}
-                  checked={marketingConsent}
-                  onChange={(e) => setMarketingConsent(e.target.checked)}
-                  disabled={loading}
-                />
-                <span>I consent to receive marketing communications from Gigin.</span>
-              </label>
-            </div>
-          </div>
-          )}
-          {loading ? (
-            <LoadingSpinner />
-          ) : (
-              <button
-                type='submit'
-                className='btn primary'
-                disabled={error.status || !credentials.name || !credentials.email || !credentials.password || !termsAccepted}
-              >
-                Sign Up
-              </button>
-          )}
-        </form>
-        {(!loading && authClosable) && (
-          <button className='btn close tertiary' onClick={() => {if (!authClosable) return; setAuthModal(false)}}>
-            Close
-          </button>
-        )}
-      </div>
-      {!loading && (
-      <div className="change-auth-type">
-        <h4 className='change-auth-type-text'>Already have an account? </h4>
-        <button className='btn text' type='button' disabled={loading} onClick={() => { setAuthType('login'); clearCredentials(); clearError(); }}>Sign in</button>
-      </div>
-      )}
-    </div>
+        <p className="auth-card__hint">At least 6 characters, with a capital letter, a lowercase letter, a number and a symbol.</p>
+        {error.status ? <p className="auth-card__error" role="alert">{error.message}</p> : null}
+        <label className="auth-card__check">
+          <input
+            type="checkbox"
+            name="terms"
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
+            required
+            disabled={loading}
+          />
+          <span>
+            I agree to Gigin&apos;s <Link to="/terms-and-conditions" onClick={(e) => e.stopPropagation()}>terms and conditions</Link>
+          </span>
+        </label>
+        <label className="auth-card__check">
+          <input
+            type="checkbox"
+            name="marketingConsent"
+            checked={marketingConsent}
+            onChange={(e) => setMarketingConsent(e.target.checked)}
+            disabled={loading}
+          />
+          <span>Send me occasional news from Gigin</span>
+        </label>
+        <button type="submit" className="auth-card__primary" disabled={!canSubmit}>
+          {loading ? 'Creating account…' : 'Create account'}
+        </button>
+      </form>
+      <button type="button" className="auth-card__text" onClick={() => { setRole(''); clearError(); }}>Back</button>
+      <p className="auth-card__foot">Already on Gigin? <button type="button" className="auth-card__link" onClick={() => { setAuthType('login'); clearCredentials(); clearError(); }}>Sign in</button></p>
+    </AuthCard>
   );
 };

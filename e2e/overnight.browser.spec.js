@@ -573,7 +573,7 @@ test('7. a guest account links, and a name match merges only when asked', async 
   await page.locator('#email').fill(email);
   await page.locator('#password').fill(PASSWORD);
   await page.locator('input[name="terms"]').check();
-  await page.getByRole('button', { name: 'Sign Up' }).click();
+  await page.getByRole('button', { name: 'Create account' }).click();
   await expect.poll(async () => {
     const priv = await world.db.collection(`gigs/${world.secondId}/guestApplicants`).where('email', '==', email).limit(1).get();
     if (priv.empty) return '';
