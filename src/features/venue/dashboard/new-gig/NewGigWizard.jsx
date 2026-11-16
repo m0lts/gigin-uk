@@ -129,8 +129,9 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
             </Question>
           )}
           {labels[safeStep] === 'Fee & tickets' && (
-            <Question title="What are you paying?" sub="Artists see this on the listing.">
+            <Question title="The night" sub="Artists see this on the listing.">
               <p className="ng-tip">{tipFor(labels[safeStep])}</p>
+              <div className="ng-card">
               {FEATURES.payments && (
                 <div className="ng-kind">
                   <button type="button" className={draft.pay === 'fee' ? 'is-on' : ''} onClick={() => patch({ pay: 'fee' })}><strong>I'll pay a fee</strong><span>Paid when you confirm them.</span></button>
@@ -151,6 +152,7 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
                   ))}
                 </div>
               )}
+              </div>
             </Question>
           )}
           {labels[safeStep] === "Who's playing" && (
@@ -176,13 +178,15 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
             </Question>
           )}
           {labels[safeStep] === 'Listing' && (
-            <Question title="What should the listing say?" sub="This is what artists read before they apply.">
+            <Question title="The night" sub="This is what artists read before they apply.">
               <p className="ng-tip">{tipFor('Listing')}</p>
-              <input className="ng-input" placeholder="Title" value={draft.title} onChange={(event) => patch({ title: event.target.value })} />
-              <textarea className="ng-input" maxLength={250} rows={4} placeholder="Description" value={draft.description} onChange={(event) => patch({ description: event.target.value.slice(0, 250) })} />
-              <div className="ng-chips">{LOOKING_FOR.map((option) => <button key={option} type="button" className={draft.lookingFor.includes(option) ? 'is-on' : ''} onClick={() => patch({ lookingFor: draft.lookingFor.includes(option) ? draft.lookingFor.filter((item) => item !== option) : [...draft.lookingFor, option] })}>{option}</button>)}</div>
-              <div className="ng-chips">{GENRES.map((option) => <button key={option} type="button" className={draft.genres.includes(option) ? 'is-on' : ''} onClick={() => patch({ genres: draft.genres.includes(option) ? draft.genres.filter((item) => item !== option) : [...draft.genres, option] })}>{option}</button>)}</div>
-              <div className="ng-toggle-row"><span>Show on my venue profile</span><button type="button" className={`ng-switch${draft.showOnProfile ? ' is-on' : ''}`} onClick={() => patch({ showOnProfile: !draft.showOnProfile })} /></div>
+              <div className="ng-card">
+                <label className="ng-field"><span>Name</span><input className="ng-input" placeholder="Title" value={draft.title} onChange={(event) => patch({ title: event.target.value })} /></label>
+                <label className="ng-field"><span>About the night</span><textarea className="ng-input" maxLength={250} rows={4} placeholder="Description" value={draft.description} onChange={(event) => patch({ description: event.target.value.slice(0, 250) })} /></label>
+                <div className="ng-chips">{LOOKING_FOR.map((option) => <button key={option} type="button" className={draft.lookingFor.includes(option) ? 'is-on' : ''} onClick={() => patch({ lookingFor: draft.lookingFor.includes(option) ? draft.lookingFor.filter((item) => item !== option) : [...draft.lookingFor, option] })}>{option}</button>)}</div>
+                <div className="ng-chips">{GENRES.map((option) => <button key={option} type="button" className={draft.genres.includes(option) ? 'is-on' : ''} onClick={() => patch({ genres: draft.genres.includes(option) ? draft.genres.filter((item) => item !== option) : [...draft.genres, option] })}>{option}</button>)}</div>
+                <div className="ng-toggle-row"><span>Show on my venue profile</span><button type="button" className={`ng-switch${draft.showOnProfile ? ' is-on' : ''}`} aria-pressed={draft.showOnProfile} onClick={() => patch({ showOnProfile: !draft.showOnProfile })} /></div>
+              </div>
             </Question>
           )}
           {labels[safeStep] === 'Review' && (

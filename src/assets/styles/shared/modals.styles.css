@@ -1460,6 +1460,17 @@ textarea.ng-input { height: auto; padding: 10px; }
 
 .ng-wizard .ng-field span { font-size: 13px; color: #5B606B; }
 
+.ng-wizard .ng-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ng-wizard .ng-chips button {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid #E5E7EB;
+  background: #fff;
+}
+.ng-wizard .ng-chips button.is-on { background: #111317; color: #fff; border-color: #111317; }
+.ng-wizard textarea.ng-input { border-radius: 14px; min-height: 120px; }
+
 @media (max-width: 767.98px) {
   .ng-wizard__top { padding: 16px; align-items: flex-start; }
   .ng-wizard__steps { justify-content: flex-start; margin: 0; }
