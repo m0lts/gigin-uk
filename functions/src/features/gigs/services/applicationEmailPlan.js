@@ -1,5 +1,10 @@
 const WINDOW_MS = 60 * 60 * 1000;
 
+/** The API sends "Listen and decide". This Cloud Function copy stays off. */
+export function sendsReviewApplicationEmail() {
+  return false;
+}
+
 export function planRecipientWindow({now, window, applicantIds, viewedIds}) {
   const fresh = [];
   for (const id of applicantIds || []) {

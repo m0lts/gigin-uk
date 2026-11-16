@@ -1,8 +1,7 @@
 /* eslint-disable */
 import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
-import { earliestFlush, planFlush, planRecipientWindow } from "./applicationEmailPlan.js";
+import { earliestFlush, planFlush, planRecipientWindow, sendsReviewApplicationEmail } from "./applicationEmailPlan.js";
 import { durableEmailImageUrl } from "../../../shared/emailImages.js";
-
 function appOrigin() {
   return String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
 }
@@ -10,6 +9,7 @@ const FROM = "Gigin <notifications@giginmusic.com>";
 const ZONE = "Europe/London";
 
 export async function ingestNewApplicants(gigId, applicantIds) {
+  if (!sendsReviewApplicationEmail()) return;
   const ids = [...new Set((applicantIds || []).filter(Boolean))];
   if (!gigId || !ids.length) return;
   const gigRef = db.collection("gigs").doc(gigId);
@@ -23,6 +23,7 @@ export async function ingestNewApplicants(gigId, applicantIds) {
 }
 
 export async function flushDueApplicationEmails() {
+  if (!sendsReviewApplicationEmail()) return;
   const snap = await db.collection("gigs")
     .where("applicationEmailWindow._flushAt", "<=", Timestamp.now())
     .limit(40)

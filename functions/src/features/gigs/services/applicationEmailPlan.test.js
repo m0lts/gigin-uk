@@ -4,6 +4,7 @@ import {
   earliestFlush,
   planFlush,
   planRecipientWindow,
+  sendsReviewApplicationEmail,
 } from "./applicationEmailPlan.js";
 
 const NOW = 1_700_000_000_000;
@@ -98,4 +99,8 @@ test("earliest flush is the soonest queued window", () => {
     three: {until: NOW + 2000, queued: ["b"]},
   });
   assert.equal(at, NOW + 2000);
+});
+
+test("the Cloud Function review application email stays off", () => {
+  assert.equal(sendsReviewApplicationEmail(), false);
 });
