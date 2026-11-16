@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { GENRES, LOOKING_FOR, activeSets } from './useNewGigDraft';
 import { dateChip, initials } from './newGigBits';
+import { wizardStepLabel } from './newGigSteps';
 import { FEATURES } from '../../../../config/features';
 
 const FIND_STEPS = ['Start', 'Date & time', 'Fee & tickets', 'Listing', 'Review'];
@@ -47,7 +48,7 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
                 <button type="button" disabled={index > step} aria-current={state === 'current' ? 'step' : undefined} onClick={() => index <= step && setStep(index)}>
                   <span className={`ng-step ${state}`}>{state === 'done' ? '✓' : index + 1}</span>
                   <span>
-                    <strong>{label}</strong>
+                    <strong>{wizardStepLabel(label)}</strong>
                     {state === 'done' && <em>{summaryFor(draft, label)}</em>}
                   </span>
                 </button>
