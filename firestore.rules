@@ -50,12 +50,10 @@ service cloud.firestore {
       match /artistCRM/{entryId} {
         // Only the authenticated owner can read their own CRM entries
         allow read: if request.auth != null && request.auth.uid == userId;
-        // Create: owner only, with required fields and no server-only fields
-        allow create: if request.auth != null && request.auth.uid == userId;
-        // Update: owner only, cannot modify server-only fields
-        allow update: if request.auth != null && request.auth.uid == userId;
-        // Delete: owner only
-        allow delete: if request.auth != null && request.auth.uid == userId;
+        // A view-only staff member can read this book and cannot change it.
+        allow create, update, delete: if request.auth != null
+          && request.auth.uid == userId
+          && canWriteOwnContacts(userId);
       }
       
     }
@@ -126,12 +124,9 @@ service cloud.firestore {
             isActiveVenueMemberTop(request.auth.uid, venueId)
           );
 
-        // Create: venue owner OR active member, with required fields and no server-only fields
+        // Create: owner, or an active member who is not view-only.
         allow create: if request.auth != null
-          && (
-            isVenueOwnerTop(request.auth.uid, venueId) ||
-            isActiveVenueMemberTop(request.auth.uid, venueId)
-          )
+          && canWriteVenueContacts(request.auth.uid, venueId)
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
           && !request.resource.data.keys().hasAny([
@@ -148,12 +143,9 @@ service cloud.firestore {
           && (!request.resource.data.keys().hasAny(['other']) || request.resource.data.other == null || request.resource.data.other is string)
           && (!request.resource.data.keys().hasAny(['tags']) || request.resource.data.tags is list);
 
-        // Update: venue owner OR active member, cannot modify server-only fields
+        // Update: owner, or an active member who is not view-only.
         allow update: if request.auth != null
-          && (
-            isVenueOwnerTop(request.auth.uid, venueId) ||
-            isActiveVenueMemberTop(request.auth.uid, venueId)
-          )
+          && canWriteVenueContacts(request.auth.uid, venueId)
           && !(
             request.resource.data
               .diff(resource.data)
@@ -176,12 +168,9 @@ service cloud.firestore {
           && (!request.resource.data.keys().hasAny(['other']) || request.resource.data.other == null || request.resource.data.other is string)
           && (!request.resource.data.keys().hasAny(['tags']) || request.resource.data.tags is list);
 
-        // Delete: venue owner OR active member
+        // Delete: owner, or an active member who is not view-only.
         allow delete: if request.auth != null
-          && (
-            isVenueOwnerTop(request.auth.uid, venueId) ||
-            isActiveVenueMemberTop(request.auth.uid, venueId)
-          );
+          && canWriteVenueContacts(request.auth.uid, venueId);
       }
     }
 
@@ -197,6 +186,63 @@ service cloud.firestore {
     function isActiveVenueMemberTop(uid, venueId) {
       let memberPath = /databases/$(database)/documents/venueProfiles/$(venueId)/members/$(uid);
       return exists(memberPath) && get(memberPath).data.status == "active";
+    }
+
+    function contactPermitsWrite(member) {
+      let perms = member.permissions;
+      return member.status == "active"
+        && (
+          !member.keys().hasAny(["permissions"])
+          || !(perms is map)
+          || perms["gigs.create"] == true
+          || perms["gigs.update"] == true
+          || perms["gigs.applications.manage"] == true
+          || perms["gigs.invite"] == true
+          || perms["reviews.create"] == true
+          || perms["gigs.pay"] == true
+          || perms["finances.read"] == true
+          || perms["finances.update"] == true
+          || perms["venue.update"] == true
+          || perms["members.invite"] == true
+          || perms["members.update"] == true
+        );
+    }
+
+    function memberCanWriteContacts(uid, venueId) {
+      let memberPath = /databases/$(database)/documents/venueProfiles/$(venueId)/members/$(uid);
+      return exists(memberPath) && contactPermitsWrite(get(memberPath).data);
+    }
+
+    function canWriteVenueContacts(uid, venueId) {
+      return isVenueOwnerTop(uid, venueId) || memberCanWriteContacts(uid, venueId);
+    }
+
+    function ownContactVenueAllows(userId, index) {
+      let userData = get(/databases/$(database)/documents/users/$(userId)).data;
+      let venueId = userData.keys().hasAny(["venueProfiles"])
+        && userData.venueProfiles is list
+        && userData.venueProfiles.size() > index
+        && userData.venueProfiles[index] is string
+          ? userData.venueProfiles[index]
+          : "";
+      let venuePath = /databases/$(database)/documents/venueProfiles/$(venueId);
+      let memberPath = /databases/$(database)/documents/venueProfiles/$(venueId)/members/$(userId);
+      return venueId != "" && (
+        !exists(venuePath)
+        || isVenueOwnerTop(userId, venueId)
+        || !exists(memberPath)
+        || get(memberPath).data.status != "active"
+        || memberCanWriteContacts(userId, venueId)
+      );
+    }
+
+    function canWriteOwnContacts(userId) {
+      let userData = get(/databases/$(database)/documents/users/$(userId)).data;
+      let hasList = userData.keys().hasAny(["venueProfiles"]) && userData.venueProfiles is list;
+      let count = hasList ? userData.venueProfiles.size() : 0;
+      return count == 0
+        || ownContactVenueAllows(userId, 0)
+        || (count > 1 && ownContactVenueAllows(userId, 1));
     }
      
     match /venueInvites/{inviteId} {

@@ -3,6 +3,7 @@ import express from "express";
 import { db, admin, FieldValue } from "../config/admin.js";
 import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
+import { assertContactWrite } from "../utils/permissions.js";
 
 const router = express.Router();
 
@@ -108,6 +109,7 @@ async function adminAuthUser(email) {
 
 router.post("/merge", requireAuth, asyncHandler(async (req, res) => {
   const caller = req.auth.uid;
+  await assertContactWrite(db, caller);
   const crmEntryId = String(req.body?.crmEntryId || "");
   const artistId = String(req.body?.artistId || "");
   if (!crmEntryId || !artistId) return res.status(400).json({ error: "A contact and an artist are required." });

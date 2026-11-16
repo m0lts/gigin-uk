@@ -48,6 +48,29 @@ export function viewOnlyPermissions() {
     return { ...PERM_DEFAULTS };
 }
 
+const CONTACT_WRITE_KEYS = PERM_KEYS.filter((key) => key !== "gigs.read");
+
+/** A missing permissions map is an older full member. View-only has every write flag false. */
+export function memberCanWriteContacts(permissions) {
+    if (!permissions || typeof permissions !== "object") return true;
+    const perms = sanitizePermissions(permissions);
+    return CONTACT_WRITE_KEYS.some((key) => perms[key] === true);
+}
+
+/** Venues are { owner, active, permissions }. */
+export function contactWritesAllowed(venues) {
+    const list = Array.isArray(venues) ? venues : [];
+    if (list.length === 0) return true;
+    let viewOnlyMember = false;
+    for (const venue of list) {
+        if (venue?.owner) return true;
+        if (!venue?.active) continue;
+        if (memberCanWriteContacts(venue.permissions)) return true;
+        viewOnlyMember = true;
+    }
+    return !viewOnlyMember;
+}
+
 const NIGHT_ACTION_PERMISSION = {
     accept: "gigs.applications.manage",
     decline: "gigs.applications.manage",

@@ -24,6 +24,60 @@ export function viewOnlyPermissions() {
     return { ...PERM_DEFAULTS };
 }
 
+const CONTACT_WRITE_KEYS = PERM_KEYS.filter((key) => key !== "gigs.read");
+
+/** A missing permissions map is an older full member. View-only has every write flag false. */
+export function memberCanWriteContacts(permissions) {
+    if (!permissions || typeof permissions !== "object") return true;
+    const perms = sanitizePermissions(permissions);
+    return CONTACT_WRITE_KEYS.some((key) => perms[key] === true);
+}
+
+/**
+ * Venues are { owner, active, permissions }.
+ * Someone with no venue, or any venue they can write for, can write contacts.
+ * An active view-only membership, and no writable venue, cannot.
+ */
+export function contactWritesAllowed(venues) {
+    const list = Array.isArray(venues) ? venues : [];
+    if (list.length === 0) return true;
+    let viewOnlyMember = false;
+    for (const venue of list) {
+        if (venue?.owner) return true;
+        if (!venue?.active) continue;
+        if (memberCanWriteContacts(venue.permissions)) return true;
+        viewOnlyMember = true;
+    }
+    return !viewOnlyMember;
+}
+
+export async function assertContactWrite(db, uid) {
+    const userSnap = await db.doc(`users/${uid}`).get();
+    const raw = userSnap.exists ? userSnap.data()?.venueProfiles : [];
+    const ids = Array.isArray(raw)
+        ? raw.map((entry) => (typeof entry === "string" ? entry : entry?.id)).filter(Boolean)
+        : [];
+    const venues = [];
+    for (const venueId of ids) {
+        const venueSnap = await db.doc(`venueProfiles/${venueId}`).get();
+        if (!venueSnap.exists) continue;
+        const venue = venueSnap.data() || {};
+        const owner = venue.createdBy === uid || venue.userId === uid;
+        const memberSnap = await db.doc(`venueProfiles/${venueId}/members/${uid}`).get();
+        const member = memberSnap.exists ? (memberSnap.data() || {}) : null;
+        venues.push({
+            owner,
+            active: Boolean(member) && member.status === "active",
+            permissions: member ? member.permissions : undefined,
+        });
+    }
+    if (contactWritesAllowed(venues)) return true;
+    const error = new Error("PERMISSION_DENIED: contacts are read-only");
+    error.code = "permission-denied";
+    error.statusCode = 403;
+    throw error;
+}
+
 const NIGHT_ACTION_PERMISSION = {
     accept: "gigs.applications.manage",
     decline: "gigs.applications.manage",
