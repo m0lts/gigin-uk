@@ -247,10 +247,27 @@ export const useAuth = () => {
   };
 
   const signup = async (credentials, marketingConsent) => {
+    let credential;
     try {
-      const user = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
-      await sendVerificationEmailApi({ actionUrl: `${window.location.origin}` });
-      const userRef = doc(firestore, 'users', user.user.uid);
+      credential = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
+    } catch (error) {
+      const msg = error?.customData?.message || error?.message || "";
+      const unverified = error?.code === "auth/email-not-verified" || msg.includes("auth/email-not-verified");
+      if (!unverified || !auth.currentUser) throw { error };
+      credential = { user: auth.currentUser };
+    }
+    let emailSent = false;
+    try {
+      await credential.user.getIdToken();
+      await sendVerificationEmailApi();
+      emailSent = true;
+    } catch (error) {
+      const code = error?.payload?.code || error?.code || error?.message || "unknown";
+      console.error("verification email", code);
+    }
+    try { sessionStorage.setItem("giginVerifyEmailFailed", emailSent ? "0" : "1"); } catch { /* ignore */ }
+    try {
+      const userRef = doc(firestore, 'users', credential.user.uid);
       await setDoc(userRef, {
         name: credentials.name || '',
         marketingConsent: !!marketingConsent,
@@ -258,15 +275,10 @@ export const useAuth = () => {
       }, { merge: true });
       const redirect = sessionStorage.getItem('redirect');
       if (redirect) sessionStorage.removeItem('redirect');
-      navigate(artistLoginRedirect(redirect, user, FEATURES));
+      navigate(artistLoginRedirect(redirect, credential, FEATURES));
       sessionStorage.setItem('newUser', true);
-      return { needsEmailVerify: true, redirect };
+      return { needsEmailVerify: true, emailSent, redirect };
     } catch (error) {
-      const msg = error?.customData?.message || error?.message || "";
-      if (msg.includes("auth/email-not-verified")) {
-        toast.error("Please verify your email to continue.");
-        return;
-      }
       throw { error };
     }
   };

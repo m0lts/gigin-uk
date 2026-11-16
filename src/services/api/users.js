@@ -14,8 +14,8 @@ export function getPhoneExistsBoolean({ phoneNumber }) {
   return post('/users/getPhoneExistsBoolean', { body: { phoneNumber } });
 }
 
-export function sendVerificationEmail({ actionUrl }) {
-  return post('/users/sendVerificationEmail', { body: { actionUrl } });
+export function sendVerificationEmail() {
+  return post('/users/sendVerificationEmail', { body: {} });
 }
 
 export function updateUserArrayField({ field, op, value }) {

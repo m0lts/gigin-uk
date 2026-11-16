@@ -89,7 +89,7 @@ export const EmailActionHandler = ({ user }) => {
         detail: "Please wait while we send a new verification email.",
       });
     try {
-      await sendVerificationEmail({ actionUrl: window.location.origin });
+      await sendVerificationEmail();
       toast.success("Verification email sent.");
     } catch (e) {
       const msg = e?.message || "Failed to send verification email.";

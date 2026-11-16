@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { admin, db, FieldValue } from "../config/admin.js";
 import { getStripe } from "../lib/stripeClient.js";
 import { queueMail } from "../lib/queueMail.js";
+import { verificationContinueUrl } from "../lib/verificationLink.js";
 
 const router = express.Router();
 
@@ -49,17 +50,26 @@ router.post("/getPhoneExistsBoolean", asyncHandler(async (req, res) => {
 // POST /api/users/sendVerificationEmail (auth required)
 router.post("/sendVerificationEmail", requireAuth, asyncHandler(async (req, res) => {
   const uid = req.auth.uid;
-  const actionUrl = (req.body?.actionUrl || "").toString();
 
   const userRecord = await admin.auth().getUser(uid);
   if (!userRecord.email) {
     return res.status(403).json({ error: "PERMISSION_DENIED", message: "no email on user" });
   }
 
-  const link = await admin.auth().generateEmailVerificationLink(userRecord.email, {
-    url: actionUrl,
-    handleCodeInApp: false,
-  });
+  let link;
+  try {
+    link = await admin.auth().generateEmailVerificationLink(userRecord.email, {
+      url: verificationContinueUrl(),
+      handleCodeInApp: false,
+    });
+  } catch (error) {
+    const code = error?.code || error?.errorInfo?.code || "auth/internal-error";
+    console.error("verification email", code);
+    return res.status(400).json({
+      error: "Could not send the verification email.",
+      code,
+    });
+  }
 
   const subject = "Verify your email";
   const text = `Hi,\n\nPlease confirm your address to finish setting up your Gigin account.\n\n${link}\n\nIf you didn’t request this, you can safely ignore this email.`;

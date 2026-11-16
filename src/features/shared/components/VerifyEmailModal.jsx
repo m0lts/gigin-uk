@@ -13,6 +13,9 @@ export const  VerifyEmailModal = ({ setAuthModal, onClose }) => {
 
   const [sending, setSending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [sendFailed, setSendFailed] = useState(() => {
+    try { return sessionStorage.getItem("giginVerifyEmailFailed") === "1"; } catch { return false; }
+  });
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -50,12 +53,16 @@ export const  VerifyEmailModal = ({ setAuthModal, onClose }) => {
     }
     setSending(true);
     try {
-      await sendVerificationEmail({ actionUrl: window.location.origin });
+      await sendVerificationEmail();
+      try { sessionStorage.setItem("giginVerifyEmailFailed", "0"); } catch { /* ignore */ }
+      setSendFailed(false);
       toast.success("Verification email sent.");
       setCooldown(30);
     } catch (e) {
-      const msg = e?.message || "Failed to send verification email.";
-      toast.error(msg);
+      const code = e?.payload?.code || e?.code || e?.message || "unknown";
+      console.error("verification email", code);
+      try { sessionStorage.setItem("giginVerifyEmailFailed", "1"); } catch { /* ignore */ }
+      setSendFailed(true);
     } finally {
       setSending(false);
     }
@@ -71,7 +78,9 @@ export const  VerifyEmailModal = ({ setAuthModal, onClose }) => {
       icon="mail"
       closable
       onClose={close}
-      lede={<>Tap the link we sent to <strong>{email}</strong> to finish setting up. You can close this window.</>}
+      lede={sendFailed
+        ? "We couldn't send the email. Try Resend."
+        : <>Tap the link we sent to <strong>{email}</strong> to finish setting up. You can close this window.</>}
     >
       {isGmail(email) ? <a className="auth-card__primary" href="https://mail.google.com" target="_blank" rel="noreferrer">Open Gmail</a> : null}
       <div className="auth-card__actions">
