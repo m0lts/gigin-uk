@@ -77,6 +77,83 @@ export function promoIsIncomplete(promo) {
 
 const BOOKED = new Set(["accepted", "confirmed", "paid"]);
 
+function listed(parts) {
+  const items = (parts || []).filter(Boolean);
+  if (items.length <= 1) return items[0] || "";
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+/** "Maya needs a photo and a track by Thu 26 Nov." */
+export function promoMissingSentence(rows) {
+  return (rows || []).filter((row) => row?.name && row.missing?.length).map((row) => {
+    const due = row.dueLabel ? ` by ${row.dueLabel}` : "";
+    return `${row.name} needs ${listed(row.missing)}${due}.`;
+  }).join(" ");
+}
+
+/** Night line, then one line of each booked act's bio. An empty set stays unannounced. */
+export function promoCaption({ title, acts }) {
+  const lines = [];
+  if (title) lines.push(String(title));
+  for (const act of acts || []) {
+    if (!act?.booked) {
+      lines.push("The act is still to be announced.");
+      continue;
+    }
+    const bio = String(act.bio || "").split(/\n/).map((line) => line.trim()).find(Boolean);
+    if (bio) lines.push(act.name ? `${act.name}: ${bio}` : bio);
+  }
+  return lines.join("\n");
+}
+
+export function promoReminderCopy({ firstName, venueName, gigName, dueLabel, manageUrl }) {
+  const when = dueLabel ? ` by ${dueLabel}` : "";
+  const need = `${venueName || "The venue"} still needs a bio, a photo and a track for ${gigName || "the gig"}${when}.`;
+  return {
+    subject: `Your promo for ${gigName || "the gig"} is due ${dueLabel || "soon"}`,
+    preheader: `${venueName || "The venue"} still needs a bio, a photo and a track${when}.`,
+    eyebrow: "PROMO",
+    heading: "Send your promo",
+    paras: [`Hi ${firstName || "there"},`, need],
+    button: ["Send your promo", manageUrl],
+    buttonDark: true,
+    footer: `Sent by Gigin for ${venueName || "the venue"}.`,
+  };
+}
+
+export function safeZipName(name) {
+  return String(name || "file").replace(/[^\w.\-]+/g, "-").replace(/^\.+/, "").slice(0, 80) || "file";
+}
+
+function promoFilePath(path, applicationId) {
+  const value = String(path || "");
+  if (!applicationId || value.includes("..") || value.includes("\\")) return false;
+  return value.startsWith(`guest-applications/${applicationId}/`);
+}
+
+/** Text file plus any stored photos and track. Links stay in the text file. */
+export function promoZipPlan(acts) {
+  const entries = [];
+  for (const act of acts || []) {
+    const folder = safeZipName(act.name || "act");
+    const lines = [act.name || "Act"];
+    lines.push(act.bio ? `Bio:\n${act.bio}` : "Bio: not sent");
+    if (act.videoUrl) lines.push(`Video: ${act.videoUrl}`);
+    if (act.played) lines.push(`Played: ${act.played}`);
+    if (act.track?.url && !act.track?.path) lines.push(`Track: ${act.track.url}`);
+    entries.push({ name: `${folder}/promo.txt`, text: `${lines.join("\n")}\n` });
+    (act.photos || []).forEach((photo, index) => {
+      if (!promoFilePath(photo?.path, act.id)) return;
+      entries.push({ name: `${folder}/${index + 1}-${safeZipName(photo.name || "photo")}`, path: photo.path });
+    });
+    if (promoFilePath(act.track?.path, act.id)) {
+      entries.push({ name: `${folder}/track-${safeZipName(act.track.name || "track")}`, path: act.track.path });
+    }
+  }
+  return entries;
+}
+
 /** Booked acts that still owe a bio, a photo, or a track. */
 export function bookedPromoWaiting(acts) {
   return (acts || []).filter((act) => {

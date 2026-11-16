@@ -1,4 +1,6 @@
+import { auth } from '@lib/firebase';
 import { post } from '../http';
+import { joinApiUrl, normalizeBaseUrl } from '../http/url';
 
 // Base: /api/gigs
 
@@ -96,6 +98,32 @@ export function undoCloseNightApplications({ rootGigId }) {
 
 export function reopenNightApplications({ rootGigId }) {
   return post(`/gigs/${rootGigId}/reopen`, { body: {} });
+}
+
+export function sendPromoReminder({ rootGigId, applicantId }) {
+  return post(`/gigs/${rootGigId}/promo-reminder`, { body: { applicantId } });
+}
+
+export async function downloadPromoZip({ rootGigId, applicantId, filename }) {
+  const base = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL);
+  const query = applicantId ? `?applicant=${encodeURIComponent(applicantId)}` : '';
+  const token = await auth.currentUser?.getIdToken();
+  const res = await fetch(joinApiUrl(base, `/gigs/${rootGigId}/promo.zip${query}`), {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    throw new Error(payload?.error || payload?.message || 'Could not download the promo.');
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || 'promo.zip';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export function saveNightSoundTech({ rootGigId, soundTech }) {

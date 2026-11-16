@@ -25,6 +25,7 @@ import { placeLoggedInApplication, acceptApplication, assignApplication, decline
 import { assertVenueCanOperate, assertVenueCanPublishNights } from "../lib/venueApproval.js";
 import { readGigsByIds, readNearbyGigs } from "../lib/gigReads.js";
 import { withAudioReadUrls } from "../lib/guestAssets.js";
+import { pipePromoZip, queuePromoReminder, readPromoNight } from "../lib/promoPack.js";
 
 function visibleApplicants(list, gigId, viewerId, showAll) {
   if (showAll) return list || [];
@@ -2117,6 +2118,20 @@ router.post("/:rootGigId/close/undo", requireAuth, asyncHandler(async (req, res)
 router.post("/:rootGigId/reopen", requireAuth, asyncHandler(async (req, res) => {
   await assertGigUpdate(req, req.params.rootGigId);
   res.json(await reopenApplications({ gigId: req.params.rootGigId }));
+}));
+
+router.get("/:rootGigId/promo.zip", requireAuth, asyncHandler(async (req, res) => {
+  const pack = await readPromoNight(req.params.rootGigId, req.auth.uid);
+  const applicantId = String(req.query.applicant || "");
+  const acts = applicantId
+    ? pack.acts.filter((act) => act.booked && String(act.id) === applicantId)
+    : pack.acts.filter((act) => act.booked);
+  pipePromoZip(res, acts, applicantId ? (acts[0]?.name || "promo") : pack.gigName);
+}));
+
+router.post("/:rootGigId/promo-reminder", requireAuth, asyncHandler(async (req, res) => {
+  const pack = await readPromoNight(req.params.rootGigId, req.auth.uid);
+  res.json({ data: await queuePromoReminder(pack, req.body?.applicantId) });
 }));
 
 router.post("/:rootGigId/sound-tech", requireAuth, asyncHandler(async (req, res) => {

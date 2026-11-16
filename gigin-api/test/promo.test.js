@@ -4,7 +4,11 @@ import {
   formatPromoDay,
   preparePromo,
   bookedPromoWaiting,
+  promoCaption,
   promoDueKey,
+  promoMissingSentence,
+  promoReminderCopy,
+  promoZipPlan,
   promoEditable,
   promoIsIncomplete,
   promoReminderDue,
@@ -81,6 +85,57 @@ test("sending promo needs the permission tick, a bio, photos, and a track", () =
   assert.equal(ready.permission.email, "maya@example.com");
   assert.ok(ready.permission.at);
   assert.equal(formatPromoDay("2026-11-26"), "Thu 26 Nov");
+});
+
+test("the promo caption uses the night and one line of each bio", () => {
+  const caption = promoCaption({
+    title: "Sunday Soul · Sunday 20 December at The Mill",
+    acts: [
+      { booked: true, name: "Maya", bio: "Songs from Cambridge\nSecond line" },
+      { booked: false },
+    ],
+  });
+  assert.match(caption, /Sunday Soul/);
+  assert.match(caption, /Maya: Songs from Cambridge/);
+  assert.doesNotMatch(caption, /Second line/);
+  assert.match(caption, /The act is still to be announced/);
+});
+
+test("the missing promo sentence names the act and the due date", () => {
+  assert.equal(
+    promoMissingSentence([{ name: "Maya", missing: ["a photo", "a track"], dueLabel: "Thu 26 Nov" }]),
+    "Maya needs a photo and a track by Thu 26 Nov.",
+  );
+});
+
+test("a promo zip keeps stored files and leaves outside paths out", () => {
+  const entries = promoZipPlan([{
+    id: "app-1",
+    name: "Maya Reid",
+    bio: "Songs",
+    photos: [{ path: "guest-applications/app-1/photo.jpg", name: "photo.jpg" }, { path: "../secret" }],
+    track: { path: "guest-applications/app-1/song.mp3", name: "song.mp3" },
+    videoUrl: "https://youtu.be/abc",
+  }]);
+  assert.deepEqual(entries.map((entry) => entry.name), [
+    "Maya-Reid/promo.txt",
+    "Maya-Reid/1-photo.jpg",
+    "Maya-Reid/track-song.mp3",
+  ]);
+  assert.match(entries[0].text, /https:\/\/youtu.be\/abc/);
+});
+
+test("a manual promo reminder uses the same copy as the scheduled one", () => {
+  const copy = promoReminderCopy({
+    firstName: "Maya",
+    venueName: "The Mill",
+    gigName: "Sunday Soul",
+    dueLabel: "Thu 26 Nov",
+    manageUrl: "https://giginmusic.com/gig/1/application/token",
+  });
+  assert.equal(copy.subject, "Your promo for Sunday Soul is due Thu 26 Nov");
+  assert.equal(copy.button[0], "Send your promo");
+  assert.match(copy.paras[1], /The Mill still needs a bio, a photo and a track/);
 });
 
 test("promo waiting counts booked acts that still owe a bio, a photo, or a track", () => {

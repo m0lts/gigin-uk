@@ -2,7 +2,7 @@
 import { schedule } from "../../../lib/schedule.js";
 import { db, FieldValue, Timestamp } from "../../../lib/admin.js";
 import { renderArtistEmail } from "../../../shared/artistEmails.js";
-import { formatPromoDay, londonDayKey, promoDueKey, promoReminderDue } from "../../../shared/promo.js";
+import { formatPromoDay, londonDayKey, promoDueKey, promoReminderCopy, promoReminderDue } from "../../../shared/promo.js";
 
 const FROM = "Gigin <noreply@giginmusic.com>";
 const ORIGIN = process.env.BASE_URL || "https://giginmusic.com";
@@ -40,19 +40,13 @@ export async function sendDuePromoReminders(now = new Date()) {
       if (!email.includes("@") || !token) continue;
       const dueLabel = formatPromoDay(promoDueKey(gig.startDateTime || gig.date, applicant.acceptedAt || priv.acceptedAt));
       const manage = `${ORIGIN}/gig/${gig.gigId}/application/${token}`;
-      const message = renderArtistEmail({
-        subject: `Your promo for ${gigName} is due ${dueLabel || "soon"}`,
-        preheader: `${venueName} still needs a bio, a photo and a track${dueLabel ? ` by ${dueLabel}` : ""}.`,
-        eyebrow: "PROMO",
-        heading: "Send your promo",
-        paras: [
-          `Hi ${String(priv.contactName || "there").split(/\s+/)[0]},`,
-          `${venueName} still needs a bio, a photo and a track for ${gigName}${dueLabel ? ` by ${dueLabel}` : ""}.`,
-        ],
-        button: ["Send your promo", manage],
-        buttonDark: true,
-        footer: `Sent by Gigin for ${venueName}.`,
-      });
+      const message = renderArtistEmail(promoReminderCopy({
+        firstName: String(priv.contactName || "there").split(/\s+/)[0],
+        venueName,
+        gigName,
+        dueLabel,
+        manageUrl: manage,
+      }));
       await db.collection("mail").add({ to: email, from: FROM, message });
       await privateRef.set({ promoReminderSentAt: FieldValue.serverTimestamp() }, { merge: true });
       sent += 1;

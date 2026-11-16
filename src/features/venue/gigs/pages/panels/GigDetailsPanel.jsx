@@ -29,6 +29,7 @@ import { SendGigDetailsTile } from '@features/venue/components/SendGigDetailsTil
 import { VenueHireTechSetupMainCard } from '@features/venue/gigs/components/VenueHireTechSetupMainCard';
 import { GigApplications } from '@features/venue/dashboard/GigApplications';
 import { NightApplyReview } from '@features/venue/gigs/components/NightApplyReview';
+import { NightPromo } from '@features/venue/gigs/components/NightPromo';
 import { isGuestApplyGig } from '@features/gig-discovery/guest/guestFormat';
 import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
 import { PressKitGigBlock } from '../../../../keep-profile/PressKit';
@@ -2250,7 +2251,13 @@ export function GigDetailsPanel({
               />
             ) : null
           ) : nightTab === 'promo' ? (
-            <p className="na-empty">Promo for this night.</p>
+            <NightPromo
+              rawGig={rawGig}
+              slots={nightSlots}
+              venue={venueForHire}
+              guestPrivate={privateBundle?.guests || {}}
+              onShowApplications={() => onNightTab?.('applications')}
+            />
           ) : (
             <NightApplyReview
               rawGig={rawGig}

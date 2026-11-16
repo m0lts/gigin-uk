@@ -79,6 +79,7 @@ function mergeGuest(app, guests) {
     contactName: app.contactName || priv.contactName || '',
     photoUrl: app.photoUrl || priv.photoUrl || priv.photo?.url || app.photo?.url || app.profilePicture || '',
     assets: app.assets?.length ? app.assets : (priv.assets || []),
+    promo: priv.promo || app.promo || null,
     actName: actName({ ...priv, ...app }),
   };
 }

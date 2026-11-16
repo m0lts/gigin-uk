@@ -214,6 +214,14 @@ export function venueGuestView(data = {}) {
     setLabel: data.setLabel || "",
     crmEntryId: data.crmEntryId || null,
     whatsapp: data.whatsapp === true || data.contacts?.whatsapp === true,
+    promo: data.promo ? {
+      bio: data.promo.bio || "",
+      photos: Array.isArray(data.promo.photos) ? data.promo.photos : [],
+      track: data.promo.track || null,
+      videoUrl: data.promo.videoUrl || "",
+      played: data.promo.played || "",
+      submittedAt: data.promo.submittedAt || null,
+    } : null,
   };
 }
 
