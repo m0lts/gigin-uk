@@ -9,9 +9,10 @@ import {
   publicLineup,
   readNight,
   slotGigId,
+  slotTaken,
   sortSlots,
 } from "./nightApplications.js";
-import { applicationNoticeMessage, planVenueNotice, shouldNotify } from "./venueApplicationNotice.js";
+import { actKind, applicationNoticeMessage, applicationReviewUrl, noticeTrack, planVenueNotice, shouldNotify } from "./venueApplicationNotice.js";
 import { appendPlayedAt, keepReminderHtml, markBookingCancelled } from "./keepProfile.js";
 import { bandMemberRow, icsAttachment, icsEvent, renderArtistEmail } from "./artistEmails.js";
 import { ownerName } from "./ownerName.js";
@@ -243,19 +244,38 @@ async function venueInbox(venue) {
   return email && String(email).includes("@") ? email : null;
 }
 
-function reviewUrl(rootId) {
-  const base = process.env.BASE_URL || "https://giginmusic.com";
-  return `${base}/venues/dashboard/gigs/gig-applications?gig=${rootId}`;
+function openSetLine(slots) {
+  const list = Array.isArray(slots) ? slots : [];
+  if (!list.length) return "";
+  const open = list.filter((slot) => !slotTaken(slot));
+  if (!open.length) return "No sets still open";
+  if (list.length < 2) return "The set is still open";
+  return open.map((slot) => {
+    const index = list.findIndex((entry) => slotGigId(entry) === slotGigId(slot));
+    return `Set ${index + 1}`;
+  }).join(", ");
 }
 
-function venueNoticeItem({ app, slots, gig, rootId }) {
-  const phrase = preferencePhrase(slots, app?.preferredSlotGigIds);
+function photoUrlOf(app) {
+  const direct = app?.photoUrl || app?.photo?.url || "";
+  return /^https?:\/\//i.test(String(direct)) ? String(direct) : "";
+}
+
+function venueNoticeItem({ app, slots, gig, rootId, othersWaiting = 0 }) {
+  const track = noticeTrack(app);
   return {
     applicantId: String(app?.id || ""),
     actName: actName(app),
-    nightDate: formatLong(gigDate(gig)),
-    preferredSet: phrase || ((slots || []).length < 2 ? "Only set" : "No preference"),
-    reviewUrl: reviewUrl(rootId),
+    gigName: gigTitle(gig),
+    photoUrl: photoUrlOf(app),
+    actType: actKind(app?.members),
+    trackUrl: track.trackUrl || "",
+    trackName: track.trackName || "",
+    message: String(app?.note || app?.applicationMessage || "").trim(),
+    played: String(app?.promo?.played || app?.played || "").trim(),
+    openSets: openSetLine(slots),
+    reviewUrl: applicationReviewUrl(rootId),
+    othersWaiting: Number(othersWaiting) || 0,
   };
 }
 
@@ -265,7 +285,12 @@ export async function notifyVenueOfNewApplication({ venueId, venue, app, slots, 
   const profile = venue?.email || venue?.createdBy || venue?.userId ? venue : await loadVenue(venueId);
   const to = await venueInbox(profile);
   if (!shouldNotify(to)) return { skipped: true };
-  const item = venueNoticeItem({ app, slots, gig, rootId });
+  const stored = await readNightApplications(rootId);
+  const othersWaiting = (stored.applications || []).filter((entry) => {
+    const status = String(entry?.status || "pending").toLowerCase();
+    return ["pending", "sent", ""].includes(status) && String(entry?.id) !== String(app?.id);
+  }).length;
+  const item = venueNoticeItem({ app, slots, gig, rootId, othersWaiting });
   const ref = db.doc(`venueApplicationNotices/${venueId}`);
   const now = Date.now();
   let batched = false;

@@ -2,17 +2,23 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   NOTICE_WINDOW_MS,
+  actKind,
   applicationNoticeMessage,
+  applicationReviewUrl,
+  noticeTrack,
   planVenueNotice,
   shouldNotify,
 } from "../lib/venueApplicationNotice.js";
 
-const item = (actName) => ({
+const item = (actName, extra = {}) => ({
   actName,
-  nightDate: "Friday 2 October",
-  preferredSet: "Set 2",
-  reviewUrl: `https://giginmusic.com/venues/dashboard/gigs/gig-applications?gig=${actName}`,
+  gigName: "Sunday Soul",
+  openSets: "Set 2",
+  message: "We would love this night.",
+  reviewUrl: "https://giginmusic.com/venues/dashboard/gigs/gig-applications?gig=night-1&tab=applications",
   applicantId: actName,
+  othersWaiting: 0,
+  ...extra,
 });
 
 test("the first application opens a window and waits to send", () => {
@@ -23,11 +29,13 @@ test("the first application opens a window and waits to send", () => {
   assert.equal(plan.previousMailId, null);
   assert.equal(plan.sendAt, now + NOTICE_WINDOW_MS);
   const message = applicationNoticeMessage(plan.items);
-  assert.equal(message.subject, "New application from Preference Act");
-  assert.match(message.text, /Preference Act/);
-  assert.match(message.text, /Friday 2 October/);
-  assert.match(message.text, /Set 2/);
-  assert.match(message.html, /Review the application/);
+  assert.equal(message.subject, "New request: Preference Act for Sunday Soul");
+  assert.match(message.text, /Preference Act for Sunday Soul/);
+  assert.match(message.text, /Sets still open: Set 2/);
+  assert.match(message.text, /Listen and decide/);
+  assert.match(message.html, /Listen and decide/);
+  assert.match(message.html, /tab=applications/);
+  assert.doesNotMatch(message.html, /Review the application/);
 });
 
 test("a second application inside the hour replaces the mail with one batch", () => {
@@ -42,7 +50,7 @@ test("a second application inside the hour replaces the mail with one batch", ()
   assert.equal(second.previousMailId, "mail-1");
   assert.equal(second.sendAt, now + NOTICE_WINDOW_MS);
   assert.deepEqual(second.items.map((row) => row.actName), ["Preference Act", "Later Act"]);
-  assert.equal(applicationNoticeMessage(second.items).subject, "2 new applications");
+  assert.equal(applicationNoticeMessage(second.items).subject, "2 new requests");
 });
 
 test("an application after the hour starts a new email", () => {
@@ -63,6 +71,23 @@ test("a venue with no inbox is skipped", () => {
   assert.equal(shouldNotify(""), false);
   assert.equal(shouldNotify("not-an-email"), false);
   assert.equal(shouldNotify("booker@venue.test"), true);
+});
+
+test("the request card uses a real track and leaves where they have played out until it exists", () => {
+  const message = applicationNoticeMessage([item("Maya", {
+    actType: "Duo",
+    trackUrl: "https://open.spotify.com/track/abc",
+    othersWaiting: 2,
+  })]);
+  assert.match(message.html, /https:\/\/open\.spotify\.com\/track\/abc/);
+  assert.doesNotMatch(message.html, /Where you've played/);
+  assert.match(message.text, /2 more requests are waiting/);
+  const played = applicationNoticeMessage([item("Maya", { played: "The Mill" })]);
+  assert.match(played.html, /The Mill/);
+  const file = noticeTrack({ assets: [{ name: "demo.mp3", contentType: "audio/mpeg" }] });
+  assert.equal(file.trackName, "demo.mp3");
+  assert.equal(actKind([{ name: "Maya" }, { name: "Jo" }]), "Duo");
+  assert.match(applicationReviewUrl("night-1"), /tab=applications/);
 });
 
 test("act names are escaped so the email cannot carry markup", () => {
