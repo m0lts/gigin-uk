@@ -16,7 +16,7 @@ const sourceRoot = path.join(repoRoot, "gigin-api", "lib");
 const destRoot = path.join(functionsDir, "src", "shared");
 
 /** Entry files under gigin-api/lib. Relative imports are copied too. */
-export const SHARED_ROOTS = ["artistEmails.js"];
+export const SHARED_ROOTS = ["artistEmails.js", "promo.js"];
 
 /**
  * @param {string} source
