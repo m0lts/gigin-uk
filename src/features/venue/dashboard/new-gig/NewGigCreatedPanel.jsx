@@ -38,7 +38,7 @@ export function NewGigCreatedPanel({
   });
 
   return (
-    <div className="ng-backdrop ng-backdrop--drawer" onClick={onClose}>
+    <div className="ng-backdrop ng-backdrop--drawer ng-share" onClick={onClose}>
       <aside className="ng-drawer" onClick={(event) => event.stopPropagation()} role="dialog" aria-label="Gig created">
         <header className="ng-drawer__head">
           <h2>{draft.title || primary?.gigName || 'New gig'}</h2>
@@ -47,7 +47,7 @@ export function NewGigCreatedPanel({
         <div className="ng-drawer__body">
           <div className="ng-created">
             <span className="ng-check">✓</span>
-            <h3>{booked ? 'Added to your calendar' : 'Gig created'}</h3>
+            <h3>{(docs || []).length > 1 ? `${docs.length} gigs added` : booked ? 'Added to your calendar' : 'Gig created'}</h3>
             <p>
               {booked
                 ? 'The details were saved on the gig.'
@@ -119,8 +119,8 @@ export function NewGigCreatedPanel({
             if (!primary) return;
             onClose();
             navigate('/venues/dashboard/gigs/gig-applications', { state: { gig: primary } });
-          }}>Open gig page</button>
-          <button type="button" className="ng-ghost" onClick={onClose}>Done</button>
+          }}>Go to the gig</button>
+          <button type="button" className="ng-ghost" onClick={onClose}>Back to calendar</button>
         </footer>
       </aside>
     </div>
