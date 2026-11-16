@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { auth } from '@lib/firebase';
+import { LaunchHeader } from '@features/shared/components/LaunchHeader';
 import { FEATURES } from './features';
 import { featureRedirectTarget } from './loginDestination';
 
@@ -19,6 +20,15 @@ export function LoginScreen({ setAuthModal, setAuthType, setAuthClosable, authTy
 export function FeatureRedirect({ user, setAuthModal, setAuthType, setAuthClosable }) {
   const emailVerified = !auth.currentUser || auth.currentUser.emailVerified !== false;
   const target = featureRedirectTarget(user, FEATURES, { emailVerified });
+  if (target.stay) {
+    return (
+      <LaunchHeader
+        setAuthModal={setAuthModal}
+        setAuthType={setAuthType}
+        setAuthClosable={setAuthClosable}
+      />
+    );
+  }
   if (target.path) return <Navigate to={target.path} replace />;
   return (
     <LoginScreen

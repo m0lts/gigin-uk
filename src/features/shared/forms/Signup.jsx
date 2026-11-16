@@ -145,7 +145,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
           type="button"
           className="auth-card__choice"
           onClick={() => {
-            setCredentials((current) => ({ ...current, signupAs: '' }));
+            setCredentials((current) => ({ ...current, signupAs: 'venue' }));
             setRole('venue');
           }}
         >

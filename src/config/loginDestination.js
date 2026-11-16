@@ -14,6 +14,43 @@ function isArtistIntent(user) {
   return intent === 'artist' || intent === 'musician';
 }
 
+function isVenueIntent(user) {
+  const intent = signupIntent(user);
+  return intent === 'venue' || intent === 'booker';
+}
+
+function artistRecords(user) {
+  const stored = Array.isArray(user?.artistProfiles) ? user.artistProfiles : [];
+  const objects = stored.filter((entry) => entry && typeof entry === 'object');
+  const ids = [
+    ...(Array.isArray(user?.artistProfileIds) ? user.artistProfileIds : []),
+    ...stored.filter((entry) => typeof entry === 'string'),
+  ].filter(Boolean);
+  return { objects, ids };
+}
+
+function hasArtist(user) {
+  const { objects, ids } = artistRecords(user);
+  return objects.length > 0 || ids.length > 0;
+}
+
+/**
+ * Sign-in waits until the user record and every linked profile have been read.
+ * A slow profile keeps this false, so the app stays on the loading skeleton.
+ */
+export function accountProfilesReady({
+  userLoaded = false,
+  artistExpected = 0,
+  artistLoaded = 0,
+  venueExpected = 0,
+  venueLoaded = 0,
+} = {}) {
+  if (!userLoaded) return false;
+  if (artistLoaded < artistExpected) return false;
+  if (venueLoaded < venueExpected) return false;
+  return true;
+}
+
 /**
  * The venue builder step saved on an unfinished profile.
  * Step numbers match the builder: public venues have an equipment step.
@@ -40,18 +77,24 @@ function savedReturnPath(stored, user, features) {
   return path;
 }
 
+function artistForDestination(user) {
+  const { objects, ids } = artistRecords(user);
+  const profiles = objects.length ? objects : ids.map((id) => ({ id }));
+  return { ...user, artistProfiles: profiles };
+}
+
 function artistHome(user, features) {
-  return features.keepProfile ? '/home' : artistDestination(user, features);
+  return features.keepProfile ? '/home' : artistDestination(artistForDestination(user), features);
 }
 
 /**
  * Someone who just logged in and has no artist or venue profile.
- * A venue signup, or a signup we cannot tell apart, finishes the venue builder.
- * A known artist signup uses the artist destination.
+ * Only a venue signup opens the builder. Anyone else stays on the homepage.
  */
 export function finishSetupPath(user, features = {}) {
-  if (isArtistIntent(user)) return artistHome(user, features);
-  return '/venues/add-venue';
+  if (isArtistIntent(user) || hasArtist(user)) return artistHome(user, features);
+  if (isVenueIntent(user)) return '/venues/add-venue';
+  return '/';
 }
 
 /**
@@ -65,15 +108,11 @@ export function loginLandingPath(user, features = {}, { hasArtistSession = false
   const saved = savedReturnPath(storedRedirect, user, features);
   if (saved) return saved;
 
-  const profiles = Array.isArray(user?.artistProfiles) ? user.artistProfiles : [];
-  if (profiles.length > 0) return artistHome(user, features);
-
   const venues = venueList(user);
   const unfinished = venues.filter((venue) => venue.completed === false);
   const finished = venues.filter((venue) => venue.completed !== false);
-  if (isArtistIntent(user) && finished.length === 0 && unfinished.length === 0) {
-    return artistHome(user, features);
-  }
+  const artist = isArtistIntent(user) || hasArtist(user);
+  if (artist) return artistHome(user, features);
   if (features.keepProfile && hasArtistSession && finished.length === 0 && unfinished.length === 0) {
     return '/home';
   }
@@ -113,10 +152,12 @@ export function loginLandingState(user) {
  */
 export function signedInHomeAction(user, features = {}, options = {}) {
   const path = loginLandingPath(user, features, options);
-  const settingUp = !path || path === '/' || String(path).startsWith('/venues/add-venue');
+  const chooser = path === '/' && !isArtistIntent(user) && !hasArtist(user) && !isVenueIntent(user) && venueList(user).length === 0;
+  const settingUp = !path || chooser || String(path || '').startsWith('/venues/add-venue');
   return {
     label: settingUp ? 'Continue setting up' : 'Go to dashboard',
     path,
+    chooser,
     verify: !path,
   };
 }
@@ -140,8 +181,9 @@ export function featureRedirectTarget(user, features = {}, options = {}) {
   const path = loginLandingPath(user, features, options);
   if (!path) return { authType: 'verify-email' };
   const bare = String(path).split('?')[0];
-  // These routes render FeatureRedirect again when their flag is off.
-  if ((bare === '/' && !features.marketingPages) || (bare === '/home' && !features.keepProfile)) {
+  // "/" with marketing off would render this redirect again. Stay signed in.
+  if (bare === '/' && !features.marketingPages) return { stay: true };
+  if (bare === '/home' && !features.keepProfile) {
     return { authType: options.emailVerified === false ? 'verify-email' : 'login' };
   }
   return { path };

@@ -62,6 +62,10 @@ export function SignedInHomeButton({ user, className, label, setAuthType, setAut
       setAuthType?.('verify-email');
       setAuthClosable?.(true);
       setAuthModal?.(true);
+    } else if (action.chooser) {
+      setAuthType?.('signup');
+      setAuthClosable?.(true);
+      setAuthModal?.(true);
     } else if (action.path) {
       const draft = action.path.startsWith('/venues/add-venue') ? loginLandingState(user) : null;
       navigate(action.path, draft ? { state: draft } : undefined);

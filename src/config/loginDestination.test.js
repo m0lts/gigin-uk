@@ -1,19 +1,81 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { accountInitials, featureRedirectTarget, finishSetupPath, loginLandingPath, loginLandingState, logoutDestination, signInNotice, signedInHomeAction, venueBuilderPath } from './loginDestination.js';
+import { accountInitials, accountProfilesReady, featureRedirectTarget, finishSetupPath, loginLandingPath, loginLandingState, logoutDestination, signInNotice, signedInHomeAction, venueBuilderPath } from './loginDestination.js';
 
-test('a login with no profile finishes venue setup', () => {
-  assert.equal(finishSetupPath({}), '/venues/add-venue');
-  assert.equal(finishSetupPath({ artistProfiles: [], venueProfiles: [] }), '/venues/add-venue');
+test('a login with no profile stays on the homepage unless they book live music', () => {
+  assert.equal(finishSetupPath({}), '/');
+  assert.equal(finishSetupPath({ artistProfiles: [], venueProfiles: [] }), '/');
   assert.equal(finishSetupPath({ signupAs: 'venue' }), '/venues/add-venue');
-  assert.equal(finishSetupPath({ accountType: '' }), '/venues/add-venue');
+  assert.equal(finishSetupPath({ accountType: '' }), '/');
+  assert.equal(loginLandingPath({ email: 'a@gigin.com' }), '/');
+  assert.equal(signedInHomeAction({ email: 'a@gigin.com' }).label, 'Continue setting up');
+  assert.equal(signedInHomeAction({ email: 'a@gigin.com' }).chooser, true);
+  assert.equal(signedInHomeAction({ email: 'a@gigin.com' }).path, '/');
+});
+
+test('artist sign-in opens the artist home', () => {
+  assert.equal(
+    loginLandingPath({ signupAs: 'artist', artistProfiles: [{ id: 'abc', slug: 'the-act' }] }, { keepProfile: false }),
+    '/artist/the-act',
+  );
+  assert.equal(
+    loginLandingPath({ artistProfileIds: ['abc'], artistProfiles: [{ id: 'abc' }] }, { keepProfile: true }),
+    '/home',
+  );
+  assert.equal(loginLandingPath({ signupAs: 'artist' }, { keepProfile: true }), '/home');
+});
+
+test('venue sign-in opens the venue home', () => {
+  assert.equal(loginLandingPath({ signupAs: 'venue', venueProfiles: [] }), '/venues/add-venue');
+  assert.equal(
+    loginLandingPath({ signupAs: 'venue', venueProfiles: [{ id: 'venue-1', completed: true, approvalStatus: 'approved' }] }),
+    '/venues/dashboard/gigs',
+  );
+  assert.equal(
+    loginLandingPath({ venueProfiles: [{ id: 'venue-1', completed: false, currentStep: 2 }] }),
+    '/venues/add-venue/venue-details',
+  );
+});
+
+test('a slow-loading profile waits instead of opening the venue builder', () => {
+  assert.equal(accountProfilesReady({
+    userLoaded: true,
+    artistExpected: 1,
+    artistLoaded: 0,
+    venueExpected: 0,
+    venueLoaded: 0,
+  }), false);
+  assert.equal(accountProfilesReady({
+    userLoaded: false,
+    artistExpected: 0,
+    artistLoaded: 0,
+    venueExpected: 1,
+    venueLoaded: 0,
+  }), false);
+  assert.equal(accountProfilesReady({
+    userLoaded: true,
+    artistExpected: 1,
+    artistLoaded: 1,
+    venueExpected: 1,
+    venueLoaded: 1,
+  }), true);
+  const pending = { email: 'a@gigin.com', artistProfileIds: ['abc'], artistProfiles: [] };
+  assert.equal(accountProfilesReady({
+    userLoaded: true,
+    artistExpected: 1,
+    artistLoaded: 0,
+    venueExpected: 0,
+    venueLoaded: 0,
+  }), false);
+  assert.notEqual(loginLandingPath({ ...pending, artistProfiles: [{ id: 'abc' }] }, { keepProfile: false }), '/venues/add-venue');
+  assert.equal(loginLandingPath({ ...pending, artistProfiles: [{ id: 'abc' }] }, { keepProfile: false }), '/artist/abc');
 });
 
 test('a keep-profile login with no artistProfiles on the user doc goes home', () => {
   const user = { artistProfiles: [], venueProfiles: [] };
   const features = { keepProfile: true };
-  assert.equal(loginLandingPath(user, features, { hasArtistSession: false }), '/venues/add-venue');
+  assert.equal(loginLandingPath(user, features, { hasArtistSession: false }), '/');
   assert.equal(loginLandingPath(user, features, { hasArtistSession: true }), '/home');
   assert.equal(loginLandingPath({}, features, { hasArtistSession: true }), '/home');
   assert.equal(
@@ -49,7 +111,7 @@ test('an unverified email stays signed in on the confirm card', () => {
 
 test('a verified venue account with no venue opens the builder', () => {
   assert.equal(loginLandingPath({ signupAs: 'venue', venueProfiles: [] }), '/venues/add-venue');
-  assert.equal(loginLandingPath({ email: 'a@gigin.com' }), '/venues/add-venue');
+  assert.equal(loginLandingPath({ email: 'a@gigin.com' }), '/');
   assert.equal(loginLandingState({ venueProfiles: [] }), null);
 });
 
@@ -100,6 +162,7 @@ test('the landing header offers setup or the dashboard', () => {
   assert.deepEqual(signedInHomeAction({ signupAs: 'venue', name: 'Maya Reid' }), {
     label: 'Continue setting up',
     path: '/venues/add-venue',
+    chooser: false,
     verify: false,
   });
   assert.equal(signedInHomeAction({ signupAs: 'venue' }, {}, { emailVerified: false }).label, 'Continue setting up');
@@ -134,6 +197,10 @@ test('a signed-out feature redirect opens sign-in, and a signed-in one follows t
   );
   assert.deepEqual(
     featureRedirectTarget({ signupAs: 'artist' }, { keepProfile: false, marketingPages: false }),
-    { authType: 'login' },
+    { stay: true },
+  );
+  assert.deepEqual(
+    featureRedirectTarget({ email: 'a@gigin.com' }, { marketingPages: false }),
+    { stay: true },
   );
 });

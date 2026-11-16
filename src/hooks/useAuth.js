@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { auth, firestore, googleProvider } from '@lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
-import { loginLandingPath, loginLandingState, logoutDestination } from '../config/loginDestination';
+import { accountProfilesReady, loginLandingPath, loginLandingState, logoutDestination } from '../config/loginDestination';
 import { getArtistHome, getProfileSession } from '@services/client-side/keepProfile';
 import { httpClient } from '@services/http/client';
 import { doc, getDoc, setDoc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore';
@@ -14,11 +14,9 @@ import { artistLoginRedirect } from '../config/artistDestination';
 
 const POST_LOGIN_EVENT = 'gigin-post-login';
 let postLoginPending = false;
-let postLoginStarted = 0;
 
 function beginPostLogin() {
   postLoginPending = true;
-  postLoginStarted = Date.now();
   window.dispatchEvent(new Event(POST_LOGIN_EVENT));
 }
 
@@ -121,10 +119,11 @@ export const useAuth = () => {
         setLoading(false);
         return;
       }
+      setLoading(true);
       const userDocRef = doc(firestore, 'users', firebaseUser.uid);
       userUnsubRef.current = onSnapshot(userDocRef, async (userSnap) => {
         if (!userSnap.exists()) {
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
+          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, profilesLoaded: true });
           setLoading(false);
           return;
         }
@@ -135,39 +134,54 @@ export const useAuth = () => {
           email: firebaseUser.email,
           ...restUserFields,
         };
-        if (Array.isArray(rawUser.venueProfiles) && rawUser.venueProfiles.length) {
-          const venueProfiles = await Promise.all(
-            rawUser.venueProfiles.map(async (venueId) => {
-              const ref = doc(firestore, 'venueProfiles', venueId);
-              const snap = await getDoc(ref);
-              return snap.exists() ? { id: venueId, ...snap.data() } : null;
-            })
-          );
-          userData.venueProfiles = venueProfiles.filter(Boolean);
-        }
+        const venueIds = Array.isArray(rawUser.venueProfiles)
+          ? rawUser.venueProfiles.map((entry) => (typeof entry === 'string' ? entry : entry?.id)).filter(Boolean)
+          : [];
+        const venueResults = await Promise.all(venueIds.map(async (venueId) => {
+          try {
+            const snap = await getDoc(doc(firestore, 'venueProfiles', venueId));
+            return snap.exists() ? { id: venueId, ...snap.data() } : { id: venueId };
+          } catch {
+            return { id: venueId };
+          }
+        }));
+        userData.venueProfileIds = venueIds;
+        userData.venueProfiles = venueResults;
         const artistProfileIds = Array.isArray(rawArtistProfiles)
           ? rawArtistProfiles
               .map((entry) => (typeof entry === 'string' ? entry : entry?.id))
               .filter(Boolean)
           : [];
+        const artistResults = await Promise.all(artistProfileIds.map(async (profileId) => {
+          try {
+            const snap = await getDoc(doc(firestore, 'artistProfiles', profileId));
+            return snap.exists() ? { id: profileId, ...snap.data() } : { id: profileId };
+          } catch {
+            return { id: profileId };
+          }
+        }));
+        const profilesReady = accountProfilesReady({
+          userLoaded: true,
+          artistExpected: artistProfileIds.length,
+          artistLoaded: artistResults.length,
+          venueExpected: venueIds.length,
+          venueLoaded: venueResults.length,
+        });
+        if (!profilesReady) return;
 
         setUser((prev) => {
-          // Only include artistProfileIds and artistProfiles if there are actual profiles
           const userUpdate = {
             ...(prev || {}),
             ...userData,
+            profilesLoaded: true,
           };
-
           if (artistProfileIds.length > 0) {
             userUpdate.artistProfileIds = artistProfileIds;
-            // artistProfiles will be set by publishArtistProfiles when subscriptions sync
-            userUpdate.artistProfiles = prev?.artistProfiles || [];
+            userUpdate.artistProfiles = artistResults;
           } else {
-            // Remove artistProfileIds and artistProfiles if user has none
             delete userUpdate.artistProfileIds;
             delete userUpdate.artistProfiles;
           }
-
           return userUpdate;
         });
 
@@ -193,14 +207,18 @@ export const useAuth = () => {
   }, []);
 
   useEffect(() => {
-    if (!postLoginPending || loading || !user) return undefined;
-    const ids = Array.isArray(user.artistProfileIds) ? user.artistProfileIds : [];
-    const loaded = Array.isArray(user.artistProfiles) ? user.artistProfiles : [];
-    const elapsed = Date.now() - postLoginStarted;
-    if (ids.length > 0 && loaded.length < ids.length && elapsed < 800) {
-      const timer = setTimeout(() => setPostLoginTick((tick) => tick + 1), 800 - elapsed);
-      return () => clearTimeout(timer);
-    }
+    const artistExpected = Array.isArray(user?.artistProfileIds) ? user.artistProfileIds.length : 0;
+    const artistLoaded = Array.isArray(user?.artistProfiles) ? user.artistProfiles.length : 0;
+    const venueExpected = Array.isArray(user?.venueProfileIds) ? user.venueProfileIds.length : 0;
+    const venueLoaded = Array.isArray(user?.venueProfiles) ? user.venueProfiles.length : 0;
+    const profilesReady = accountProfilesReady({
+      userLoaded: Boolean(user?.profilesLoaded) && !loading,
+      artistExpected,
+      artistLoaded,
+      venueExpected,
+      venueLoaded,
+    });
+    if (!postLoginPending || !profilesReady) return undefined;
 
     let cancelled = false;
     (async () => {
@@ -209,7 +227,7 @@ export const useAuth = () => {
       const emailVerified = auth.currentUser?.emailVerified !== false;
       let hasArtistSession = false;
       const hasVenue = Array.isArray(user.venueProfiles) && user.venueProfiles.length > 0;
-      if (emailVerified && FEATURES.keepProfile && loaded.length === 0 && !hasVenue) {
+      if (emailVerified && FEATURES.keepProfile && artistLoaded === 0 && !hasVenue) {
         const [session, home] = await Promise.all([
           getProfileSession().catch(() => null),
           getArtistHome().catch(() => null),
