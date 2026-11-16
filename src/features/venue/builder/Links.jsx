@@ -11,7 +11,8 @@ export const Links = ({ formData, handleInputChange, handleSubmit }) => {
     const navigate = useNavigate();
 
     const handleVenueSubmission = () => {
-        handleSubmit();
+        if (formData.completed) handleSubmit();
+        else navigate('/venues/add-venue/booker');
     }
 
     useEffect(() => {
@@ -83,11 +84,7 @@ export const Links = ({ formData, handleInputChange, handleSubmit }) => {
                     Back
                 </button>
                 <button className='btn primary' onClick={() => handleVenueSubmission()}>
-                    {formData.completed ? (
-                        'Save And Exit'
-                    ) : (
-                        'Get Me On Gigin'
-                    )}
+                    {formData.completed ? 'Save And Exit' : 'Continue'}
                 </button>
             </div>
         </div>

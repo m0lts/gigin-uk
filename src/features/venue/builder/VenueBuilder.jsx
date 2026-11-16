@@ -18,6 +18,8 @@ import { uploadImageArrayWithFallback, uploadFileWithFallback, uploadFileWithPro
 import { LoadingSpinner, LoadingThreeDots } from '../../shared/ui/loading/Loading';
 import { toast } from 'sonner';
 import { Links } from './Links';
+import { BookerPhotoField } from '../booker/BookerPhotoField';
+import { publicBookerPhoto } from '../booker/bookerPhoto';
 import { normalizeTechRider, buildNewTechRiderShape, techRiderToSavePayload } from './techRiderConfig';
 import { geohashForLocation } from 'geofire-common';
 import Portal from '../../shared/components/Portal';
@@ -212,7 +214,7 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
         };
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (bookerPhotoUrl) => {
         setUploadText(`Creating your Dashboard and Venue Page`);
         setUploadingProfile(true);
         try {
@@ -306,6 +308,8 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 ...getGeoField(formData.coordinates),
             };
             updatedFormData.techRider = techRiderToSavePayload(formData.techRider);
+            const face = publicBookerPhoto(bookerPhotoUrl) || publicBookerPhoto(user?.bookerPhoto);
+            if (face) updatedFormData.bookerPhoto = face;
             try {
                 await createVenueProfile(formData.venueId, updatedFormData, user.uid);
             } catch (error) {
@@ -559,6 +563,9 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
       };
 
     const getCurrentStep = () => {
+        if (location.pathname.includes('/booker')) {
+            return formData.type === 'Public Establishment' ? 6 : 5;
+        }
         if (location.pathname.includes('venue-details')) return 2;
         if (location.pathname.includes('equipment')) return 3;
         if (location.pathname.includes('photos')) {
@@ -889,6 +896,30 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                             <Route path='photos' element={<Photos formData={formData} handleInputChange={handleInputChange} setStepError={setStepError} stepError={stepError} />} />
                             <Route path='additional-details' element={<AdditionalDetails formData={formData} handleInputChange={handleInputChange} setStepError={setStepError} stepError={stepError} />} />
                             <Route path='links' element={<Links formData={formData} handleInputChange={handleInputChange} handleSubmit={handleSubmit} setStepError={setStepError} stepError={stepError} />} />
+                            <Route path='booker' element={
+                                <div className='stage extra-details'>
+                                    <div className='stage-content'>
+                                        <BookerPhotoField
+                                            user={user}
+                                            finishLabel='Get Me On Gigin'
+                                            onSkip={() => {
+                                                if (!formData.name || !formData.type) {
+                                                    navigate('/venues/add-venue');
+                                                    return;
+                                                }
+                                                handleSubmit();
+                                            }}
+                                            onContinue={(url) => {
+                                                if (!formData.name || !formData.type) {
+                                                    navigate('/venues/add-venue');
+                                                    return;
+                                                }
+                                                handleSubmit(url);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            } />
                         </Routes>
                     </section>
                 </>

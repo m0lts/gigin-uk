@@ -23,6 +23,7 @@ import { updateStripeConnectId } from '@services/api/users';
 import { useStripeConnect } from '@hooks/useStripeConnect';
 import { toast } from 'sonner';
 import { ApplicationEmailToggle } from '../venue/home/ApplicationEmailToggle';
+import { BookerPhotoField } from '../venue/booker/BookerPhotoField';
 import Portal from '../shared/components/Portal';
 import {
   CameraIcon,
@@ -746,6 +747,9 @@ export const Account = () => {
 
                         {error && <p className="error-text">{error}</p>}
                     </div>
+                    {Array.isArray(user.venueProfiles) && user.venueProfiles.length > 0 && (
+                        <BookerPhotoField user={user} />
+                    )}
                     <div className='name-settings'>
                         <h3>Name:</h3>
                         <div className='data-highlight'>
@@ -1080,7 +1084,7 @@ export const Account = () => {
                                         <li key={venue.id} className='account-profile'>
                                             <div className='account-profile-data'>
                                                 <figure className='account-profile-img'>
-                                                    <img src={venue.photos[0]} alt={venue.name} />
+                                                    <img src={venue.photos?.[0]} alt={venue.name} />
                                                 </figure>
                                                 <div className='account-profile-details'>
                                                     <h3>{venue.name}</h3>

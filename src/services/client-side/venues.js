@@ -402,6 +402,21 @@ export async function fetchMyVenueMembership(venue, uid) {
  * @returns {Promise<void>} Resolves when the update is complete.
  * @throws Will throw an error if the update operation fails.
  */
+/** Copies the booker's public photo URL onto the venues linked to their account. */
+export const setVenueBookerPhotos = async (venueIds, photoUrl) => {
+  const url = String(photoUrl || '').trim();
+  if (!/^https?:\/\//i.test(url) || url.includes('@')) return;
+  if (url.startsWith('http://') && !/^http:\/\/(127\.0\.0\.1|localhost)([:/]|$)/i.test(url)) return;
+  const ids = [...new Set((venueIds || []).filter(Boolean))];
+  await Promise.all(ids.map(async (venueId) => {
+    try {
+      await updateDoc(doc(firestore, 'venueProfiles', venueId), { bookerPhoto: url });
+    } catch (error) {
+      console.error('[Firestore Error] setVenueBookerPhotos:', error);
+    }
+  }));
+};
+
 export const updateVenueProfileAccountNames = async (userId, venueProfileIds, newAccountName) => {
   try {
     if (!userId || !venueProfileIds?.length || !newAccountName) return;
