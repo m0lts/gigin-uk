@@ -125,10 +125,12 @@ test('opening a night with ?tab=applications does not crash', async ({ page }) =
   }
 
   await page.goto('/');
-  await page.getByRole('textbox', { name: 'Email' }).fill(email);
-  await page.getByRole('textbox', { name: 'Password' }).fill(PASSWORD);
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('textbox', { name: 'Email' })).toHaveCount(0, { timeout: 20000 });
+  await page.locator('.launch-header').getByRole('button', { name: 'Sign in' }).click();
+  const card = page.locator('.auth-card');
+  await card.getByRole('textbox', { name: 'Email', exact: true }).fill(email);
+  await card.getByRole('textbox', { name: 'Password', exact: true }).fill(PASSWORD);
+  await card.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(card).toHaveCount(0, { timeout: 20000 });
 
   const openTab = async (tab) => {
     await page.goto(nightUrl(gigId, tab));

@@ -56,9 +56,11 @@ test('venue settings opens at 375px without an error boundary', async ({ page })
   page.on('pageerror', (error) => errors.push(error.message));
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('/');
-  await page.getByLabel('Email').fill(email);
-  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(PASSWORD);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.locator('.launch-header').getByRole('button', { name: 'Sign in' }).click();
+  const card = page.locator('.auth-card');
+  await card.getByLabel('Email').fill(email);
+  await card.getByRole('textbox', { name: 'Password', exact: true }).fill(PASSWORD);
+  await card.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.waitForURL(/dashboard/, { timeout: 20000 });
   await page.goto('/venues/dashboard/my-venues');
   await expect(page.getByRole('heading', { name: 'My Venues' })).toBeVisible({ timeout: 20000 });

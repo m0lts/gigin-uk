@@ -41,12 +41,13 @@ test('a venue signs up, waits, is approved, then creates a night', async ({ page
   await expect(createAccount).toBeVisible();
   await createAccount.click();
   await page.getByRole('button', { name: /I book live music/ }).click();
-  await page.getByLabel('Name').fill('Venue Owner');
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(PASSWORD);
-  await page.getByRole('checkbox', { name: /terms and conditions/i }).check();
-  await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByRole('heading', { name: 'Confirm your email' })).toBeVisible();
+  const card = page.locator('.auth-card');
+  await card.getByLabel('Name').fill('Venue Owner');
+  await card.getByLabel('Email').fill(email);
+  await card.getByRole('textbox', { name: 'Password', exact: true }).fill(PASSWORD);
+  await card.getByRole('checkbox', { name: /terms and conditions/i }).check();
+  await card.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.locator('.auth-card').getByRole('heading', { name: 'Confirm your email' })).toBeVisible();
 
   const sign = await fetch(`${AUTH}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo`, {
     method: 'POST',

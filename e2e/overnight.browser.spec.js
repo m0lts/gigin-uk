@@ -174,13 +174,15 @@ async function login(page, email) {
     })));
   });
   await page.reload();
-  await page.getByLabel('Email').fill(email);
-  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(PASSWORD);
+  await page.locator('.launch-header').getByRole('button', { name: 'Sign in' }).click();
+  const card = page.locator('.auth-card');
+  await card.getByLabel('Email').fill(email);
+  await card.getByRole('textbox', { name: 'Password', exact: true }).fill(PASSWORD);
   const signedIn = page.waitForResponse((response) => response.url().includes('signInWithPassword'), { timeout: 20000 });
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await card.getByRole('button', { name: 'Sign in', exact: true }).click();
   await signedIn;
   await expect(page.getByRole('heading', { name: 'Confirm your email' })).toHaveCount(0);
-  await expect(page.getByLabel('Email')).toHaveCount(0, { timeout: 20000 });
+  await expect(card).toHaveCount(0, { timeout: 20000 });
   await page.waitForTimeout(1000);
 }
 
@@ -458,7 +460,7 @@ test('2. guest applies, edits, withdraws, and does not duplicate a contact', asy
   await expect(page.getByText('Edited from the private link.')).toBeVisible();
   await page.getByRole('button', { name: 'Withdraw my application' }).click();
   await page.getByRole('button', { name: 'Yes, withdraw' }).click();
-  await expect(page.getByText('Withdrawn')).toBeVisible();
+  await expect(page.getByText('Withdrawn', { exact: true })).toBeVisible();
 
   await applyAsGuest(page, world.secondId, {
     act: 'Browser Act Withdrawn',
@@ -578,12 +580,19 @@ test('7. a guest account links, and a name match merges only when asked', async 
     note: 'I will make an account.',
   });
   await page.getByRole('button', { name: 'Save my details' }).click();
-  await page.getByRole('button', { name: /I'm an artist/ }).click();
-  await page.locator('#name').fill('Guest D');
-  await page.locator('#email').fill(email);
-  await page.locator('#password').fill(PASSWORD);
-  await page.locator('input[name="terms"]').check();
-  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByText('Check your email')).toBeVisible({ timeout: 20000 });
+  let token = '';
+  for (let attempt = 0; attempt < 20 && !token; attempt += 1) {
+    const mail = await world.db.collection('mail').where('to', '==', email).get();
+    const body = mail.docs.map((doc) => `${doc.data()?.message?.text || ''}\n${doc.data()?.message?.html || ''}`).join('\n');
+    token = body.match(/\/profile\/confirm\/([a-f0-9]{64})/)?.[1] || '';
+    if (!token) await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  expect(token).toBeTruthy();
+  await page.goto(`/profile/confirm/${token}`);
+  await expect(page.getByRole('heading', { name: 'Create a password' })).toBeVisible();
+  await page.locator('.kp-password input').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Put my profile live' }).click();
   await expect.poll(async () => {
     const priv = await world.db.collection(`gigs/${world.secondId}/guestApplicants`).where('email', '==', email).limit(1).get();
     if (priv.empty) return '';
@@ -745,11 +754,11 @@ test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig
 
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Regression');
-  await expect(page.getByText('Browser Guest Beside Artist')).toBeVisible();
-  await expect(page.getByText('Guest').first()).toBeVisible();
-  await expect(page.getByText('Regression Act')).toBeVisible();
-  const artistRow = page.locator('.na-app', { hasText: 'Regression Act' });
-  await artistRow.getByRole('button', { name: 'Accept', exact: true }).click();
+  await expect(page.locator('.night-overview__app', { hasText: 'Browser Guest Beside Artist' })).toContainText('Guest');
+  await expect(page.locator('.night-overview__app', { hasText: 'Regression Act' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Applications' }).click();
+  await page.locator('.night-app__row', { hasText: 'Regression Act' }).click();
+  await page.locator('.night-app__detail').getByRole('button', { name: /The set,/ }).click();
   await expect.poll(async () => {
     const doc = await world.db.doc(`gigs/${world.regressionId}`).get();
     return doc.data()?.bookedApplicantId || '';
@@ -768,7 +777,8 @@ test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig
   }).toBe('cancelled');
 
   await openGigRow(page, 'Overnight Browser Decline');
-  await page.locator('.na-app').getByRole('button', { name: 'Decline', exact: true }).click();
+  await page.getByRole('tab', { name: 'Applications' }).click();
+  await page.locator('.night-app__detail').getByRole('button', { name: 'Not this time', exact: true }).click();
   await expect.poll(async () => {
     return (await privateApplicants(world.declineGigId)).some((entry) => entry.status === 'declined');
   }).toBe(true);
@@ -853,6 +863,7 @@ test('night. one application, one list, mail, close, old data, and the profile p
   const again = page.locator('input[type="email"]');
   await again.fill(email);
   await again.blur();
+  await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: "You've already applied" })).toBeVisible({ timeout: 20000 });
   const preferenceApps = (await privateApplicants(world.threeIds[0])).filter((entry) => entry.name === 'Preference Act' || entry.artistName === 'Preference Act');
   expect(preferenceApps).toHaveLength(1);
@@ -884,11 +895,12 @@ test('night. one application, one list, mail, close, old data, and the profile p
 
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Three');
-  await expect(page.locator('.na-app', { hasText: 'Preference Act' })).toHaveCount(1);
-  await expect(page.locator('.na-app', { hasText: 'Regression Act' })).toHaveCount(1);
+  await page.getByRole('tab', { name: 'Applications' }).click();
+  await expect(page.locator('.night-app__row', { hasText: 'Preference Act' })).toHaveCount(1);
+  await expect(page.locator('.night-app__row', { hasText: 'Regression Act' })).toHaveCount(1);
 
-  const guestCard = page.locator('.na-app', { hasText: 'Preference Act' });
-  await guestCard.getByRole('button', { name: 'Preference Act', exact: true }).click();
+  await page.locator('.night-app__row', { hasText: 'Preference Act' }).click();
+  await page.locator('.night-app__detail').getByRole('button', { name: 'See full profile' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: 'Preference Act' })).toBeVisible();
   await expect(dialog.locator('.ap-tag', { hasText: 'Guest' })).toBeVisible();
@@ -901,16 +913,11 @@ test('night. one application, one list, mail, close, old data, and the profile p
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
 
-  await guestCard.locator('.na-photo').click();
-  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Preference Act' })).toBeVisible();
-  await page.keyboard.press('Escape');
-  await guestCard.getByRole('button', { name: 'View profile' }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
   const guestId = preferenceApps[0].id;
   await page.goto(`${page.url().split('?')[0]}?applicant=${guestId}`);
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Preference Act' })).toBeVisible();
   const profile = page.getByRole('dialog');
-  await profile.locator('.ap-notes-head').getByRole('button', { name: 'Edit' }).click();
+  await profile.getByRole('button', { name: /Add a note/ }).click();
   await profile.locator('textarea').fill('Great with the late crowd.');
   await profile.getByRole('button', { name: 'Save note' }).click();
   await expect.poll(async () => {
@@ -922,28 +929,23 @@ test('night. one application, one list, mail, close, old data, and the profile p
   await expect(page.getByText(/Accepted · Set 2/).first()).toBeVisible();
   await page.keyboard.press('Escape');
 
-  await expect(page.locator('.na-todo')).toContainText('1 act accepted');
-  await expect(page.locator('.na-todo')).toContainText('2 sets still to assign');
-  const artistCard = page.locator('.na-app', { hasText: 'Regression Act' });
-  await artistCard.getByRole('button', { name: 'Accept', exact: true }).click();
-  await artistCard.getByRole('button', { name: 'Accept, choose set later' }).click();
-  await expect(page.getByText(/Accepted · no set yet/).first()).toBeVisible();
+  await expect(page.locator('.night-app__set', { hasText: 'Set 2' })).toContainText('Preference Act');
   const slotMirror = await world.db.doc(`gigs/${world.threeIds[1]}`).get();
   expect(slotMirror.data()?.bookedApplicantId).toBe(guestId);
   expect((slotMirror.data()?.applicants || []).some((entry) => entry.id === guestId && entry.status === 'confirmed')).toBe(true);
 
-  await artistCard.getByRole('button', { name: 'Choose a set' }).click();
-  await artistCard.locator('.na-picker').getByRole('button', { name: /Set 1/ }).click();
+  const detail = page.locator('.night-app__detail');
+  await page.locator('.night-app__row', { hasText: 'Regression Act' }).click();
+  await detail.getByRole('button', { name: /Set 1,/ }).click();
   await expect.poll(async () => (await world.db.doc(`gigs/${world.threeIds[0]}`).get()).data()?.bookedApplicantId || '').toBe(world.artistId);
-  await artistCard.getByRole('button', { name: /Set 1 ▾/ }).click();
-  await artistCard.locator('.na-picker').getByRole('button', { name: /Set 3/ }).click();
+  await detail.getByRole('button', { name: /Set 3,/ }).click();
   await expect.poll(async () => {
     return (await privateApplicants(world.threeIds[0])).find((entry) => entry.id === world.artistId)?.assignedSlotGigId || '';
   }).toBe(world.threeIds[2]);
-  await artistCard.getByRole('button', { name: /Set 3 ▾/ }).click();
-  await artistCard.locator('.na-picker').getByRole('button', { name: /Set 2/ }).click();
+  await detail.getByRole('button', { name: /Set 2,/ }).click();
   await expect.poll(async () => (await world.db.doc(`gigs/${world.threeIds[1]}`).get()).data()?.bookedApplicantId || '').toBe(world.artistId);
 
+  await page.getByRole('tab', { name: 'Overview' }).click();
   await page.getByRole('heading', { name: 'Close applications for the rest?' }).scrollIntoViewIfNeeded();
   await page.getByRole('button', { name: 'Close applications' }).click();
   await expect(page.getByRole('heading', { name: 'Applications closed' })).toBeVisible();
@@ -974,8 +976,9 @@ test('night. one application, one list, mail, close, old data, and the profile p
 
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Three');
-  const declineCard = page.locator('.na-app', { hasText: 'Mail Act' });
-  await declineCard.getByRole('button', { name: 'Decline', exact: true }).click();
+  await page.getByRole('tab', { name: 'Applications' }).click();
+  await page.locator('.night-app__row', { hasText: 'Mail Act' }).click();
+  await page.locator('.night-app__detail').getByRole('button', { name: 'Not this time', exact: true }).click();
   let delayedDecline = null;
   await expect.poll(async () => {
     const declineMail = await world.db.collection('mail').where('to', '==', mailEmail).get();
@@ -987,9 +990,9 @@ test('night. one application, one list, mail, close, old data, and the profile p
   await page.locator('.na-toast').getByRole('button', { name: 'Undo' }).click();
   await expect.poll(async () => (await world.db.collection('mail').where('to', '==', mailEmail).get()).docs.filter((doc) => doc.data().delivery?.startTime).length).toBe(0);
 
-  const acceptCard = page.locator('.na-app', { hasText: 'Mail Act' });
-  await acceptCard.getByRole('button', { name: 'Accept', exact: true }).click();
-  await acceptCard.locator('.na-picker').getByRole('button', { name: /Set 1/ }).click();
+  await page.getByRole('button', { name: 'To review' }).click();
+  await page.locator('.night-app__row', { hasText: 'Mail Act' }).click();
+  await page.locator('.night-app__detail').getByRole('button', { name: /Set 1,/ }).click();
   let delayedAccept = null;
   await expect.poll(async () => {
     const acceptMail = await world.db.collection('mail').where('to', '==', mailEmail).get();

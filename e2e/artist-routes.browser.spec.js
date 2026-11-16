@@ -8,9 +8,9 @@ test('an unknown one-word URL is not a musician profile', async ({ page }) => {
 
 test('join-artist and testimonials leave the legacy pages', async ({ page }) => {
   await page.goto('/join-artist');
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/home$/);
   await page.goto('/testimonials');
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/home$/);
 });
 
 test('the public artist route stays /artist/:id', async ({ page }) => {
