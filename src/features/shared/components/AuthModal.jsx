@@ -5,7 +5,7 @@ import { useAuth } from '@hooks/useAuth';
 import { LoginForm } from '@features/shared/forms/Login';
 import { SignupForm } from '@features/shared/forms/Signup';
 // Styles
-import '@styles/shared/modals.styles.css'
+import '@styles/forms/auth-card.css'
 import { ForgotPasswordForm } from '@features/shared/forms/ForgotPassword';
 import { VerifyEmailModal } from './VerifyEmailModal';
 
@@ -38,9 +38,7 @@ export const AuthModal = ({ setAuthModal, authType, setAuthType, authClosable, s
   const handleModalClick = (e) => {
     if (loading) return;
     if (!authClosable) return;
-    if (e.target.className !== 'modal') {
-      setAuthModal(false);
-    }
+    if (e.target === e.currentTarget) setAuthModal(false);
   };
 
   return (
