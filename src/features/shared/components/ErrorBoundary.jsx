@@ -1,6 +1,7 @@
 // components/ErrorBoundary.tsx
 import React from 'react';
 import { logClientError } from '@services/client-side/errors';
+import { AppCrashFallback } from './AppCrashFallback';
 
 export class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -37,17 +38,8 @@ export class ErrorBoundary extends React.Component {
       const { Fallback } = this.props;
   
       if (hasError) {
-        return Fallback ? (
-          <Fallback onRetry={this.handleRetry} />
-        ) : (
-          <div className='crash-screen'>
-            <h1>Something went wrong</h1>
-            <p>We’ve logged the error and are looking into it.</p>
-            <button className="btn primary" onClick={this.handleRetry}>
-              Go to Home
-            </button>
-          </div>
-        );
+        const Crash = Fallback || AppCrashFallback;
+        return <Crash onRetry={this.handleRetry} />;
       }
   
       return this.props.children;
