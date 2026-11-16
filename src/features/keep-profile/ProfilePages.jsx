@@ -161,7 +161,7 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
       if (cancelled) return;
       const code = err?.payload?.error;
       if (code === 'used') setState('live');
-      else setError(err?.message || 'Log in with the email on this profile.');
+      else setError(err?.message || 'Sign in with the email on this profile.');
     });
     return () => { cancelled = true; };
   }, [state, user, email, token, slug]);
@@ -221,8 +221,8 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
         <p className="kp-kicker">✓ EMAIL CONFIRMED</p>
         <h1>Create a password</h1>
         <p>{directSignup
-          ? 'This creates your Gigin login. Your profile stays private until you publish it. Next time, log in at giginmusic.com with this email and password.'
-          : 'This puts your profile live and creates your Gigin login. Next time, log in at giginmusic.com with this email and password.'}</p>
+          ? 'This creates your Gigin login. Your profile stays private until you publish it. Next time, sign in at giginmusic.com with this email and password.'
+          : 'This puts your profile live and creates your Gigin login. Next time, sign in at giginmusic.com with this email and password.'}</p>
         <form onSubmit={createAccount}>
           <label className="kp-field">Email<input value={email} readOnly /></label>
           <label className="kp-field">
@@ -271,9 +271,9 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
     return (
       <Shell>
         <h1>This email already has a Gigin account</h1>
-        <p>Log in as {email} and we'll attach this profile to it. Your application is already sent.</p>
+        <p>Sign in as {email} and we'll attach this profile to it. Your application is already sent.</p>
         {error && <p className="kp-error">{error}</p>}
-        <button type="button" className="kp-btn" onClick={() => { setAuthType?.('login'); setAuthModal?.(true); }}>Log in</button>
+        <button type="button" className="kp-btn" onClick={() => { setAuthType?.('login'); setAuthModal?.(true); }}>Sign in</button>
         {methods.hasGoogle && <button type="button" className="kp-ghost" onClick={() => { setAuthType?.('login'); setAuthModal?.(true); }}>Continue with Google</button>}
         {methods.hasPassword && (
           <button type="button" className="kp-ghost" onClick={async () => {
@@ -291,9 +291,9 @@ export function ConfirmProfilePage({ user, setAuthModal, setAuthType }) {
     return (
       <Shell>
         <h1>This link has already been used</h1>
-        <p>Your profile is already live. Log in with your email and password to make changes.</p>
+        <p>Your profile is already live. Sign in with your email and password to make changes.</p>
         {slug && <Link to={`/artist/${slug}`}>Open my profile</Link>}
-        <button type="button" className="kp-btn" onClick={() => { setAuthType?.('login'); setAuthModal?.(true); }}>Log in</button>
+        <button type="button" className="kp-btn" onClick={() => { setAuthType?.('login'); setAuthModal?.(true); }}>Sign in</button>
         <button type="button" className="kp-text" onClick={() => requestEditLink(email)}>Email me a sign-in link</button>
       </Shell>
     );
@@ -311,7 +311,7 @@ export function ProfileLive({ slug, google = false }) {
       <span className="kp-check">✓</span>
       <h1>{showLink ? 'Your profile is live' : 'Your profile is saved'}</h1>
       <p>{showLink
-        ? `Anyone with the link can see it. Your email and phone number stay private. You're signed in, so next time ${google ? 'log in with Google.' : 'log in at giginmusic.com with your email and password.'}`
+        ? `Anyone with the link can see it. Your email and phone number stay private. You're signed in, so next time ${google ? 'sign in with Google.' : 'sign in at giginmusic.com with your email and password.'}`
         : 'Your details are saved for next time. Your email and phone number stay private.'}</p>
       {showLink && (
         <>

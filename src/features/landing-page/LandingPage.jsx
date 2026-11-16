@@ -176,7 +176,7 @@ export const LandingPage = ({ setAuthModal, setAuthType }) => {
         <div className="lp-wrap lp-header__bar">
           <Link to="/" className="lp-wordmark" aria-label="Gigin">gigin<span>.</span></Link>
           <div className="lp-header__actions">
-            <button type="button" className="lp-login" onClick={openLogin}>Log in</button>
+            <button type="button" className="lp-login" onClick={openLogin}>Sign in</button>
             <button type="button" className="lp-btn lp-btn--dark lp-btn--header" onClick={FEATURES.venueSignup ? startVenueAccount : () => scrollToSection('request-access', 'access-name')}>
               {FEATURES.venueSignup ? 'Create a venue account' : 'Request access'}
             </button>
@@ -265,7 +265,7 @@ export const LandingPage = ({ setAuthModal, setAuthType }) => {
               <p className="lp-eyebrow">FOR VENUES</p>
               <h2>Request access</h2>
               <p className="lp-lead">Gigin is invite-only for now. We&apos;re setting up a small number of venues by hand, starting in Cambridge. Tell us about your nights and the founder will be in touch.</p>
-              <p className="lp-already">Already invited? <button type="button" onClick={openLogin}>Log in</button></p>
+              <p className="lp-already">Already invited? <button type="button" onClick={openLogin}>Sign in</button></p>
             </div>
             <AccessCard />
           </div>
@@ -281,7 +281,7 @@ export const LandingPage = ({ setAuthModal, setAuthType }) => {
           <nav>
             <Link to="/terms-and-conditions">Terms</Link>
             <Link to="/privacy-policy">Privacy</Link>
-            <button type="button" onClick={openLogin}>Log in</button>
+            <button type="button" onClick={openLogin}>Sign in</button>
           </nav>
         </div>
       </footer>
@@ -450,7 +450,7 @@ function ProfileCard({ pressKit, onLogin }) {
           <code>giginmusic.com/artist/fen-street-trio</code>
         </div>
       </div>
-      <p className="lp-already">Already kept a profile? <button type="button" onClick={onLogin}>Log in</button></p>
+      <p className="lp-already">Already kept a profile? <button type="button" onClick={onLogin}>Sign in</button></p>
     </article>
   );
 }

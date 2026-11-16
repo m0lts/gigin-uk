@@ -94,11 +94,11 @@ export function KeepOffer({ draft, bookerName, onLogin }) {
       <aside className="kp-offer">
         <p className="kp-kicker">YOU'RE ALREADY ON GIGIN</p>
         <h3>{draft.email} has a Gigin account</h3>
-        <p>Log in and we'll add this application to your account, so everything is in one place. Your application to {bookerName} is sent either way.</p>
+        <p>Sign in and we'll add this application to your account, so everything is in one place. Your application to {bookerName} is sent either way.</p>
         <button type="button" className="kp-btn" onClick={() => {
           try { sessionStorage.setItem('gigin.reviewAdd', '1'); } catch { /* ignore */ }
           onLogin?.();
-        }}>Log in instead</button>
+        }}>Sign in instead</button>
         <button type="button" className="kp-ghost" onClick={async () => {
           setPhase('dismissed');
           try { await dismissKeepOffer(draft.manageToken, draft.gigId); } catch { /* ignore */ }

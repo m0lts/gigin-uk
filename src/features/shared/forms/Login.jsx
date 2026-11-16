@@ -4,13 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '@lib/firebase';
 import { sendSignInLinkToEmail } from 'firebase/auth';
 // Components
-import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { NoTextLogo } from '@features/shared/ui/logos/Logos';
-// Styles
-import '@styles/forms/forms.styles.css'
 import { GoogleIcon } from '../ui/extras/Icons';
-import { LoadingSpinner } from '../ui/loading/Loading';
-import { Link } from 'react-router-dom';
+import { AuthCard, EyeButton, isGmail } from './AuthCard';
 import { toast } from 'sonner';
 import { FEATURES } from '../../../config/features';
 import { artistDestination } from '../../../config/artistDestination';
@@ -126,7 +121,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
         case 'auth/user-not-found':
         case 'auth/wrong-password':
         case 'auth/invalid-credential':
-          setError({ status: true, input: '', message: 'Try again, or reset your password.', title: "That email and password don't match." });
+          setError({ status: true, input: 'password', message: "That email and password don't match." });
           break;
         case 'auth/too-many-requests':
           setError({ status: true, input: '', message: 'Wait a few minutes, or reset your password.', title: 'Too many attempts.' });
@@ -144,181 +139,145 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
     setShowPassword(!showPassword);
   };
 
-  return (
-    <div className={`modal-padding auth ${loading ? 'loading' : ''}`} onClick={(e) => e.stopPropagation()}>
-    <div className='modal-content auth scrollable'>
-      {!loading && linkPhase !== 'sent' && (
-        <div className='head'>
-          <NoTextLogo />
-          <h1>Log in</h1>
-          <p>For venues, and artists who&apos;ve kept a Gigin profile.</p>
+  const close = () => {
+    if (!authClosable) return;
+    setAuthModal(false);
+  };
+
+  if (linkPhase === 'sent') {
+    return (
+      <AuthCard
+        title="Check your email"
+        icon="mail"
+        closable={authClosable}
+        onClose={close}
+        lede={<>We sent a sign-in link to <strong>{credentials.email}</strong>. It works once, for 1 hour.</>}
+      >
+        {isGmail(credentials.email) ? <a className="auth-card__primary" href="https://mail.google.com" target="_blank" rel="noreferrer">Open Gmail</a> : null}
+        <div className="auth-card__actions">
+          <button
+            type="button"
+            className="auth-card__link"
+            disabled={linkWait > 0}
+            onClick={async () => {
+              if (linkWait > 0) return;
+              try {
+                await sendSignInLinkToEmail(auth, credentials.email, {
+                  url: `${window.location.origin}/auth/email-link`,
+                  handleCodeInApp: true,
+                });
+              } catch { /* same answer either way */ }
+              setLinkWait(30);
+              toast('Sent again.');
+            }}
+          >
+            {linkWait > 0 ? `Send it again (${linkWait}s)` : 'Send it again'}
+          </button>
+          <button type="button" className="auth-card__link" onClick={() => { setLinkPhase(''); clearCredentials(); }}>Use a different email</button>
         </div>
-      )}
-        {linkPhase === 'sent' && !loading && (
-          <div className='auth-form'>
-            <h1>Check your email</h1>
-            <p>We&apos;ve sent a sign-in link to {credentials.email}. Open it on this device to log in. It works once, for 1 hour.</p>
-            <p>Nothing there? Check your spam folder.</p>
-            <button
-              type='button'
-              className='btn text'
-              disabled={linkWait > 0}
-              onClick={async () => {
-                if (linkWait > 0) return;
-                try {
-                  await sendSignInLinkToEmail(auth, credentials.email, {
-                    url: `${window.location.origin}/auth/email-link`,
-                    handleCodeInApp: true,
-                  });
-                } catch { /* same answer either way */ }
-                setLinkWait(30);
-                toast('Sent again.');
-              }}
-            >
-              {linkWait > 0 ? `Send again in ${linkWait}s` : 'Send it again'}
-            </button>
-            <button type='button' className='btn text' onClick={() => { setLinkPhase(''); clearCredentials(); }}>Use a different email</button>
-            <button type='button' className='btn text' onClick={() => setLinkPhase('')}>Back to log in</button>
-          </div>
-        )}
-        <form className='auth-form' onSubmit={handleLogin} noValidate hidden={linkPhase === 'sent'}>
-          {!loading && linkPhase !== 'sent' && (
-            <>
-              <button
-                type="button"
-                className="btn secondary google"
-                disabled={loading}
-                onClick={async () => {
-                  try {
-                    setLoading(true);
-                    const loginResponse = await continueWithGoogle();
-                    if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
-                      setAuthModal(false);
-                      setAuthClosable(true);
-                      navigate(artistDestination(user, FEATURES));
-                    } else {
-                      setJustLoggedIn(true);
-                      // Mark that we just logged in to prevent App.jsx from reopening modal
-                      if (justLoggedInRef) {
-                        justLoggedInRef.current = true;
-                      }
-                      // Redirect will be handled by useEffect
-                    }
-                  } catch (err) {
-                    setError({ status: true, input: '', message: err?.error?.message || 'Google sign in failed' });
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-              >
-                <GoogleIcon />
-                Continue With Google
-              </button>
-              <div className="disclaimer">
-                <p>By continuing with Google, you agree to our <Link className='tc-link' to={'/terms-and-conditions'}>terms and conditions.</Link></p>
-              </div>
-              <div className="oauth-divider">
-                <span className="line" />
-                <h6>OR</h6>
-                <span className="line" />
-              </div>
-              <div className='input-group'>
-                <label htmlFor='email'>Email</label>
-                <input
-                  type='text'
-                  name='email'
-                  value={credentials.email}
-                  onChange={(e) => { handleChange(e); clearError(); }}
-                  placeholder='e.g. johnsmith@gigin.com'
-                  className={`${error.input === 'email' && 'error'}`}
-                />
-              </div>
-              <div className='input-group'>
-                <label htmlFor='password'>
-                  Password <button type='button' className='fp-link btn text' onClick={() => { clearError(); setAuthType('forgot-password'); }} tabIndex='-1'>Forgot password?</button>
-                </label>
-                <div className={`password ${passwordFocused ? 'focused' : ''} ${loading ? 'disabled' : ''}`}>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name='password'
-                    id='password'
-                    value={credentials.password}
-                    onChange={(e) => { handleChange(e); clearError(); }}
-                    placeholder='Password'
-                    disabled={loading}
-                    className={`${error.input === 'password' && 'error'}`}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                  />
-                  <button type='button' className='btn tertiary' aria-pressed={showPassword} onClick={toggleShowPassword}>
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-          {error.status && (
-            <div className='error-box' role='alert'>
-              <p className='error-msg'>{error.title ? <strong>{error.title} </strong> : null}{error.message}</p>
-            </div>
-          )}
-          {loading ? (
-            <LoadingSpinner />
-          ) : (
-            <>
-              <button
-                type='submit'
-                className='btn primary'
-                disabled={loading}
-              >
-                {loading ? 'Logging in…' : 'Log in'}
-              </button>
-              <button
-                type='button'
-                className='btn text'
-                onClick={async () => {
-                  const address = String(credentials.email || '').trim();
-                  if (!address) {
-                    setError({ status: true, input: 'email', message: "Enter your email first, and we'll send the link there." });
-                    return;
-                  }
-                  if (!validateEmail(address)) {
-                    setError({ status: true, input: 'email', message: 'Enter an email address like name@example.com.' });
-                    return;
-                  }
-                  try {
-                    await sendSignInLinkToEmail(auth, address, {
-                      url: `${window.location.origin}/auth/email-link`,
-                      handleCodeInApp: true,
-                    });
-                  } catch (err) {
-                    if (err?.code !== 'auth/user-not-found') {
-                      /* same answer either way */
-                    }
-                  }
-                  window.localStorage.setItem('emailForSignIn', address);
-                  setLinkPhase('sent');
-                  setLinkWait(30);
-                }}
-              >
-                Email me a sign-in link instead
-              </button>
-              <p>Applied to a gig as a guest? You don&apos;t need to log in. Use the private link in your email, or <a href='/#artists'>get a fresh link</a>.</p>
-            </>
-          )}
-        </form>
-      {(!loading && authClosable) && (
-        <button className='btn close tertiary' onClick={() => {if (!authClosable) return; setAuthModal(false)}}>
-          Close
-        </button>
-      )}
-    </div>
-    {!loading && (
-    <div className="change-auth-type">
-        <h4 className='change-auth-type-text'>Don't have an account? </h4>
-        <button className='btn text' type='button' disabled={loading} onClick={() => { setAuthType('signup'); clearCredentials(); clearError(); }}>Sign Up</button>
-    </div>
-    )}
-    </div>
+        <p className="auth-card__note">Nothing there after a minute? Check your spam or promotions folder.</p>
+      </AuthCard>
+    );
+  }
+
+  return (
+    <AuthCard
+      title="Welcome back"
+      lede="Sign in to run your gigs or update your artist page."
+      closable={authClosable && !loading}
+      onClose={close}
+    >
+      <button
+        type="button"
+        className="auth-card__google"
+        disabled={loading}
+        onClick={async () => {
+          try {
+            setLoading(true);
+            const loginResponse = await continueWithGoogle();
+            if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
+              setAuthModal(false);
+              setAuthClosable(true);
+              navigate(artistDestination(user, FEATURES));
+            } else {
+              setJustLoggedIn(true);
+              if (justLoggedInRef) justLoggedInRef.current = true;
+            }
+          } catch (err) {
+            setError({ status: true, input: '', message: err?.error?.message || 'Google sign in failed' });
+          } finally {
+            setLoading(false);
+          }
+        }}
+      >
+        <GoogleIcon />
+        Continue with Google
+      </button>
+      <div className="auth-card__or" aria-hidden="true"><span /><em>or</em><span /></div>
+      <form onSubmit={handleLogin} noValidate>
+        <label htmlFor="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          name="email"
+          value={credentials.email}
+          onChange={(e) => { handleChange(e); clearError(); }}
+          autoComplete="email"
+          className={error.input === 'email' ? 'is-error' : ''}
+        />
+        <div className="auth-card__label-row">
+          <label htmlFor="password">Password</label>
+          <button type="button" className="auth-card__link" onClick={() => { clearError(); setAuthType('forgot-password'); }}>Forgot password?</button>
+        </div>
+        <div className="auth-card__password">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            name="password"
+            id="password"
+            value={credentials.password}
+            onChange={(e) => { handleChange(e); clearError(); }}
+            disabled={loading}
+            autoComplete="current-password"
+            className={error.input === 'password' ? 'is-error' : ''}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+          />
+          <EyeButton shown={showPassword} onClick={toggleShowPassword} />
+        </div>
+        {error.status ? (
+          <p className="auth-card__error" role="alert">
+            {error.input === 'password' ? <>That email and password don&apos;t match. Try again, or <button type="button" className="auth-card__link" onClick={() => { clearError(); setAuthType('forgot-password'); }}>reset your password</button>.</> : error.message}
+          </p>
+        ) : null}
+        <button type="submit" className="auth-card__primary" disabled={loading}>{loading ? 'Signing in…' : 'Sign in'}</button>
+      </form>
+      <button
+        type="button"
+        className="auth-card__text"
+        onClick={async () => {
+          const address = String(credentials.email || '').trim();
+          if (!address) {
+            setError({ status: true, input: 'email', message: 'Enter your email first, and we will send the link there.' });
+            return;
+          }
+          if (!validateEmail(address)) {
+            setError({ status: true, input: 'email', message: 'Enter an email address like name@example.com.' });
+            return;
+          }
+          try {
+            await sendSignInLinkToEmail(auth, address, {
+              url: `${window.location.origin}/auth/email-link`,
+              handleCodeInApp: true,
+            });
+          } catch { /* same answer either way */ }
+          window.localStorage.setItem('emailForSignIn', address);
+          setLinkPhase('sent');
+          setLinkWait(30);
+        }}
+      >
+        Email me a sign-in link instead
+      </button>
+      <p className="auth-card__foot">New to Gigin? <button type="button" className="auth-card__link" onClick={() => { setAuthType('signup'); clearCredentials(); clearError(); }}>Create an account</button></p>
+    </AuthCard>
   );
 };

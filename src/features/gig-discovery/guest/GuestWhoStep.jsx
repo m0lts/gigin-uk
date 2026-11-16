@@ -220,16 +220,16 @@ export const GuestWhoStep = forwardRef(function GuestWhoStep({
         <aside className="ga-account-card">
           <p className="ga-mono">YOU&apos;RE ALREADY ON GIGIN</p>
           <strong>{draft.email} has a Gigin account</strong>
-          <p>Log in and we&apos;ll fill this in from your profile and keep the application with your account. You can also carry on as a guest.</p>
-          <button type="button" className="ga-dark" onClick={() => onLogin?.(draft.email)}>Log in</button>
+          <p>Sign in and we&apos;ll fill this in from your profile and keep the application with your account. You can also carry on as a guest.</p>
+          <button type="button" className="ga-dark" onClick={() => onLogin?.(draft.email)}>Sign in</button>
           <button type="button" className="ga-ghost" onClick={() => { setAsGuest(true); patch({ accountBlocked: false }); }}>Carry on as a guest</button>
         </aside>
       )}
       {draft.hasAccount && asGuest && (
-        <p className="ga-note">Sending as a guest. Next time you log in, we&apos;ll add this application to your account.</p>
+        <p className="ga-note">Sending as a guest. Next time you sign in, we&apos;ll add this application to your account.</p>
       )}
       {profileHint && FEATURES.keepProfile && !draft.hasAccount && (
-        <p className="ga-note">You have a Gigin profile. Log in with your password to fill this in from it. {signInSent ? 'Sign-in link sent.' : <button type="button" className="ga-text" onClick={() => sendPrefillLink(draft.email).then(() => setSignInSent(true))}>Email me a sign-in link</button>}</p>
+        <p className="ga-note">You have a Gigin profile. Sign in with your password to fill this in from it. {signInSent ? 'Sign-in link sent.' : <button type="button" className="ga-text" onClick={() => sendPrefillLink(draft.email).then(() => setSignInSent(true))}>Email me a sign-in link</button>}</p>
       )}
       {phoneMatch && (
         <div className="ga-soft">

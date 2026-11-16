@@ -56,9 +56,9 @@ test('venue settings opens at 375px without an error boundary', async ({ page })
   page.on('pageerror', (error) => errors.push(error.message));
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('/');
-  await page.getByPlaceholder('e.g. johnsmith@gigin.com').fill(email);
-  await page.getByPlaceholder('Password').fill(PASSWORD);
-  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL(/dashboard/, { timeout: 20000 });
   await page.goto('/venues/dashboard/my-venues');
   await expect(page.getByRole('heading', { name: 'My Venues' })).toBeVisible({ timeout: 20000 });

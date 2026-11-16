@@ -141,7 +141,7 @@ export const PrivacyPolicy = () => {
           Your email and phone number are never on that page. Venues contact you through a form, and you reply from your own email.
           A venue only sees your email and phone if you have applied to them or they have booked you.
           Press kit files stay in private storage. Only a venue with a confirmed booking can download the files you switch on.
-          Nothing is public until you open the confirm link and create a password. That password is your Gigin login. You can hide or delete the profile after you log in.
+          Nothing is public until you open the confirm link and create a password. That password is your Gigin login. You can hide or delete the profile after you sign in.
         </p>
       </div>
 
