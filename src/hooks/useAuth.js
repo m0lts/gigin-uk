@@ -28,6 +28,8 @@ export const useAuth = () => {
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [accountLoadError, setAccountLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const navigate = useNavigate();
 
   const userUnsubRef = useRef(null);
@@ -116,6 +118,7 @@ export const useAuth = () => {
       cleanupArtistProfileSubscriptions();
       if (!firebaseUser) {
         setUser(null);
+        setAccountLoadError(false);
         setLoading(false);
         return;
       }
@@ -137,14 +140,22 @@ export const useAuth = () => {
         const venueIds = Array.isArray(rawUser.venueProfiles)
           ? rawUser.venueProfiles.map((entry) => (typeof entry === 'string' ? entry : entry?.id)).filter(Boolean)
           : [];
-        const venueResults = await Promise.all(venueIds.map(async (venueId) => {
-          try {
-            const snap = await getDoc(doc(firestore, 'venueProfiles', venueId));
-            return snap.exists() ? { id: venueId, ...snap.data() } : { id: venueId };
-          } catch {
-            return { id: venueId };
-          }
-        }));
+        let venueResults;
+        try {
+          venueResults = await Promise.all(venueIds.map(async (venueId) => {
+            try {
+              const snap = await getDoc(doc(firestore, 'venueProfiles', venueId));
+              return snap.exists() ? { id: venueId, ...snap.data() } : { id: venueId };
+            } catch (error) {
+              console.error('Failed to load venue profile', venueId, error);
+              throw error;
+            }
+          }));
+        } catch {
+          setAccountLoadError(true);
+          setLoading(false);
+          return;
+        }
         userData.venueProfileIds = venueIds;
         userData.venueProfiles = venueResults;
         const artistProfileIds = Array.isArray(rawArtistProfiles)
@@ -186,6 +197,7 @@ export const useAuth = () => {
         });
 
         syncArtistProfileSubscriptions(artistProfileIds);
+        setAccountLoadError(false);
         setLoading(false);
       }, (err) => {
         console.error('User snapshot error:', err);
@@ -198,7 +210,7 @@ export const useAuth = () => {
       if (userUnsubRef.current) userUnsubRef.current();
       cleanupArtistProfileSubscriptions();
     };
-  }, []);
+  }, [loadAttempt]);
 
   useEffect(() => {
     const onPostLogin = () => setPostLoginTick((tick) => tick + 1);
@@ -218,7 +230,7 @@ export const useAuth = () => {
       venueExpected,
       venueLoaded,
     });
-    if (!postLoginPending || !profilesReady) return undefined;
+    if (accountLoadError || !postLoginPending || !profilesReady) return undefined;
 
     let cancelled = false;
     (async () => {
@@ -249,7 +261,7 @@ export const useAuth = () => {
     })();
 
     return () => { cancelled = true; };
-  }, [user, loading, navigate, postLoginTick]);
+  }, [user, loading, navigate, postLoginTick, accountLoadError]);
 
   const login = async (credentials) => {
     try {
@@ -378,10 +390,18 @@ const resetPassword = async (rawEmail) => {
     }
   };
 
+  const retryAccountLoad = () => {
+    setAccountLoadError(false);
+    setLoading(true);
+    setLoadAttempt((attempt) => attempt + 1);
+  };
+
   return {
     user,
     setUser,
     loading,
+    accountLoadError,
+    retryAccountLoad,
     login,
     signup,
     logout,

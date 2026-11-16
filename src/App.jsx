@@ -17,7 +17,7 @@ import { VenueBuilder } from '@features/venue/builder/VenueBuilder';
 import { VenueApprovalPage } from '@features/admin/VenueApprovalPage';
 import { useAuth } from '@hooks/useAuth';
 import { AuthModal } from '@features/shared/components/AuthModal';
-import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
+import { AccountLoadError, LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { TextLogo } from '@features/shared/ui/logos/Logos';
 import { VenueDashboard } from '@features/venue/dashboard/Dashboard';
 import { GigPage } from '@features/gig-discovery/GigPage';
@@ -48,7 +48,7 @@ import { VenueDashboardProvider } from './context/VenueDashboardContext';
 
 export default function App() {
 
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, accountLoadError, retryAccountLoad } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [authModal, setAuthModal] = useState(false);
@@ -149,6 +149,10 @@ export default function App() {
 
   if (loading) {
     return <LoadingScreen />;
+  }
+
+  if (accountLoadError) {
+    return <AccountLoadError onRetry={retryAccountLoad} />;
   }
 
   return (

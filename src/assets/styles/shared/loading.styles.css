@@ -116,6 +116,39 @@
   }
 }
 
+.account-load-error {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.account-load-error__card {
+  width: min(280px, 100%);
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.account-load-error__card p {
+  margin: 0 0 12px;
+  color: #0F1115;
+  font-size: 15px;
+}
+
+.account-load-error__card button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: #111317;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 .loading.spinner {
   border: 2px solid transparent;
   border-radius: 50%;
