@@ -166,11 +166,11 @@ export const GuestWhoStep = forwardRef(function GuestWhoStep({
 
   return (
     <div className="ga-step">
-      <h2>Who are you?</h2>
-      <p className="ga-sub">Only your act name, your name and one way to reach you are needed.</p>
+      <h2>Apply to play</h2>
+      <p className="ga-sub">Takes about a minute. {venueName || bookerName} will see this, plus your music.</p>
       {inviteNote && <p className="ga-note">{inviteNote}</p>}
       <label className="ga-field">
-        <span>Act or band name</span>
+        <span>Act or artist name</span>
         <input className={showErrors && !draft.actName.trim() ? 'is-invalid' : ''} value={draft.actName} onChange={(event) => patch({ actName: event.target.value })} />
       </label>
       <label className="ga-field">

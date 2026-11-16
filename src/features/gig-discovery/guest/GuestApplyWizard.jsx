@@ -365,8 +365,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
           else setStep(STEPS[index - 1][0]);
         }}>‹</button>
         <div>
-          <span className="ga-mono">{editing ? 'EDITING' : `STEP ${index + 1} OF 4`}</span>
-          <strong>{STEPS[index][1]}</strong>
+          <strong>{String(gig.gigName || 'Gig').replace(/\s*\(Set\s+\d+\)\s*$/, '')} · {formatShortDay(gig)}</strong>
         </div>
         {(step === 'assets' || step === 'tech') && !editing ? (
           <button type="button" className="ga-text" disabled={uploadBlocked} onClick={() => { if (!uploadBlocked) setStep(STEPS[index + 1][0]); }}>Skip</button>
@@ -392,8 +391,11 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         )}
         {step === 'assets' && <GuestAssetsStep draft={draft} patch={patch} bookerName={booker.name} gigId={gig.gigId} onUploadChange={onUploadChange} />}
         {step === 'tech' && <GuestTechStep draft={draft} patch={patch} venue={venue} />}
-        {returning && step === 'review' && (
-          <p><strong>Welcome back, {(returning.contact?.contactName || returning.profile.name || '').split(' ')[0]}.</strong> We've filled this in from your Gigin profile. <button type="button" className="ga-text" onClick={() => { setReturning(null); setDraft(emptyDraft(gig, invite, newGuestIds())); setStep('who'); forgetProfileSession(); }}>Not you? Start blank</button></p>
+          {returning && step === 'review' && (
+          <>
+            <h2>Welcome back, {(returning.contact?.contactName || returning.profile.name || 'there').split(' ')[0]}</h2>
+            <p className="ga-sub">We&apos;ve filled in your details from last time. <button type="button" className="ga-text" onClick={() => { setReturning(null); setDraft(emptyDraft(gig, invite, newGuestIds())); setStep('who'); forgetProfileSession(); }}>Use a different email</button></p>
+          </>
         )}
         {returning && (() => {
           const compat = computeCompatibility(buildGuestTechRider(draft), venue?.techRider);

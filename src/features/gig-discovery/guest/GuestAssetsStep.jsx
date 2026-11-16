@@ -246,8 +246,8 @@ export function GuestAssetsStep({
 
   return (
     <div className="ga-step">
-      <h2>Photo and links</h2>
-      <p className="ga-sub">{bookerName} uses these to promote the night on the bar's socials. Optional.</p>
+      <h2>Your music</h2>
+      <p className="ga-sub">A link or a track. One is enough. {bookerName} can also use a photo.</p>
       {photoRow ? (
         <div className={`ga-file${photoRow.status === 'failed' ? ' is-failed' : ''}`} aria-busy={photoRow.status === 'uploading'}>
           <span className="ga-thumb" style={photoRow.previewUrl ? { backgroundImage: `url(${photoRow.previewUrl})` } : undefined} />
