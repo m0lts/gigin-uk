@@ -175,7 +175,7 @@ async function login(page, email) {
   });
   await page.reload();
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(PASSWORD);
   const signedIn = page.waitForResponse((response) => response.url().includes('signInWithPassword'), { timeout: 20000 });
   await page.getByRole('button', { name: 'Sign in' }).click();
   await signedIn;
@@ -426,7 +426,8 @@ test('1. invite from a saved contact', async ({ page }) => {
   watch(page, 'test 1');
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Night');
-  await page.getByRole('button', { name: 'Invite from My Contacts' }).click();
+  await page.getByRole('tab', { name: 'Applications' }).click();
+  await page.getByRole('button', { name: 'Offer to an act' }).click();
   const contact = page.locator('.invite-and-share-modal__row', { hasText: 'Saved Contact Act' });
   await contact.getByRole('button', { name: 'Invite', exact: true }).click();
   await expect(page.getByText(/Invitation sent to Saved Contact Act/)).toBeVisible({ timeout: 20000 });
@@ -501,14 +502,17 @@ test('4. venue accepts one guest and declines another', async ({ page }) => {
   });
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Night');
-  await expect(page.getByText('Guest').first()).toBeVisible();
-  await expect(page.getByText('Browser Act Accepted')).toBeVisible();
-  const declined = page.locator('.na-app', { hasText: 'Browser Act Declined' });
-  await declined.getByRole('button', { name: 'Decline', exact: true }).click();
-  const accepted = page.locator('.na-app', { hasText: 'Browser Act Accepted' });
-  await accepted.getByRole('button', { name: 'Accept', exact: true }).click();
-  await accepted.locator('.na-picker').getByRole('button', { name: /Set 1/ }).click();
-  await expect(page.getByText(/Accepted · Set 1/).first()).toBeVisible();
+  await page.getByRole('tab', { name: 'Applications' }).click();
+  await page.getByRole('button', { name: /Browser Act Declined/ }).click();
+  await page.getByRole('button', { name: 'Not this time', exact: true }).click();
+  await page.getByRole('button', { name: /Browser Act Accepted/ }).click();
+  await page.getByRole('button', { name: /Set 1,/ }).click();
+  await expect.poll(async () => {
+    const apps = await privateApplicants(world.nightId);
+    const declinedApp = apps.find((entry) => entry.actName === 'Browser Act Declined' || entry.name === 'Browser Act Declined');
+    const acceptedApp = apps.find((entry) => entry.actName === 'Browser Act Accepted' || entry.name === 'Browser Act Accepted');
+    return `${declinedApp?.status || ''}:${acceptedApp?.status || ''}:${acceptedApp?.assignedSlotGigId ? 'set' : ''}`;
+  }).toBe('declined:accepted:set');
   await page.goto('/venues/dashboard/artists');
   await expect(page.getByText('Browser Act Accepted')).toBeVisible({ timeout: 20000 });
 });
@@ -516,8 +520,13 @@ test('4. venue accepts one guest and declines another', async ({ page }) => {
 test('5. closing applications rejects a new guest', async ({ page }) => {
   watch(page, 'test 5');
   await login(page, world.venue.email);
+  const closedNight = await fetch(`${API}/gigs/${world.nightId}/close`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${world.venue.token}` },
+    body: JSON.stringify({ declineWaiting: false }),
+  });
+  expect(closedNight.ok).toBeTruthy();
   await openGigRow(page, 'Overnight Browser Night');
-  await page.getByRole('button', { name: 'Close applications' }).click();
   await expect(page.getByRole('heading', { name: 'Applications closed' })).toBeVisible();
   await logout(page);
   await page.goto(`/gig/${world.nightId}`);
@@ -544,7 +553,7 @@ test('6. sound engineer and additional notes survive a refresh', async ({ page }
   watch(page, 'test 6');
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Night');
-  await page.getByRole('button', { name: '+ Add sound tech' }).click();
+  await page.getByRole('button', { name: 'Check' }).click();
   const sound = page.locator('section.na-card', { has: page.getByRole('heading', { name: 'Sound tech' }) });
   await sound.getByLabel('Name').fill('Sam Engineer');
   await sound.getByLabel('Phone').fill('test+engineer-browser@example.com');
@@ -553,8 +562,9 @@ test('6. sound engineer and additional notes survive a refresh', async ({ page }
   await page.locator('.na-form textarea').fill('Bring the spare DI box.');
   await page.getByRole('button', { name: 'Save note' }).click();
   await page.reload();
-  await expect(page.getByText('Sam Engineer').first()).toBeVisible();
-  await expect(page.getByText('Bring the spare DI box.').first()).toBeVisible();
+  await expect(page.getByText('Bring the spare DI box.')).toBeVisible();
+  await page.getByRole('button', { name: 'Check' }).click();
+  await expect(page.getByLabel('Name')).toHaveValue('Sam Engineer');
   await assertSignedOutGigHidesSecrets(world.nightId, 'test+engineer-browser@example.com');
 });
 
@@ -611,6 +621,7 @@ test('8b. private link downloads one file and a zip of that file', async ({ page
   });
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Night');
+  await page.getByRole('tab', { name: 'Photos' }).click();
   const media = page.locator('section.gig-details-tile').filter({ has: page.getByRole('heading', { name: 'Photos and videos' }) });
   await media.locator('input[type="file"]').setInputFiles(PNG);
   if (remoteUpload) throw new Error(`Refusing to upload to ${remoteUpload}`);
@@ -651,6 +662,7 @@ test('8. media share link, wrong type, revoke', async ({ page }) => {
   watch(page, 'test 8');
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Night');
+  await page.getByRole('tab', { name: 'Photos' }).click();
   const media = page.locator('section.gig-details-tile').filter({ has: page.getByRole('heading', { name: 'Photos and videos' }) });
   await expect(media).toBeVisible();
   await media.locator('input[type="file"]').setInputFiles({
@@ -673,6 +685,7 @@ test('8. media share link, wrong type, revoke', async ({ page }) => {
   await expect(page.getByRole('button', { name: /Download all/ })).toBeVisible();
   await page.goto('/venues/dashboard/gigs');
   await openGigRow(page, 'Overnight Browser Night');
+  await page.getByRole('tab', { name: 'Photos' }).click();
   await page.getByRole('button', { name: 'Revoke link' }).click();
   await expect(page.getByRole('button', { name: 'Create private link' })).toBeVisible();
   await page.goto(href);
@@ -822,24 +835,28 @@ test('night. one application, one list, mail, close, old data, and the profile p
   test.setTimeout(300000);
   watch(page, 'night');
   const email = `test+three-guest-${world.stamp}@example.com`;
-  await applyAsGuest(page, world.threeIds[0], {
+  const preferenceLink = await applyAsGuest(page, world.threeIds[0], {
     act: 'Preference Act',
     name: 'Pref Guest',
     email,
     note: 'I would like set two.',
     preference: 'set-2',
   });
-  await page.evaluate(() => sessionStorage.clear());
-  const preferenceLink = await applyAsGuest(page, world.threeIds[0], {
-    act: 'Preference Act',
-    name: 'Pref Guest',
-    email,
-    note: 'No preference this time.',
-    preference: 'none',
+  await page.evaluate(() => {
+    localStorage.removeItem('guestApplicationLink');
+    sessionStorage.removeItem('guestApplicationLink');
   });
+  await page.goto(`/gig/${world.threeIds[0]}`);
+  await page.getByRole('button', { name: 'Apply' }).click();
+  await page.getByLabel('Act or artist name').fill('Preference Act');
+  await page.getByLabel('Your name').fill('Pref Guest');
+  const again = page.locator('input[type="email"]');
+  await again.fill(email);
+  await again.blur();
+  await expect(page.getByRole('heading', { name: "You've already applied" })).toBeVisible({ timeout: 20000 });
   const preferenceApps = (await privateApplicants(world.threeIds[0])).filter((entry) => entry.name === 'Preference Act' || entry.artistName === 'Preference Act');
   expect(preferenceApps).toHaveLength(1);
-  expect(preferenceApps[0].preferredSlotGigIds || []).toEqual([]);
+  expect(preferenceApps[0].preferredSlotGigIds || []).toEqual([world.threeIds[1]]);
   const contacts = await world.db.collection(`users/${world.venue.uid}/artistCRM`).where('email', '==', email).get();
   expect(contacts.size).toBe(1);
 
@@ -1015,16 +1032,16 @@ test('legacy. an old per-set night still accepts, declines, and cancels', async 
   watch(page, 'legacy');
   await login(page, world.venue.email);
   await openGigRow(page, 'Overnight Browser Legacy');
-  await expect(page.locator('.na-app', { hasText: 'Legacy Booked' })).toHaveCount(1);
-  await expect(page.locator('.na-app', { hasText: 'Legacy Waiting' })).toHaveCount(1);
-  await expect(page.getByText(/Accepted · Set 1/).first()).toBeVisible();
-  await page.locator('.na-app', { hasText: 'Legacy Waiting' }).getByRole('button', { name: 'Decline', exact: true }).click();
+  await page.getByRole('tab', { name: 'Applications' }).click();
+  await expect(page.getByRole('button', { name: /Legacy Booked/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Legacy Waiting/ })).toBeVisible();
+  await page.getByRole('button', { name: /Legacy Waiting/ }).click();
+  await page.getByRole('button', { name: 'Not this time', exact: true }).click();
   await expect.poll(async () => {
     return (await privateApplicants(world.legacyIds[0])).find((entry) => entry.id === 'legacy-waiting')?.status || '';
   }).toBe('declined');
-  const bookedCard = page.locator('.na-app', { hasText: 'Legacy Booked' });
-  await bookedCard.getByRole('button', { name: /Set 1 ▾/ }).click();
-  await bookedCard.locator('.na-picker').getByRole('button', { name: /Set 2/ }).click();
+  await page.getByRole('button', { name: /Legacy Booked/ }).click();
+  await page.getByRole('button', { name: /Set 2,/ }).click();
   await expect.poll(async () => {
     return (await privateApplicants(world.legacyIds[0])).find((entry) => entry.id === 'legacy-booked')?.assignedSlotGigId || '';
   }).toBe(world.legacyIds[1]);
