@@ -1421,3 +1421,46 @@
     border-color: var(--launch-ink);
     outline-color: var(--launch-ink);
 }
+
+@media (min-width: 641px) {
+    .venue-builder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: auto;
+        min-height: 100vh;
+        padding: 32px 20px 80px;
+        grid-template-columns: none;
+    }
+    .venue-builder .left,
+    .venue-builder .right {
+        width: 100%;
+        max-width: 560px;
+        max-height: none;
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        border-radius: 0;
+    }
+    .venue-builder .left {
+        display: block;
+        margin-bottom: 8px;
+    }
+    .venue-builder .right {
+        align-items: stretch;
+        justify-content: flex-start;
+    }
+    .venue-builder .stage,
+    .venue-builder .stage .form,
+    .venue-builder .stage-content {
+        width: 100%;
+        max-width: 560px;
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .venue-builder .stage-content {
+        margin: 0 0 2rem;
+    }
+}
