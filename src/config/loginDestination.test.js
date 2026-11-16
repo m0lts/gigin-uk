@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { accountInitials, featureRedirectTarget, finishSetupPath, loginLandingPath, loginLandingState, logoutDestination, signInNotice, signedInHomeAction, venueBuilderPath } from './loginDestination.js';
 
 test('a login with no profile finishes venue setup', () => {
@@ -111,6 +112,12 @@ test('the landing header offers setup or the dashboard', () => {
     '/venues/dashboard/gigs',
   );
   assert.equal(signedInHomeAction({ signupAs: 'artist' }, { keepProfile: true }).path, '/home');
+  assert.equal(
+    signedInHomeAction({ venueProfiles: [{ id: 'venue-1', approvalStatus: 'approved' }] }).label,
+    'Go to dashboard',
+  );
+  const header = fs.readFileSync(new URL('../features/shared/components/LaunchHeader.jsx', import.meta.url), 'utf8');
+  assert.equal(header.includes('label="Go to dashboard"'), false);
   assert.equal(accountInitials({ name: 'Maya Reid' }), 'MR');
   assert.equal(accountInitials({ email: 'maya.reid@gmail.com' }), 'MA');
 });

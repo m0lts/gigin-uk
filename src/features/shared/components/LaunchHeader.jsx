@@ -25,7 +25,6 @@ export function LaunchHeader({ setAuthModal, setAuthType, setAuthClosable }) {
             <SignedInHomeButton
               user={user}
               className="launch-header__go"
-              label="Go to dashboard"
               setAuthType={setAuthType}
               setAuthModal={setAuthModal}
               setAuthClosable={setAuthClosable}
