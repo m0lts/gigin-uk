@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { auth, firestore, googleProvider } from '@lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
-import { logoutDestination } from '../config/loginDestination';
+import { loginLandingPath, loginLandingState, logoutDestination } from '../config/loginDestination';
+import { getArtistHome, getProfileSession } from '@services/client-side/keepProfile';
 import { httpClient } from '@services/http/client';
 import { doc, getDoc, setDoc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +23,9 @@ export const useAuth = () => {
   const artistProfileUnsubsRef = useRef(new Map());
   const currentArtistProfileIdsRef = useRef([]);
   const artistProfilesDataRef = useRef({});
+  const postLoginRef = useRef(false);
+  const postLoginStartedRef = useRef(0);
+  const [postLoginTick, setPostLoginTick] = useState(0);
 
   const cleanupArtistProfileSubscriptions = () => {
     artistProfileUnsubsRef.current.forEach((unsub) => unsub?.());
@@ -169,7 +173,55 @@ export const useAuth = () => {
       cleanupArtistProfileSubscriptions();
     };
   }, []);
-  
+
+  const beginPostLogin = () => {
+    postLoginRef.current = true;
+    postLoginStartedRef.current = Date.now();
+    setPostLoginTick((tick) => tick + 1);
+  };
+
+  const cancelPostLogin = () => {
+    postLoginRef.current = false;
+  };
+
+  useEffect(() => {
+    if (!postLoginRef.current || loading || !user) return undefined;
+    const ids = Array.isArray(user.artistProfileIds) ? user.artistProfileIds : [];
+    const loaded = Array.isArray(user.artistProfiles) ? user.artistProfiles : [];
+    const elapsed = Date.now() - postLoginStartedRef.current;
+    if (ids.length > 0 && loaded.length < ids.length && elapsed < 800) {
+      const timer = setTimeout(() => setPostLoginTick((tick) => tick + 1), 800 - elapsed);
+      return () => clearTimeout(timer);
+    }
+
+    let cancelled = false;
+    (async () => {
+      const emailVerified = auth.currentUser?.emailVerified !== false;
+      let hasArtistSession = false;
+      const hasVenue = Array.isArray(user.venueProfiles) && user.venueProfiles.length > 0;
+      if (emailVerified && FEATURES.keepProfile && loaded.length === 0 && !hasVenue) {
+        const [session, home] = await Promise.all([
+          getProfileSession().catch(() => null),
+          getArtistHome().catch(() => null),
+        ]);
+        hasArtistSession = Boolean(session?.profile || home?.profile);
+      }
+      if (cancelled || !postLoginRef.current) return;
+      postLoginRef.current = false;
+      if (!emailVerified) return;
+      let storedRedirect = '';
+      try {
+        storedRedirect = sessionStorage.getItem('redirect') || '';
+        if (storedRedirect) sessionStorage.removeItem('redirect');
+      } catch { /* ignore */ }
+      const path = loginLandingPath(user, FEATURES, { emailVerified: true, hasArtistSession, storedRedirect });
+      if (!path) return;
+      const draft = path.startsWith('/venues/add-venue') ? loginLandingState(user) : null;
+      navigate(path, draft ? { state: draft } : undefined);
+    })();
+
+    return () => { cancelled = true; };
+  }, [user, loading, navigate, postLoginTick]);
 
   const login = async (credentials) => {
     try {
@@ -185,22 +237,16 @@ export const useAuth = () => {
       } catch (error) {
         console.log("Error creating user document:", error);
       }
-      const redirect = sessionStorage.getItem('redirect');
-      if (redirect) {
-        sessionStorage.removeItem('redirect');
-        navigate(artistLoginRedirect(redirect, user, FEATURES));
+      beginPostLogin();
+    } catch (error) {
+      cancelPostLogin();
+      const msg = error?.customData?.message || error?.message || "";
+      if (msg.includes("auth/email-not-verified")) {
+        toast.error("Please verify your email to continue.");
         return;
       }
-      // Don't navigate here - let LoginForm handle redirect based on user profile type
-      // The user state will update and LoginForm's useEffect will handle the redirect
-      } catch (error) {
-        const msg = error?.customData?.message || error?.message || "";
-        if (msg.includes("auth/email-not-verified")) {
-          toast.error("Please verify your email to continue.");
-          return;
-        }
-        throw { error };
-      }
+      throw { error };
+    }
   };
 
   const continueWithGoogle = async () => {
@@ -228,15 +274,12 @@ export const useAuth = () => {
           console.error("Error updating user document:", error);
         }
       }
-      const redirect = sessionStorage.getItem('redirect');
-      if (redirect) {
-        sessionStorage.removeItem('redirect');
-        navigate(artistLoginRedirect(redirect, user, FEATURES));
-        return;
+      if (user.emailVerified === false) {
+        return { needsEmailVerify: true };
       }
-      // Don't navigate here - let LoginForm handle redirect based on user profile type
-      // The user state will update and LoginForm's useEffect will handle the redirect
+      beginPostLogin();
     } catch (error) {
+      cancelPostLogin();
       const msg = error?.customData?.message || error?.message || "";
       if (msg.includes("auth/account-not-registered")) {
         toast.error('No Gigin account is linked to this Google account. Please sign up first.');

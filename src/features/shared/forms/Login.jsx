@@ -1,63 +1,24 @@
 // Dependencies
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { auth } from '@lib/firebase';
 import { sendSignInLinkToEmail } from 'firebase/auth';
 // Components
 import { AuthCard, EyeButton, GoogleMark, isGmail } from './AuthCard';
 import { toast } from 'sonner';
-import { FEATURES } from '../../../config/features';
-import { artistDestination } from '../../../config/artistDestination';
-import { loginLandingPath } from '../../../config/loginDestination';
-import { getArtistHome, getProfileSession } from '@services/client-side/keepProfile';
 
 
 
 export const LoginForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, login, setAuthModal, loading, setLoading, authClosable, setAuthClosable, continueWithGoogle, noProfileModal, setNoProfileModal, user, justLoggedInRef }) => {
-  const navigate = useNavigate();
-
   const [showPassword, setShowPassword] = useState(false);
   const [linkPhase, setLinkPhase] = useState('');
   const [linkWait, setLinkWait] = useState(0);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
-  // Handle redirect after successful login based on user profile type
   useEffect(() => {
     if (!linkWait) return undefined;
     const timer = setTimeout(() => setLinkWait((current) => Math.max(0, current - 1)), 1000);
     return () => clearTimeout(timer);
   }, [linkWait]);
-
-  useEffect(() => {
-    if (!(justLoggedIn && user && !loading)) return undefined;
-    const u = auth.currentUser;
-    if (u && u.emailVerified) {
-      setAuthModal(false);
-    }
-
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      const hasArtist = Array.isArray(user.artistProfiles) && user.artistProfiles.length > 0;
-      const hasVenue = Array.isArray(user.venueProfiles) && user.venueProfiles.length > 0;
-      let hasArtistSession = false;
-      if (FEATURES.keepProfile && !hasArtist && !hasVenue) {
-        const [session, home] = await Promise.all([
-          getProfileSession().catch(() => null),
-          getArtistHome().catch(() => null),
-        ]);
-        hasArtistSession = Boolean(session?.profile || home?.profile);
-      }
-      if (cancelled) return;
-      navigate(loginLandingPath(user, FEATURES, { hasArtistSession }));
-      setJustLoggedIn(false);
-    }, 500);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [user, justLoggedIn, loading, navigate, setAuthModal]);
 
   const handleFocus = () => {
     setPasswordFocused(true);
@@ -102,19 +63,8 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
         setAuthType('verify-email');
         return;
       }
-      if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
-        setAuthModal(false);
-        setAuthClosable(true);
-        navigate(artistDestination(user, FEATURES));
-        return;
-      }
-      // Set flag to trigger redirect check in useEffect
-      setJustLoggedIn(true);
-      // Mark that we just logged in to prevent App.jsx from reopening modal
-      if (justLoggedInRef) {
-        justLoggedInRef.current = true;
-      }
-      // Don't close modal yet - let useEffect handle redirect and close
+      if (justLoggedInRef) justLoggedInRef.current = true;
+      setAuthModal(false);
     } catch (err) {
       switch (err.error.code) {
         case 'auth/user-not-found':
@@ -194,13 +144,12 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
           try {
             setLoading(true);
             const loginResponse = await continueWithGoogle();
-            if (loginResponse && loginResponse.redirect === 'create-musician-profile') {
-              setAuthModal(false);
+            if (loginResponse && loginResponse.needsEmailVerify) {
               setAuthClosable(true);
-              navigate(artistDestination(user, FEATURES));
+              setAuthType('verify-email');
             } else {
-              setJustLoggedIn(true);
               if (justLoggedInRef) justLoggedInRef.current = true;
+              setAuthModal(false);
             }
           } catch (err) {
             setError({ status: true, input: '', message: err?.error?.message || 'Google sign in failed' });

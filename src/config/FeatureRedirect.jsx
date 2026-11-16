@@ -1,31 +1,31 @@
 /* eslint-disable react/prop-types */
 import { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
+import { auth } from '@lib/firebase';
+import { FEATURES } from './features';
+import { featureRedirectTarget } from './loginDestination';
 
-function isLoggedInVenueUser(user) {
-  return Array.isArray(user?.venueProfiles) && user.venueProfiles.length > 0;
-}
-
-/** Opens the existing login modal for visitors who are not a logged-in venue user. */
-export function LoginScreen({ setAuthModal, setAuthType, setAuthClosable }) {
+/** Opens sign-in, or the confirm-email card, for a visitor who cannot stay on this page. */
+export function LoginScreen({ setAuthModal, setAuthType, setAuthClosable, authType = 'login' }) {
   useEffect(() => {
-    setAuthType?.('login');
+    setAuthType?.(authType);
     setAuthClosable?.(true);
     setAuthModal?.(true);
-  }, [setAuthModal, setAuthType, setAuthClosable]);
+  }, [setAuthModal, setAuthType, setAuthClosable, authType]);
   return null;
 }
 
-/** Logged-in venue users go to the gigs dashboard. Everyone else gets the login modal. */
+/** Signed-in people go to the same place as sign-in. Everyone else gets the matching card. */
 export function FeatureRedirect({ user, setAuthModal, setAuthType, setAuthClosable }) {
-  if (isLoggedInVenueUser(user)) {
-    return <Navigate to="/venues/dashboard/gigs" replace />;
-  }
+  const emailVerified = !auth.currentUser || auth.currentUser.emailVerified !== false;
+  const target = featureRedirectTarget(user, FEATURES, { emailVerified });
+  if (target.path) return <Navigate to={target.path} replace />;
   return (
     <LoginScreen
       setAuthModal={setAuthModal}
       setAuthType={setAuthType}
       setAuthClosable={setAuthClosable}
+      authType={target.authType}
     />
   );
 }

@@ -155,7 +155,8 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     };
 
     useEffect(() => {
-        const checkForSavedProfile = async () => {        
+        const checkForSavedProfile = async () => {
+            if (venue) return;
             if (user.venueProfiles && user.venueProfiles.some(profile => !profile.completed)) {
                 const savedProfile = user.venueProfiles.find(profile => !profile.completed);
                 if (savedProfile) {
@@ -164,10 +165,10 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
                 }
                 }
         };
-        if (user && user.venueProfiles && formData.name === '') {
+        if (user && user.venueProfiles && formData.name === '' && !venue) {
             checkForSavedProfile();
         }
-    }, [user, setAuthModal, formData]);
+    }, [user, setAuthModal, formData, venue]);
 
     const venueAlreadySaved = () => (
         editingExisting
