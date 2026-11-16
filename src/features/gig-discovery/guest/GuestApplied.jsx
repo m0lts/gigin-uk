@@ -18,12 +18,13 @@ export function GuestApplied({ draft, dateLabel, bookerName, onClose, onCreateAc
   return (
     <div className="ga-applied">
       <span className="ga-check">✓</span>
-      <h2>Application sent to {bookerName}</h2>
-      <p>{bookerName} has your application for {dateLabel}{prefer}. {draft.email ? `We've emailed a copy to ${draft.email}.` : 'Keep this page if you need the private link.'}</p>
-      <ol className="ga-next">
-        <li><span>1</span><div><strong>{bookerName} reviews applications</strong><p>{bookerName} looks at everyone who applied for the night and picks the acts.</p></div></li>
-        <li><span>2</span><div><strong>You hear back either way</strong><p>By {channel}. If you're in, {bookerName} confirms which set you're playing, straight away or a little later.</p></div></li>
-        <li><span>3</span><div><strong>Change your mind any time</strong><p>Use the private link in your email to edit or withdraw.</p></div></li>
+      <h2>Application sent</h2>
+      <p>{bookerName} has your application for {dateLabel}{prefer}.</p>
+      <ol className="ga-next ga-panel">
+        <li><span className="is-done">✓</span><div><strong>You applied</strong><p>Today</p></div></li>
+        <li><span>2</span><div><strong>{bookerName} listens and decides</strong><p>They usually reply within a few days.</p></div></li>
+        <li><span>3</span><div><strong>We email you their answer</strong><p>{draft.email ? `At ${draft.email}` : `By ${channel}`}</p></div></li>
+        <li><span>4</span><div><strong>If you&apos;re booked, send your promo</strong><p>A bio, photo and track so they can promote your set.</p></div></li>
       </ol>
       {profileNote ? (
         <p>{profileNote}{draft.profileSlug ? <> <Link to={`/artist/${draft.profileSlug}`}>Open</Link></> : null}</p>
@@ -35,11 +36,11 @@ export function GuestApplied({ draft, dateLabel, bookerName, onClose, onCreateAc
             try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
             setHidden(true);
           }}>×</button>
-          <strong>Save your details for next time?</strong>
-          <p>A free account keeps your act, photo and tech rider. Your application is sent either way.</p>
+          <strong>Save your details for next time</strong>
+          <p>Apply to the next gig in one tap and see all your applications in one place. It&apos;s free, and there&apos;s no password: we email you a link.</p>
           <div>
-            <button type="button" className="ga-dark" onClick={() => onCreateAccount?.(draft.email)}>Create a free account</button>
-            <button type="button" className="ga-ghost" onClick={() => setHidden(true)}>Not now</button>
+            <button type="button" className="ga-dark" onClick={() => onCreateAccount?.(draft.email)}>Save my details</button>
+            <button type="button" className="ga-text" onClick={() => setHidden(true)}>Not now</button>
           </div>
         </aside>
       )}
