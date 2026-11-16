@@ -1,14 +1,11 @@
-import { useNavigate, Link } from 'react-router-dom';
-import { TextLogo, TextLogoLink } from '@features/shared/ui/logos/Logos';
+import { useNavigate } from 'react-router-dom';
+import { LaunchHeader } from '../shared/components/LaunchHeader';
 import '@styles/shared/landing-page.styles.css'
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useAuth } from '../../hooks/useAuth';
 import { Footer } from '../shared/components/Footer';
-import { useEffect, useState } from 'react';
-import { RightArrowIcon, HamburgerMenuIcon, CloseIcon } from '../shared/ui/extras/Icons';
-import ArtistProfileExample from '@assets/images/artist-profile-example.png';
-import Portal from '../shared/components/Portal';
-import { TextLogoVenueLandingPage } from '../shared/ui/logos/Logos';
+import { useEffect } from 'react';
+import { RightArrowIcon } from '../shared/ui/extras/Icons';
 import { FEATURES } from '../../config/features';
 import { artistDestination } from '../../config/artistDestination';
 import Top1 from '@assets/images/landing_page/venue/top_1.png';
@@ -24,14 +21,10 @@ import ArtistTr from '@assets/images/landing_page/venue/artist_tr.png';
 export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal, setInitialEmail }) => {
     const navigate = useNavigate();
     const { isXlUp, isMdUp } = useBreakpoint();
-    const { user, logout } = useAuth();
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const { user } = useAuth();
 
     const hasArtistProfile = user && user.artistProfiles && user.artistProfiles.length > 0;
     const hasVenueProfile = user && user.venueProfiles && user.venueProfiles.length > 0;
-    const hasNoProfiles = user && 
-        (!user.venueProfiles || user.venueProfiles.length === 0) && 
-        (!user.artistProfiles || user.artistProfiles.length === 0);
 
     // Auto-redirect if user has venue profile
     useEffect(() => {
@@ -47,163 +40,9 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
         }
     }, [hasArtistProfile, hasVenueProfile, navigate, user]);
 
-    const handlePricingClick = () => {
-        const pricingSection = document.getElementById('pricing-section');
-        if (pricingSection) {
-            pricingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    };
-
-    const handleLogout = async () => {
-        try {
-            await logout();
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
     return (
         <div className="landing-page venue">
-            <nav className="landing-navbar">
-                <div className={`navbar-container ${isXlUp ? 'constrained' : ''}`}>
-                    <div className="navbar-left">
-                        <TextLogoVenueLandingPage />
-                    </div>
-                    {isMdUp ? (
-                        <div className="navbar-right">
-                            {hasVenueProfile ? (
-                                <button className="btn artist-profile" onClick={() => navigate('/venues/dashboard/gigs')}>
-                                    Venue Dashboard
-                                </button>
-                            ) : (
-                                <>
-                                    {!user && (
-                                        <button className="btn tertiary" onClick={() => navigate('/')}>
-                                            I'm an Artist
-                                        </button>
-                                    )}
-                                    <button className="btn artist-profile" onClick={() => navigate('/venues/add-venue')}>
-                                        Create Venue Profile
-                                    </button>
-                                </>
-                            )}
-                            {!user && (
-                                <>
-                                    <h6 className="or-separator">
-                                        OR
-                                    </h6>
-                                    <button className="btn secondary" onClick={() => { 
-                                        setAuthType('login'); 
-                                        setAuthModal(true); 
-                                    }}>
-                                        Log In
-                                    </button>
-                                </>
-                            )}
-                            {user && (
-                                <>
-                                    {!hasVenueProfile && !hasArtistProfile && (
-                                        <>
-                                            <button className="btn artist-profile" onClick={() => navigate('/')}>
-                                                I'm an Artist
-                                            </button>
-                                        </>
-                                    )}
-                                    <h6 className="or-separator">
-                                        OR
-                                    </h6>
-                                    <button className="btn secondary" onClick={handleLogout}>
-                                        Log Out
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="navbar-right">
-                            <button 
-                                className="btn icon hamburger-menu-btn"
-                                aria-label={mobileMenuOpen ? 'Close Menu' : 'Open Menu'}
-                                aria-expanded={mobileMenuOpen}
-                                onClick={(e) => {
-                                    setMobileMenuOpen(!mobileMenuOpen);
-                                    e.stopPropagation();
-                                }}
-                            >
-                                {mobileMenuOpen ? <CloseIcon /> : <HamburgerMenuIcon />}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </nav>
-            {!isMdUp && mobileMenuOpen && (
-                <Portal>
-                    <nav className='mobile-menu' style={{ right: '2rem', top: '8%' }}>
-                        {!user ? (
-                            <>
-                                {FEATURES.discovery && (
-                                <Link className='link item no-margin' to='/find-a-gig' onClick={() => setMobileMenuOpen(false)}>
-                                    Find a Gig
-                                </Link>
-                                )}
-                                {FEATURES.discovery && (
-                                <Link className='link item no-margin' to='/find-venues' onClick={() => setMobileMenuOpen(false)}>
-                                    Find a Venue
-                                </Link>
-                                )}
-                                <button className='link item no-margin' onClick={() => { handlePricingClick(); setMobileMenuOpen(false); }}>
-                                    Pricing
-                                </button>
-                                <Link className='link item no-margin' to='/' onClick={() => setMobileMenuOpen(false)}>
-                                    I'm an Artist
-                                </Link>
-                                <div className="two-buttons">
-                                    <button className='btn secondary' onClick={() => { setAuthType('login'); setAuthModal(true); setMobileMenuOpen(false); }}>
-                                        Log In
-                                    </button>
-                                    <button className='btn primary' onClick={() => { setAuthType('signup'); setAuthModal(true); setMobileMenuOpen(false); }}>
-                                        Sign Up
-                                    </button>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                {hasVenueProfile ? (
-                                    <Link className='link item no-margin' to='/venues/dashboard/gigs' onClick={() => setMobileMenuOpen(false)}>
-                                        Venue Dashboard
-                                    </Link>
-                                ) : (
-                                    <Link className='link item no-margin' to='/venues/add-venue' onClick={() => setMobileMenuOpen(false)}>
-                                        Create Venue Profile
-                                    </Link>
-                                )}
-                                {FEATURES.discovery && (
-                                <Link className='link item no-margin' to='/find-a-gig' onClick={() => setMobileMenuOpen(false)}>
-                                    Find a Gig
-                                </Link>
-                                )}
-                                {FEATURES.discovery && (
-                                <Link className='link item no-margin' to='/find-venues' onClick={() => setMobileMenuOpen(false)}>
-                                    Find a Venue
-                                </Link>
-                                )}
-                                <button className='link item no-margin' onClick={() => { handlePricingClick(); setMobileMenuOpen(false); }}>
-                                    Pricing
-                                </button>
-                                {!hasVenueProfile && !hasArtistProfile && (
-                                    <Link className='link item no-margin' to='/' onClick={() => setMobileMenuOpen(false)}>
-                                        I'm an Artist
-                                    </Link>
-                                )}
-                                <div className="two-buttons">
-                                    <button className='btn secondary' onClick={() => { handleLogout(); setMobileMenuOpen(false); }}>
-                                        Log Out
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </nav>
-                </Portal>
-            )}
+            <LaunchHeader setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />
             <div className={`landing-content ${isXlUp ? 'constrained' : ''}`}>
                 <section className="hero-section venue">
                     {!isMdUp && (

@@ -188,7 +188,7 @@ export default function App() {
         <Route path='/gig/:gigId/application/:token' element={<ManageGuestApplication />} />
         <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setInitialEmail={setInitialEmail} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  />} />
         <Route path='/hire/:hireId' element={FEATURES.venueHire ? <GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
-        <Route path='/account' element={<MainLayout user={user}><Account /></MainLayout>} />
+        <Route path='/account' element={<MainLayout user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable}><Account /></MainLayout>} />
         <Route path='/testimonials' element={<Navigate to={artistDestination(user, FEATURES)} replace />} />
         <Route path='/join-venue' element={<JoinVenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         <Route path='/join-artist' element={<Navigate to={artistDestination(user, FEATURES)} replace />} />

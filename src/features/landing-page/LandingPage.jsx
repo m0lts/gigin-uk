@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { auth } from '@lib/firebase';
 import { FEATURES } from '../../config/features';
-import { AccountChip, SignedInHomeButton } from '../shared/components/AccountChip';
+import { LaunchHeader } from '../shared/components/LaunchHeader';
+import { SignedInHomeButton } from '../shared/components/AccountChip';
 import { PROOF } from './landing.config';
 import { submitAccessRequest } from '../../services/api/accessRequests';
 import { requestManageLinks } from '../../services/api/manageLinks';
@@ -144,7 +145,7 @@ function scrollToSection(id, focusId) {
 
 export const LandingPage = ({ setAuthModal, setAuthType, setAuthClosable }) => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   useLandingHead();
 
   const openLogin = () => {
@@ -174,32 +175,7 @@ export const LandingPage = ({ setAuthModal, setAuthType, setAuthClosable }) => {
 
   return (
     <div className="lp">
-      <header className="lp-header">
-        <div className="lp-wrap lp-header__bar">
-          <Link to="/" className="lp-wordmark" aria-label="Gigin">gigin<span>.</span></Link>
-          <div className="lp-header__actions">
-            {user ? (
-              <>
-                <AccountChip user={user} logout={logout} />
-                <SignedInHomeButton
-                  user={user}
-                  className="lp-btn lp-btn--dark lp-btn--header"
-                  setAuthType={setAuthType}
-                  setAuthModal={setAuthModal}
-                  setAuthClosable={setAuthClosable}
-                />
-              </>
-            ) : (
-              <>
-                <button type="button" className="lp-login" onClick={openLogin}>Sign in</button>
-                <button type="button" className="lp-btn lp-btn--dark lp-btn--header" onClick={FEATURES.venueSignup ? startVenueAccount : () => scrollToSection('request-access', 'access-name')}>
-                  {FEATURES.venueSignup ? 'Create a venue account' : 'Request access'}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <LaunchHeader setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />
 
       <main>
         <section className="lp-hero">

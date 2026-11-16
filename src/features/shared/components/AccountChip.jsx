@@ -50,7 +50,7 @@ export function AccountChip({ user, logout }) {
   );
 }
 
-export function SignedInHomeButton({ user, className, setAuthType, setAuthModal, setAuthClosable, onDone }) {
+export function SignedInHomeButton({ user, className, label, setAuthType, setAuthModal, setAuthClosable, onDone }) {
   const navigate = useNavigate();
   if (!user) return null;
   const action = signedInHomeAction(user, FEATURES, {
@@ -71,7 +71,7 @@ export function SignedInHomeButton({ user, className, setAuthType, setAuthModal,
 
   return (
     <button type="button" className={className} onClick={go}>
-      {action.label}
+      {label || action.label}
     </button>
   );
 }
