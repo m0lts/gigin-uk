@@ -6,6 +6,7 @@ import {
   bookerPhotoError,
   prepareBookerPhoto,
   publicBookerPhoto,
+  showBookerNudge,
   venueIdsForBooker,
 } from './bookerPhoto.js';
 
@@ -30,6 +31,16 @@ test('the public photo is a URL and never an email address', () => {
 
 test('venue ids come from the profiles linked to the account', () => {
   assert.deepEqual(venueIdsForBooker([{ id: 'a' }, { venueId: 'b' }, 'c', { id: 'a' }]), ['a', 'b', 'c']);
+});
+
+test('the venue home nudge appears only when there is no face and it has not been dismissed', () => {
+  const face = 'https://firebasestorage.googleapis.com/v0/b/bucket/o/photo.jpg?alt=media&token=abc';
+  assert.equal(showBookerNudge({ userPhoto: '', venuePhotos: [''], dismissed: false }), true);
+  assert.equal(showBookerNudge({ userPhoto: '', venuePhotos: [face], dismissed: false }), false);
+  assert.equal(showBookerNudge({ userPhoto: face, venuePhotos: [''], dismissed: false }), false);
+  assert.equal(showBookerNudge({ userPhoto: '', venuePhotos: [''], dismissed: true }), false);
+  assert.equal(showBookerNudge({ userPhoto: 'sam@venue.test', venuePhotos: ['not-a-url'], dismissed: false }), true);
+  assert.equal(showBookerNudge({ userPhoto: '', venuePhotos: [], dismissed: false }), false);
 });
 
 test('the sign-up and settings copy stays as written', () => {

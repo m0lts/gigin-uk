@@ -35,6 +35,15 @@ export function publicBookerPhoto(value) {
   return raw;
 }
 
+/** The venue home asks for a face when this booker and the venues on screen have none. */
+export function showBookerNudge({ userPhoto, venuePhotos, dismissed }) {
+  if (dismissed) return false;
+  if (publicBookerPhoto(userPhoto)) return false;
+  const photos = Array.isArray(venuePhotos) ? venuePhotos : [];
+  if (!photos.length) return false;
+  return photos.some((photo) => !publicBookerPhoto(photo));
+}
+
 export function venueIdsForBooker(profiles) {
   return [...new Set((profiles || []).map((profile) => {
     if (typeof profile === 'string') return profile;

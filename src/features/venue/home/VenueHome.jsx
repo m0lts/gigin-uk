@@ -18,6 +18,7 @@ import {
 } from './nights';
 import { copyText, displayUrl, gigApplyUrl, venuePageUrl } from './publicLinks';
 import { venueNeedsApproval, nightsAreClosed } from '../../../config/venueAccess';
+import { showBookerNudge } from '../booker/bookerPhoto';
 import { useShareLink } from './shareLinkContext';
 import { BellIcon, ContactsIcon, LinkIcon, PlusIcon, QrCodeIcon } from './icons';
 import './venue-home.css';
@@ -75,6 +76,31 @@ export function VenueHome({ user, gigs, venues, onNewGig }) {
   const freshTotal = attention.reduce((sum, night) => sum + night.fresh, 0);
   const waiting = displayedVenue ? venueNeedsApproval(displayedVenue) : nightsAreClosed(venues);
   const { phrase, first } = greetingFor(user?.name);
+  const nudgeKey = user?.uid ? `bookerPhotoNudge:${user.uid}` : '';
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  useEffect(() => {
+    if (!nudgeKey) return undefined;
+    try {
+      setNudgeDismissed(localStorage.getItem(nudgeKey) === '1');
+    } catch {
+      setNudgeDismissed(false);
+    }
+    return undefined;
+  }, [nudgeKey]);
+  const nudgeVenues = displayedVenue ? [displayedVenue] : (venues || []);
+  const showNudge = showBookerNudge({
+    userPhoto: user?.bookerPhoto,
+    venuePhotos: nudgeVenues.map((venue) => venue?.bookerPhoto),
+    dismissed: nudgeDismissed,
+  });
+  const dismissNudge = () => {
+    try {
+      if (nudgeKey) localStorage.setItem(nudgeKey, '1');
+    } catch {
+      /* the card still closes for this visit */
+    }
+    setNudgeDismissed(true);
+  };
   const today = longDate(new Date());
 
   const linkRows = useMemo(() => {
@@ -282,6 +308,16 @@ export function VenueHome({ user, gigs, venues, onNewGig }) {
         </button>
       </div>
       {!isMdUp && menu}
+
+      {showNudge ? (
+        <section className="venue-home__card venue-home__face">
+          <p>Put a face to your venue. Artists reply more readily to a person than a logo.</p>
+          <div className="venue-home__face-actions">
+            <button type="button" className="venue-home__btn is-dark" onClick={() => navigate('/account')}>Add a photo</button>
+            <button type="button" className="venue-home__btn" onClick={dismissNudge}>Not now</button>
+          </div>
+        </section>
+      ) : null}
 
       {waiting ? (
         <section className="venue-home__card venue-home__welcome venue-home__waiting">

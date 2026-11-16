@@ -202,6 +202,28 @@
   overflow: hidden;
 }
 
+.venue-home__face {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+}
+
+.venue-home__face p {
+  margin: 0;
+  max-width: 560px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--gn-text-2);
+}
+
+.venue-home__face-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
 .venue-home__card-head {
   display: flex;
   align-items: center;
@@ -621,6 +643,15 @@
 }
 
 @media (max-width: 767.98px) {
+  .venue-home__face {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .venue-home__face-actions {
+    flex-wrap: wrap;
+  }
+
   .dashboard .window:has(.venue-home) {
     padding-left: 0;
     padding-right: 0;
