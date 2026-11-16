@@ -113,9 +113,9 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                             </div>
                             {user.artistProfiles && user.artistProfiles.length > 0 && user.artistProfiles.some(profile => profile.isComplete === true) ? (
                                 <div className="right">
-                                    <button className={`btn text-no-underline ${noProfileModal ? 'disabled' : ''}`}  onClick={() => navigate(FEATURES.legacyArtist ? '/artist-profile' : artistDestination(user, FEATURES))}>
+                                    <button className={`btn text-no-underline ${noProfileModal ? 'disabled' : ''}`}  onClick={() => navigate(artistDestination(user, FEATURES))}>
                                         <GuitarsIcon />
-                                        {FEATURES.legacyArtist ? 'Artist Dashboard' : 'My profile'}
+                                        My profile
                                     </button>
                                     <button
                                         className='btn icon hamburger-menu-btn'
@@ -134,12 +134,6 @@ export const Header = ({ setAuthModal, setAuthType, user, noProfileModal, setNoP
                                         I'm a Venue
                                     </button>
                                 </Link>
-                                {FEATURES.legacyArtist && (
-                                <button className={`btn artist-profile ${noProfileModal ? 'disabled' : ''}`}  onClick={() => navigate('/artist-profile')}>
-                                    <GuitarsIcon />
-                                    Create Artist Profile
-                                </button>
-                                )}
                                 <button
                                     className='btn icon hamburger-menu-btn'
                                     onClick={(e) => {e.stopPropagation(); setMobileOpen(o => !o)}}

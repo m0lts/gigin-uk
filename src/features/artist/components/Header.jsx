@@ -276,14 +276,6 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                                     >
                                                         Profile
                                                     </Link>
-                                                    {FEATURES.legacyArtist && (
-                                                    <Link 
-                                                        className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} 
-                                                        to={`/artist-profile/${activeProfile.id || activeProfile.profileId}/gigs`}
-                                                    >
-                                                        Gigs
-                                                    </Link>
-                                                    )}
                                                     {FEATURES.chat && (
                                                     <Link
                                                         className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
@@ -321,11 +313,6 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                                     <Link className={`link ${location.pathname === '/artist-profile' ? 'disabled' : ''}`} to={'/artist-profile'}>
                                                         Profile
                                                     </Link>
-                                                    {FEATURES.legacyArtist && (
-                                                    <Link className={`link ${location.pathname.includes('/gigs') ? 'disabled' : ''}`} to={'/artist-profile/gigs'}>
-                                                        Gigs
-                                                    </Link>
-                                                    )}
                                                     {FEATURES.chat && (
                                                     <Link
                                                         className={`link ${location.pathname.includes('/messages') ? 'disabled' : ''}`}
@@ -357,14 +344,7 @@ export const Header = ({ setAuthModal, setAuthType, user, padding, noProfileModa
                                                 </>
                                             )}
                                         </>
-                                    ) : FEATURES.legacyArtist && location.pathname !== '/artist-profile' && (
-                                        <>
-                                            <button className='btn artist-profile' onClick={() => navigate('/artist-profile')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '1rem'}}>
-                                                <GuitarsIcon />
-                                                Create Artist Profile
-                                            </button>
-                                        </>
-                                    )}
+                                    ) : null}
                                     <button
                                         className='btn icon hamburger-menu-btn'
                                         onClick={(e) => {e.stopPropagation(); setAccountMenu(!accountMenu)}}

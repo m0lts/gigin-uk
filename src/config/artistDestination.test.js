@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { artistDestination, artistLoginRedirect } from './artistDestination.js';
 
-const off = { keepProfile: false, legacyArtist: false };
-const homeOn = { keepProfile: true, legacyArtist: false };
+const off = { keepProfile: false };
+const homeOn = { keepProfile: true };
 
 test('artists go to the new home when keep-profile is on', () => {
   assert.equal(artistDestination({ artistProfiles: [{ id: 'abc', slug: 'the-act' }] }, homeOn), '/home');
@@ -26,8 +26,4 @@ test('login no longer opens the old artist dashboard', () => {
   assert.equal(artistLoginRedirect('/artist-profile', user, off), '/artist/the-act');
   assert.equal(artistLoginRedirect('/artist-profile/abc/gigs', user, homeOn), '/home');
   assert.equal(artistLoginRedirect('/venues/dashboard/gigs', user, off), '/venues/dashboard/gigs');
-  assert.equal(
-    artistLoginRedirect('/artist-profile', user, { keepProfile: false, legacyArtist: true }),
-    '/artist-profile',
-  );
 });

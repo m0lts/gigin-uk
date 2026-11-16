@@ -19,24 +19,15 @@ import { useAuth } from '@hooks/useAuth';
 import { AuthModal } from '@features/shared/components/AuthModal';
 import { LoadingScreen } from '@features/shared/ui/loading/LoadingScreen';
 import { TextLogo } from '@features/shared/ui/logos/Logos';
-import { MusicianDashboardLayout } from '@layouts/MusicianDashboardLayout';
 import { VenueDashboard } from '@features/venue/dashboard/Dashboard';
-import { GigFinder } from '@features/gig-discovery/GigFinder';
 import { GigPage } from '@features/gig-discovery/GigPage';
 import { GigMediaSharePage } from '@features/gig-discovery/GigMediaSharePage';
 import { AuthActionPage, EmailLinkPage, ResetPasswordPage } from '@features/auth/AuthPages';
 import { ManageGuestApplication } from '@features/gig-discovery/guest/ManageGuestApplication';
 import { linkGuestApplication } from '@services/client-side/guestApplications';
-import { MusicianDashboard } from '@features/artist/dashboard/Dashboard';
-import { ProfileCreator } from '@features/artist/profile-creator/ProfileCreator';
-import { MusicianProfile } from '@features/artist/components/MusicianProfile';
-import { ArtistProfile } from '@features/artist/artist-profile/ArtistProfile';
 import { ArtistProfileViewer } from '@features/artist/artist-profile/ArtistProfileViewer';
-import { MessagePage } from '@features/artist/messages/MessagePage';
-import { MessagesLayout } from '@layouts/MessagesLayout';
 import { VenueDashboardLayout } from '@layouts/VenueDashboardLayout';
 import { Account } from '@features/account/Account';
-import { Testimonials } from '@features/artist/profile/TestimonialPage';
 import { VenuePage } from './features/venue/components/VenuePage';
 import { VerifyEmailModal } from './features/shared/components/VerifyEmailModal';
 import { auth } from "@lib/firebase";
@@ -50,10 +41,8 @@ import { logClientError } from './services/client-side/errors';
 import { TermsAndConditions } from './features/legals/TermsAndConditions';
 import { PrivacyPolicy } from './features/legals/PrivacyPolicy';
 import { JoinVenuePage } from './features/venue/components/JoinVenue';
-import { JoinArtistPage } from './features/artist/components/JoinArtist';
 import { EmailActionHandler } from './features/shared/components/EmailActionHandler';
 import { VenueDashboardProvider } from './context/VenueDashboardContext';
-import { ArtistDashboardProvider } from './context/ArtistDashboardContext';
 
 
 
@@ -177,7 +166,7 @@ export default function App() {
       <Routes>
 
         {/* FIND GIGS */}
-        <Route path='/find-a-gig' element={FEATURES.discovery ? <GigFinder user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
+        <Route path='/find-a-gig' element={<Navigate to={artistDestination(user, FEATURES)} replace />} />
 
         {/* FIND VENUES */}
         <Route path='/find-venues' element={<FindVenuesRoute user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} setAuthClosable={setAuthClosable} />} />
@@ -186,14 +175,8 @@ export default function App() {
         <Route path='/'>
           {/* <Route index element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><LandingPage setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} /></MainLayout>} /> */}
           <Route index element={FEATURES.marketingPages ? <LandingPage setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} setInitialEmail={setInitialEmail} /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
-          <Route path='artist-profile/:profileId?/*' element={FEATURES.legacyArtist ? <ArtistDashboardProvider user={user}><ArtistProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} /></ArtistDashboardProvider> : <Navigate to={artistDestination(user, FEATURES)} replace />} />
-          <Route path='dashboard/*' element={FEATURES.legacyArtist ? <ArtistDashboardProvider user={user}><MusicianDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><MusicianDashboard user={user} /></MusicianDashboardLayout></ArtistDashboardProvider> : <Navigate to={artistDestination(user, FEATURES)} replace />} />
-          {FEATURES.legacyArtist && (
-            <>
-              <Route path=':musicianId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
-              <Route path=':musicianId/:gigId' element={<MusicianProfile user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
-            </>
-          )}
+          <Route path='artist-profile/:profileId?/*' element={<Navigate to={artistDestination(user, FEATURES)} replace />} />
+          <Route path='dashboard/*' element={<Navigate to={artistDestination(user, FEATURES)} replace />} />
           <Route path='artist/:artistId' element={<ArtistProfileViewer user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         </Route>
 
@@ -206,7 +189,7 @@ export default function App() {
         </Route>
 
         {/* OTHER ROUTES */}
-        <Route path='/messages' element={FEATURES.chat ? <MessagesLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout}><MessagePage /></MessagesLayout> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
+        <Route path='/messages' element={<Navigate to={artistDestination(user, FEATURES)} replace />} />
         <Route path='/share/gig-media/:token' element={<GigMediaSharePage />} />
         <Route path='/admin/venue-approval/:token' element={<VenueApprovalPage />} />
         <Route path='/auth/action' element={<AuthActionPage />} />
@@ -216,9 +199,9 @@ export default function App() {
         <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setInitialEmail={setInitialEmail} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  />} />
         <Route path='/hire/:hireId' element={FEATURES.venueHire ? <GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
         <Route path='/account' element={<MainLayout user={user}><Account /></MainLayout>} />
-        <Route path='/testimonials' element={FEATURES.legacyArtist ? <Testimonials /> : <Navigate to="/" replace />} />
+        <Route path='/testimonials' element={<Navigate to={artistDestination(user, FEATURES)} replace />} />
         <Route path='/join-venue' element={<JoinVenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
-        <Route path='/join-artist' element={FEATURES.legacyArtist ? <JoinArtistPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} /> : <Navigate to="/" replace />} />
+        <Route path='/join-artist' element={<Navigate to={artistDestination(user, FEATURES)} replace />} />
         <Route path='/terms-and-conditions' element={<TermsAndConditions />} />
         <Route path='/privacy-policy' element={<PrivacyPolicy />} />
         <Route path='/home' element={FEATURES.keepProfile ? <ArtistHome user={user} logout={logout} /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />

@@ -19,6 +19,6 @@ export function artistLoginRedirect(stored, user, features = {}) {
   const legacyDashboard = path === '/artist-profile'
     || path.startsWith('/artist-profile/')
     || path.startsWith('/artist-profile?');
-  if (legacyDashboard && !features.legacyArtist) return artistDestination(user, features);
+  if (legacyDashboard) return artistDestination(user, features);
   return path;
 }

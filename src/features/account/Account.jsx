@@ -1156,7 +1156,7 @@ export const Account = () => {
                                                 <button
                                                     className='btn tertiary'
                                                     onClick={() =>
-                                                        navigate(FEATURES.legacyArtist ? `/artist-profile/${profileId}` : (FEATURES.keepProfile ? '/home' : `/artist/${artistProfile.slug || profileId}`))
+                                                        navigate(FEATURES.keepProfile ? '/home' : `/artist/${artistProfile.slug || profileId}`)
                                                     }
                                                 >
                                                     <EditIcon />

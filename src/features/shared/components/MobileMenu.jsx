@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { AllGigsIcon, CoinsIcon, FeedbackIcon, GigIcon, GuitarsIcon, HouseIconLight, LogOutIcon, MailboxEmptyIcon, MailboxFullIcon, MapIcon, MusicianIconLight, PeopleGroupIcon, ProfileIcon, SettingsIcon, TelescopeIcon, TicketIcon, VenueBuilderIcon, VenueIconLight, VenueIconSolid } from "../ui/extras/Icons";
+import { CoinsIcon, FeedbackIcon, GigIcon, HouseIconLight, LogOutIcon, MailboxEmptyIcon, MailboxFullIcon, MapIcon, MusicianIconLight, PeopleGroupIcon, ProfileIcon, SettingsIcon, TelescopeIcon, TicketIcon, VenueBuilderIcon, VenueIconLight, VenueIconSolid } from "../ui/extras/Icons";
 import { useBreakpoint } from "../../../hooks/useBreakpoint";
 import Portal from "./Portal";
 import { useState } from "react";
@@ -187,7 +187,7 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                                 key={profileId} 
                                                 onClick={() => {
                                                     if (shouldShowCreationFlow) {
-                                                        navigate(FEATURES.legacyArtist ? `/artist-profile/${profileId}` : artistDestination(user, FEATURES));
+                                                        navigate(artistDestination(user, FEATURES));
                                                         setMobileOpen(false);
                                                     } else {
                                                         // For complete profiles, update localStorage and navigate if on artist-profile route
@@ -220,21 +220,6 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                                 </>
                             );
                         })()}
-                        {FEATURES.legacyArtist && user.artistProfiles && user.artistProfiles.length === 1 && (
-                            <>
-                                <button 
-                                    className="btn artist-profile item no-margin"
-                                    style= {{width: '100%'}}
-                                    onClick={() => {
-                                        navigate('/artist-profile?create=true');
-                                        setMobileOpen(false);
-                                    }}
-                                >
-                                    Create Another Profile
-                                    <GuitarsIcon />
-                                </button>
-                            </>
-                        )}
                         {FEATURES.discovery && !isLgUp && (
                             <Link className='link item no-margin' to={'/find-a-gig'}>
                                 Find a Gig
@@ -266,19 +251,13 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthType, ha
                             };
                             const activeProfileId = getActiveProfileId();
                             const basePath = activeProfileId ? `/artist-profile/${activeProfileId}` : '/artist-profile';
-                            const profilePath = FEATURES.legacyArtist ? basePath : artistDestination(user, FEATURES);
+                            const profilePath = artistDestination(user, FEATURES);
                             return (
                                 <>
                                     <Link className='link item no-margin' to={profilePath}>
                                         Profile
                                         <ProfileIcon />
                                     </Link>
-                                    {FEATURES.legacyArtist && (
-                                    <Link className='link item no-margin' to={`${basePath}/gigs`}>
-                                        Gigs
-                                        <AllGigsIcon />
-                                    </Link>
-                                    )}
                                     {FEATURES.chat && (
                                     <Link className='link item no-margin' to={`${basePath}/messages`}>
                                         Messages
