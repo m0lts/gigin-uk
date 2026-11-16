@@ -1430,6 +1430,36 @@ textarea.ng-input { height: auto; padding: 10px; }
 
 .ng-wizard .ng-ghost:disabled { opacity: 0.45; }
 
+.ng-wizard .ng-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 1px 2px rgba(20, 25, 22, 0.04);
+}
+
+.ng-wizard .ng-month button,
+.ng-wizard .ng-dow {
+  height: 44px;
+  border-radius: 999px;
+  font-size: 14px;
+}
+
+.ng-wizard .ng-month button.is-on {
+  background: #111317;
+  color: #fff;
+}
+
+.ng-wizard .ng-input {
+  height: 48px;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.ng-wizard .ng-field span { font-size: 13px; color: #5B606B; }
+
 @media (max-width: 767.98px) {
   .ng-wizard__top { padding: 16px; align-items: flex-start; }
   .ng-wizard__steps { justify-content: flex-start; margin: 0; }

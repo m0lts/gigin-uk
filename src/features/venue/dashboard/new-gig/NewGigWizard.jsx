@@ -87,6 +87,7 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
           {labels[safeStep] === 'Date & time' && (
             <Question title="When is it?" sub={booked ? 'Pick one night.' : 'Pick one night, or several.'}>
               <p className="ng-tip">{tipFor(labels[safeStep])}</p>
+              <div className="ng-card">
               <div className="ng-month-nav">
                 <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
                 <span>{month.toLocaleString('en-GB', { month: 'long', year: 'numeric' })}</span>
@@ -104,7 +105,7 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
                 {draft.dates.map((iso) => <span key={iso}>{dateChip(iso)} <button type="button" onClick={() => patch({ dates: draft.dates.filter((item) => item !== iso) })}>×</button></span>)}
               </div>
               <div className="ng-three">
-                <label className="ng-field"><span>Starts</span><input className="ng-input ng-mono" type="time" value={draft.start} onChange={(event) => patch({ start: event.target.value })} /></label>
+                <label className="ng-field"><span>Music starts</span><input className="ng-input ng-mono" type="time" value={draft.start} onChange={(event) => patch({ start: event.target.value })} /></label>
                 <label className="ng-field"><span>Ends</span><input className="ng-input ng-mono" type="time" value={draft.end} onChange={(event) => patch({ end: event.target.value })} /></label>
               </div>
               <div className="ng-pills">
@@ -124,6 +125,7 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
               ))}
               {draft.sets.length > 1 && <button type="button" className="ng-dashed" onClick={() => patch({ sets: [...draft.sets, { start: '', end: '', fee: draft.fee }] })}>+ Add another set</button>}
               <NightBar draft={draft} />
+              </div>
             </Question>
           )}
           {labels[safeStep] === 'Fee & tickets' && (
