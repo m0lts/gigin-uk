@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { auth } from "@lib/firebase";
 import { toast } from "sonner";
 // Reuse your existing logo/icons if you like:
-import { NoTextLogo } from "@features/shared/ui/logos/Logos";
-import { LoadingSpinner } from "../ui/loading/Loading";
 import { sendVerificationEmail } from "@services/api/users";
+import { AuthCard, isGmail } from "../forms/AuthCard";
+import "@styles/forms/auth-card.css";
 
-export const  VerifyEmailModal = ({ setAuthModal }) => {
+export const  VerifyEmailModal = ({ setAuthModal, onClose }) => {
 
   const user = auth.currentUser;
   const email = user?.email || "";
@@ -52,7 +52,7 @@ export const  VerifyEmailModal = ({ setAuthModal }) => {
     try {
       await sendVerificationEmail({ actionUrl: window.location.origin });
       toast.success("Verification email sent.");
-      setCooldown(60);
+      setCooldown(30);
     } catch (e) {
       const msg = e?.message || "Failed to send verification email.";
       toast.error(msg);
@@ -61,37 +61,31 @@ export const  VerifyEmailModal = ({ setAuthModal }) => {
     }
   };
 
-  return (
-    <div className="modal">
-      <div className="modal-content auth">
-        <div className="head">
-          <NoTextLogo />
-          <h1>Verify your email</h1>
-          <p>
-            We’ve sent a verification link to <strong>{email}</strong>. Please
-            click the link in that email to verify your account.
-          </p>
-          <p>Didn’t get it? Check your spam/junk folder.</p>
-        </div>
-
-        <div className="modal-body verification" style={{ marginTop: 16 }}>
-          {sending ? (
-            <LoadingSpinner />
-          ) : cooldown > 0 ? (
-            <h4>Resend email ({cooldown}s)</h4>
-          ) : (
-            <button
-              type="button"
-              className="btn text"
-              onClick={handleResend}
-              disabled={sending || cooldown > 0}
-              title={cooldown > 0 ? `Try again in ${cooldown}s` : undefined}
-            >
-              Resend verification email
-            </button>
-          )}
-        </div>
+  const close = () => {
+    onClose?.();
+    setAuthModal?.(false);
+  };
+  const card = (
+    <AuthCard
+      title="Confirm your email"
+      icon="mail"
+      closable
+      onClose={close}
+      lede={<>Tap the link we sent to <strong>{email}</strong> to finish setting up. You can close this window.</>}
+    >
+      {isGmail(email) ? <a className="auth-card__primary" href="https://mail.google.com" target="_blank" rel="noreferrer">Open Gmail</a> : null}
+      <div className="auth-card__actions">
+        <button type="button" className="auth-card__link" onClick={handleResend} disabled={sending || cooldown > 0}>
+          {cooldown > 0 ? `Resend email (${cooldown}s)` : 'Resend email'}
+        </button>
+        <button type="button" className="auth-card__link" onClick={close}>Change email</button>
       </div>
+    </AuthCard>
+  );
+  if (setAuthModal) return card;
+  return (
+    <div className="modal auth" onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+      {card}
     </div>
   );
 }
