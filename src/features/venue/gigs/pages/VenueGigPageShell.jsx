@@ -257,6 +257,7 @@ export function VenueGigPageShell({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCancelNight, setShowCancelNight] = useState(false);
   const [cancelNightBusy, setCancelNightBusy] = useState(false);
+  const [promoBusy, setPromoBusy] = useState(false);
   const optionsMenuRef = React.useRef(null);
   /**
    * For multi-set nights, always anchor the page on the earliest slot (one combined details view).
@@ -709,7 +710,6 @@ export function VenueGigPageShell({
   const nightMeta = guestNightReview
     ? formatNightMeta(gigInfo?.date, normalisedGig?.timeRangeLabel, venueName)
     : '';
-  const [promoBusy, setPromoBusy] = useState(false);
   const downloadNightPromo = async () => {
     const rootGigId = gigInfo?.gigId || gigInfo?.id;
     if (!rootGigId) return;
