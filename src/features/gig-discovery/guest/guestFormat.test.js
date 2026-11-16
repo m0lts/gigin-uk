@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   atThePlace,
+  actTypeLine,
   bandMemberPhrase,
   bookerLine,
   filledBandMembers,
@@ -101,6 +102,10 @@ test('an empty band is left off the application', () => {
   assert.equal(filledBandMembers([{ name: '  ', instruments: [''] }]).length, 0);
   assert.equal(bandMemberPhrase([{ name: 'Ada', instruments: ['Vocals'] }]), '1 member');
   assert.equal(bandMemberPhrase([{ name: 'Ada' }, { instruments: ['Guitar'] }]), '2 members');
+  assert.equal(actTypeLine([{ name: '', instruments: [] }]), '');
+  assert.equal(actTypeLine([{ name: 'Ada', instruments: ['Vocals'] }, { instruments: ['Guitar'] }]), 'Duo · vocals, guitar');
+  assert.equal(actTypeLine([{ instruments: ['Vocals', 'Guitar'] }]), 'Solo · vocals, guitar');
+  assert.equal(actTypeLine([{ name: 'A' }, { name: 'B' }, { name: 'C' }, { name: 'D' }]), '4-piece');
 });
 
 test('the guest gig date is sentence case on desktop and short caps on a phone', () => {
@@ -162,6 +167,10 @@ test('guest apply music links are the four platforms inside a 560px column', () 
   assert.equal(assets.includes('Website'), false);
   assert.match(tech, /Instagram/);
   assert.match(tech, /Website/);
+  assert.match(tech, /Who&apos;s playing/);
+  assert.match(tech, /\+ Add someone/);
+  assert.match(tech, /provides:/);
+  assert.equal(tech.includes('Bar has'), false);
   assert.match(css, /min-width: 641px/);
   assert.match(css, /max-width: 560px/);
   assert.match(readFileSync(join(dir, 'GuestApplyWizard.jsx'), 'utf8'), /ga-skip/);

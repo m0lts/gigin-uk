@@ -3,7 +3,7 @@ import { useBreakpoint } from '@hooks/useBreakpoint';
 import { FEATURES } from '../../../config/features';
 import { createGuestApplication, newGuestIds, redeemReturnToken } from '@services/client-side/guestApplications';
 import { forgetProfileSession, getProfileSession, updateOwnProfile } from '@services/client-side/keepProfile';
-import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
+import { buildGuestTechRider } from '@services/utils/techRiderCompatibility';
 import { GuestApplied } from './GuestApplied';
 import { GuestAssetsStep } from './GuestAssetsStep';
 import { GuestReviewStep } from './GuestReviewStep';
@@ -32,7 +32,7 @@ function redeemOnce(token, gigId) {
 const STEPS = [
   ['who', 'Who you are'],
   ['assets', 'Photo and links'],
-  ['tech', 'Tech rider'],
+  ['tech', "Who's playing?"],
   ['review', 'Note and review'],
 ];
 
@@ -391,17 +391,12 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         )}
         {step === 'assets' && <GuestAssetsStep draft={draft} patch={patch} bookerName={booker.name} gigId={gig.gigId} onUploadChange={onUploadChange} />}
         {step === 'tech' && <GuestTechStep draft={draft} patch={patch} venue={venue} />}
-          {returning && step === 'review' && (
+        {returning && step === 'review' && (
           <>
             <h2>Welcome back, {(returning.contact?.contactName || returning.profile.name || 'there').split(' ')[0]}</h2>
             <p className="ga-sub">We&apos;ve filled in your details from last time. <button type="button" className="ga-text" onClick={() => { setReturning(null); setDraft(emptyDraft(gig, invite, newGuestIds())); setStep('who'); forgetProfileSession(); }}>Use a different email</button></p>
           </>
         )}
-        {returning && (() => {
-          const compat = computeCompatibility(buildGuestTechRider(draft), venue?.techRider);
-          const chat = compat?.needsDiscussion?.[0];
-          return chat ? <p className="ga-note">Checked against {venue?.name || booker.name}: they need a chat about {chat.label}.</p> : null;
-        })()}
         {step === 'review' && (
           <GuestReviewStep
             draft={draft}

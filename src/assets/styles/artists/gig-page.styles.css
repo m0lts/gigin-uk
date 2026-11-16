@@ -2450,14 +2450,18 @@
 .ga-dot { width: 10px; height: 10px; border-radius: 99px; flex: none; }
 .ga-assets { list-style: none; padding: 0; margin: 8px 0; }
 .ga-assets li { display: flex; justify-content: space-between; min-height: 44px; align-items: center; border-bottom: 1px solid var(--gn-line-soft); }
-.ga-member { border: 1px solid var(--gn-line); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+.ga-label { font-weight: 600; margin: 18px 0 8px; }
+.ga-provides { margin: 0 0 16px; color: var(--launch-text, #4B5160); }
+.ga-member { margin: 0 0 18px; }
+.ga-member .ga-field { margin-top: 10px; }
+.ga-member .ga-skip { margin-top: 4px; }
 .ga-chips, .ga-own { display: flex; flex-wrap: wrap; gap: 8px; }
 .ga-chips button, .ga-own button { min-height: 36px; border-radius: 999px; border: 1px solid var(--gn-line); background: #fff; padding: 0 12px; cursor: pointer; }
 .ga-chips button.is-on, .ga-own button { background: #111317; color: #fff; border-color: #111317; }
 .ga-needs { border: 1px solid var(--gn-line); border-radius: 12px; overflow: hidden; }
-.ga-needs__head, .ga-needs > button { display: grid; grid-template-columns: 1fr 72px 36px; gap: 8px; align-items: center; }
+.ga-needs__head, .ga-needs > button { display: grid; grid-template-columns: 1fr 36px; gap: 8px; align-items: center; }
 .ga-needs__head { padding: 8px 12px; font-size: 12px; color: var(--gn-muted); }
-.ga-needs > button { grid-template-columns: 1fr 72px 26px; border: 0; border-top: 1px solid var(--gn-line-soft); border-radius: 0; min-height: 56px; }
+.ga-needs > button { grid-template-columns: 1fr 26px; border: 0; border-top: 1px solid var(--gn-line-soft); border-radius: 0; min-height: 56px; }
 .ga-needs > button.is-missing { background: #FFF7F4; }
 .ga-summary { margin-top: 18px; }
 .ga-summary__group { display: flex; gap: 10px; margin: 8px 0; font-size: 14px; }

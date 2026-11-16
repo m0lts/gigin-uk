@@ -286,6 +286,28 @@ export function bandMemberPhrase(members, stated) {
   return `${count} ${count === 1 ? 'member' : 'members'}`;
 }
 
+const ACT_SIZES = { 1: 'Solo', 2: 'Duo', 3: 'Trio' };
+
+/** Solo, Duo, Trio, or an n-piece, plus the instruments they ticked. A blank row does not count. */
+export function actTypeLine(members) {
+  const filled = filledBandMembers(members);
+  if (!filled.length) return '';
+  const kind = ACT_SIZES[filled.length] || `${filled.length}-piece`;
+  const seen = new Set();
+  const instruments = [];
+  filled.forEach((member) => {
+    const raw = member?.instruments ?? member?.instrument ?? [];
+    const list = Array.isArray(raw) ? raw : String(raw).split(',');
+    list.forEach((item) => {
+      const label = String(item || '').trim().toLowerCase();
+      if (!label || seen.has(label)) return;
+      seen.add(label);
+      instruments.push(label);
+    });
+  });
+  return instruments.length ? `${kind} · ${instruments.join(', ')}` : kind;
+}
+
 export function icsForSet({ title, start, end, location, description, uid, sequence = 0 }) {
   const stamp = (date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const body = [
