@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth } from '@lib/firebase';
 import { FEATURES } from '../../../config/features';
+import { artistDestination, hasArtistProfile } from '../../../config/artistDestination';
 import { accountInitials, loginLandingState, signedInHomeAction } from '../../../config/loginDestination';
 import '@assets/styles/shared/account-chip.css';
 
@@ -42,6 +43,9 @@ export function AccountChip({ user, logout }) {
         <div className="account-chip__menu" role="menu">
           {user.name ? <p className="account-chip__name">{user.name}</p> : null}
           {user.email ? <p className="account-chip__email">{user.email}</p> : null}
+          {hasArtistProfile(user) ? (
+            <Link to={artistDestination(user, FEATURES)} role="menuitem" onClick={() => setOpen(false)}>Artist home</Link>
+          ) : null}
           <Link to="/account" role="menuitem" onClick={() => setOpen(false)}>Account</Link>
           <button type="button" role="menuitem" onClick={() => { setOpen(false); logout?.(); }}>Log out</button>
         </div>

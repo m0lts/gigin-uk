@@ -5,7 +5,7 @@ import Portal from "./Portal";
 import { useState } from "react";
 import { toast } from "sonner";
 import { FEATURES } from "../../../config/features";
-import { artistDestination } from "../../../config/artistDestination";
+import { artistDestination, hasArtistProfile } from "../../../config/artistDestination";
 import { SignedInHomeButton } from "./AccountChip";
 
 export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthModal, setAuthType, handleLogout, newMessages, isMobile, menuStyle, setNoProfileModal, setNoProfileModalClosable, noProfileModal, noProfileModalClosable, setShowFeedbackModal, showFeedbackModal, feedback, setFeedback }) => {
@@ -345,6 +345,12 @@ export const MobileMenu = ({ setMobileOpen, user, showAuthModal, setAuthModal, s
                                 </Link>
                             </>
                         )}
+                        {hasArtistProfile(user) ? (
+                            <Link className='link item no-margin' to={artistDestination(user, FEATURES)}>
+                                Artist home
+                                <MusicianIconLight />
+                            </Link>
+                        ) : null}
                         {!isXlUp && (
                             <div className='break' />
                         )}

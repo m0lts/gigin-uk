@@ -20,6 +20,7 @@ import { useVenueDashboard } from '@context/VenueDashboardContext';
 import '@assets/fonts/fonts.css';
 import { toast } from 'sonner';
 import { FEATURES } from '../../../config/features';
+import { artistDestination, hasArtistProfile } from '../../../config/artistDestination';
 import { countNewApplications } from '../home/nights';
 import { CloseIcon as HomeCloseIcon, HomeIcon } from '../home/icons';
 import '../home/sidebar-badges.css';
@@ -253,6 +254,19 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
                 {venue.name}
               </button>
             ))}
+            {hasArtistProfile(user) ? (
+              <button
+                type="button"
+                className="sidebar__popover-item"
+                role="menuitem"
+                onClick={() => {
+                  setShowDropdown(false);
+                  navigate(artistDestination(user, FEATURES));
+                }}
+              >
+                Artist home
+              </button>
+            ) : null}
             <button
               type="button"
               className="sidebar__popover-item"

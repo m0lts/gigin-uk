@@ -84,7 +84,7 @@ export const JoinVenuePage = ({ user, setAuthModal, setAuthType }) => {
       const result = await acceptVenueInvite({ inviteId });
       if (result?.ok) {
         toast.success(`Joined ${state.venue?.name}`);
-        navigate(`/`, { replace: true });
+        navigate('/venues/dashboard', { replace: true });
       } else {
         toast.error(result?.message || "Failed to join venue");
       }
