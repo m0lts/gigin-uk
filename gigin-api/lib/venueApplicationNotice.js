@@ -27,14 +27,25 @@ function memberCounts(member) {
   return Boolean(name || played);
 }
 
-/** Solo, duo, trio, or an n-piece, from the members on the application. */
+/** Solo, Duo, Trio, or an n-piece, plus the instruments they ticked. A blank row does not count. */
 export function actKind(members) {
-  const count = (Array.isArray(members) ? members : []).filter(memberCounts).length;
+  const filled = (Array.isArray(members) ? members : []).filter(memberCounts);
+  const count = filled.length;
   if (!count) return "";
-  if (count === 1) return "Solo";
-  if (count === 2) return "Duo";
-  if (count === 3) return "Trio";
-  return `${count}-piece`;
+  const kind = count === 1 ? "Solo" : count === 2 ? "Duo" : count === 3 ? "Trio" : `${count}-piece`;
+  const seen = new Set();
+  const instruments = [];
+  filled.forEach((member) => {
+    const raw = member?.instruments ?? member?.instrument ?? [];
+    const list = Array.isArray(raw) ? raw : String(raw).split(",");
+    list.forEach((item) => {
+      const label = String(item || "").trim().toLowerCase();
+      if (!label || seen.has(label)) return;
+      seen.add(label);
+      instruments.push(label);
+    });
+  });
+  return instruments.length ? `${kind} · ${instruments.join(", ")}` : kind;
 }
 
 /** One Spotify or YouTube link, or the uploaded file name. No player. */

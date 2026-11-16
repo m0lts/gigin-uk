@@ -87,6 +87,9 @@ test("the request card uses a real track and leaves where they have played out u
   const file = noticeTrack({ assets: [{ name: "demo.mp3", contentType: "audio/mpeg" }] });
   assert.equal(file.trackName, "demo.mp3");
   assert.equal(actKind([{ name: "Maya" }, { name: "Jo" }]), "Duo");
+  assert.equal(actKind([{ name: "Maya", instruments: ["Vocals"] }, { instruments: ["Guitar"] }]), "Duo · vocals, guitar");
+  assert.equal(actKind([{ name: "" }, { instruments: [] }]), "");
+  assert.match(applicationNoticeMessage([item("Maya", { actType: "Duo · vocals, guitar" })]).html, /Duo · vocals, guitar/);
   assert.match(applicationReviewUrl("night-1"), /tab=applications/);
 });
 

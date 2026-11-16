@@ -15,7 +15,7 @@ import {
   undoCloseNightApplications,
   undoNightApplication,
 } from '@services/api/gigs';
-import { bandMemberPhrase, formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
+import { actTypeLine, formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
 import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 import { reportApplicationActionError } from '@features/venue/gigs/utils/applicationActionError';
 import { ApplicantProfileModal, useApplicantQuery } from '@features/venue/gigs/components/ApplicantProfileModal';
@@ -658,7 +658,7 @@ function promoChip(app) {
 }
 
 function actLine(app) {
-  return app?.kind || bandMemberPhrase(app?.members) || 'Act';
+  return actTypeLine(app?.members) || app?.kind || 'Act';
 }
 
 function techSummary(booked, venue) {
@@ -1049,7 +1049,6 @@ function ApplicantCard({
   const withdrawn = app.status === 'withdrawn';
   const unviewed = isNewApplicant(app);
   const status = statusChip(app, assigned, ordered, oneSet);
-  const bandPhrase = bandMemberPhrase(app.members);
   return (
     <article className={`na-app${withdrawn ? ' is-muted' : ''}${unviewed ? ' is-unviewed' : ''}`}>
       {unviewed ? <span className="na-app__dot" aria-label="New application" /> : null}
@@ -1060,7 +1059,7 @@ function ApplicantCard({
           {(app.type === 'guest' || app.guest) && <em>Guest</em>}
           <span className={status.className}>{status.label}</span>
         </header>
-        <p>{[app.kind || 'Act', bandPhrase, `applied ${when(app.createdAt || app.appliedAt) || 'recently'}`].filter(Boolean).join(' · ')}</p>
+        <p>{[actLine(app), `applied ${when(app.createdAt || app.appliedAt) || 'recently'}`].join(' · ')}</p>
         {!oneSet && <div className="na-tags"><span className={conflict ? 'is-warn' : (app.preferredSlotGigIds || []).length ? 'is-pref' : ''}>{conflict || prefersLabel}</span></div>}
         {music && <p className="na-music"><i />{music.provider}{preview?.title ? ` · ${preview.title}` : ''}</p>}
         {(app.assets || []).some(isAudioAsset) && (
@@ -1070,7 +1069,7 @@ function ApplicantCard({
             ))}
           </ul>
         )}
-        <p className={`na-tech ${tech.tone}`}>{tech.text}</p>
+        {tech ? <p className={`na-tech ${tech.tone}`}>{tech.text}</p> : null}
         <blockquote>{app.note ? `“${app.note}”` : 'No note'}</blockquote>
         <div className="na-actions">
           <div>
@@ -1147,7 +1146,9 @@ function statusChip(app, assigned, ordered, oneSet) {
 }
 
 function techLine(app, venue) {
-  const rider = (app.type === 'guest' || app.guest)
+  const guest = app.type === 'guest' || app.guest;
+  if (guest && !app.needs?.length && !app.bringOwn?.length) return null;
+  const rider = guest
     ? buildGuestTechRider({ needs: app.needs || [], bringOwn: app.bringOwn || [], members: app.members || [] })
     : (app.techRider || app.techSetup);
   if (!rider) return { text: 'Tech rider not filled in', tone: 'is-muted' };

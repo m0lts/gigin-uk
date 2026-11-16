@@ -13,7 +13,7 @@ import {
 import { get } from '@services/http';
 import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
 import { preferencePhrase } from '@services/utils/nightApplications';
-import { bandMemberPhrase, filledBandMembers, formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
+import { actTypeLine, bandMemberPhrase, filledBandMembers, formatClock, slotEnd } from '@features/gig-discovery/guest/guestFormat';
 import { isNewApplicant } from '@features/venue/gigs/utils/isNewApplicant';
 import { InviteToGigModal } from '@features/venue/dashboard/ArtistCRM';
 import { GuestAudioRow } from '@features/gig-discovery/guest/GuestAudioRow';
@@ -628,10 +628,11 @@ function ApplicantProfileDialog({
       instruments: memberLine(member),
     }));
   }, [gigin, applicant.members, profile]);
+  const lineup = actTypeLine(gigin ? (profile?.bandMembers || []) : (applicant.members || []));
   const bandPhrase = bandMemberPhrase(members);
   const kind = kindOf(applicant, profile);
   const town = townOf(applicant, profile);
-  const meta = [kind, bandPhrase, town].filter(Boolean).join(' · ');
+  const meta = [lineup || kind, lineup ? '' : bandPhrase, town].filter(Boolean).join(' · ');
 
   const gallery = useMemo(() => {
     const items = [];
@@ -1100,12 +1101,14 @@ function ApplicantProfileDialog({
                     ))}
                   </section>
                 )}
+                {(compatRows.length > 0 || members.length === 0) && (
                 <section className="ap-card">
                   <h2>Tech and the bar</h2>
                   {compatRows.length ? compatRows.map((row) => (
                     <span className="ap-tech" key={row.label}><i style={{ background: row.dot }} /><span><b>{row.label}:</b> {row.text}</span></span>
                   )) : <p className="ap-muted">Tech rider not filled in.</p>}
                 </section>
+                )}
               </div>
               <section className="ap-card">
                 <h2>At {venueName}</h2>
