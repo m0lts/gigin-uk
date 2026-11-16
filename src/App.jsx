@@ -113,17 +113,7 @@ export default function App() {
       justLoggedInRef.current = false;
       return;
     }
-    // Only show verify email modal if:
-    // 1. Email is not verified
-    // 2. Modal is not already open (to prevent reopening after login)
-    // 3. We didn't just log in (to prevent reopening immediately after successful login)
-    // This prevents reopening the modal immediately after successful login
-    if (!u.emailVerified && !authModal && !justLoggedInRef.current) {
-      setAuthType('verify-email');
-      setAuthModal(true);
-      setAuthClosable(false);
-      return;
-    }
+    // An unverified user can close the card and keep browsing.
     // Reset the flag after a short delay to allow normal email verification checks
     if (justLoggedInRef.current) {
       const timer = setTimeout(() => {

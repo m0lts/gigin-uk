@@ -106,7 +106,7 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
       // }
       const signupResponse = await signup(credentials, marketingConsent);
       if (signupResponse && signupResponse.needsEmailVerify) {
-        setAuthClosable(false);
+        setAuthClosable(true);
         setAuthType('verify-email');
       }
     } catch (err) {

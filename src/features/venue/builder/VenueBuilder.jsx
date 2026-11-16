@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { VenueDetails } from './VenueDetails';
@@ -33,6 +33,7 @@ import '../../landing-page/landing.css';
 export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType }) => {
 
     const { setUser } = useAuth();
+    const askedVerify = useRef(false);
     const navigate = useNavigate();
     const location = useLocation();
     const { isSmUp, isLgUp } = useBreakpoint();
@@ -81,6 +82,13 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
             setAuthModal(true);
             setAuthClosable(false);
             setAuthType('signup')
+            return;
+        }
+        if (FEATURES.venueSignup && auth.currentUser && !auth.currentUser.emailVerified && !askedVerify.current) {
+            askedVerify.current = true;
+            setAuthType('verify-email');
+            setAuthClosable(true);
+            setAuthModal(true);
         }
         if (user?.musicianProfile) {
             setShowErrorModal(true);
@@ -734,7 +742,15 @@ export const VenueBuilder = ({ user, setAuthModal, setAuthClosable, setAuthType 
     const percentComplete = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
 
     if (user && FEATURES.venueSignup && auth.currentUser && !auth.currentUser.emailVerified) {
-        return null;
+        return (
+            <div className='venue-builder'>
+                <div className='body' style={{ maxWidth: 640, margin: '0 auto', padding: '48px 20px' }}>
+                    <h2>Confirm your email</h2>
+                    <p>Verify your email before creating a venue.</p>
+                    <button type="button" className="btn primary" onClick={() => { setAuthType('verify-email'); setAuthClosable(true); setAuthModal(true); }}>Confirm your email</button>
+                </div>
+            </div>
+        );
     }
 
     if (creationClosed) {

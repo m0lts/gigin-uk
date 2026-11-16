@@ -141,7 +141,7 @@ function scrollToSection(id, focusId) {
   }, 350);
 }
 
-export const LandingPage = ({ setAuthModal, setAuthType }) => {
+export const LandingPage = ({ setAuthModal, setAuthType, setAuthClosable }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const hasVenueProfile = Boolean(user?.venueProfiles?.length);
@@ -159,6 +159,12 @@ export const LandingPage = ({ setAuthModal, setAuthType }) => {
   const startVenueAccount = () => {
     if (auth.currentUser?.emailVerified) {
       navigate('/venues/add-venue');
+      return;
+    }
+    if (auth.currentUser) {
+      setAuthType?.('verify-email');
+      setAuthClosable?.(true);
+      setAuthModal?.(true);
       return;
     }
     try { sessionStorage.setItem('redirect', '/venues/add-venue'); } catch { /* ignore */ }

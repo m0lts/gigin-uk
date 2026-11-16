@@ -99,7 +99,7 @@ export const LoginForm = ({ credentials, setCredentials, error, setError, clearC
     try {
       const loginResponse = await login(credentials);
       if (loginResponse && loginResponse.needsEmailVerify) {
-        setAuthClosable(false);
+        setAuthClosable(true);
         setAuthType('verify-email');
         return;
       }
