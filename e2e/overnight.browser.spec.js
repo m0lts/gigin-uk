@@ -174,20 +174,20 @@ async function login(page, email) {
     })));
   });
   await page.reload();
-  await page.getByPlaceholder('e.g. johnsmith@gigin.com').fill(email);
-  await page.getByPlaceholder('Password').fill(PASSWORD);
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(PASSWORD);
   const signedIn = page.waitForResponse((response) => response.url().includes('signInWithPassword'), { timeout: 20000 });
-  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByRole('button', { name: 'Sign in' }).click();
   await signedIn;
-  await expect(page.getByRole('heading', { name: 'Verify your email' })).toHaveCount(0);
-  await expect(page.getByPlaceholder('e.g. johnsmith@gigin.com')).toHaveCount(0, { timeout: 20000 });
+  await expect(page.getByRole('heading', { name: 'Confirm your email' })).toHaveCount(0);
+  await expect(page.getByLabel('Email')).toHaveCount(0, { timeout: 20000 });
   await page.waitForTimeout(1000);
 }
 
 async function openGigRow(page, name) {
   await page.goto('/venues/dashboard/gigs');
   await page.locator('.loading-screen').waitFor({ state: 'detached', timeout: 45000 });
-  await page.getByRole('button', { name: 'Table' }).click();
+  await page.getByRole('button', { name: 'List' }).click();
   const row = page.getByRole('row', { name: new RegExp(name) }).first();
   await expect(row).toBeVisible({ timeout: 20000 });
   await row.click();
@@ -201,9 +201,9 @@ async function applyAsGuest(page, gigId, { act, name, email, note, photo = false
     sessionStorage.removeItem('guestApplicationLink');
   });
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Apply to play' })).toBeVisible({ timeout: 15000 });
-  await page.getByRole('button', { name: 'Apply to play' }).click();
-  await page.getByLabel('Act or band name').fill(act);
+  await expect(page.getByRole('button', { name: 'Apply' })).toBeVisible({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Apply' }).click();
+  await page.getByLabel('Act or artist name').fill(act);
   await page.getByLabel('Your name').fill(name);
   const emailField = page.locator('input[type="email"]');
   await emailField.fill(email);
@@ -217,13 +217,13 @@ async function applyAsGuest(page, gigId, { act, name, email, note, photo = false
     else if (preference) await page.getByRole('button', { name: new RegExp(String(preference).replace('set-', 'Set '), 'i') }).first().click();
   }
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByRole('heading', { name: 'Photo and links' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your music' })).toBeVisible();
   if (photo) {
     await page.locator('input[type="file"]').first().setInputFiles(PNG);
     await expect(page.getByText(/overnight-browser-pixel/)).toBeVisible({ timeout: 20000 });
   }
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByRole('heading', { name: 'Tech rider' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Who's playing?" })).toBeVisible();
   await page.getByRole('button', { name: 'Guitar' }).first().click();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: 'Nearly done' })).toBeVisible();
@@ -280,8 +280,7 @@ test.beforeAll(async () => {
   await db.doc(`venueProfiles/${venueId}`).set({
     venueId,
     name: 'Overnight Browser Venue',
-    accountName: 'Overnight Browser Venue',
-    bookerDisplayName: 'Jez',
+    accountName: 'Sam',
     guestApplications: true,
     completed: true,
     createdBy: venue.uid,
@@ -452,7 +451,7 @@ test('2. guest applies, edits, withdraws, and does not duplicate a contact', asy
   await assertSignedOutGigHidesSecrets(gigId, email);
   await page.goto(`/gig/${gigId}/application/${token}`);
   await expect(page.getByRole('heading', { name: 'Your application' })).toBeVisible();
-  await page.locator('.ga-review__row', { hasText: 'Note to Jez' }).getByRole('button', { name: 'Edit' }).click();
+  await page.locator('.ga-review__row', { hasText: 'Note to Sam' }).getByRole('button', { name: 'Edit' }).click();
   await page.locator('textarea').fill('Edited from the private link.');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Edited from the private link.')).toBeVisible();
@@ -476,14 +475,14 @@ test('2. guest applies, edits, withdraws, and does not duplicate a contact', asy
 test('3. an existing Gigin email can continue the application', async ({ page }) => {
   watch(page, 'test 3');
   await page.goto(`/gig/${world.secondId}`);
-  await page.getByRole('button', { name: 'Apply to play' }).click();
-  await page.getByLabel('Act or band name').fill('Should Not Send');
+  await page.getByRole('button', { name: 'Apply' }).click();
+  await page.getByLabel('Act or artist name').fill('Should Not Send');
   await page.getByLabel('Your name').fill('Existing');
   const emailField = page.locator('input[type="email"]');
   await emailField.fill(world.existing.email);
   await emailField.blur();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByRole('heading', { name: 'Photo and links' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your music' })).toBeVisible();
 });
 
 test('4. venue accepts one guest and declines another', async ({ page }) => {
@@ -568,7 +567,8 @@ test('7. a guest account links, and a name match merges only when asked', async 
     email,
     note: 'I will make an account.',
   });
-  await page.getByRole('button', { name: 'Create a free account' }).click();
+  await page.getByRole('button', { name: 'Save my details' }).click();
+  await page.getByRole('button', { name: /I'm an artist/ }).click();
   await page.locator('#name').fill('Guest D');
   await page.locator('#email').fill(email);
   await page.locator('#password').fill(PASSWORD);
@@ -707,7 +707,7 @@ async function applyAsArtist(page, gigId, message) {
 async function deleteGigFromTable(page, name) {
   await page.goto('/venues/dashboard/gigs');
   await page.locator('.loading-screen').waitFor({ state: 'detached', timeout: 45000 });
-  await page.getByRole('button', { name: 'Table' }).click();
+  await page.getByRole('button', { name: 'List' }).click();
   const row = page.getByRole('row', { name: new RegExp(name) }).first();
   await row.getByRole('button', { name: 'Gig options' }).click();
   await page.getByRole('button', { name: /^Delete/ }).click();
@@ -743,19 +743,16 @@ test('9. a logged-in artist applies, is accepted, declined, withdraws, and a gig
   }).toBe(world.artistId);
   await keepOpenIfAsked(page);
   await page.getByRole('button', { name: 'Options' }).click();
-  await page.getByRole('button', { name: 'Cancel gig' }).click();
-  await expect(page).toHaveURL(/\/venues\/dashboard\/gigs\/?$/);
-  await page.getByRole('button', { name: /Overnight Browser Regression/ }).first().click();
-  await page.getByRole('button', { name: 'More actions' }).click();
-  const cancel = page.getByRole('button', { name: 'Cancel gig' });
-  await expect(cancel).toBeEnabled();
-  await cancel.click();
-  await page.locator('#cancellation-reason').selectOption('availability');
-  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
-  await expect(page.getByText('Gig cancellation successful.')).toBeVisible({ timeout: 20000 });
-  await deleteGigFromTable(page, 'Overnight Browser Regression');
-  const cancelled = await world.db.doc(`gigs/${world.regressionId}`).get();
-  expect(cancelled.exists).toBe(false);
+  await page.getByRole('button', { name: 'Cancel night' }).click();
+  const cancelDialog = page.locator('.modal.cancel-gig');
+  await expect(cancelDialog.getByRole('heading', { name: 'Cancel night?' })).toBeVisible();
+  await cancelDialog.locator('textarea').fill('Availability');
+  await cancelDialog.getByRole('button', { name: 'Cancel night' }).click();
+  await expect(page.getByText('Night cancelled.')).toBeVisible({ timeout: 20000 });
+  await expect.poll(async () => {
+    const doc = await world.db.doc(`gigs/${world.regressionId}`).get();
+    return doc.data()?.status || '';
+  }).toBe('cancelled');
 
   await openGigRow(page, 'Overnight Browser Decline');
   await page.locator('.na-app').getByRole('button', { name: 'Decline', exact: true }).click();
@@ -1007,7 +1004,7 @@ test('night layout. four and five sets at 1100, 860, and phone width', async ({ 
   for (const [gigId, width] of [[world.fourIds[0], 1100], [world.fourIds[0], 860], [world.fiveIds[0], 390]]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto(`/gig/${gigId}`);
-    await expect(page.getByRole('button', { name: 'Apply to play' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Apply' })).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow, `artist page at ${width}px`).toBeLessThan(4);
   }
