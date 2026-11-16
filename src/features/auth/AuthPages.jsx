@@ -1,46 +1,38 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import '@styles/artists/keep-profile.styles.css';
+import '@styles/forms/auth-card.css';
+import { AuthCard, EyeButton, isGmail } from '../shared/forms/AuthCard';
 import { auth } from '@lib/firebase';
 import {
   confirmPasswordReset,
   isSignInWithEmailLink,
   signInWithEmailAndPassword,
+  sendSignInLinkToEmail,
   signInWithEmailLink,
   verifyPasswordResetCode,
 } from 'firebase/auth';
-import { passwordStrength, passwordSubmitError } from '../keep-profile/passwordStrength';
+import { passwordSubmitError } from '../keep-profile/passwordStrength';
 import { httpClient } from '@services/http/client';
 
 function Shell({ children }) {
   return (
-    <div className="kp">
-      <header className="kp-top"><Link className="kp-logo" to="/">gigin.</Link></header>
-      <div className="kp-wrap">{children}</div>
+    <div className="auth-page">
+      <Link className="auth-page__mark" to="/">gigin<b>.</b></Link>
+      {children}
     </div>
   );
 }
 
-function Strength({ value }) {
-  const hint = passwordStrength(value);
-  return (
-    <div className={`kp-strength is-${hint.tone || 'empty'}`}>
-      <span>{[0, 1, 2, 3].map((bar) => <i key={bar} className={bar < hint.level ? 'is-on' : ''} />)}</span>
-      <p>{hint.title ? <strong>{hint.title} </strong> : null}{hint.body}</p>
-    </div>
-  );
-}
-
-function PasswordField({ value, onChange, label = 'New password' }) {
+function PasswordField({ value, onChange, label = 'New password', placeholder = 'At least 8 characters' }) {
   const [shown, setShown] = useState(false);
   return (
-    <label className="kp-field">
-      {label}
-      <span className="kp-password">
-        <input type={shown ? 'text' : 'password'} value={value} onChange={(event) => onChange(event.target.value)} autoComplete="new-password" />
-        <button type="button" aria-pressed={shown} onClick={() => setShown((current) => !current)}>{shown ? 'Hide' : 'Show'}</button>
-      </span>
-    </label>
+    <div>
+      <label htmlFor="new-password">{label}</label>
+      <div className="auth-card__password">
+        <input id="new-password" type={shown ? 'text' : 'password'} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} autoComplete="new-password" />
+        <EyeButton shown={shown} onClick={() => setShown((current) => !current)} />
+      </div>
+    </div>
   );
 }
 
@@ -108,46 +100,50 @@ export function ResetPasswordPage() {
     setPhase('sent');
   };
 
-  if (phase === 'checking') return <Shell><p>Opening your link…</p></Shell>;
+  if (phase === 'checking') return <Shell><AuthCard title="Opening your link…" closable={false} /></Shell>;
   if (phase === 'sent') {
+    const address = resend || email;
     return (
       <Shell>
-        <h1>Check your email</h1>
-        <p>If {resend || email} has a Gigin account, we&apos;ve sent a link to choose a new password. It works once, for 1 hour.</p>
+        <AuthCard title="Check your email" icon="mail" closable={false} lede={<>We sent a link to reset your password to <strong>{address}</strong>. It works once, for 1 hour.</>}>
+          {isGmail(address) ? <a className="auth-card__primary" href="https://mail.google.com" target="_blank" rel="noreferrer">Open Gmail</a> : null}
+        </AuthCard>
       </Shell>
     );
   }
   if (phase === 'changed') {
     return (
       <Shell>
-        <h1>Password changed</h1>
-        <p>You&apos;re logged in as {email}. Use your new password next time.</p>
-        <Link className="kp-btn" to="/home">Go to my Gigin home</Link>
+        <AuthCard title="Password saved" icon="good" closable={false} lede="You're signed in. Next time, use your email and new password.">
+          <Link className="auth-card__primary" to="/home">Go to my Gigin home</Link>
+        </AuthCard>
       </Shell>
     );
   }
   if (phase === 'expired') {
     return (
       <Shell>
-        <h1>This reset link has expired</h1>
-        <p>Reset links work once, for 1 hour. Send yourself a new one.</p>
-        <form onSubmit={sendAgain}>
-          <label className="kp-field">Email<input type="email" value={resend || email} onChange={(event) => setResend(event.target.value)} /></label>
-          <button type="submit" className="kp-btn">Email me a new link</button>
-        </form>
+        <AuthCard title="This link has expired" icon="error" closable={false} lede="Links work once, for 1 hour, to keep your account safe.">
+          <form onSubmit={sendAgain}>
+            <label htmlFor="resend-email">Email</label>
+            <input id="resend-email" type="email" value={resend || email} onChange={(event) => setResend(event.target.value)} />
+            <button type="submit" className="auth-card__primary">Email me a new link</button>
+          </form>
+          <Link className="auth-card__text" to="/">Back to sign in</Link>
+        </AuthCard>
       </Shell>
     );
   }
   return (
     <Shell>
-      <h1>Choose a new password</h1>
-      <p>For {email}.</p>
-      <form onSubmit={save}>
-        <PasswordField value={password} onChange={setPassword} />
-        <Strength value={password} />
-        {error ? <p className="kp-error">{error}</p> : null}
-        <button type="submit" className="kp-btn" disabled={busy}>{busy ? 'Saving…' : 'Save and log in'}</button>
-      </form>
+      <AuthCard title="Choose a new password" closable={false} lede={email ? `For ${email}.` : ''}>
+        <form onSubmit={save}>
+          <PasswordField value={password} onChange={setPassword} />
+          <p className="auth-card__note">Use 8 or more characters. A short phrase is easier to remember.</p>
+          {error ? <p className="auth-card__error">{error}</p> : null}
+          <button type="submit" className="auth-card__primary" disabled={busy}>{busy ? 'Saving…' : 'Save and sign in'}</button>
+        </form>
+      </AuthCard>
     </Shell>
   );
 }
@@ -158,6 +154,7 @@ export function EmailLinkPage() {
   const [email, setEmail] = useState(() => window.localStorage.getItem('emailForSignIn') || '');
   const [needEmail, setNeedEmail] = useState(false);
   const [error, setError] = useState('');
+  const [sent, setSent] = useState(false);
 
   useEffect(() => {
     const href = window.location.href;
@@ -189,16 +186,52 @@ export function EmailLinkPage() {
     }
   };
 
+  const sendNew = async (event) => {
+    event.preventDefault();
+    const address = email.trim();
+    if (!address) return;
+    try {
+      await sendSignInLinkToEmail(auth, address, {
+        url: `${window.location.origin}/auth/email-link`,
+        handleCodeInApp: true,
+      });
+      window.localStorage.setItem('emailForSignIn', address);
+      setSent(true);
+    } catch { /* same answer either way */ }
+  };
+
+  if (sent) {
+    return (
+      <Shell>
+        <AuthCard title="Check your email" icon="mail" closable={false} lede={<>We sent a sign-in link to <strong>{email}</strong>. It works once, for 1 hour.</>} />
+      </Shell>
+    );
+  }
+  if (error) {
+    return (
+      <Shell>
+        <AuthCard title="This link has expired" icon="error" closable={false} lede="Links work once, for 1 hour, to keep your account safe.">
+          <form onSubmit={sendNew}>
+            <label htmlFor="link-email">Email</label>
+            <input id="link-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+            <button type="submit" className="auth-card__primary">Email me a new link</button>
+          </form>
+          <Link className="auth-card__text" to="/">Back to sign in</Link>
+        </AuthCard>
+      </Shell>
+    );
+  }
   return (
     <Shell>
-      <h1>Log in</h1>
-      {needEmail ? (
-        <form onSubmit={finish}>
-          <p>Open the link on this device, or enter the email we sent it to.</p>
-          <label className="kp-field">Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <button type="submit" className="kp-btn">Log in</button>
-        </form>
-      ) : <p>{error || 'Logging in…'}</p>}
+      <AuthCard title="Sign in" closable={false} lede={needEmail ? 'Open the link on this device, or enter the email we sent it to.' : 'Signing in…'}>
+        {needEmail ? (
+          <form onSubmit={finish}>
+            <label htmlFor="link-email">Email</label>
+            <input id="link-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+            <button type="submit" className="auth-card__primary">Sign in</button>
+          </form>
+        ) : null}
+      </AuthCard>
     </Shell>
   );
 }
