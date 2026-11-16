@@ -1108,6 +1108,34 @@
   }
 }
 
+.night-tabs {
+  margin-top: 8px;
+}
+
+.night-tab__count {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: var(--launch-radius-pill);
+  background: var(--launch-soft);
+  color: var(--launch-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.night-tab__note {
+  margin-left: 8px;
+  color: var(--launch-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.gn-tab.is-on .night-tab__note {
+  color: var(--launch-muted);
+  font-weight: 400;
+}
+
 .venue-gig-page__page-head {
   display: flex;
   flex-direction: column;

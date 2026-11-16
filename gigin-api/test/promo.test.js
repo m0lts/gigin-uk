@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   formatPromoDay,
   preparePromo,
+  bookedPromoWaiting,
   promoDueKey,
   promoEditable,
   promoIsIncomplete,
@@ -80,4 +81,14 @@ test("sending promo needs the permission tick, a bio, photos, and a track", () =
   assert.equal(ready.permission.email, "maya@example.com");
   assert.ok(ready.permission.at);
   assert.equal(formatPromoDay("2026-11-26"), "Thu 26 Nov");
+});
+
+test("promo waiting counts booked acts that still owe a bio, a photo, or a track", () => {
+  const booked = { status: "accepted", assignedSlotGigId: "set-1" };
+  assert.equal(bookedPromoWaiting([
+    { ...booked, promo: { bio: "Songs", photos: [{ url: "https://example.com/a.jpg" }], track: { url: "https://open.spotify.com/track/1" } } },
+    { ...booked, assignedSlotGigId: "set-2", promo: { bio: "Songs" } },
+    { status: "pending", promo: null },
+    { status: "accepted", promo: null },
+  ]), 1);
 });

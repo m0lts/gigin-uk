@@ -33,6 +33,8 @@ import { isGuestApplyGig } from '@features/gig-discovery/guest/guestFormat';
 import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
 import { PressKitGigBlock } from '../../../../keep-profile/PressKit';
 import { GigMediaPanel } from '@features/venue/gigs/components/GigMediaPanel';
+import { readNight } from '@services/utils/nightApplications';
+import { bookedPromoWaiting } from '../../../../../../gigin-api/lib/promo.js';
 import {
   isArtistBookingNightFullyBooked,
 } from '@features/venue/gigs/utils/multiSlotGigGroup';
@@ -316,6 +318,9 @@ export function GigDetailsPanel({
   artistBookingApplicantsTotalCount,
   /** Merged slot docs for multi-set artist bookings (same order as sidebar / normalised gig). */
   artistBookingSlotGigs,
+  nightTab,
+  onNightTab,
+  onNightCounts,
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -450,6 +455,19 @@ export function GigDetailsPanel({
     });
     return () => { cancelled = true; };
   }, [privateSlotKey, rawGig?.gigId]);
+
+  useEffect(() => {
+    if (!onNightCounts) return undefined;
+    const slots = artistBookingSlotGigs?.length ? artistBookingSlotGigs : [rawGig].filter(Boolean);
+    const night = readNight(slots);
+    const apps = night.applications.map((app) => ({
+      ...app,
+      promo: privateBundle?.guests?.[app.id]?.promo || app.promo || null,
+    }));
+    const waiting = apps.filter((app) => ['pending', 'sent', ''].includes(String(app?.status || 'pending').toLowerCase())).length;
+    onNightCounts({ waiting, promo: bookedPromoWaiting(apps) });
+    return undefined;
+  }, [onNightCounts, artistBookingSlotGigs, rawGig, privateBundle]);
   const [showConfirmManualModal, setShowConfirmManualModal] = useState(false);
   const [confirmManualName, setConfirmManualName] = useState('');
   const [confirmManualAddToContacts, setConfirmManualAddToContacts] = useState(false);
@@ -2221,7 +2239,19 @@ export function GigDetailsPanel({
     return (
       <>
         {guestNight ? (
-          <>
+          nightTab === 'photos' ? (
+            mediaGigId ? (
+              <GigMediaPanel
+                gigId={mediaGigId}
+                media={privateBundle?.media || []}
+                hasShareLink={Boolean(privateBundle?.hasShareLink)}
+                canUpdate={canUpdate}
+                onShareLinkChange={(live) => setPrivateBundle((prev) => ({ ...(prev || {}), hasShareLink: live }))}
+              />
+            ) : null
+          ) : nightTab === 'promo' ? (
+            <p className="na-empty">Promo for this night.</p>
+          ) : (
             <NightApplyReview
               rawGig={rawGig}
               slots={nightSlots}
@@ -2236,17 +2266,10 @@ export function GigDetailsPanel({
               user={user}
               venues={venues}
               gigs={gigs}
+              section={nightTab === 'overview' ? 'overview' : 'applications'}
+              onShowApplications={() => onNightTab?.('applications')}
             />
-            {mediaGigId ? (
-            <GigMediaPanel
-              gigId={mediaGigId}
-              media={privateBundle?.media || []}
-              hasShareLink={Boolean(privateBundle?.hasShareLink)}
-              canUpdate={canUpdate}
-              onShareLinkChange={(live) => setPrivateBundle((prev) => ({ ...(prev || {}), hasShareLink: live }))}
-            />
-            ) : null}
-          </>
+          )
         ) : (
         <div className="venue-hire-confirmed-panel gig-details-main">
           <RunningOrder

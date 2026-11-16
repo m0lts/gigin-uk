@@ -24,6 +24,7 @@ import { GigOptionsMenu } from '../../components/GigOptionsMenu';
 import { CancelNightDialog } from '../../components/CancelNightDialog';
 import { isNightModelGig, nightAudienceCounts, toastNightCancelled, usesPaymentsCancel } from '../utils/nightCancel';
 import { getMainPanelComponent } from './panels';
+import { Tabs } from '@features/shared/ui/foundation';
 
 function calculateEndTime(startTime, duration) {
   if (!startTime || duration == null) return null;
@@ -231,6 +232,9 @@ export function VenueGigPageShell({
     : '';
   const queryParams = new URLSearchParams(location.search);
   const queryGigId = queryParams.get('gig') || queryParams.get('gigId') || '';
+  const requestedTab = queryParams.get('tab') || '';
+  const nightTab = ['overview', 'applications', 'promo', 'photos'].includes(requestedTab) ? requestedTab : 'overview';
+  const [nightTabCounts, setNightTabCounts] = useState({ waiting: 0, promo: 0 });
   const gigId = stateGig?.gigId || queryGigId;
   const isVenueHireFromState = stateGig?.itemType === 'venue_hire';
   const [gigInfo, setGigInfo] = useState(null);
@@ -681,6 +685,13 @@ export function VenueGigPageShell({
   const showArtistInviteInApplications =
     canInviteArtist && !isGigApplicationsClosed && !isArtistBookingFullyBooked;
 
+  const setNightTab = (id) => {
+    const next = new URLSearchParams(location.search);
+    if (id && id !== 'overview') next.set('tab', id);
+    else next.delete('tab');
+    navigate({ pathname: location.pathname, search: next.toString() ? `?${next.toString()}` : '' }, { replace: true, state: location.state });
+  };
+
   const openPreviewListing = (event) => {
     const id = gigInfo?.id || gigInfo?.gigId;
     if (id) openInNewTab(isVenueHirePage ? `/hire/${id}` : `/gig/${id}`, event);
@@ -850,6 +861,19 @@ export function VenueGigPageShell({
                   {statusPill.label}
                 </span>
               </div>
+              {guestNightReview ? (
+                <Tabs
+                  className="night-tabs"
+                  value={nightTab}
+                  onChange={setNightTab}
+                  tabs={[
+                    { id: 'overview', label: 'Overview' },
+                    { id: 'applications', label: <>Applications{nightTabCounts.waiting > 0 ? <span className="night-tab__count">{nightTabCounts.waiting}</span> : null}</> },
+                    { id: 'promo', label: <>Promo{nightTabCounts.promo > 0 ? <span className="night-tab__note">{nightTabCounts.promo} waiting</span> : null}</> },
+                    { id: 'photos', label: <>Photos<span className="night-tab__note">after the gig</span></> },
+                  ]}
+                />
+              ) : null}
             </div>
           )}
           <main className="venue-gig-page__main">
@@ -909,6 +933,9 @@ export function VenueGigPageShell({
                   }
                   artistBookingApplicantsTotalCount={artistBookingApplicantsTotalCount}
                   artistBookingSlotGigs={isArtistBookingPage ? allSlots : undefined}
+                  nightTab={guestNightReview ? nightTab : undefined}
+                  onNightTab={guestNightReview ? setNightTab : undefined}
+                  onNightCounts={guestNightReview ? setNightTabCounts : undefined}
                 />
               );
               return isVenueHirePage || isArtistBookingPage ? panel : <div className="venue-gig-page__main-card">{panel}</div>;

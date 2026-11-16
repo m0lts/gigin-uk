@@ -97,6 +97,8 @@ export function NightApplyReview({
   user,
   venues,
   gigs,
+  section,
+  onShowApplications,
 }) {
   const night = useMemo(() => readNight(slots?.length ? slots : [rawGig].filter(Boolean)), [slots, rawGig]);
   const ordered = night.slots;
@@ -351,6 +353,7 @@ export function NightApplyReview({
       {nightCancelled && <p className="na-empty">This night has been cancelled.</p>}
       <div className="na-grid">
         <section>
+          {section ? null : (
           <div className="na-tabs" role="tablist">
             <button type="button" className={tab === 'applications' ? 'is-on' : ''} onClick={() => setTab('applications')}>
               Applications
@@ -364,7 +367,8 @@ export function NightApplyReview({
               <em>{filledCount}/{ordered.length || 0}</em>
             </button>
           </div>
-          {tab === 'applications' ? (
+          )}
+          {(section ? section === 'applications' : tab === 'applications') ? (
             <>
               <div className="na-toolbar">
                 <div className="na-seg">
@@ -427,7 +431,12 @@ export function NightApplyReview({
               onDrag={beginDrag}
               onAssign={assign}
               slotLabel={slotLabel}
-              onSee={(slotId) => { setTab('applications'); setBucket('waiting'); setPrefer(slotId); }}
+              onSee={(slotId) => {
+                if (onShowApplications) onShowApplications();
+                else setTab('applications');
+                setBucket('waiting');
+                setPrefer(slotId);
+              }}
             />
           )}
         </section>

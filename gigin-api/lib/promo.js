@@ -61,12 +61,29 @@ export function formatPromoDay(key) {
   }).format(date);
 }
 
-export function promoIsIncomplete(promo) {
-  const bio = String(promo?.bio || "").trim();
+export function promoMissingParts(promo) {
+  const missing = [];
+  if (!String(promo?.bio || "").trim()) missing.push("a bio");
   const photos = Array.isArray(promo?.photos) ? promo.photos.filter((item) => item?.path || item?.url) : [];
+  if (!photos.length) missing.push("a photo");
   const track = promo?.track;
-  const hasTrack = Boolean(track?.path || String(track?.url || "").trim());
-  return !bio || photos.length === 0 || !hasTrack;
+  if (!(track?.path || String(track?.url || "").trim())) missing.push("a track");
+  return missing;
+}
+
+export function promoIsIncomplete(promo) {
+  return promoMissingParts(promo).length > 0;
+}
+
+const BOOKED = new Set(["accepted", "confirmed", "paid"]);
+
+/** Booked acts that still owe a bio, a photo, or a track. */
+export function bookedPromoWaiting(acts) {
+  return (acts || []).filter((act) => {
+    if (!BOOKED.has(String(act?.status || "").toLowerCase())) return false;
+    if (!act?.assignedSlotGigId) return false;
+    return promoIsIncomplete(act?.promo);
+  }).length;
 }
 
 export function promoEditable(gigDate, now = new Date()) {
