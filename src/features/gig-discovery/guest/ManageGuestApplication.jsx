@@ -10,6 +10,7 @@ import { useBreakpoint } from '@hooks/useBreakpoint';
 import { GuestAssetsStep } from './GuestAssetsStep';
 import { GuestAudioRow } from './GuestAudioRow';
 import { continueDisabledByUploads, isAudioAsset, uploadContinueNote } from './guestAssetFiles';
+import { GuestPromo } from './GuestPromo';
 import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
 import { GuestWhoStep } from './GuestWhoStep';
@@ -369,7 +370,19 @@ export function ManageGuestApplication() {
             <Link to="/profile/edit">Edit</Link>
           </article>
         )}
-        {FEATURES.keepProfile && !application.artistProfileId && application.keepProfileOffer !== 'confirmed' && (application.status === 'sent' || application.status === 'pending' || accepted) && (
+        {accepted && !cancelledGig && (
+          <GuestPromo
+            application={application}
+            venueName={venue?.name || venue?.venueName || application.venueName}
+            gigId={gigId}
+            token={token}
+            onSaved={(next) => {
+              setApplication(next);
+              setDraft(fromApplication(next));
+            }}
+          />
+        )}
+        {FEATURES.keepProfile && !application.artistProfileId && application.keepProfileOffer !== 'confirmed' && (application.status === 'sent' || application.status === 'pending') && (
           <KeepOffer
             draft={{ ...draft, manageToken: token, gigId, email: draft.email, keepProfileOffer: application.keepProfileOffer }}
             bookerName={booker.name}

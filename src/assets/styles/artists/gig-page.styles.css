@@ -2523,3 +2523,22 @@
   .ga-media__actions { flex-direction: row; align-items: center; }
   .ga-media__actions .ga-dark { width: auto; }
 }
+.ga-promo { margin: 28px 0; }
+.ga-promo h2 { margin: 0 0 8px; font-size: 40px; font-weight: 300; letter-spacing: -0.02em; line-height: 1.1; }
+.ga-promo__lead { color: #4B5160; margin: 0 0 16px; }
+.ga-promo__booked { display: inline-block; margin: 0 0 8px; padding: 4px 10px; border-radius: 999px; background: #E5F0E7; color: #2F6B43; font-size: 13px; }
+.ga-promo__card { background: #fff; border: 1px solid #E5E7EB; border-radius: 24px; box-shadow: 0 1px 2px rgba(20, 25, 22, 0.04); padding: 8px 16px; margin-bottom: 16px; }
+.ga-promo__row { display: block; padding: 14px 0; border-bottom: 1px solid #E5E7EB; }
+.ga-promo__row span { display: block; }
+.ga-promo__row b { display: block; }
+.ga-promo__row small { display: block; color: #5B606B; font-size: 13px; }
+.ga-promo__row input, .ga-promo__row textarea { width: 100%; margin-top: 8px; border: 1px solid #E5E7EB; border-radius: 14px; min-height: 52px; padding: 12px 14px; font-size: 16px; box-sizing: border-box; }
+.ga-promo__row ul { list-style: none; padding: 8px 0 0; margin: 0; }
+.ga-promo__row li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }
+.ga-promo__add { margin-top: 8px; background: #fff; border: 1px solid #E5E7EB; border-radius: 999px; min-height: 40px; padding: 0 16px; cursor: pointer; }
+.ga-promo__permit { display: flex; gap: 10px; align-items: flex-start; padding: 14px 0; }
+.ga-promo__permit input { margin-top: 4px; }
+.ga-promo__sent { list-style: none; padding: 0; margin: 0 0 12px; }
+.ga-promo__sent li { display: grid; grid-template-columns: 140px 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid #E5E7EB; }
+.ga-promo__sent span { color: #5B606B; }
+.ga-promo .ga-dark { border-radius: 999px; }

@@ -42,6 +42,10 @@ export function updateGuestApplication(token, body) {
   return httpClient.patch(`/guest-applications/${encodeURIComponent(token)}`, { auth, body });
 }
 
+export function submitGuestPromo(token, body) {
+  return httpClient.post(`/guest-applications/${encodeURIComponent(token)}/promo`, { auth, body });
+}
+
 export function withdrawGuestApplication(gigId, token) {
   return httpClient.post(`/guest-applications/${encodeURIComponent(token)}/withdraw`, { auth, body: { gigId } });
 }
