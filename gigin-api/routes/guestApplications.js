@@ -29,7 +29,10 @@ import {
 import { dismissKeepOffer, keepProfileForGuest, noteProfileApplication } from "../lib/keepProfile.js";
 import { assertVenueCanOperate } from "../lib/venueApproval.js";
 import { ownerName } from "../lib/ownerName.js";
+import { formatPromoDay, preparePromo, promoDueKey, promoEditable } from "../lib/promo.js";
 import {
+  acceptPromoPhotos,
+  acceptPromoTrack,
   acceptSubmittedAssets,
   AUDIO_CAP,
   countAudioObjects,
@@ -151,6 +154,17 @@ function publicApplication(applicant, gig, night) {
     artistProfileId: applicant.artistProfileId || null,
     profileSlug: applicant.profileSlug || null,
     keepProfileOffer: applicant.keepProfileOffer || "none",
+    promo: applicant.promo ? {
+      bio: applicant.promo.bio || "",
+      photos: Array.isArray(applicant.promo.photos) ? applicant.promo.photos : [],
+      track: applicant.promo.track || null,
+      videoUrl: applicant.promo.videoUrl || "",
+      played: applicant.promo.played || "",
+      submittedAt: applicant.promo.submittedAt || null,
+    } : null,
+    promoPermission: applicant.promoPermission || null,
+    promoDue: formatPromoDay(promoDueKey(gig?.startDateTime || gig?.date, applicant.acceptedAt)),
+    promoOpen: ["accepted", "paid"].includes(status) && promoEditable(gig?.startDateTime || gig?.date),
     setChangedFrom: applicant.setChangedFrom || null,
     setChangeSeenAt: applicant.setChangeSeenAt || null,
     gigStatus: gig?.status || null,
@@ -499,12 +513,17 @@ router.post("/delete-upload", asyncHandler(async (req, res) => {
   const found = await ownedApplication(gigId, manageToken, applicationId);
   if (stored && !found) return res.status(403).json({ error: "This file can't be removed." });
   if (found) {
-    if (!applicationEditable(found.applicant)) {
-      return res.status(400).json({ error: "This application can no longer be edited." });
-    }
     const saved = new Set((found.applicant.assets || []).map((asset) => asset?.path).filter(Boolean));
     if (found.applicant.photo?.path) saved.add(found.applicant.photo.path);
+    for (const photo of found.applicant.promo?.photos || []) {
+      if (photo?.path) saved.add(photo.path);
+    }
+    if (found.applicant.promo?.track?.path) saved.add(found.applicant.promo.track.path);
     if (saved.has(path)) return res.status(400).json({ error: "Save your changes to remove this file." });
+    if (!applicationEditable(found.applicant)) {
+      const booked = ["accepted", "confirmed", "paid"].includes(String(found.applicant.status || "").toLowerCase());
+      if (!booked) return res.status(400).json({ error: "This application can no longer be edited." });
+    }
   }
   await deleteStoredFile(path);
   return res.json({ ok: true });
@@ -957,6 +976,48 @@ router.post("/:token/seen", asyncHandler(async (req, res) => {
     setChangeSeenAt: new Date().toISOString(),
   }, { merge: true });
   return res.json({ ok: true });
+}));
+
+router.post("/:token/promo", asyncHandler(async (req, res) => {
+  const found = await findByToken(req.body?.gigId || req.query.gigId, req.params.token);
+  if (!found) return res.status(404).json({ error: "This link is not valid." });
+  const current = found.applicant;
+  const state = String(current.status || "").toLowerCase();
+  if (!["accepted", "confirmed", "paid"].includes(state)) {
+    return res.status(400).json({ error: "Promo is sent after you are booked." });
+  }
+  if (String(found.gig?.data?.status || "").toLowerCase() === "cancelled") {
+    return res.status(400).json({ error: "This night has been cancelled." });
+  }
+  const gigWhen = found.gig?.data?.startDateTime || found.gig?.data?.date;
+  if (!promoEditable(gigWhen)) return res.status(400).json({ error: "Promo can no longer be changed." });
+  const prepared = preparePromo(req.body || {}, {
+    contactName: current.contactName,
+    email: current.email,
+  });
+  if (prepared.error) return res.status(400).json({ error: prepared.error });
+  const applicationIds = [current.id];
+  const photos = await acceptPromoPhotos(prepared.photos, applicationIds);
+  if (photos.error) return res.status(400).json({ error: photos.error });
+  let track = prepared.track;
+  if (prepared.track?.path) {
+    const stored = await acceptPromoTrack(prepared.track, applicationIds);
+    if (stored.error) return res.status(400).json({ error: stored.error });
+    track = stored.track;
+  }
+  const withUrls = [];
+  for (const photo of photos.photos) {
+    withUrls.push({ ...photo, url: await publicDownloadUrl(photo.path) });
+  }
+  if (track?.path) track = { ...track, url: await publicDownloadUrl(track.path) };
+  const promo = { ...prepared.promo, photos: withUrls, track };
+  const rootId = found.night?.applicationsRootGigId || found.gig?.id;
+  await db.doc(`gigs/${rootId}/guestApplicants/${current.id}`).set({
+    promo,
+    promoPermission: prepared.permission,
+  }, { merge: true });
+  const fresh = await findByToken(req.body?.gigId || req.query.gigId, req.params.token);
+  return res.json(await presentApplication(fresh?.applicant || { ...current, promo, promoPermission: prepared.permission }, found.gig.data, fresh?.night || found.night, req));
 }));
 
 router.get("/:token", asyncHandler(async (req, res) => {

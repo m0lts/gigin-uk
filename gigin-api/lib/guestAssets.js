@@ -123,6 +123,32 @@ export async function countAudioObjects(applicationId, ignorePaths = []) {
   return files.filter((file) => !ignore.has(file.name) && isAudioObjectName(file.name)).length;
 }
 
+export async function acceptPromoPhotos(photos, applicationIds) {
+  const list = Array.isArray(photos) ? photos : [];
+  if (list.length < 1 || list.length > 4) return { error: "Add between 1 and 4 photos." };
+  const stored = [];
+  for (const photo of list) {
+    const path = String(photo?.path || "");
+    const name = String(photo?.name || path.split("/").pop() || "photo").slice(0, 180);
+    if (!pathBelongs(path, applicationIds)) return { error: "Photo path is not valid." };
+    const meta = await readStoredFile(path);
+    if (!meta) return { error: `${name} didn't finish uploading. Remove it and try again.` };
+    if (!IMAGE_TYPES.has(meta.contentType)) return { error: "Use a JPG or PNG." };
+    if (meta.size > ASSET_LIMIT) return { error: "Photos must be 20 MB or smaller." };
+    stored.push({ path, name, size: meta.size, contentType: meta.contentType });
+  }
+  return { photos: stored };
+}
+
+export async function acceptPromoTrack(track, applicationIds) {
+  if (!track?.path) return { track: null };
+  const accepted = await acceptSubmittedAssets([track], applicationIds);
+  if (accepted.error) return accepted;
+  const file = accepted.assets?.[0];
+  if (!file || !isAudioAsset(file)) return { error: "The track needs to be an audio file." };
+  return { track: file };
+}
+
 export async function acceptSubmittedAssets(rawAssets, applicationIds) {
   const list = Array.isArray(rawAssets) ? rawAssets : [];
   if (list.length > ASSET_CAP) return { error: "You can add up to 5 files." };

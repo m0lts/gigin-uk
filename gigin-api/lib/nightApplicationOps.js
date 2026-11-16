@@ -16,6 +16,7 @@ import { appendPlayedAt, keepReminderHtml, markBookingCancelled } from "./keepPr
 import { bandMemberRow, icsAttachment, icsEvent, renderArtistEmail } from "./artistEmails.js";
 import { ownerName } from "./ownerName.js";
 import { declinedApplicationMessage, listOtherOpenGigs } from "./outboundMail.js";
+import { formatPromoDay, promoDueKey } from "./promo.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 import { assertVenueCanPublishNights } from "./venueApproval.js";
 
@@ -84,6 +85,14 @@ function addressOf(venue) {
 
 function firstName(name) {
   return String(name || "").trim().split(/\s+/)[0] || "there";
+}
+
+function promoCallout(gig, app) {
+  const due = formatPromoDay(promoDueKey(gigDate(gig), app?.acceptedAt || new Date()));
+  return {
+    title: "One thing we need from you",
+    body: `Send a bio, a photo and a track by <b>${due || "the due date"}</b> so we can start promoting your set.`,
+  };
 }
 
 function escapeHtml(value) {
@@ -444,7 +453,9 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       paras: [hi, `Good news. ${escapeHtml(booker)} has accepted ${escapeHtml(act)} for ${escapeHtml(name)} at ${escapeHtml(venueName)} on <b>${escapeHtml(when)}</b>.`, `We'll confirm your set time. ${escapeHtml(booker)} will choose which set you're playing, and we'll email you again as soon as it's set.${prefer}`],
       boxes: [{ label: "YOUR BOOKING", rows: [["Act", escapeHtml(act)], ["When", escapeHtml(when)], ["Set", "To be confirmed"], door ? ["Doors", escapeHtml(door)] : null, where ? ["Where", escapeHtml(where)] : null].filter(Boolean) }],
       pre: `Can't make it after all? Let ${escapeHtml(booker)} know from your private link, so the set can go to someone else.`,
-      button: ["View your booking", url],
+      callout: promoCallout(gig, app),
+      button: ["Send your promo", url],
+      buttonDark: true,
       footer: foot,
     });
   } else if (kind === "accepted-set" || kind === "set-later" || kind === "set-changed") {
@@ -486,7 +497,9 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       pre: changed
         ? `If the new time doesn't work, let ${escapeHtml(booker)} know from your private link.`
         : `Can't make it after all? Let ${escapeHtml(booker)} know from your private link, so the set can go to someone else.`,
-      button: ["View your booking", url],
+      callout: kind === "accepted-set" ? promoCallout(gig, app) : null,
+      button: kind === "accepted-set" ? ["Send your promo", url] : ["View your booking", url],
+      buttonDark: kind === "accepted-set",
       small: changed ? "We've attached an updated calendar file. It replaces the earlier one." : "We've attached a calendar file (gigin-set.ics) with your set time.",
       footer: foot,
     });

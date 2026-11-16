@@ -77,6 +77,9 @@ ${darkCss("[data-ogsc] ")}`;
   const listings = openGigs.length
     ? `<div class="ink" style="margin:4px 0 10px;font-family:${FONT};font-size:16px;line-height:22px;font-weight:600;color:#0F1115;">Gigs looking for acts like you</div>${openGigs.map((gig) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="box" style="margin:0 0 8px;background:#F6F7F9;border:1px solid #F0F1F3;border-radius:12px;"><tr><td style="padding:12px 14px;font-family:${FONT};"><a class="ink" href="${escapeEmail(gig.url)}" style="color:#0F1115;text-decoration:none;font-weight:600;">${escapeEmail(gig.when ? `${gig.when} · ` : "")}${escapeEmail(gig.name)}</a><div class="muted" style="font-size:13.5px;line-height:18px;color:#6B7280;padding-top:2px;">${escapeEmail(gig.place || "")}</div></td></tr></table>`).join("")}`
     : "";
+  const callout = email.callout?.body
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 18px;background:#FDF2EC;border-radius:12px;"><tr><td style="padding:14px 16px;font-family:${FONT};"><div class="ink" style="font-size:15px;line-height:22px;font-weight:600;color:#0F1115;">${escapeEmail(email.callout.title || "")}</div><div class="ink" style="font-size:15px;line-height:22px;color:#4B5160;padding-top:4px;">${email.callout.body}</div></td></tr></table>`
+    : "";
   const pre = email.pre ? paragraph(email.pre, "ink", "font-size:15px;line-height:22px;color:#0F1115;") : "";
   const background = email.buttonDark ? "#111317" : "#FF6C4B";
   const button = email.button ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="${email.buttonDark ? "btn btnd" : "btn"}" style="margin:4px 0 18px;"><tr><td class="${email.buttonDark ? "btnd" : ""}" style="background:${background};border-radius:10px;"><a href="${email.button[1]}" style="display:inline-block;padding:14px 22px;font-family:${FONT};font-size:15px;line-height:20px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:10px;min-width:200px;text-align:center;">${email.button[0]}</a></td></tr></table>` : "";
@@ -104,7 +107,7 @@ ${styles}
 <div class="ink" style="font-family:${FONT};font-size:24px;line-height:28px;font-weight:700;letter-spacing:-0.01em;color:#0F1115;padding-bottom:22px;">gigin<span style="color:#FF6C4B;">.</span></div>
 <div class="eyebrow" style="font-family:${MONO};font-size:12px;line-height:16px;letter-spacing:0.06em;font-weight:500;color:#B5462C;padding-bottom:8px;">${email.eyebrow || ""}</div>
 <h1 class="ink" style="margin:0 0 18px;font-family:${FONT};font-size:24px;line-height:30px;font-weight:600;letter-spacing:-0.01em;color:#0F1115;">${email.heading || ""}</h1>
-${paras}${boxes}${quote}${listings}${pre}${button}${after}${extra}${small}
+${paras}${boxes}${quote}${listings}${callout}${pre}${button}${after}${extra}${small}
 </td></tr>
 <tr><td class="muted" style="padding:16px 10px 0;font-family:${FONT};font-size:12.5px;line-height:19px;color:#6B7280;">${email.footer || ""}<br>Gigin · <a class="link" href="${home}" style="color:#6B7280;">giginmusic.com</a> · <a class="link" href="${home}/privacy-policy" style="color:#6B7280;">Privacy</a></td></tr>
 </table>
@@ -127,6 +130,7 @@ ${paras}${boxes}${quote}${listings}${pre}${button}${after}${extra}${small}
     openGigs.forEach((gig) => lines.push(`${gig.when ? `${strip(gig.when)} · ` : ""}${strip(gig.name)}${gig.place ? ` — ${strip(gig.place)}` : ""}`, gig.url));
     lines.push("");
   }
+  if (email.callout?.body) lines.push(strip(email.callout.title), strip(email.callout.body), "");
   if (email.pre) lines.push(strip(email.pre), "");
   if (email.button) lines.push(`${email.button[0]}:`, email.button[1], "");
   if (email.after) lines.push(`${email.after[0]} ${email.after[1]}:`, email.after[2], "");
