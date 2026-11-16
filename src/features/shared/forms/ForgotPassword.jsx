@@ -1,13 +1,8 @@
 // Dependencies
 import { useState, useEffect } from 'react';
 // Components
-import { CloseIcon, ErrorIcon } from '@features/shared/ui/extras/Icons';
-import { LoadingThreeDots } from '@features/shared/ui/loading/Loading';
-import { NoTextLogo } from '@features/shared/ui/logos/Logos';
-// Styles
-import '@styles/forms/forms.styles.css';
 import { toast } from 'sonner';
-import { LoadingSpinner } from '../ui/loading/Loading';
+import { AuthCard, isGmail } from './AuthCard';
 
 
 export const ForgotPasswordForm = ({ credentials, setCredentials, error, setError, clearCredentials, clearError, setAuthType, resetPassword, setAuthModal, loading, setLoading, authClosable }) => {
@@ -74,76 +69,55 @@ export const ForgotPasswordForm = ({ credentials, setCredentials, error, setErro
     }
   }, [timer]);
 
+  const close = () => {
+    if (!authClosable) return;
+    setAuthModal(false);
+    setShowSuccessMessage(false);
+    setAuthType('login');
+  };
+
+  if (showSuccessMsg) {
+    return (
+      <AuthCard
+        title="Check your email"
+        icon="mail"
+        closable={authClosable}
+        onClose={close}
+        lede={<>We sent a link to reset your password to <strong>{credentials.email}</strong>. It works once, for 1 hour.</>}
+      >
+        {isGmail(credentials.email) ? <a className="auth-card__primary" href="https://mail.google.com" target="_blank" rel="noreferrer">Open Gmail</a> : null}
+        <div className="auth-card__actions">
+          <button type="button" className="auth-card__link" onClick={handleResendPasswordReset} disabled={timer > 0}>
+            {timer > 0 ? `Send it again (${timer}s)` : 'Send it again'}
+          </button>
+          <button type="button" className="auth-card__link" onClick={() => { setShowSuccessMessage(false); clearCredentials(); }}>Use a different email</button>
+        </div>
+        <p className="auth-card__note">Nothing there after a minute? Check your spam or promotions folder.</p>
+      </AuthCard>
+    );
+  }
+
   return (
-    <div className="modal-padding auth" onClick={(e) => e.stopPropagation()}>
-    <div className='modal-content auth'>
-      {showSuccessMsg ? (
-        <>
-          <div className='head'>
-            <NoTextLogo />
-            <h1>Check your email</h1>
-          </div>
-          <div className='auth-form'>
-            <p>If {credentials.email} has a Gigin account, we&apos;ve sent a link to choose a new password. It works once, for 1 hour.</p>
-            <p>Nothing there? Check your spam folder.</p>
-            <button className='btn text' onClick={handleResendPasswordReset} disabled={timer > 0}>
-              {timer > 0 ? `Send again in ${timer}s` : 'Send it again'}
-            </button>
-            <button type='button' className='btn text' onClick={() => { setShowSuccessMessage(false); clearCredentials(); }}>Use a different email</button>
-            <button type='button' className='btn text' onClick={() => setAuthType('login')}>Back to log in</button>
-          </div>
-          {(!loading && authClosable) && (
-            <button className='btn close tertiary' onClick={() => {if (!authClosable) return; setAuthModal(false); setShowSuccessMessage(false); setAuthType('login')}}>
-              Close
-            </button>
-          )}
-        </>
-      ) : (
-        <>
-          <div className='head'>
-            <NoTextLogo />
-            <h1>Reset your password</h1>
-            <p>Enter the email you log in with and we&apos;ll send a link to choose a new password.</p>
-          </div>
-          <form className='auth-form' onSubmit={handlePasswordReset}>
-            <div className='input-group'>
-              <label htmlFor='email'>Email</label>
-              <input
-                type='text'
-                name='email'
-                value={credentials.email}
-                onChange={(e) => { handleChange(e); clearError(); }}
-                placeholder='e.g. johnsmith@gigin.com'
-                className={`${error.input === 'email' && 'error'}`}
-              />
-            </div>
-            {error.status && (
-              <div className='error-box'>
-                <p className='error-msg'>{error.message}</p>
-              </div>
-            )}
-            {loading ? (
-              <LoadingSpinner marginTop={'1.25rem'} />
-            ) : (
-              <>
-                <button
-                  type='submit'
-                  className='btn primary'
-                >
-                  Email me a reset link
-                </button>
-                <button type='button' className='btn text' onClick={() => setAuthType('login')}>Back to log in</button>
-              </>
-            )}
-          </form>
-          {(!loading && authClosable) && (
-            <button className='btn close tertiary' onClick={() => {if (!authClosable) return; setAuthModal(false); setShowSuccessMessage(false); setAuthType('login')}}>
-              Close
-            </button>
-          )}
-        </>
-      )}
-    </div>
-    </div>
+    <AuthCard
+      title="Reset your password"
+      lede="Enter your email and we'll send you a link to choose a new one."
+      closable={authClosable && !loading}
+      onClose={close}
+    >
+      <form onSubmit={handlePasswordReset}>
+        <label htmlFor="reset-email">Email</label>
+        <input
+          id="reset-email"
+          type="email"
+          name="email"
+          value={credentials.email}
+          onChange={(e) => { handleChange(e); clearError(); }}
+          className={error.input === 'email' ? 'is-error' : ''}
+        />
+        {error.status ? <p className="auth-card__error" role="alert">{error.message}</p> : null}
+        <button type="submit" className="auth-card__primary" disabled={loading}>{loading ? 'Sending…' : 'Send reset link'}</button>
+      </form>
+      <button type="button" className="auth-card__text" onClick={() => setAuthType('login')}>Back to sign in</button>
+    </AuthCard>
   );
 };
