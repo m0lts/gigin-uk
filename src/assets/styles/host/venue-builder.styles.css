@@ -1335,3 +1335,89 @@
 .venue-builder.inaccessible .body .btn {
     margin-top: 1rem;
 }
+
+/* Launch signup. The steps stay the same; only the card, type and controls change. */
+.venue-builder {
+    background: var(--launch-page-bg);
+    color: var(--launch-ink);
+    font-family: var(--gn-body-font);
+}
+
+.venue-builder h1,
+.venue-builder h2,
+.venue-builder .stage-title {
+    font-family: var(--gn-heading-font);
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    color: var(--launch-ink);
+}
+
+.venue-builder .left,
+.venue-builder .right,
+.venue-builder .uploading-profile,
+.venue-builder.inaccessible .body {
+    background: #fff;
+    border: 0;
+    border-radius: var(--launch-radius-card);
+    box-shadow: var(--launch-shadow);
+}
+
+.venue-builder .stage-copy,
+.venue-builder .left .intro-text {
+    color: var(--launch-text);
+    font-family: var(--gn-body-font);
+}
+
+.venue-builder .progress-bar,
+.venue-builder .uploading-profile .progress-bar,
+.venue-builder .progress ul li.completed .circle {
+    background-color: var(--launch-ink);
+    border-color: var(--launch-ink);
+    color: #fff;
+}
+
+.venue-builder .progress ul li.active .circle {
+    color: var(--launch-ink);
+    border-color: var(--launch-ink);
+    background: #fff;
+}
+
+.venue-builder .btn.primary {
+    background: var(--launch-btn);
+    color: #fff;
+    border: 0;
+    border-radius: var(--launch-radius-pill);
+    min-height: 48px;
+    padding: 0 22px;
+    font-family: var(--gn-body-font);
+    font-weight: 600;
+}
+
+.venue-builder .btn.secondary {
+    background: #fff;
+    color: var(--launch-ink);
+    border: 1px solid var(--launch-line);
+    border-radius: var(--launch-radius-pill);
+    min-height: 48px;
+    font-family: var(--gn-body-font);
+}
+
+.venue-builder .input-group input,
+.venue-builder .input-group textarea,
+.venue-builder .address-input input {
+    border: 1px solid var(--launch-line);
+    border-radius: var(--launch-radius-input);
+    font-family: var(--gn-body-font);
+    font-size: 16px;
+    color: var(--launch-ink);
+}
+
+.venue-builder .input-group input,
+.venue-builder .address-input input {
+    min-height: 52px;
+}
+
+.venue-builder .stage .card.selected {
+    border-color: var(--launch-ink);
+    outline-color: var(--launch-ink);
+}

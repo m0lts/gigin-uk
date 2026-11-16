@@ -284,7 +284,7 @@ export function VenueHome({ user, gigs, venues, onNewGig }) {
       {!isMdUp && menu}
 
       {waiting ? (
-        <section className="venue-home__card venue-home__welcome">
+        <section className="venue-home__card venue-home__welcome venue-home__waiting">
           <h2>{displayedVenue?.approvalStatus === 'rejected' ? "This venue wasn't approved" : 'Waiting for approval'}</h2>
           <p>
             {displayedVenue?.approvalStatus === 'rejected'
