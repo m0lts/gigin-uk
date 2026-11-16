@@ -1471,6 +1471,20 @@ textarea.ng-input { height: auto; padding: 10px; }
 .ng-wizard .ng-chips button.is-on { background: #111317; color: #fff; border-color: #111317; }
 .ng-wizard textarea.ng-input { border-radius: 14px; min-height: 120px; }
 
+.ng-wizard .ng-contact-grid { grid-template-columns: 1fr; }
+.ng-wizard .ng-contact-grid button { border-radius: 16px; min-height: 56px; }
+.ng-wizard .ng-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #F0F2F5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 @media (max-width: 767.98px) {
   .ng-wizard__top { padding: 16px; align-items: flex-start; }
   .ng-wizard__steps { justify-content: flex-start; margin: 0; }

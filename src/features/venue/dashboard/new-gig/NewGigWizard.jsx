@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { GENRES, LOOKING_FOR, activeSets } from './useNewGigDraft';
-import { dateChip } from './newGigBits';
+import { dateChip, initials } from './newGigBits';
 import { FEATURES } from '../../../../config/features';
 
 const FIND_STEPS = ['Start', 'Date & time', 'Fee & tickets', 'Listing', 'Review'];
@@ -156,13 +156,14 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
             </Question>
           )}
           {labels[safeStep] === "Who's playing" && (
-            <Question title="Who's playing?" sub="They'll show as confirmed.">
+            <Question title="Who plays" sub="They'll show as confirmed.">
               <p className="ng-tip">{tipFor(labels[safeStep])}</p>
               <div className="ng-contact-grid">
                 {contacts.map((contact) => {
                   const id = contact.id || contact.artistId;
                   return (
                     <button key={id} type="button" className={draft.artistId === id ? 'is-on' : ''} onClick={() => patch({ artistId: id, artistName: contact.name })}>
+                      <span className="ng-avatar">{initials(contact.name)}</span>
                       <strong>{contact.name}</strong>
                     </button>
                   );
@@ -202,11 +203,16 @@ export function NewGigWizard({ draft, patch, templates, contacts, gigs = [], sub
                   <label className="ng-checkrow"><input type="checkbox" checked={draft.publishListing} onChange={(event) => patch({ publishListing: event.target.checked, showOnProfile: event.target.checked })} /> Publish the listing</label>
                   <label className="ng-checkrow"><input type="checkbox" checked={draft.offerArtistIds.length > 0} onChange={(event) => patch({ offerArtistIds: event.target.checked ? contacts.slice(0, 1).map((contact) => contact.id) : [] })} /> Offer the gig to artists you know</label>
                   {draft.offerArtistIds.length > 0 && (
-                    <div className="ng-chips">
+                    <div className="ng-contact-grid">
                       {contacts.slice(0, 8).map((contact) => {
                         const id = contact.id;
                         const on = draft.offerArtistIds.includes(id);
-                        return <button key={id} type="button" className={on ? 'is-on' : ''} onClick={() => patch({ offerArtistIds: on ? draft.offerArtistIds.filter((item) => item !== id) : [...draft.offerArtistIds, id] })}>{contact.name}</button>;
+                        return (
+                          <button key={id} type="button" className={on ? 'is-on' : ''} onClick={() => patch({ offerArtistIds: on ? draft.offerArtistIds.filter((item) => item !== id) : [...draft.offerArtistIds, id] })}>
+                            <span className="ng-avatar">{initials(contact.name)}</span>
+                            <strong>{contact.name}</strong>
+                          </button>
+                        );
                       })}
                     </div>
                   )}
