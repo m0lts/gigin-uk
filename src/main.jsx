@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import '@assets/global.styles.css'
 import '@styles/shared/tokens.css'
+import '@styles/shared/foundation.css'
 import { BrowserRouter } from 'react-router-dom'
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';

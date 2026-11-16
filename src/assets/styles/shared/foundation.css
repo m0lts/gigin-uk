@@ -1,0 +1,204 @@
+/* Shared controls. They use the launch tokens and are not applied to existing pages. */
+
+.gn-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 22px;
+  border-radius: var(--launch-radius-pill);
+  border: 1px solid transparent;
+  font-family: var(--gn-body-font);
+  font-size: var(--launch-body-size);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gn-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.gn-btn--primary {
+  background: var(--launch-btn);
+  color: var(--launch-btn-text);
+}
+
+.gn-btn--secondary {
+  background: var(--launch-card);
+  color: var(--launch-ink);
+  border-color: var(--launch-line);
+}
+
+.gn-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gn-label {
+  font-family: var(--gn-body-font);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--launch-ink);
+}
+
+.gn-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--launch-input-height);
+  padding: 0 14px;
+  border: 1px solid var(--launch-line);
+  border-radius: var(--launch-radius-input);
+  background: var(--launch-card);
+  color: var(--launch-ink);
+  font-family: var(--gn-body-font);
+  font-size: var(--launch-body-size);
+}
+
+.gn-input:focus {
+  outline: none;
+  border-color: var(--launch-ink);
+}
+
+.gn-input.is-error,
+.gn-field.is-error .gn-input {
+  border: 1.5px solid var(--launch-error-line);
+}
+
+.gn-error {
+  margin: 0;
+  color: var(--launch-error);
+  font-family: var(--gn-body-font);
+  font-size: 14px;
+}
+
+.gn-card {
+  background: var(--launch-card);
+  border-radius: var(--launch-radius-card);
+  box-shadow: var(--launch-shadow);
+}
+
+.gn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: var(--launch-radius-pill);
+  font-family: var(--gn-body-font);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.gn-pill--soft {
+  background: var(--launch-soft);
+  color: var(--launch-muted);
+}
+
+.gn-pill--good {
+  background: var(--launch-good-bg);
+  color: var(--launch-good);
+}
+
+.gn-pill--warning {
+  background: var(--launch-warning-bg);
+  color: var(--launch-warning);
+}
+
+.gn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--launch-radius-pill);
+  background: var(--launch-accent);
+  flex-shrink: 0;
+}
+
+.gn-tabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid var(--launch-line);
+}
+
+.gn-tab {
+  margin: 0 0 -1px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--launch-muted);
+  font-family: var(--gn-body-font);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.gn-tab.is-on {
+  color: var(--launch-ink);
+  border-bottom-color: var(--launch-btn);
+}
+
+.gn-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--launch-backdrop);
+  backdrop-filter: blur(8px);
+}
+
+.gn-modal__panel {
+  width: min(520px, 100%);
+  max-height: min(85vh, 760px);
+  overflow: auto;
+  padding: 28px;
+  background: var(--launch-card);
+  border-radius: var(--launch-radius-modal);
+  box-shadow: var(--launch-shadow);
+}
+
+.gn-modal__title {
+  margin: 0 0 12px;
+  font-family: var(--gn-heading-font);
+  font-weight: 300;
+  font-size: var(--launch-heading-size-modal);
+  letter-spacing: -0.02em;
+  color: var(--launch-ink);
+}
+
+.gn-modal__handle {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .gn-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .gn-modal__panel {
+    width: 100%;
+    max-height: 92vh;
+    padding: 12px 20px 28px;
+    border-radius: var(--launch-radius-modal) var(--launch-radius-modal) 0 0;
+  }
+
+  .gn-modal__handle {
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 4px auto 16px;
+    border-radius: var(--launch-radius-pill);
+    background: var(--launch-line);
+  }
+
+  .gn-modal__title {
+    font-size: var(--launch-heading-size-phone);
+  }
+}
