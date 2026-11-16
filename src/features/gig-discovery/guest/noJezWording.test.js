@@ -10,7 +10,7 @@ const TEXT = new Set(['.js', '.jsx', '.html', '.css', '.txt']);
 
 function omitGuestApplyRule(text) {
   return text.replace(
-    /const LAUNCH_VENUE_IDS = new Set\(\[[\s\S]*?\n\}\n\nexport function bookerLine/,
+    /const BUILT_IN_LAUNCH_VENUE_ID = [\s\S]*?\nexport function bookerLine/,
     'export function bookerLine',
   );
 }

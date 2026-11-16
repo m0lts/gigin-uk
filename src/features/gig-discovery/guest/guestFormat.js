@@ -53,11 +53,25 @@ export function firstName(name) {
   return String(name || '').trim().split(/\s+/)[0] || '';
 }
 
-const LAUNCH_VENUE_IDS = new Set(['a622f269-1866-44f8-b3f0-bb9ca38eeefe']);
+const BUILT_IN_LAUNCH_VENUE_ID = 'a622f269-1866-44f8-b3f0-bb9ca38eeefe';
+
+function launchVenueRaw() {
+  try {
+    return import.meta.env.VITE_LAUNCH_VENUE_IDS || '';
+  } catch {
+    return '';
+  }
+}
+
+/** The built-in launch venue, plus any ids in VITE_LAUNCH_VENUE_IDS. */
+export function launchVenueIds(raw = launchVenueRaw()) {
+  const extra = String(raw || '').split(',').map((id) => id.trim()).filter(Boolean);
+  return new Set([BUILT_IN_LAUNCH_VENUE_ID, ...extra]);
+}
 
 export function isJesusCollege(venue, gig) {
   const venueId = venue?.venueId || venue?.id || gig?.venueId || gig?.venue?.venueId || '';
-  if (LAUNCH_VENUE_IDS.has(venueId)) return true;
+  if (launchVenueIds().has(venueId)) return true;
   const name = `${venue?.name || ''} ${gig?.venue?.venueName || ''}`.toLowerCase();
   if (name.includes('jesus college')) return true;
   const place = [

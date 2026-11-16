@@ -8,7 +8,9 @@ import {
   bookerLine,
   filledBandMembers,
   forgetApplication,
+  isGuestApplyGig,
   keepRememberedApplication,
+  launchVenueIds,
   rememberApplication,
   rememberedApplication,
   showsManageReview,
@@ -43,6 +45,18 @@ test('forgetting one gig leaves a different remembered application', () => {
   rememberApplication('gig-2', 'token-2');
   forgetApplication('gig-1', 'token-1');
   assert.deepEqual(rememberedApplication(['gig-2']), { gigId: 'gig-2', token: 'token-2' });
+});
+
+test('guest apply is on for the built-in launch venue and ids from the env list', () => {
+  const builtIn = 'a622f269-1866-44f8-b3f0-bb9ca38eeefe';
+  assert.equal(isGuestApplyGig({ kind: 'Live Music' }, { venueId: builtIn }), true);
+  assert.equal(isGuestApplyGig({ kind: 'Venue Rental' }, { venueId: builtIn }), false);
+  const ids = launchVenueIds(' hot-numbers , second ');
+  assert.equal(ids.has(builtIn), true);
+  assert.equal(ids.has('hot-numbers'), true);
+  assert.equal(ids.has('second'), true);
+  assert.equal(launchVenueIds('').has('hot-numbers'), false);
+  assert.equal(launchVenueIds(' , ').size, 1);
 });
 
 test('booker wording uses the venue owner first name', () => {
