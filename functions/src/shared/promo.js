@@ -218,3 +218,21 @@ export function preparePromo(body, { contactName, email, now = new Date() } = {}
     },
   };
 }
+
+const LINEUP_INSTRUMENTS = new Set(["Vocals", "Guitar", "Bass", "Double bass", "Drums", "Keys", "Sax", "Violin", "Other"]);
+
+/** People from the promo page. Blank rows stay so the form can start with one. */
+export function lineupRows(members) {
+  if (!Array.isArray(members)) return [];
+  return members.slice(0, 12).map((member) => ({
+    name: String(member?.name || "").trim().slice(0, 80),
+    instruments: (Array.isArray(member?.instruments) ? member.instruments : [])
+      .map((item) => String(item || "").trim())
+      .filter((item) => LINEUP_INSTRUMENTS.has(item))
+      .slice(0, 8),
+  }));
+}
+
+export function soundRequest(value) {
+  return String(value || "").trim().slice(0, 300);
+}

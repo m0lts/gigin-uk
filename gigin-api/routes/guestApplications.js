@@ -29,7 +29,7 @@ import {
 import { dismissKeepOffer, keepProfileForGuest, noteProfileApplication } from "../lib/keepProfile.js";
 import { assertVenueCanOperate } from "../lib/venueApproval.js";
 import { ownerName } from "../lib/ownerName.js";
-import { formatPromoDay, preparePromo, promoDueKey, promoEditable } from "../lib/promo.js";
+import { formatPromoDay, lineupRows, preparePromo, promoDueKey, promoEditable, soundRequest } from "../lib/promo.js";
 import {
   acceptPromoPhotos,
   acceptPromoTrack,
@@ -145,6 +145,7 @@ function publicApplication(applicant, gig, night) {
     needs: applicant.needs || [],
     bringOwn: applicant.bringOwn || [],
     note: applicant.note || "",
+    soundNote: applicant.soundNote || "",
     status,
     createdAt: applicant.appliedAt || applicant.timestamp || null,
     updatedAt: applicant.updatedAt || null,
@@ -1012,9 +1013,15 @@ router.post("/:token/promo", asyncHandler(async (req, res) => {
   if (track?.path) track = { ...track, url: await publicDownloadUrl(track.path) };
   const promo = { ...prepared.promo, photos: withUrls, track };
   const rootId = found.night?.applicationsRootGigId || found.gig?.id;
+  const lineup = Array.isArray(req.body?.members) ? { members: lineupRows(req.body.members) } : {};
+  const sound = Object.prototype.hasOwnProperty.call(req.body || {}, "soundNote")
+    ? { soundNote: soundRequest(req.body.soundNote) }
+    : {};
   await db.doc(`gigs/${rootId}/guestApplicants/${current.id}`).set({
     promo,
     promoPermission: prepared.permission,
+    ...lineup,
+    ...sound,
   }, { merge: true });
   const fresh = await findByToken(req.body?.gigId || req.query.gigId, req.params.token);
   return res.json(await presentApplication(fresh?.applicant || { ...current, promo, promoPermission: prepared.permission }, found.gig.data, fresh?.night || found.night, req));

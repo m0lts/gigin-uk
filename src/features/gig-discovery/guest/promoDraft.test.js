@@ -14,6 +14,8 @@ test('a new promo form starts from the application', () => {
   assert.equal(draft.trackFile.name, 'song.mp3');
   assert.equal(draft.trackUrl, '');
   assert.equal(draft.permission, false);
+  assert.equal(draft.members.length, 1);
+  assert.equal(draft.soundNote, '');
 });
 
 test('a track link is used when the application has no audio file', () => {
@@ -37,6 +39,8 @@ test('a saved promo reopens with the permission already ticked', () => {
       videoUrl: 'https://youtu.be/abc',
       played: 'Hidden Rooms, The Portland Arms',
     },
+    members: [{ name: 'Maya', instruments: ['Vocals'] }, { name: '', instruments: ['Guitar'] }],
+    soundNote: 'One vocal mic',
   });
   assert.equal(draft.bio, 'New bio');
   assert.equal(draft.photos.length, 2);
@@ -44,4 +48,6 @@ test('a saved promo reopens with the permission already ticked', () => {
   assert.equal(draft.videoUrl, 'https://youtu.be/abc');
   assert.equal(draft.played, 'Hidden Rooms, The Portland Arms');
   assert.equal(draft.permission, true);
+  assert.equal(draft.members.length, 2);
+  assert.equal(draft.soundNote, 'One vocal mic');
 });

@@ -9,7 +9,9 @@ import {
   promoMissingSentence,
   promoReminderCopy,
   promoZipPlan,
+  lineupRows,
   promoEditable,
+  soundRequest,
   promoIsIncomplete,
   promoReminderDue,
   promoReminderKey,
@@ -85,6 +87,18 @@ test("sending promo needs the permission tick, a bio, photos, and a track", () =
   assert.equal(ready.permission.email, "maya@example.com");
   assert.ok(ready.permission.at);
   assert.equal(formatPromoDay("2026-11-26"), "Thu 26 Nov");
+});
+
+test("a promo send can keep the line-up and an optional sound note", () => {
+  assert.deepEqual(lineupRows([
+    { name: " Maya ", instruments: ["Vocals", "Trumpet"] },
+    { name: "", instruments: [] },
+  ]), [
+    { name: "Maya", instruments: ["Vocals"] },
+    { name: "", instruments: [] },
+  ]);
+  assert.equal(soundRequest("  One vocal mic please.  "), "One vocal mic please.");
+  assert.equal(soundRequest(""), "");
 });
 
 test("the promo caption uses the night and one line of each bio", () => {

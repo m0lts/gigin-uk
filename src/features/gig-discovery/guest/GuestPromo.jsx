@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { releaseGuestUpload, submitGuestPromo, uploadGuestFile } from '@services/client-side/guestApplications';
 import { guestFileProblem, isAudioAsset } from './guestAssetFiles';
+import { actTypeLine } from './guestFormat';
+import { GuestTechStep } from './GuestTechStep';
 import { promoDraftFromApplication } from './promoDraft';
 import { KeepOffer } from '../../keep-profile/KeepOffer';
 import { FEATURES } from '../../../config/features';
@@ -95,6 +97,8 @@ export function GuestPromo({ application, venueName, gigId, token, onSaved }) {
         track: draft.trackFile?.path ? fileBits(draft.trackFile) : { url: draft.trackUrl },
         videoUrl: draft.videoUrl,
         played: draft.played,
+        members: draft.members,
+        soundNote: draft.soundNote,
       });
       onSaved(next);
       setEditing(false);
@@ -117,6 +121,8 @@ export function GuestPromo({ application, venueName, gigId, token, onSaved }) {
           {track ? <li><span>Track</span><strong>{track}</strong></li> : null}
           {sent.videoUrl ? <li><span>Video</span><strong>{sent.videoUrl}</strong></li> : null}
           {sent.played ? <li><span>Where you&apos;ve played</span><strong>{sent.played}</strong></li> : null}
+          <li><span>Line-up</span><strong>{actTypeLine(application.members) || 'Not added'}</strong></li>
+          {application.soundNote ? <li><span>Sound</span><strong>{application.soundNote}</strong></li> : null}
         </ul>
         {open ? <button type="button" className="ga-text" onClick={() => { setDraft(promoDraftFromApplication(application)); setEditing(true); }}>Edit</button> : null}
         {FEATURES.keepProfile && !application.artistProfileId && application.keepProfileOffer !== 'confirmed' ? (
@@ -135,6 +141,20 @@ export function GuestPromo({ application, venueName, gigId, token, onSaved }) {
       <p className="ga-promo__booked">Booked</p>
       <h2>Send your promo</h2>
       <p className="ga-promo__lead">{venue} uses this to promote your set.{application.promoDue ? ` Due by ${application.promoDue}.` : ''}</p>
+      <div className="ga-promo__lineup">
+        <div className="ga-label">Who&apos;s playing</div>
+        <GuestTechStep
+          lineupOnly
+          draft={{ members: draft.members, links: {}, needs: [], bringOwn: [] }}
+          patch={(partial) => {
+            if (partial.members) setDraft((current) => ({ ...current, members: partial.members }));
+          }}
+        />
+        <label className="ga-field">
+          <span>Anything you need for sound?</span>
+          <input type="text" maxLength={300} placeholder="Optional" value={draft.soundNote || ''} onChange={(event) => setDraft((current) => ({ ...current, soundNote: event.target.value }))} />
+        </label>
+      </div>
       <div className="ga-promo__card">
         <label className="ga-promo__row">
           <span><b>Bio</b><small>A few lines about you and your music</small></span>
