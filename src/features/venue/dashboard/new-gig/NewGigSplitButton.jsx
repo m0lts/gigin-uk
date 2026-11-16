@@ -30,7 +30,7 @@ export function NewGigSplitButton({ onOpen, legacyHire }) {
 
   return (
     <div className="ng-split" onMouseDown={(event) => event.stopPropagation()}>
-      <button type="button" className="ng-split__main" onClick={() => choose(last, 'default')}>New gig</button>
+      <button type="button" className="ng-split__main" onClick={() => choose(last, 'default')}>+ New gig</button>
       <button type="button" className="ng-split__more" aria-label="Choose how to create a gig" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         <FontAwesomeIcon icon={faChevronDown} />
       </button>

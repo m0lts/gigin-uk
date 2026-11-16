@@ -21,11 +21,12 @@ import Portal from '../../shared/components/Portal';
 import { NewGigSplitButton } from './new-gig/NewGigSplitButton';
 import { toast } from 'sonner';
 import { isNightModelGroup, nightAudienceCounts } from '../gigs/utils/nightCancel';
+import { FEATURES } from '../../../config/features';
 
 const TILES = [
   { key: 'all', label: 'All upcoming', dot: '#0F1115' },
   { key: 'attention', label: 'Needs action', dot: '#FF6C4B' },
-  { key: 'awaiting', label: 'Awaiting payment', dot: 'oklch(0.72 0.15 70)' },
+  ...(FEATURES.payments ? [{ key: 'awaiting', label: 'Awaiting payment', dot: 'oklch(0.72 0.15 70)' }] : []),
   { key: 'confirmed', label: 'Confirmed', dot: 'oklch(0.66 0.14 150)' },
 ];
 
@@ -376,7 +377,7 @@ export function GigsConsole({
           </label>
           <div className="gigs-console__views" role="group" aria-label="Gigs view">
             <button type="button" className={gigsView === 'react' ? 'is-active' : ''} aria-pressed={gigsView === 'react'} onClick={() => setGigsView('react')}>Calendar</button>
-            <button type="button" className={gigsView === 'table' ? 'is-active' : ''} aria-pressed={gigsView === 'table'} onClick={() => setGigsView('table')}>Table</button>
+            <button type="button" className={gigsView === 'table' ? 'is-active' : ''} aria-pressed={gigsView === 'table'} onClick={() => setGigsView('table')}>List</button>
           </div>
           {canShowTemplatesButton && (
             <button type="button" className="gigs-console__secondary" onClick={openManageTemplatesModal}>Templates</button>

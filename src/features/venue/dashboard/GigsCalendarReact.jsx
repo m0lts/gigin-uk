@@ -19,6 +19,7 @@ import { SeasonView, emptyRegularNights } from './calendar/SeasonView';
 import { WeekView } from './calendar/WeekView';
 import { filterCounts, formatDateKey, gigsInRange, rangeTitle, stepCursor } from './calendar/calendarRange';
 import { presentGig } from './calendar/gigPresent';
+import { FEATURES } from '../../../config/features';
 
 const ARTIST_SEEN_KEY = 'gigin-artist-gig-pending-seen';
 
@@ -72,7 +73,7 @@ export function GigsCalendarReact({
   const urlView = calParam === 'week' || calParam === 'season' ? calParam : 'month';
   const view = narrow ? 'month' : urlView;
   const statusParam = searchParams.get('status');
-  const filter = statusParam === 'attention' || statusParam === 'awaiting' || statusParam === 'confirmed'
+  const filter = statusParam === 'attention' || statusParam === 'confirmed' || (statusParam === 'awaiting' && FEATURES.payments)
     ? statusParam
     : 'all';
 

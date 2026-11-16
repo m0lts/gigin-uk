@@ -1,5 +1,6 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
+import { FEATURES } from '../../../../config/features';
 
 const VIEWS = [
   { key: 'month', label: 'Month' },
@@ -10,7 +11,7 @@ const VIEWS = [
 const FILTERS = [
   { key: 'all', label: 'All', dot: 'all' },
   { key: 'attention', label: 'Needs action', dot: 'attention' },
-  { key: 'awaiting', label: 'Awaiting payment', dot: 'awaiting' },
+  ...(FEATURES.payments ? [{ key: 'awaiting', label: 'Awaiting payment', dot: 'awaiting' }] : []),
   { key: 'confirmed', label: 'Confirmed', dot: 'confirmed' },
 ];
 
@@ -29,7 +30,6 @@ export function CalendarHeader({
     <div className="gigs-cal__header">
       <div className="gigs-cal__header-row">
         <div className="gigs-cal__header-left">
-          <h2 className="gigs-cal__title">{title}</h2>
           <div className="gigs-cal__nav">
             <button type="button" className="gigs-cal__icon-btn" aria-label="Previous" onClick={onPrev}>
               <FontAwesomeIcon icon={faChevronLeft} />
@@ -38,6 +38,7 @@ export function CalendarHeader({
               <FontAwesomeIcon icon={faChevronRight} />
             </button>
           </div>
+          <h2 className="gigs-cal__title">{title}</h2>
           <button type="button" className="gigs-cal__today" onClick={onToday}>Today</button>
         </div>
         <div className="gigs-cal__views" role="group" aria-label="Calendar view">

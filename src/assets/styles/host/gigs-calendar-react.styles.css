@@ -260,7 +260,7 @@
     color: var(--gn-ink);
 }
 
-.gigs-cal__date.is-today { background: var(--gn-orange); color: #fff; }
+.gigs-cal__date.is-today { background: transparent; color: #0F1115; font-weight: 700; }
 .gigs-cal__date.is-faded { color: #9AA0AA; }
 
 .gigs-cal__add {
@@ -402,9 +402,9 @@
 
 .gigs-cal__week-dow { font-size: 11.5px; font-weight: 500; color: #6B7280; }
 .gigs-cal__week-num { font-family: var(--gn-font-mono); font-size: 19px; font-weight: 500; }
-.gigs-cal__week-day.is-today { background: var(--gn-today-bg); }
+.gigs-cal__week-day.is-today { background: transparent; }
 .gigs-cal__week-day.is-today .gigs-cal__week-dow,
-.gigs-cal__week-day.is-today .gigs-cal__week-num { color: var(--gn-orange); }
+.gigs-cal__week-day.is-today .gigs-cal__week-num { color: #0F1115; font-weight: 700; }
 .gigs-cal__week-day.is-past .gigs-cal__week-dow,
 .gigs-cal__week-day.is-past .gigs-cal__week-num { color: #9AA0AA; }
 .gigs-cal__week-day .gigs-cal__add { position: absolute; top: 8px; right: 8px; }
@@ -2042,4 +2042,55 @@
   display: flex;
   gap: 0.5rem;
   margin-top: 0.5rem;
+}
+
+.gigs-cal {
+  background: transparent;
+  gap: 18px;
+  padding: 4px 28px 28px 4px;
+}
+
+.gigs-cal__main {
+  padding: 8px 0 0;
+  gap: 16px;
+}
+
+.gigs-cal__title {
+  font-family: var(--gn-heading-font);
+  font-weight: 300;
+  font-size: 32px;
+  letter-spacing: -0.03em;
+  min-width: 0;
+}
+
+.gigs-cal__icon-btn,
+.gigs-cal__today,
+.gigs-cal__views button {
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 2px rgba(20, 25, 22, 0.04);
+}
+
+.gigs-cal__views {
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+}
+
+.gigs-cal__views button.is-active {
+  background: #fff;
+  color: #0F1115;
+  box-shadow: 0 1px 2px rgba(20, 25, 22, 0.08);
+}
+
+.gigs-cal__card,
+.gigs-cal__panel {
+  border: 0;
+  border-radius: 24px;
+  box-shadow: 0 1px 2px rgba(20, 25, 22, 0.04);
+}
+
+.gigs-cal__panel {
+  border-left: 0;
 }

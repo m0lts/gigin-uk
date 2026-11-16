@@ -29,6 +29,7 @@ import { toJsDate } from '../../../services/utils/dates';
 import { getLocalGigDateTime } from '../../../services/utils/filtering';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { gigCreationClosed, NIGHTS_CLOSED_MESSAGE } from '../../../config/venueAccess';
+import { FEATURES } from '../../../config/features';
 import { readStoredNewGigRoute } from './new-gig/useNewGigDraft';
 import { duplicateGig, updateGigDocument } from '@services/api/gigs';
 import { saveGigTemplate, deleteGigTemplate, renameGigTemplate } from '@services/api/venues';
@@ -1047,7 +1048,9 @@ export const Gigs = ({
 
     const groupIsSelected = (group) => group.gigIds.every((id) => selectedGigs.includes(id));
 
-    const consoleStatusKey = ['attention', 'awaiting', 'confirmed'].includes(selectedStatus) ? selectedStatus : 'all';
+    const consoleStatusKey = ['attention', 'confirmed'].includes(selectedStatus) || (selectedStatus === 'awaiting' && FEATURES.payments)
+      ? selectedStatus
+      : 'all';
 
     const consoleRows = useMemo(() => {
       if (!isMdUp) return null;
