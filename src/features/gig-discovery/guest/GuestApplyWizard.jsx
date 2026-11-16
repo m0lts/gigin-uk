@@ -5,6 +5,7 @@ import { createGuestApplication, newGuestIds, redeemReturnToken } from '@service
 import { forgetProfileSession, getProfileSession, updateOwnProfile } from '@services/client-side/keepProfile';
 import { buildGuestTechRider } from '@services/utils/techRiderCompatibility';
 import { GuestApplied } from './GuestApplied';
+import { GuestBrandHeader } from './GuestBrandHeader';
 import { GuestAssetsStep } from './GuestAssetsStep';
 import { GuestReviewStep } from './GuestReviewStep';
 import { GuestTechStep } from './GuestTechStep';
@@ -352,6 +353,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
           onClose={onClose}
           onCreateAccount={onCreateAccount}
           profileNote={profileNote}
+          venue={venue}
         />
       </div>
     );
@@ -359,6 +361,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
 
   return (
     <div className="ga-flow">
+      <GuestBrandHeader venue={venue} />
       <header className="ga-flow__bar">
         <button type="button" className="ga-icon" aria-label="Back" onClick={() => {
           if (editing) { setEditing(false); setStep('review'); return; }

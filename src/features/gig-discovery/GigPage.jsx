@@ -59,6 +59,7 @@ import { updateCRMEntryWithArtistId } from '../../services/api/users';
 import { computeCompatibility } from '../../services/utils/techRiderCompatibility';
 import { findSlotSiblingsFromFlatGigs } from '../venue/gigs/utils/multiSlotGigGroup';
 import { GuestGigPage } from './guest/GuestGigPage';
+import { GuestBrandHeader } from './guest/GuestBrandHeader';
 import { isGuestApplyGig } from './guest/guestFormat';
 import { readNight } from '@services/utils/nightApplications';
 
@@ -2319,7 +2320,7 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
     if (!gigData && !loading) {
         return (
             <div className="ga-page ga-missing">
-                <header className="ga-top"><a className="ga-logo" href="/">gigin.</a></header>
+                <GuestBrandHeader />
                 <main>
                     <p className="ga-mono">GIGINMUSIC.COM/GIG/…</p>
                     <h1>We can&apos;t find this gig</h1>

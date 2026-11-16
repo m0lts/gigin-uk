@@ -7,6 +7,7 @@ import { useBreakpoint } from '@hooks/useBreakpoint';
 import { getGigInviteById } from '@services/client-side/gigs';
 import { getGuestApplication } from '@services/client-side/guestApplications';
 import { GuestApplyWizard } from './GuestApplyWizard';
+import { GuestBrandHeader } from './GuestBrandHeader';
 import { atThePlace, bookerLine, firstName, forgetApplication, formatClock, formatGigDay, formatGuestDesktopDate, formatGuestPhoneDate, formatSetLine, formatShortDay, guestFeeLabel, keepRememberedApplication, openSetsSummary, photoUrl, providedKitPhrase, rememberedApplication, slotDate, slotState, slotTaken } from './guestFormat';
 
 function setMeta(property, content) {
@@ -147,15 +148,7 @@ export function GuestGigPage({
 
   return (
     <div className="ga-page ga-gig">
-      <header className="ga-top">
-        <span className="ga-brand">
-          <span className="ga-brand__mark">{String(venue?.name || 'G').slice(0, 2).toUpperCase()}</span>
-          <span>
-            <strong>{venue?.name || 'Venue'}</strong>
-            <small>via gigin<b>.</b></small>
-          </span>
-        </span>
-      </header>
+      <GuestBrandHeader venue={venue} />
       <div className="ga-layout">
         <main>
           {past && <div className="ga-banner">This gig has already happened. <button type="button" onClick={() => navigate(venuePath)}>See upcoming gigs at {venueName}</button></div>}

@@ -2317,6 +2317,11 @@
 .ga-brand b { color: var(--launch-accent); font-weight: 600; }
 .ga-logo { font-family: var(--gn-logo-font); font-weight: 600; font-size: 22px; color: var(--launch-ink); text-decoration: none; }
 .ga-logo b { color: var(--launch-accent); }
+.ga-brandbar { justify-content: flex-start; flex-wrap: wrap; height: auto; min-height: 64px; }
+.ga-brandbar .ga-logo { font-weight: 700; font-size: 26px; letter-spacing: -0.03em; }
+.ga-brandbar__venue { margin-left: auto; display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; font-weight: 600; color: var(--launch-ink); }
+.ga-brandbar__venue img { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
+.ga-top.ga-brandbar span.ga-brandbar__note { margin-left: 8px; color: var(--launch-muted); font-size: 13px; font-weight: 500; }
 .ga-top span:last-child, .ga-flow__bar strong { font-size: 14px; }
 .ga-layout { max-width: 640px; margin: 0 auto; padding: 18px 18px 120px; }
 .ga-layout main h1, .ga-flow h1, .ga-flow h2, .ga-applied h2, .ga-step h2, .ga-manage h1 { font-family: var(--gn-heading-font); font-weight: 300; letter-spacing: -0.02em; color: var(--launch-ink); }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FEATURES } from '../../../config/features';
 import { Link } from 'react-router-dom';
 import { KeepOffer, SaveDetailsCard, SAVE_DETAILS_COPY } from '../../keep-profile/KeepOffer';
+import { GuestBrandHeader } from './GuestBrandHeader';
 
 const DISMISS_KEY = 'guestAccountPromptDismissed';
 
@@ -21,7 +22,7 @@ function StepNumber({ n }) {
   );
 }
 
-export function GuestApplied({ draft, dateLabel, bookerName, nightName, onClose, onCreateAccount, profileNote }) {
+export function GuestApplied({ draft, dateLabel, bookerName, nightName, onClose, onCreateAccount, profileNote, venue }) {
   const [hidden, setHidden] = useState(() => {
     try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; }
   });
@@ -35,8 +36,9 @@ export function GuestApplied({ draft, dateLabel, bookerName, nightName, onClose,
     setHidden(true);
   };
   return (
+    <>
+    <GuestBrandHeader venue={venue} />
     <div className="ga-applied">
-      <header className="ga-applied__bar"><span className="ga-logo">gigin<b>.</b></span></header>
       <span className="ga-mark"><Tick size={22} /></span>
       <h2>Application sent</h2>
       <p className="ga-applied__lead">{lead}</p>
@@ -70,5 +72,6 @@ export function GuestApplied({ draft, dateLabel, bookerName, nightName, onClose,
       )}
       <button type="button" className="ga-dark" onClick={onClose}>Back to the gig</button>
     </div>
+    </>
   );
 }

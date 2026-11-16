@@ -8,6 +8,7 @@ import { sortSlots } from '@services/utils/nightApplications';
 import { getVenueProfileById } from '@services/client-side/venues';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { GuestAssetsStep } from './GuestAssetsStep';
+import { GuestBrandHeader } from './GuestBrandHeader';
 import { GuestAudioRow } from './GuestAudioRow';
 import { continueDisabledByUploads, isAudioAsset, uploadContinueNote } from './guestAssetFiles';
 import { GuestPromo } from './GuestPromo';
@@ -256,7 +257,7 @@ export function ManageGuestApplication() {
     };
     return (
       <div className="ga-page">
-        <header className="ga-top"><span className="ga-logo">gigin.</span></header>
+        <GuestBrandHeader />
         <main className="ga-manage">
           <p className="ga-mono">YOUR APPLICATION</p>
           {linkSent ? (
@@ -283,12 +284,12 @@ export function ManageGuestApplication() {
     if (error) {
       return (
         <div className="ga-page">
-          <header className="ga-top"><span className="ga-logo">gigin.</span></header>
+          <GuestBrandHeader />
           <p className="ga-banner">{error}</p>
         </div>
       );
     }
-    return <div className="ga-page"><p className="ga-quiet">Loading your application…</p></div>;
+    return <div className="ga-page"><GuestBrandHeader /><p className="ga-quiet">Loading your application…</p></div>;
   }
 
   const accepted = application.status === 'accepted' || application.status === 'confirmed';
@@ -342,10 +343,7 @@ export function ManageGuestApplication() {
 
   return (
     <div className="ga-page">
-      <header className="ga-top">
-        <span className="ga-logo">gigin.</span>
-        <span>Private link for {firstName(application.contactName)}</span>
-      </header>
+      <GuestBrandHeader venue={venue} note={application.contactName ? `Private link for ${firstName(application.contactName)}` : ''} />
       <main className="ga-manage">
         <p className="ga-mono">{gig ? formatGigDay(gig) : application.dateLabel}</p>
         <h1>{heading}</h1>
