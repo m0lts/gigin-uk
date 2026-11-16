@@ -143,6 +143,31 @@ describe("returning guest", { concurrency: 1 }, () => {
     assert.equal(mailsTo(email).length, 10);
   });
 
+  test("one network can check 30 different emails an hour, and the 31st says how long to wait", async () => {
+    const ip = "ip-wide-limit";
+    const start = 1_700_000_000_000;
+    for (let index = 0; index < 30; index += 1) {
+      const result = await checkReturningGuest({
+        email: `wide-${index}@guest.test`,
+        gigId: "gig-new",
+        ip,
+        now: start,
+      });
+      assert.deepEqual(result, { known: false });
+    }
+    const blocked = await checkReturningGuest({
+      email: "wide-extra@guest.test",
+      gigId: "gig-new",
+      ip,
+      now: start + 30 * 60 * 1000,
+    });
+    assert.equal(blocked.limited, true);
+    const http = returnCheckHttp(blocked);
+    assert.equal(http.status, 429);
+    assert.equal(http.body.error, "Please wait 30 minutes and try again.");
+    assert.equal(Object.hasOwn(http.body, "known"), false);
+  });
+
   test("the same gig sends the existing private link and does not open a second application", async () => {
     const before = store.get("gigs/gig-same/private/applications");
     const result = await checkReturningGuest({

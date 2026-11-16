@@ -11,6 +11,7 @@ import { loadNightSlots } from "./nightApplicationOps.js";
 
 const HOUR_MS = 60 * 60 * 1000;
 const returnPairLimit = createWindowLimiter({ max: 10, windowMs: HOUR_MS });
+const returnIpLimit = createWindowLimiter({ max: 30, windowMs: HOUR_MS });
 
 export function returnWaitMessage(retryAfterMs) {
   const minutes = Math.max(1, Math.ceil(Number(retryAfterMs || 0) / 60000));
@@ -210,9 +211,11 @@ export async function checkReturningGuest({ email, gigId, ip, now = Date.now() }
   const id = String(gigId || "");
   if (!normalised || !id) return { known: false };
   const ipKey = String(ip || "unknown");
-  const decision = returnPairLimit.decide(`${normalised}|${ipKey}`, now);
-  if (!decision.allowed) {
-    return { limited: true, retryAfterMs: decision.retryAfterMs };
+  const pair = returnPairLimit.decide(`${normalised}|${ipKey}`, now);
+  const network = returnIpLimit.decide(ipKey, now);
+  if (!pair.allowed || !network.allowed) {
+    const retryAfterMs = Math.max(pair.allowed ? 0 : pair.retryAfterMs, network.allowed ? 0 : network.retryAfterMs);
+    return { limited: true, retryAfterMs };
   }
   const night = await nightContext(id);
   if (!night) return { known: false };
