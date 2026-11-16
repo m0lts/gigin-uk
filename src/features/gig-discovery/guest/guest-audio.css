@@ -83,7 +83,7 @@
   min-height: 44px;
   border: 0;
   background: none;
-  color: #B5462C;
+  color: var(--launch-ink, #0F1115);
   font-weight: 600;
   cursor: pointer;
 }

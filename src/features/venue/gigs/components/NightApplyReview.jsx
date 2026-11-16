@@ -57,6 +57,7 @@ function musicOf(app) {
   if (links.spotify) return { provider: 'Spotify', url: links.spotify, verb: 'Listen' };
   if (links.youtube) return { provider: 'YouTube', url: links.youtube, verb: 'Watch' };
   if (links.soundcloud) return { provider: 'SoundCloud', url: links.soundcloud, verb: 'Listen' };
+  if (links.bandcamp) return { provider: 'Bandcamp', url: links.bandcamp, verb: 'Listen' };
   const instagram = links.instagram || app.instagram;
   if (instagram) {
     const url = String(instagram).startsWith('http') ? instagram : `https://instagram.com/${String(instagram).replace(/^@/, '')}`;

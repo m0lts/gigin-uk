@@ -46,7 +46,7 @@ export function GuestTechStep({ draft, patch, venue, hideVenueColumns = false })
                 ))}
               </div>
               {draft.members.length > 1 && (
-                <button type="button" className="ga-text" onClick={() => patch({ members: draft.members.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
+                <button type="button" className="ga-skip" onClick={() => patch({ members: draft.members.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
               )}
             </div>
           ))}
@@ -68,7 +68,17 @@ export function GuestTechStep({ draft, patch, venue, hideVenueColumns = false })
           );
         })}
       </div>
-      <div className="ga-label">We'll bring our own</div>
+      <div className="ga-label">Instagram and website</div>
+      <p className="ga-fine">Optional. The first step already has Instagram as a way to reach you.</p>
+      <label className="ga-field">
+        <span>Instagram</span>
+        <input value={draft.links?.instagram || ''} placeholder="https:// or @name" onChange={(event) => patch({ links: { ...draft.links, instagram: event.target.value } })} />
+      </label>
+      <label className="ga-field">
+        <span>Website</span>
+        <input value={draft.links?.website || ''} placeholder="https://" onChange={(event) => patch({ links: { ...draft.links, website: event.target.value } })} />
+      </label>
+      <div className="ga-label">We&apos;ll bring our own</div>
       <div className="ga-own">
         {draft.bringOwn.map((item) => (
           <button key={item} type="button" onClick={() => patch({ bringOwn: draft.bringOwn.filter((entry) => entry !== item) })}>{item} ×</button>

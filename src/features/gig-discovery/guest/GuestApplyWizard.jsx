@@ -51,7 +51,7 @@ function emptyDraft(gig, invite, ids) {
     noPreference: true,
     photo: null,
     assets: [],
-    links: { spotify: '', youtube: '', instagram: '', website: '' },
+    links: { spotify: '', youtube: '', soundcloud: '', bandcamp: '', instagram: '', website: '' },
     members: [{ name: '', instruments: [] }],
     needs: [],
     bringOwn: [],
@@ -169,7 +169,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
           email: filled.email || '',
           phone: filled.phone || '',
           instagram: filled.instagram || '',
-          links: { spotify: '', youtube: '', instagram: '', website: '', ...(filled.links || {}) },
+          links: { spotify: '', youtube: '', soundcloud: '', bandcamp: '', instagram: '', website: '', ...(filled.links || {}) },
           members: filled.members?.length ? filled.members : [{ name: '', instruments: [] }],
           needs: filled.needs || [],
           bringOwn: filled.bringOwn || [],
@@ -213,7 +213,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
           email: filled.email || '',
           phone: filled.phone || '',
           instagram: filled.instagram || '',
-          links: { spotify: '', youtube: '', instagram: '', website: '', ...(filled.links || {}) },
+          links: { spotify: '', youtube: '', soundcloud: '', bandcamp: '', instagram: '', website: '', ...(filled.links || {}) },
           members: filled.members?.length ? filled.members : [{ name: '', instruments: [] }],
           needs: filled.needs || [],
           bringOwn: filled.bringOwn || [],
@@ -368,7 +368,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
           <strong>{String(gig.gigName || 'Gig').replace(/\s*\(Set\s+\d+\)\s*$/, '')} · {formatShortDay(gig)}</strong>
         </div>
         {(step === 'assets' || step === 'tech') && !editing ? (
-          <button type="button" className="ga-text" disabled={uploadBlocked} onClick={() => { if (!uploadBlocked) setStep(STEPS[index + 1][0]); }}>Skip</button>
+          <button type="button" className="ga-skip" disabled={uploadBlocked} onClick={() => { if (!uploadBlocked) setStep(STEPS[index + 1][0]); }}>Skip</button>
         ) : <span />}
       </header>
       <div className="ga-progress" aria-hidden>

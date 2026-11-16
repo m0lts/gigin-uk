@@ -32,7 +32,7 @@ function fromApplication(application) {
     phone: contacts.phone || '',
     whatsapp: !!contacts.whatsapp,
     instagram: contacts.instagram || '',
-    links: { spotify: '', youtube: '', instagram: '', website: '', ...(application.links || {}) },
+    links: { spotify: '', youtube: '', soundcloud: '', bandcamp: '', instagram: '', website: '', ...(application.links || {}) },
     members: application.members?.length ? application.members : [{ name: '', instruments: [] }],
     needs: application.needs || [],
     bringOwn: application.bringOwn || [],

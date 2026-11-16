@@ -3,13 +3,44 @@ import { compressGuestPhoto, releaseGuestUpload, uploadGuestFile } from '@servic
 import { declaredContentType, guestFileProblem, isAudioAsset, sizeLabel, UPLOAD_ROW_ERROR } from './guestAssetFiles';
 import { GuestAudioRow } from './GuestAudioRow';
 
-const LINKS = [
-  ['spotify', 'Spotify', 'var(--gn-spotify-green, #1DB954)'],
-  ['youtube', 'YouTube', 'var(--gn-youtube-red, #FF0033)'],
-  ['instagram', 'Instagram', 'var(--gn-instagram-pink, #E56969)'],
-  ['website', 'Website', '#111317'],
+const MUSIC_LINKS = [
+  ['spotify', 'Spotify'],
+  ['youtube', 'YouTube'],
+  ['soundcloud', 'SoundCloud'],
+  ['bandcamp', 'Bandcamp'],
 ];
 const PHOTO_LIMIT = 10 * 1024 * 1024;
+
+function MusicMark({ kind }) {
+  const common = { viewBox: '0 0 24 24', width: 20, height: 20, 'aria-hidden': true };
+  if (kind === 'spotify') {
+    return (
+      <svg {...common}>
+        <path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.6 14.4a.6.6 0 0 1-.82.2c-2.26-1.38-5.1-1.7-8.44-.93a.6.6 0 1 1-.35-1.15c3.68-.85 6.84-.48 9.4 1.08a.6.6 0 0 1 .21.8zm1.16-2.58a.75.75 0 0 1-1.03.25c-2.59-1.59-6.54-2.05-9.61-1.12a.75.75 0 0 1-.43-1.44c3.52-1.06 7.9-.55 10.86 1.29a.75.75 0 0 1 .21 1.02zm.1-2.68C15.1 9.3 9.7 9.1 6.9 10a.9.9 0 1 1-.52-1.73c3.3-1 9.3-.78 12.96 1.4a.9.9 0 0 1-.98 1.51z" />
+      </svg>
+    );
+  }
+  if (kind === 'youtube') {
+    return (
+      <svg {...common}>
+        <path fill="currentColor" d="M23 12.2s0-3.2-.4-4.6c-.2-.9-.9-1.6-1.8-1.8C19.2 5.4 12 5.4 12 5.4s-7.2 0-8.8.4c-.9.2-1.6.9-1.8 1.8C1 9 1 12.2 1 12.2s0 3.2.4 4.6c.2.9.9 1.6 1.8 1.8 1.6.4 8.8.4 8.8.4s7.2 0 8.8-.4c.9-.2 1.6-.9 1.8-1.8.4-1.4.4-4.6.4-4.6zM9.8 15.5V8.9l6.2 3.3-6.2 3.3z" />
+      </svg>
+    );
+  }
+  if (kind === 'soundcloud') {
+    return (
+      <svg {...common}>
+        <path fill="currentColor" d="M8.2 16.8H6.6v-2.2H8.2v2.2zm-2.2 0H4.4v-3.4h1.6v3.4zm-2.2 0H2.2v-4.6h1.6v4.6zM17.6 10.1a3.3 3.3 0 0 0-2.3-.9c-.3 0-.5 0-.7.1a4.3 4.3 0 0 0-3.8-2.3 4.2 4.2 0 0 0-2.7.9 3.1 3.1 0 0 0-1.5-.4 3.2 3.2 0 0 0-3.2 3.2v6.1h14.2a2.7 2.7 0 0 0 0-5.4 2.6 2.6 0 0 0 0-.3z" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <circle cx="9" cy="12" r="5" fill="currentColor" />
+      <circle cx="16.2" cy="12" r="3" fill="currentColor" />
+    </svg>
+  );
+}
 
 function uploadFailureMessage(file, error) {
   if (error?.message === 'too big') {
@@ -291,17 +322,16 @@ export function GuestAssetsStep({
           takePhoto(file);
         }}
       />
-      <div className="ga-links">
-        {LINKS.map(([key, label, color]) => (
-          <label key={key}>
-            <span className="ga-dot" style={{ background: color }} />
-            <span>{label}</span>
-            <input value={draft.links[key] || ''} placeholder="https://" onChange={(event) => patch({ links: { ...draft.links, [key]: event.target.value } })} />
+      <div className="ga-music-links">
+        {MUSIC_LINKS.map(([key, label]) => (
+          <label key={key} className="ga-field">
+            <span className="ga-music-links__label"><MusicMark kind={key} />{label}</span>
+            <input value={draft.links?.[key] || ''} placeholder="https://" onChange={(event) => patch({ links: { ...draft.links, [key]: event.target.value } })} />
           </label>
         ))}
       </div>
       <div className="ga-label">Other files</div>
-      <p className="ga-fine">Photos and PDFs up to 20 MB, audio (MP3, M4A, WAV) up to 15 MB, or add a Spotify or YouTube link above.</p>
+      <p className="ga-fine">Photos and PDFs up to 20 MB, audio (MP3, M4A, WAV) up to 15 MB, or add a music link above.</p>
       <ul className="ga-assets" aria-live="polite">
         {draft.assets.map((asset) => (
           isAudioAsset(asset) ? (

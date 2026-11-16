@@ -152,6 +152,21 @@ test('the guest page says bar only for a bar, and drops the missing-kit line', (
   assert.equal(page.includes('Your set'), true);
 });
 
+test('guest apply music links are the four platforms inside a 560px column', () => {
+  const dir = dirname(fileURLToPath(import.meta.url));
+  const assets = readFileSync(join(dir, 'GuestAssetsStep.jsx'), 'utf8');
+  const tech = readFileSync(join(dir, 'GuestTechStep.jsx'), 'utf8');
+  const css = readFileSync(join(dir, '../../../assets/styles/artists/gig-page.styles.css'), 'utf8');
+  for (const name of ['Spotify', 'YouTube', 'SoundCloud', 'Bandcamp']) assert.match(assets, new RegExp(name));
+  assert.equal(assets.includes('Instagram'), false);
+  assert.equal(assets.includes('Website'), false);
+  assert.match(tech, /Instagram/);
+  assert.match(tech, /Website/);
+  assert.match(css, /min-width: 641px/);
+  assert.match(css, /max-width: 560px/);
+  assert.match(readFileSync(join(dir, 'GuestApplyWizard.jsx'), 'utf8'), /ga-skip/);
+});
+
 test('a withdrawn or missing application does not keep the applied banner', () => {
   assert.equal(keepRememberedApplication({ status: 'sent' }), true);
   assert.equal(keepRememberedApplication({ status: 'pending' }), true);
