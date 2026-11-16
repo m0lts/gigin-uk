@@ -47,6 +47,7 @@ import { ProfileCreator } from '../artist/profile-creator/ProfileCreator';
 import { NoProfileModal } from '../artist/components/NoProfileModal';
 import { formatFeeDate } from '../../services/utils/dates';
 import { LoadingSpinner } from '../shared/ui/loading/Loading';
+import { LoadingScreen } from '../shared/ui/loading/LoadingScreen';
 import Portal from '../shared/components/Portal';
 import { getLocalGigDateTime } from '../../services/utils/filtering';
 import { isGigClosedToNewApplicants, musicianOccupiesBookedSlotOnGig } from '@services/utils/gigSlotCapacity';
@@ -2316,6 +2317,8 @@ export const GigPage = ({ user, setAuthModal, setAuthType, setInitialEmail, noPr
             </h3>
         );
     };
+
+    if (loading) return <LoadingScreen />;
 
     if (!gigData && !loading) {
         return (

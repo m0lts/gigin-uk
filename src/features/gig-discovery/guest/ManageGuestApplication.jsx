@@ -9,6 +9,7 @@ import { getVenueProfileById } from '@services/client-side/venues';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { GuestAssetsStep } from './GuestAssetsStep';
 import { GuestBrandHeader } from './GuestBrandHeader';
+import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import { GuestAudioRow } from './GuestAudioRow';
 import { continueDisabledByUploads, isAudioAsset, uploadContinueNote } from './guestAssetFiles';
 import { GuestPromo } from './GuestPromo';
@@ -289,7 +290,7 @@ export function ManageGuestApplication() {
         </div>
       );
     }
-    return <div className="ga-page"><GuestBrandHeader /><p className="ga-quiet">Loading your application…</p></div>;
+    return <LoadingScreen />;
   }
 
   const accepted = application.status === 'accepted' || application.status === 'confirmed';
