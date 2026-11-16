@@ -29,6 +29,7 @@ import Portal from '../../shared/components/Portal';
 import { LoadingSpinner } from '../../shared/ui/loading/Loading';
 import { createGigInvite } from '@services/api/gigInvites';
 import { AddContactModal } from './AddContactModal';
+import { GiveStaffAccess } from './GiveStaffAccess';
 import { ContactMergeSuggestions } from './ContactMergeSuggestions';
 import { EditContactModal } from './EditContactModal';
 import { VenueCRMContactCard, PreviouslyBookedContactCard } from './VenueCRMContactCard';
@@ -1097,6 +1098,7 @@ export const ArtistCRM = ({ user, venues }) => {
             Find Artists
           </button>
           )}
+          <GiveStaffAccess user={user} venues={venues} />
           <button type="button" className="btn primary contacts-head-add-btn" onClick={() => setShowAddModal(true)}>
             <PlusIcon />
             Add contact
