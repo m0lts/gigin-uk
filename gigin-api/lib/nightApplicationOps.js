@@ -425,6 +425,7 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
   const booker = ownerName(venue, gig);
   const venueName = venue?.name || venue?.venueName || gig?.venue?.venueName || "the venue";
   const markUrl = await emailThumbUrl(venueImageSource(venue));
+  const bookerPhotoUrl = await emailThumbUrl(venue?.bookerPhoto || "");
   const name = gigTitle(gig);
   const when = formatLong(gigDate(gig));
   const short = formatShort(gigDate(gig));
@@ -476,6 +477,8 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       preheader: `Your set time is still to be confirmed.`,
       eyebrow: "YOU'RE BOOKED",
       brand: { name: venueName, imageUrl: markUrl },
+      bookerName: booker,
+      bookerPhotoUrl,
       heading: `You're playing ${escapeHtml(name)}`,
       paras: [hi, `Good news. ${escapeHtml(booker)} has accepted ${escapeHtml(act)} for ${escapeHtml(name)} at ${escapeHtml(venueName)} on <b>${escapeHtml(when)}</b>.`, `We'll confirm your set time. ${escapeHtml(booker)} will choose which set you're playing, and we'll email you again as soon as it's set.${prefer}`],
       boxes: [{ label: "YOUR BOOKING", rows: [["Act", escapeHtml(act)], ["When", escapeHtml(when)], ["Set", "To be confirmed"], door ? ["Doors", escapeHtml(door)] : null, where ? ["Where", escapeHtml(where)] : null].filter(Boolean) }],
@@ -509,6 +512,7 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       preheader: changed ? `${escapeHtml(setLine)}. Everything else stays the same.` : `${escapeHtml(setLine)}.${door ? ` Doors ${escapeHtml(door)}.` : ""}`,
       eyebrow: changed ? "SET CHANGED" : "YOU'RE BOOKED",
       brand: { name: venueName, imageUrl: markUrl },
+      ...(kind === "accepted-set" ? { bookerName: booker, bookerPhotoUrl } : {}),
       heading: changed ? `You're now playing ${escapeHtml(setLabel)}` : `You're playing ${escapeHtml(name)}`,
       paras: [changed ? `${hi} ${lead}` : `Hi ${escapeHtml(first)}, we loved your music and would love to have you on ${escapeHtml(short)}. Here's everything you need.`],
       boxes: [{
@@ -566,6 +570,7 @@ export async function emailForAct({ kind, app, slots, venue, gig, token, later, 
       openGigs,
       venueUrl,
       markUrl,
+      bookerPhotoUrl,
       extra: keepUrl ? { title: "Keep your details for next time?", body: "Turn this application into a Gigin profile with a link you can send to other venues. You'll create a password when you confirm.", link: ["Keep my profile", keepUrl] } : null,
     });
   } else if (kind === "cancelled-accepted" || kind === "cancelled-waiting") {

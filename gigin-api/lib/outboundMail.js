@@ -117,6 +117,7 @@ export function declinedApplicationMessage({
   venueUrl,
   extra,
   markUrl,
+  bookerPhotoUrl,
 }) {
   const who = plain(booker, 80) || "The venue";
   const place = plain(venueName, 120) || "the venue";
@@ -141,6 +142,8 @@ export function declinedApplicationMessage({
     small: "Your application is saved, so applying next time takes one tap.",
     extra: extra || null,
     brand: { name: place, imageUrl: markUrl || "" },
+    bookerName: who,
+    bookerPhotoUrl: bookerPhotoUrl || "",
     footer: `Sent by Gigin for ${escapeHtml(place)}.`,
   });
 }

@@ -22,7 +22,7 @@ function StepNumber({ n }) {
   );
 }
 
-export function GuestApplied({ draft, dateLabel, bookerName, nightName, onClose, onCreateAccount, profileNote, venue }) {
+export function GuestApplied({ draft, dateLabel, bookerName, bookerPhoto, nightName, onClose, onCreateAccount, profileNote, venue }) {
   const [hidden, setHidden] = useState(() => {
     try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; }
   });
@@ -49,7 +49,7 @@ export function GuestApplied({ draft, dateLabel, bookerName, nightName, onClose,
         </li>
         <li>
           <span className="ga-step-mark is-current"><StepNumber n="2" /></span>
-          <div><strong>{bookerName} listens and decides</strong><p>They usually reply within a few days.</p></div>
+          <div><strong>{bookerPhoto ? <img className="ga-booker-face" src={bookerPhoto} alt="" /> : null}{bookerName} listens and decides</strong><p>They usually reply within a few days.</p></div>
         </li>
         <li>
           <span className="ga-step-mark"><StepNumber n="3" /></span>

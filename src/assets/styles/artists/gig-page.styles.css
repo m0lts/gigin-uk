@@ -2331,6 +2331,7 @@
 .ga-mono { font-family: var(--gn-font-mono); font-size: 13px; letter-spacing: 0.02em; color: var(--gn-ink-2); }
 .ga-date { margin: 0; font-family: var(--gn-body-font); font-style: normal; font-size: 13px; letter-spacing: 0.04em; color: var(--launch-text); }
 .ga-venue-line, .ga-quiet, .ga-booked-by { color: var(--launch-text); font-size: 16px; font-family: var(--gn-body-font); font-style: normal; }
+.ga-booker-face { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 8px; }
 .ga-gig, .ga-gig * { font-style: normal; }
 .ga-mast { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .ga-stack { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }

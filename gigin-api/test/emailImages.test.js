@@ -87,4 +87,25 @@ test("booked, declined and promo mail keep a text part and omit an empty venue m
   });
   assert.equal(withMark.html.includes("email-thumbs%2Fabcdef0123456789abcdef0123456789.jpg"), true);
   assert.equal(withMark.text.includes("Thanks for applying"), true);
+  const face = renderArtistEmail({
+    subject: "You're in",
+    heading: "You're playing Sunday Soul",
+    bookerName: "Toby",
+    bookerPhotoUrl: THUMB,
+    paras: ["Hi Maya,"],
+    footer: "Sent by Gigin.",
+  });
+  assert.equal(face.html.includes("Toby"), true);
+  assert.equal(face.html.includes("border-radius:50%"), true);
+  assert.equal(face.html.includes("width=\"28\""), true);
+  assert.equal(face.text.includes("Sam Hart"), false);
+  const hidden = renderArtistEmail({
+    subject: "You're in",
+    heading: "You're playing Sunday Soul",
+    bookerName: "Toby",
+    bookerPhotoUrl: SIGNED,
+    footer: "Sent by Gigin.",
+  });
+  assert.equal(hidden.html.includes("width=\"28\""), false);
+  assert.equal(hidden.html.includes(">Toby<"), false);
 });

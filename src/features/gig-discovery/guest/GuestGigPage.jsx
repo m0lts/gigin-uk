@@ -258,7 +258,7 @@ export function GuestGigPage({
               {venue?.arrivalNotes && <p className="ga-about">{venue.arrivalNotes}</p>}
               {mapsHref && <a className="ga-venue-link" href={mapsHref} target="_blank" rel="noreferrer">Open in Maps</a>}
             </section>
-            <p className="ga-booked-by ga-desktop-only">Booked by {booker.name}{booker.role ? `, ${booker.role}` : ''}.</p>
+            <p className="ga-booked-by ga-desktop-only">{booker.photo ? <img className="ga-booker-face" src={booker.photo} alt="" /> : null}Booked by {booker.name}{booker.role ? `, ${booker.role}` : ''}.</p>
           </div>
         </main>
         <aside className="ga-card">

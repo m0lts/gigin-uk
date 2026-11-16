@@ -1,5 +1,7 @@
 /** Which picture URLs are safe to put in an email. Signed Storage URLs are not. */
 
+import crypto from "crypto";
+
 const SIGNED = /X-Goog-|GoogleAccessId|X-Amz-/i;
 const THUMB_FILE = /\/email-thumbs\/([a-f0-9]{32})\.jpg/i;
 const API_FILE = /\/api\/email-images\/([a-f0-9]{32})\.jpg$/i;
@@ -83,6 +85,19 @@ export function storageObjectPath(value, bucketName) {
     return barePath(parts.slice(1).join("/"));
   }
   return "";
+}
+
+/** Stable id for the public JPEG made from a stored photo. */
+export function emailThumbId(objectPath) {
+  const path = String(objectPath || "");
+  if (!path || path.includes("..") || path.includes("\\")) return "";
+  return crypto.createHash("sha256").update(path).digest("hex").slice(0, 32);
+}
+
+/** Storage path of a published email JPEG. Empty unless the id is 32 hex chars. */
+export function emailThumbObjectPath(id) {
+  if (!/^[a-f0-9]{32}$/.test(String(id || ""))) return "";
+  return `email-thumbs/${id}.jpg`;
 }
 
 /** First venue photo, as a storage path or URL. Empty when the venue has none. */

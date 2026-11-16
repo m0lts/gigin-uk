@@ -1,4 +1,5 @@
 import { slotTaken } from '../../../services/utils/nightApplications.js';
+import { publicBookerPhoto } from '../../venue/booker/bookerPhoto.js';
 
 export { slotTaken };
 
@@ -201,6 +202,7 @@ export function bookerLine(venue, gig) {
   return {
     name: owner || venueName || 'the venue',
     role: String(venue?.bookerRole || '').trim(),
+    photo: publicBookerPhoto(venue?.bookerPhoto),
   };
 }
 

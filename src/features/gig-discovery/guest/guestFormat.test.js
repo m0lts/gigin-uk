@@ -77,6 +77,12 @@ test('booker wording uses the venue owner first name', () => {
   assert.equal(bookerLine({}).name, 'the venue');
   assert.equal(bookerLine({ accountName: 'Sam Hart', bookerRole: 'Bar manager' }).role, 'Bar manager');
   assert.equal(bookerLine({ name: 'Jesus College Bar' }).role, '');
+  const photo = 'https://firebasestorage.googleapis.com/v0/b/bucket/o/users%2Fuid%2Fbooker%2Fphoto.jpg?alt=media&token=abc';
+  const line = bookerLine({ accountName: 'Sam Hart', bookerPhoto: photo, email: 'sam@venue.test' });
+  assert.equal(line.name, 'Sam');
+  assert.equal(line.photo, photo);
+  assert.equal(Object.hasOwn(line, 'email'), false);
+  assert.equal(bookerLine({ accountName: 'Sam Hart', bookerPhoto: 'https://example.com/sam.hart@venue.test' }).photo, '');
 });
 
 test('a withdrawn application shows the explainer without the review list', () => {
@@ -153,7 +159,7 @@ test('the guest page says bar only for a bar, and drops the missing-kit line', (
   const page = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'GuestGigPage.jsx'), 'utf8');
   assert.equal(page.includes('ga-mono'), false);
   assert.equal(page.includes('<em'), false);
-  assert.equal(page.includes('<i'), false);
+  assert.equal(/<i(\s|>)/.test(page), false);
   assert.equal(page.includes('doesn\'t have'), false);
   assert.equal(page.includes('What the bar'), false);
   assert.equal(page.includes('The night'), true);

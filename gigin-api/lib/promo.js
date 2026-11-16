@@ -107,7 +107,7 @@ export function promoCaption({ title, acts }) {
   return lines.join("\n");
 }
 
-export function promoReminderCopy({ firstName, venueName, gigName, dueLabel, manageUrl }) {
+export function promoReminderCopy({ firstName, venueName, gigName, dueLabel, manageUrl, bookerName, bookerPhotoUrl }) {
   const when = dueLabel ? ` by ${dueLabel}` : "";
   const need = `${venueName || "The venue"} still needs a bio, a photo and a track for ${gigName || "the gig"}${when}.`;
   return {
@@ -118,6 +118,8 @@ export function promoReminderCopy({ firstName, venueName, gigName, dueLabel, man
     paras: [`Hi ${firstName || "there"},`, need],
     button: ["Send your promo", manageUrl],
     buttonDark: true,
+    bookerName: bookerName || "",
+    bookerPhotoUrl: bookerPhotoUrl || "",
     footer: `Sent by Gigin for ${venueName || "the venue"}.`,
   };
 }

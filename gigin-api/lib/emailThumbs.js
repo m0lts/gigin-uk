@@ -2,18 +2,11 @@
 
 import crypto from "crypto";
 import { admin } from "../config/admin.js";
-import { durableEmailImageUrl, emailImageOrigin, storageObjectPath } from "./emailImages.js";
+import { durableEmailImageUrl, emailImageOrigin, emailThumbId, emailThumbObjectPath, storageObjectPath } from "./emailImages.js";
 
 const THUMB = 160;
 
-export function emailThumbObjectPath(id) {
-  if (!/^[a-f0-9]{32}$/.test(String(id || ""))) return "";
-  return `email-thumbs/${id}.jpg`;
-}
-
-function thumbIdFor(objectPath) {
-  return crypto.createHash("sha256").update(String(objectPath)).digest("hex").slice(0, 32);
-}
+export { emailThumbObjectPath };
 
 function firebaseDownloadUrl(bucketName, objectPath, token) {
   const object = encodeURIComponent(objectPath);
@@ -42,7 +35,7 @@ async function writeThumb(bucket, objectPath) {
     .resize(THUMB, THUMB, { fit: "cover" })
     .jpeg({ quality: 72 })
     .toBuffer();
-  const id = thumbIdFor(objectPath);
+  const id = emailThumbId(objectPath);
   const destPath = emailThumbObjectPath(id);
   const dest = bucket.file(destPath);
   let token = crypto.randomUUID();

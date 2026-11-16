@@ -6,6 +6,8 @@ import { loadNightSlots, slotView } from "./nightApplicationOps.js";
 import { readNight } from "./nightApplications.js";
 import { queueMail } from "./queueMail.js";
 import { renderArtistEmail } from "./artistEmails.js";
+import { emailThumbUrl } from "./emailThumbs.js";
+import { ownerName } from "./ownerName.js";
 import { formatPromoDay, promoDueKey, promoReminderCopy, promoZipPlan, safeZipName } from "./promo.js";
 
 const ACTIVE = new Set(["accepted", "confirmed", "paid"]);
@@ -98,12 +100,28 @@ export async function queuePromoReminder(pack, applicantId) {
   }
   const dueLabel = formatPromoDay(promoDueKey(pack.gig.startDateTime || pack.gig.date, act.acceptedAt));
   const origin = String(process.env.BASE_URL || "https://giginmusic.com").replace(/\/$/, "");
+  let bookerName = "";
+  let bookerPhotoUrl = "";
+  const venueId = pack.gig?.venueId || "";
+  if (venueId) {
+    try {
+      const snap = await db.doc(`venueProfiles/${venueId}`).get();
+      const venue = snap.exists ? (snap.data() || {}) : {};
+      bookerName = ownerName(venue, pack.gig);
+      bookerPhotoUrl = await emailThumbUrl(venue.bookerPhoto || "");
+    } catch {
+      bookerName = "";
+      bookerPhotoUrl = "";
+    }
+  }
   const message = renderArtistEmail(promoReminderCopy({
     firstName: String(act.contactName || "there").split(/\s+/)[0],
     venueName: pack.venueName,
     gigName: pack.gigName,
     dueLabel,
     manageUrl: `${origin}/gig/${pack.rootId}/application/${act.token}`,
+    bookerName,
+    bookerPhotoUrl,
   }));
   await queueMail({ to: email, from: "Gigin <noreply@giginmusic.com>", message });
   return { sent: true };

@@ -37,10 +37,19 @@ export function bandMemberRow(members) {
   return ["Band", `${count} member${count === 1 ? "" : "s"}`];
 }
 
-function emailImg(url, size) {
+function emailImg(url, size, round = false) {
   const src = durableEmailImageUrl(url);
   if (!src) return "";
-  return `<img src="${escapeEmail(src)}" alt="" width="${size}" height="${size}" style="display:block;border:0;border-radius:8px;object-fit:cover;">`;
+  const radius = round ? "50%" : "8px";
+  return `<img src="${escapeEmail(src)}" alt="" width="${size}" height="${size}" style="display:block;border:0;border-radius:${radius};object-fit:cover;">`;
+}
+
+/** A round face next to the booker's first name. Left out when there is no public photo. */
+function bookerFace(email) {
+  const name = String(email.bookerName || "").trim();
+  const photo = emailImg(email.bookerPhotoUrl, 28, true);
+  if (!name || !photo) return "";
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;"><tr><td style="padding-right:8px;vertical-align:middle;">${photo}</td><td style="font-family:${FONT};font-size:15px;line-height:20px;font-weight:600;color:#0F1115;vertical-align:middle;">${escapeEmail(name)}</td></tr></table>`;
 }
 
 function brandBlock(email) {
@@ -99,6 +108,7 @@ ${styles}
 <tr><td class="card" style="background:#FFFFFF;border:0;border-radius:24px;padding:32px 28px;">
 ${brandBlock(email)}
 <h1 class="ink" style="margin:0 0 18px;font-family:${HEAD};font-size:36px;line-height:40px;font-weight:300;letter-spacing:-0.02em;color:#0F1115;">${email.heading || ""}</h1>
+${bookerFace(email)}
 ${paras}${boxes}${quote}${listings}${callout}${pre}${button}${after}${extra}${small}
 </td></tr>
 <tr><td class="muted" style="padding:16px 10px 0;font-family:${FONT};font-size:12.5px;line-height:19px;color:#6B7280;">${email.footer || ""}<br>Gigin · <a class="link" href="${home}" style="color:#6B7280;">giginmusic.com</a> · <a class="link" href="${home}/privacy-policy" style="color:#6B7280;">Privacy</a></td></tr>

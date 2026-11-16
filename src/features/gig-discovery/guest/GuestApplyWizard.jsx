@@ -348,6 +348,7 @@ export function GuestApplyWizard({ gig, slots, venue, invite, onClose, onCreateA
         <GuestApplied
           draft={{ ...draft, slots }}
           bookerName={booker.name}
+          bookerPhoto={booker.photo}
           nightName={String(gig.gigName || '').replace(/\s*\(Set\s+\d+\)\s*$/, '').trim()}
           dateLabel={formatGigSentence(gig)}
           onClose={onClose}

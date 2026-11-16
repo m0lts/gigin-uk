@@ -436,7 +436,7 @@ export function ManageGuestApplication() {
             <dl>
               <div><dt>Doors</dt><dd className="ga-mono">{formatClock(gig?.doors || gig?.doorTime || slots[0]?.startTime) || 'TBC'}</dd></div>
               <div><dt>Where</dt><dd>{address || venue?.name || 'The venue'}{venue?.arrivalNotes ? `. ${venue.arrivalNotes}` : ''}</dd></div>
-              <div><dt>Booked by</dt><dd>{booker.name}{booker.role ? `, ${booker.role}` : ''}</dd></div>
+              <div><dt>Booked by</dt><dd>{booker.photo ? <img className="ga-booker-face" src={booker.photo} alt="" /> : null}{booker.name}{booker.role ? `, ${booker.role}` : ''}</dd></div>
             </dl>
             {assigned && <button type="button" className="ga-text" onClick={addToCalendar}>Add to calendar</button>}
           </article>
