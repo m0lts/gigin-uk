@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { normalizeTechRider } from '@features/venue/builder/techRiderConfig';
+import { Pill } from '@features/shared/ui/foundation';
 import { useMapbox } from '@hooks/useMapbox';
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { getGigInviteById } from '@services/client-side/gigs';
 import { getGuestApplication } from '@services/client-side/guestApplications';
 import { GuestApplyWizard } from './GuestApplyWizard';
-import { bookerLine, firstName, forgetApplication, formatClock, formatGigDay, formatShortDay, keepRememberedApplication, photoUrl, rememberedApplication, setCountLabel, slotDate, slotEnd, slotState, slotTaken } from './guestFormat';
+import { atThePlace, bookerLine, firstName, forgetApplication, formatClock, formatGigDay, formatGuestDesktopDate, formatGuestPhoneDate, formatSetLine, formatShortDay, guestFeeLabel, keepRememberedApplication, openSetsSummary, photoUrl, providedKitPhrase, rememberedApplication, slotDate, slotState, slotTaken } from './guestFormat';
 
 function setMeta(property, content) {
   if (!content) return;
@@ -70,11 +71,9 @@ export function GuestGigPage({
       });
     return () => { cancelled = true; };
   }, [storedKey]);
-  const venueName = venue?.name || 'the bar';
   const venuePath = `/venues/${venue?.venueId || gig.venueId || ''}`;
   const equipment = useMemo(() => normalizeTechRider(venue?.techRider).equipment || [], [venue]);
-  const provided = equipment.filter((item) => item.available);
-  const missingLabels = equipment.filter((item) => !item.available).slice(0, 3).map((item) => item.label);
+  const providedPhrase = providedKitPhrase(equipment);
 
   useEffect(() => {
     const title = `${String(gig.gigName || 'Gig').replace(/\s*\(Set\s+\d+\)\s*$/, '')} · ${venue?.name || 'Gigin'}`;
@@ -95,7 +94,7 @@ export function GuestGigPage({
     return () => { cancelled = true; };
   }, [inviteId]);
 
-  useMapbox({ containerRef: mapRef, coordinates, shouldInit: !!coordinates && !applying });
+  useMapbox({ containerRef: mapRef, coordinates, shouldInit: !!coordinates && !applying && isMdUp });
 
   const expired = useMemo(() => {
     if (!invite?.expiresAt) return false;
@@ -134,14 +133,20 @@ export function GuestGigPage({
     );
   }
 
-  const title = String(gig.gigName || `Gig at ${venue?.name || 'the bar'}`).replace(/\s*\(Set\s+\d+\)\s*$/, '');
+  const place = atThePlace(venue);
+  const venueName = venue?.name || place;
+  const title = String(gig.gigName || `Gig at ${venueName}`).replace(/\s*\(Set\s+\d+\)\s*$/, '');
   const doors = formatClock(gig.timingAccessTime);
   const address = [venue?.address?.line1 || venue?.address?.addressLine1, venue?.address?.city, venue?.address?.postcode].filter(Boolean).join(', ') || (typeof venue?.address === 'string' ? venue.address : '') || '';
-  const city = venue?.address?.city || (String(address).toLowerCase().includes('cambridge') ? 'Cambridge' : '');
+  const placeLine = [venue?.name, address].filter(Boolean).join(', ');
   const mapsHref = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(typeof address === 'string' ? address : '')}` : '';
+  const fee = guestFeeLabel(gig, slots);
+  const setsOpen = openSetsSummary({ openCount, total: slots.length, cancelled, past, allTaken, applicationsClosed });
+  const applyLabel = past ? 'This gig has happened' : remembered ? 'View my application' : allTaken ? 'All sets filled' : applicationsClosed ? 'Applications closed' : 'Apply';
+  const apply = () => (remembered ? navigate(`/gig/${remembered.gigId}/application/${remembered.token}`) : setApplying(true));
 
   return (
-    <div className="ga-page">
+    <div className="ga-page ga-gig">
       <header className="ga-top">
         <span className="ga-brand">
           <span className="ga-brand__mark">{String(venue?.name || 'G').slice(0, 2).toUpperCase()}</span>
@@ -153,18 +158,18 @@ export function GuestGigPage({
       </header>
       <div className="ga-layout">
         <main>
-          {past && <div className="ga-banner">This gig has already happened. <button type="button" onClick={() => navigate(venuePath)}>See upcoming gigs at the bar</button></div>}
+          {past && <div className="ga-banner">This gig has already happened. <button type="button" onClick={() => navigate(venuePath)}>See upcoming gigs at {venueName}</button></div>}
           {cancelled && (
             <div className="ga-banner is-cancel">
               <strong>This night has been cancelled</strong>
               <p>{venue?.name || 'The venue'} has cancelled {title} on {formatGigDay(gig)}. If you&apos;d applied, your application is closed and there&apos;s nothing you need to do.</p>
-              <button type="button" onClick={() => navigate(venuePath)}>See upcoming gigs at the bar</button>
+              <button type="button" onClick={() => navigate(venuePath)}>See upcoming gigs at {venueName}</button>
             </div>
           )}
           {!past && !cancelled && allTaken && (
             <div className="ga-banner is-closed">
               <strong>All sets are filled</strong>
-              <p>{booker.name} has booked every set for {formatShortDay(gig)}, so this gig isn't taking applications any more. Follow the bar on Gigin to hear about future nights.</p>
+              <p>{booker.name} has booked every set for {formatShortDay(gig)}, so this gig isn&apos;t taking applications any more. Follow {venueName} on Gigin to hear about future nights.</p>
               <button type="button" onClick={() => navigate(venuePath)}>Follow {venueName}</button>
             </div>
           )}
@@ -174,7 +179,7 @@ export function GuestGigPage({
               <p>{booker.name} has stopped taking applications for {(() => {
                 const date = slotDate(gig);
                 return date ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : 'this night';
-              })()}. Follow the bar on Gigin to hear about future nights.</p>
+              })()}. Follow {venueName} on Gigin to hear about future nights.</p>
               <button type="button" onClick={() => navigate(venuePath)}>Follow {venueName}</button>
             </div>
           )}
@@ -192,111 +197,89 @@ export function GuestGigPage({
           {showGreeting && (
             <div className="ga-hello">
               <span>{firstName(invite.artistName).slice(0, 1)}</span>
-              <p><strong>Hi {firstName(invite.artistName)},</strong> {booker.name} invited you to apply for this gig at {venue?.name || 'the bar'}.</p>
+              <p><strong>Hi {firstName(invite.artistName)},</strong> {booker.name} invited you to apply for this gig at {venueName}.</p>
               <button type="button" onClick={() => setNotYou(true)}>Not you?</button>
             </div>
           )}
-          <div className={`ga-hero${cancelled ? ' is-cancelled' : ''}`} style={hero ? { backgroundImage: `url(${hero})` } : undefined} />
-          <p className="ga-mono ga-date">{formatGigDay(gig)}{doors ? ` · ${doors}` : ''}{slotEnd(slots[slots.length - 1] || gig) ? ` TO ${slotEnd(slots[slots.length - 1] || gig)}` : ''}</p>
-          <h1 className={cancelled ? 'is-cancelled' : ''}>{title}</h1>
-          <p className="ga-venue-line">{venue?.name}{address ? `, ${address}` : (city ? `, ${city}` : '')}</p>
-          {!past && !closed && openCount > 0 && <span className="ga-slots">{openCount} slot{openCount === 1 ? '' : 's'} open</span>}
-          <section>
-            <div className="ga-set-head">
-              <h2>{slots.length === 1 ? 'The set' : setCountLabel(slots.length)}</h2>
-              {slots.length > 1 && openCount > 0 && openCount < slots.length && <span>{openCount} of {slots.length} still open</span>}
-              {slots.length > 1 && openCount === 0 && <span>All booked</span>}
-            </div>
-            <div className="ga-set-list">
-              {slots.map((slot, index) => {
-                const taken = slotTaken(slot);
-                const state = cancelled ? 'cancelled' : past ? 'played' : taken ? 'taken' : (applicationsClosed ? 'closed' : 'open');
-                return (
-                  <div key={slot.gigId || index} className={state === 'taken' ? 'is-taken' : ''}>
-                    <strong>{slots.length === 1 ? 'The set' : `Set ${index + 1}`}</strong>
-                    <span>
-                      <em className="ga-mono">{formatClock(slot.startTime)}{slotEnd(slot) ? `–${slotEnd(slot)}` : ''}{slot.duration ? <i> · {slot.duration} min</i> : null}</em>
-                      {slot.hint ? <small>{slot.hint}</small> : null}
-                    </span>
-                    <b className={state === 'open' ? 'is-open' : ''}>{state === 'played' ? 'Played' : state === 'cancelled' ? 'Cancelled' : state === 'taken' ? 'Taken' : state === 'closed' ? 'Closed' : 'Open'}</b>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-          {gig.extraInformation && (
-            <section className="ga-panel">
-              <h2>What we&apos;re after</h2>
-              <p className="ga-about">{gig.extraInformation}</p>
+          <div className="ga-mast">
+            <div className={`ga-hero${cancelled ? ' is-cancelled' : ''}`} style={hero ? { backgroundImage: `url(${hero})` } : undefined} />
+            <p className="ga-date ga-phone-only">{formatGuestPhoneDate(gig, slots)}</p>
+            <p className="ga-date ga-desktop-only">{formatGuestDesktopDate(gig, slots, placeLine)}</p>
+            <h1 className={cancelled ? 'is-cancelled' : ''}>{title}</h1>
+            {placeLine ? <p className="ga-venue-line">{placeLine}</p> : null}
+            {!past && !closed && openCount > 0 && (
+              <Pill className="ga-open-pill ga-phone-only" dot>{openCount} slot{openCount === 1 ? '' : 's'} open</Pill>
+            )}
+          </div>
+          <div className="ga-stack">
+            <section className="ga-panel ga-night ga-desktop-only">
+              <h2>The night</h2>
+              <ul>
+                {slots.map((slot, index) => {
+                  const taken = slotTaken(slot);
+                  const state = cancelled ? 'cancelled' : past ? 'played' : taken ? 'taken' : (applicationsClosed ? 'closed' : 'open');
+                  const label = state === 'played' ? 'Played' : state === 'cancelled' ? 'Cancelled' : state === 'taken' ? 'Taken' : state === 'closed' ? 'Closed' : 'Open';
+                  return (
+                    <li key={slot.gigId || index}>
+                      <span>{formatSetLine(slot, index)}{slot.hint ? ` · ${slot.hint}` : ''}</span>
+                      <Pill className={state === 'open' ? 'ga-open-pill' : ''} dot={state === 'open'}>{label}</Pill>
+                    </li>
+                  );
+                })}
+                {fee ? <li className="ga-fee"><span>Fee</span><span>{fee}</span></li> : null}
+              </ul>
             </section>
-          )}
-          <section className="ga-panel">
-            <table className="ga-facts">
-              <tbody>
-                {slots[0]?.duration ? <tr><td>Your set</td><td>{slots[0].duration} minutes</td></tr> : null}
-                {gig.fee || gig.budget ? <tr><td>Fee</td><td>{gig.fee || gig.budget}</td></tr> : null}
-                {provided.length > 0 ? <tr><td>Sound</td><td>{provided.slice(0, 3).map((item) => item.label).join(', ')}</td></tr> : null}
-                {doors ? <tr><td>Arrive by</td><td>{doors}</td></tr> : null}
-              </tbody>
-            </table>
-          </section>
-          {venue?.description ? (
-            <section className="ga-panel">
-              <h2>About {venue.name}</h2>
-              <p className="ga-about">{venue.description}</p>
-              <button type="button" className="ga-text" onClick={() => navigate(venuePath)}>See the venue page</button>
+            {gig.extraInformation && (
+              <section className="ga-panel">
+                <h2>What we&apos;re after</h2>
+                <p className="ga-about">{gig.extraInformation}</p>
+              </section>
+            )}
+            <section className="ga-panel ga-phone-only">
+              <table className="ga-facts">
+                <tbody>
+                  {slots[0]?.duration ? <tr><td>Your set</td><td>{slots[0].duration} minutes</td></tr> : null}
+                  {fee ? <tr><td>Fee</td><td>{fee}</td></tr> : null}
+                  <tr><td>Sound</td><td>{providedPhrase || 'Ask the venue about sound and kit'}</td></tr>
+                  {doors ? <tr><td>Arrive by</td><td>{doors}</td></tr> : null}
+                </tbody>
+              </table>
             </section>
-          ) : (
-            <button type="button" className="ga-text" onClick={() => navigate(venuePath)}>See the venue page</button>
-          )}
-          <section>
-            <h2>What the bar provides</h2>
-            <div className="ga-kit">
-              {provided.map((item) => (
-                <div key={item.key}>
-                  <span>✓</span>
-                  <strong>{item.label}</strong>
-                  {item.quantity ? <em>{item.quantity}</em> : null}
-                </div>
-              ))}
-            </div>
-            {missingLabels.length > 0 && <p className="ga-quiet">The bar doesn't have {missingLabels.join(', ')}.</p>}
-            {provided.length === 0 && <p className="ga-quiet">The bar hasn't listed its kit yet.</p>}
-          </section>
-          <section>
-            <h2>Where</h2>
-            <div className="ga-map" ref={mapRef} />
-            {address && <p>{address}</p>}
-            {venue?.arrivalNotes && <p className="ga-about">{venue.arrivalNotes}</p>}
-            {mapsHref && <a className="ga-text" href={mapsHref} target="_blank" rel="noreferrer">Open in Maps</a>}
-          </section>
-          <p className="ga-booked-by">Booked by {booker.name}{booker.role ? `, ${booker.role}` : ''}.</p>
+            <section className="ga-panel ga-desktop-only">
+              <h2>What&apos;s provided</h2>
+              <p className="ga-about">{providedPhrase || 'Ask the venue about sound and kit'}</p>
+            </section>
+            {venue?.description ? (
+              <section className="ga-panel">
+                <h2>About {venue.name}</h2>
+                <p className="ga-about">{venue.description}</p>
+                <button type="button" className="ga-venue-link" onClick={() => navigate(venuePath)}>See the venue page</button>
+              </section>
+            ) : (
+              <button type="button" className="ga-venue-link" onClick={() => navigate(venuePath)}>See the venue page</button>
+            )}
+            <section className="ga-desktop-only">
+              <h2>Where</h2>
+              <div className="ga-map" ref={mapRef} />
+              {address && <p>{address}</p>}
+              {venue?.arrivalNotes && <p className="ga-about">{venue.arrivalNotes}</p>}
+              {mapsHref && <a className="ga-venue-link" href={mapsHref} target="_blank" rel="noreferrer">Open in Maps</a>}
+            </section>
+            <p className="ga-booked-by ga-desktop-only">Booked by {booker.name}{booker.role ? `, ${booker.role}` : ''}.</p>
+          </div>
         </main>
         <aside className="ga-card">
-          <p className="ga-mono">{formatGigDay(gig)}</p>
           <h2>{title}</h2>
-          <p>{venue?.name}</p>
-          <ul className="ga-aside-sets">
-            {slots.map((slot, index) => {
-              const taken = slotTaken(slot);
-              const label = cancelled ? 'Cancelled' : past ? 'Played' : taken ? 'Taken' : (applicationsClosed ? 'Closed' : 'Open');
-              return (
-                <li key={slot.gigId || index}>
-                  <span>{slots.length === 1 ? 'The set' : `Set ${index + 1}`}</span>
-                  <em className="ga-mono">{formatClock(slot.startTime)}{slotEnd(slot) ? `–${slotEnd(slot)}` : ''}</em>
-                  <b className={label === 'Open' ? 'is-open' : ''}>{label}</b>
-                </li>
-              );
-            })}
-          </ul>
+          <p>{venue?.name || 'Venue'}</p>
+          <Pill className={openCount > 0 && !past && !closed ? 'ga-open-pill' : ''} dot={openCount > 0 && !past && !closed}>{setsOpen}</Pill>
           {!cancelled && (
             <button
               type="button"
-              className={remembered && !past && !closed ? 'ga-dark' : 'ga-orange'}
+              className="ga-dark"
               disabled={(closed || past) && !remembered}
-              onClick={() => (remembered ? navigate(`/gig/${remembered.gigId}/application/${remembered.token}`) : setApplying(true))}
+              onClick={apply}
             >
-              {past ? 'This gig has happened' : remembered ? 'View my application' : allTaken ? 'All sets filled' : applicationsClosed ? 'Applications closed' : 'Apply'}
+              {applyLabel}
             </button>
           )}
           {!cancelled && !closed && !past && !remembered && <small>No account needed</small>}
@@ -306,11 +289,11 @@ export function GuestGigPage({
         <div className="ga-sticky">
           <button
             type="button"
-            className={remembered && !past && !closed ? 'ga-dark' : 'ga-orange'}
+            className="ga-dark"
             disabled={(closed || past) && !remembered}
-            onClick={() => (remembered ? navigate(`/gig/${remembered.gigId}/application/${remembered.token}`) : setApplying(true))}
+            onClick={apply}
           >
-            {past ? 'This gig has happened' : remembered ? 'View my application' : allTaken ? 'All sets filled' : applicationsClosed ? 'Applications closed' : 'Apply'}
+            {applyLabel}
           </button>
           {!closed && !past && !remembered && <small>No account needed</small>}
         </div>

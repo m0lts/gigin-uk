@@ -19,6 +19,109 @@ export function formatGigDay(slot) {
   return `${pick('weekday')} ${pick('day')} ${pick('month')} ${pick('year')}`.toUpperCase();
 }
 
+export function formatGigSentence(slot) {
+  const date = slotDate(slot);
+  if (!date) return 'Date to be confirmed';
+  const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(date);
+  const month = new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(date);
+  return `${weekday} ${date.getDate()} ${month}`;
+}
+
+export function formatGuestTimes(slots, gig, { upper = false } = {}) {
+  const list = slots?.length ? slots : [gig].filter(Boolean);
+  const start = formatClock(list[0]?.startTime || gig?.startTime);
+  const end = slotEnd(list[list.length - 1] || gig) || formatClock(gig?.endTime);
+  if (!start) return '';
+  return end ? `${start} ${upper ? 'TO' : 'to'} ${end}` : start;
+}
+
+export function formatGuestPhoneDate(gig, slots) {
+  return [formatGigSentence(gig).toUpperCase(), formatGuestTimes(slots, gig, { upper: true })].filter(Boolean).join(' · ');
+}
+
+export function formatGuestDesktopDate(gig, slots, place) {
+  return [formatGigSentence(gig), formatGuestTimes(slots, gig), place].filter(Boolean).join(' · ');
+}
+
+export function formatDurationLabel(minutes) {
+  const n = Number(minutes);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  const hours = Math.floor(n / 60);
+  const mins = n % 60;
+  if (hours && mins) return `${hours} ${hours === 1 ? 'hr' : 'hrs'} ${mins} min`;
+  if (hours) return `${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
+  return `${n} min`;
+}
+
+export function formatSetLine(slot, index) {
+  const start = formatClock(slot?.startTime);
+  const end = slotEnd(slot);
+  const time = start && end ? `${start} to ${end}` : start;
+  return [`Set ${index + 1}`, time, formatDurationLabel(slot?.duration)].filter(Boolean).join(' · ');
+}
+
+export function guestFeeLabel(gig, slots = []) {
+  const raw = [gig?.fee, gig?.budget, ...slots.map((slot) => slot?.fee || slot?.budget)]
+    .map((value) => String(value ?? '').trim())
+    .find(Boolean) || '';
+  const plain = raw.replace(/\s/g, '').toLowerCase();
+  if (!raw || plain === '£' || plain === '£0' || plain === '£0.00' || plain === '0' || plain === 'free' || plain === 'nofee') return '';
+  return raw;
+}
+
+const KIT_NAMES = {
+  pa: ['PA', 'PA'],
+  mixingConsole: ['mixing desk', 'mixing desks'],
+  soundEngineer: ['sound engineer', 'sound engineers'],
+  microphones: ['vocal mic', 'vocal mics'],
+  micStands: ['mic stand', 'mic stands'],
+  diBoxes: ['DI box', 'DI boxes'],
+  stageMonitors: ['stage monitor', 'stage monitors'],
+  drumKit: ['drum kit', 'drum kits'],
+  bassAmp: ['bass amp', 'bass amps'],
+  guitarAmp: ['guitar amp', 'guitar amps'],
+  keyboard: ['keyboard', 'keyboards'],
+  keyboardStand: ['keyboard stand', 'keyboard stands'],
+  stageLighting: ['stage lighting', 'stage lighting'],
+  djDecks: ['DJ decks', 'DJ decks'],
+};
+
+export function providedKitPhrase(equipment) {
+  const parts = (equipment || []).filter((item) => item?.available).map((item) => {
+    const names = KIT_NAMES[item.key];
+    const qty = Number(item.quantity);
+    const count = Number.isFinite(qty) && qty > 0 ? qty : 0;
+    if (names) {
+      if (count > 1) return `${count} ${names[1]}`;
+      return names[0];
+    }
+    const label = String(item.label || '').trim();
+    if (!label) return '';
+    return count > 1 ? `${count} ${label}` : label;
+  }).filter(Boolean);
+  if (!parts.length) return '';
+  if (parts.length === 1) return parts[0];
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}
+
+export function venueIsBar(venue) {
+  const establishment = String(venue?.establishment || venue?.venueType || '').trim().toLowerCase();
+  return establishment === 'pub/bar' || establishment === 'bar';
+}
+
+export function atThePlace(venue) {
+  return venueIsBar(venue) ? 'the bar' : 'the venue';
+}
+
+export function openSetsSummary({ openCount = 0, total = 0, cancelled = false, past = false, allTaken = false, applicationsClosed = false } = {}) {
+  if (cancelled) return 'This night has been cancelled';
+  if (past) return 'This gig has happened';
+  if (allTaken) return 'All sets filled';
+  if (applicationsClosed) return 'Applications closed';
+  const sets = total === 1 ? 'set' : 'sets';
+  return `${openCount} of ${total} ${sets} open`;
+}
+
 export function formatShortDay(slot) {
   const date = slotDate(slot);
   if (!date) return 'the night';
