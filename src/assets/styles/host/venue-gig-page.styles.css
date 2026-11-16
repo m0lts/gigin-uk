@@ -5,6 +5,10 @@
   background-color: #f6f7f9;
 }
 
+.dashboard .window.venues:has(.venue-gig-page--night) {
+  background: transparent;
+}
+
 .venue-gig-page {
   /* One rhythm for horizontal page gutter, column gap, and vertical gaps between tiles */
   --venue-gig-tile-gap: 24px;
@@ -34,6 +38,12 @@
   background: var(--gn-console-bg);
   color: var(--gn-ink);
   font-family: var(--gn-font);
+}
+
+.venue-gig-page--night,
+.venue-gig-page--night.venue-gig-page--console {
+  background: transparent;
+  color: var(--launch-ink);
 }
 
 /* `* { font-family: Inter }` wins over inheritance, so set Geist on the new chrome. */
@@ -1108,19 +1118,70 @@
   }
 }
 
+.venue-gig-page--night .venue-gig-page__bar {
+  height: auto;
+  padding: 22px 40px 0;
+  background: transparent;
+  border-bottom: 0;
+}
+
+.venue-gig-page--night .venue-gig-page__scroll {
+  padding: 8px 40px 48px;
+}
+
+.venue-gig-page--night .venue-gig-page__crumb-link {
+  color: var(--launch-muted);
+  font-weight: 500;
+}
+
+.night-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.night-head__title {
+  font-family: var(--gn-heading-font);
+  font-weight: 300;
+  font-size: clamp(40px, 4vw, 52px);
+  letter-spacing: -0.03em;
+  color: var(--launch-ink);
+}
+
+.venue-gig-page--night .venue-gig-page__page-head h1.night-head__title {
+  font-family: var(--gn-heading-font);
+  font-weight: 300;
+}
+
+.night-head__meta {
+  margin: 8px 0 0;
+  color: var(--launch-text);
+  font-size: 15px;
+}
+
+.night-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.night-head__actions .gn-btn {
+  min-height: 44px;
+  padding: 0 18px;
+}
+
 .night-tabs {
-  margin-top: 8px;
+  margin-top: 18px;
 }
 
 .night-tab__count {
   display: inline-flex;
   align-items: center;
-  margin-left: 8px;
-  padding: 1px 7px;
-  border-radius: var(--launch-radius-pill);
-  background: var(--launch-soft);
-  color: var(--launch-ink);
-  font-size: 12px;
+  margin-left: 6px;
+  color: var(--launch-accent);
+  font-size: 13px;
   font-weight: 600;
 }
 

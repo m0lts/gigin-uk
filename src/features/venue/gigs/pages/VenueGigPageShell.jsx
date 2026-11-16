@@ -8,7 +8,7 @@ import { ArtistFillThisSlotTile } from '@features/venue/gigs/components/ArtistFi
 import { useBreakpoint } from '@hooks/useBreakpoint';
 import { getLocalGigDateTime } from '@services/utils/filtering';
 import { getGigsByIds, deleteGigsBatch } from '@services/client-side/gigs';
-import { updateGigDocument, cancelNight, undoCancelNight } from '@services/api/gigs';
+import { updateGigDocument, cancelNight, undoCancelNight, downloadPromoZip } from '@services/api/gigs';
 import { updateVenueHireOpportunity, deleteVenueHireOpportunity } from '@services/client-side/venueHireOpportunities';
 import { postCancellationMessage } from '@services/api/messages';
 import { getConversationsByParticipantAndGigId } from '@services/client-side/conversations';
@@ -24,7 +24,7 @@ import { GigOptionsMenu } from '../../components/GigOptionsMenu';
 import { CancelNightDialog } from '../../components/CancelNightDialog';
 import { isNightModelGig, nightAudienceCounts, toastNightCancelled, usesPaymentsCancel } from '../utils/nightCancel';
 import { getMainPanelComponent } from './panels';
-import { Tabs } from '@features/shared/ui/foundation';
+import { Button, Tabs } from '@features/shared/ui/foundation';
 
 function calculateEndTime(startTime, duration) {
   if (!startTime || duration == null) return null;
@@ -148,6 +148,14 @@ function artistBookingStatusPill(slots, now) {
   const isOpen = list.some((slot) => slot.status === 'upcoming' || slot.status === 'open');
   const key = isOpen ? 'open' : 'closed';
   return { key, label: ARTIST_BOOKING_PILL_LABELS[key] };
+}
+
+function formatNightMeta(dateField, timeRange, venueName) {
+  const date = gigFirestoreDateToPlain(dateField);
+  const datePart = date
+    ? date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+    : '';
+  return [datePart, timeRange, venueName].filter(Boolean).join(' · ');
 }
 
 function formatArtistBookingDateLine(dateField, venueName) {
@@ -698,13 +706,29 @@ export function VenueGigPageShell({
   };
   const statusPill = isArtistBookingPage ? artistBookingStatusPill(allSlots, now) : null;
   const dateLine = isArtistBookingPage ? formatArtistBookingDateLine(gigInfo?.date, venueName) : '';
+  const nightMeta = guestNightReview
+    ? formatNightMeta(gigInfo?.date, normalisedGig?.timeRangeLabel, venueName)
+    : '';
+  const [promoBusy, setPromoBusy] = useState(false);
+  const downloadNightPromo = async () => {
+    const rootGigId = gigInfo?.gigId || gigInfo?.id;
+    if (!rootGigId) return;
+    setPromoBusy(true);
+    try {
+      await downloadPromoZip({ rootGigId, filename: `${venueGigPageTitle || 'promo'}.zip` });
+    } catch (err) {
+      toast.error(err?.message || 'Could not download the promo.');
+    } finally {
+      setPromoBusy(false);
+    }
+  };
 
   return (
-    <div className={`venue-gig-page${isArtistBookingPage ? ' venue-gig-page--console' : ''}`}>
+    <div className={`venue-gig-page${isArtistBookingPage ? ' venue-gig-page--console' : ''}${guestNightReview ? ' venue-gig-page--night' : ''}`}>
       {isArtistBookingPage && (
         <header className="venue-gig-page__bar">
           <div className="venue-gig-page__crumb">
-            {!isMdUp && (
+            {!isMdUp && !guestNightReview && (
               <button
                 type="button"
                 className="btn text venue-gig-page__back"
@@ -713,17 +737,23 @@ export function VenueGigPageShell({
                 <LeftArrowIcon /> Back
               </button>
             )}
-            <Link className="venue-gig-page__crumb-link" to="/venues/dashboard/gigs">Gigs</Link>
-            <span className="venue-gig-page__crumb-chevron" aria-hidden="true">
-              <RightChevronIcon />
-            </span>
-            <span className="venue-gig-page__crumb-current">{venueGigPageTitle}</span>
+            <Link className="venue-gig-page__crumb-link" to="/venues/dashboard/gigs">{guestNightReview ? '‹ Gigs' : 'Gigs'}</Link>
+            {!guestNightReview && (
+              <>
+                <span className="venue-gig-page__crumb-chevron" aria-hidden="true">
+                  <RightChevronIcon />
+                </span>
+                <span className="venue-gig-page__crumb-current">{venueGigPageTitle}</span>
+              </>
+            )}
           </div>
           <div className="venue-gig-page__bar-actions">
-            <button type="button" className="venue-gig-page__bar-btn" onClick={openPreviewListing}>
-              Preview listing
-            </button>
-            {showEditGigOption && (
+            {!guestNightReview && (
+              <button type="button" className="venue-gig-page__bar-btn" onClick={openPreviewListing}>
+                Preview listing
+              </button>
+            )}
+            {!guestNightReview && showEditGigOption && (
               <button type="button" className="venue-gig-page__bar-btn" onClick={openEditGigModal}>
                 Edit gig
               </button>
@@ -853,14 +883,33 @@ export function VenueGigPageShell({
           <div className={isArtistBookingPage ? 'venue-gig-page__column' : 'venue-gig-page__column-passthrough'}>
           {isArtistBookingPage && (
             <div className="venue-gig-page__page-head">
-              {dateLine ? <p className="venue-gig-page__date-line">{dateLine}</p> : null}
-              <div className="venue-gig-page__title-line">
-                <h1 className="venue-gig-page__page-title">{venueGigPageTitle}</h1>
-                <span className={`venue-gig-page__pill venue-gig-page__pill--${statusPill.key}`}>
-                  <span className="venue-gig-page__pill-dot" />
-                  {statusPill.label}
-                </span>
-              </div>
+              {guestNightReview ? (
+                <div className="night-head">
+                  <div>
+                    <h1 className="venue-gig-page__page-title night-head__title">{venueGigPageTitle}</h1>
+                    {nightMeta ? <p className="night-head__meta">{nightMeta}</p> : null}
+                  </div>
+                  {nightTab === 'overview' ? (
+                    <div className="night-head__actions">
+                      {showEditGigOption && <Button variant="secondary" onClick={openEditGigModal}>Edit</Button>}
+                      <Button onClick={downloadNightPromo} disabled={promoBusy}>
+                        {promoBusy ? 'Preparing…' : 'Download promo'}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <>
+                  {dateLine ? <p className="venue-gig-page__date-line">{dateLine}</p> : null}
+                  <div className="venue-gig-page__title-line">
+                    <h1 className="venue-gig-page__page-title">{venueGigPageTitle}</h1>
+                    <span className={`venue-gig-page__pill venue-gig-page__pill--${statusPill.key}`}>
+                      <span className="venue-gig-page__pill-dot" />
+                      {statusPill.label}
+                    </span>
+                  </div>
+                </>
+              )}
               {guestNightReview ? (
                 <Tabs
                   className="night-tabs"

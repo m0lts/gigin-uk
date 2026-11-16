@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { planAssignment, preferencePhrase, readNight } from '@services/utils/nightApplications';
 import { buildGuestTechRider, computeCompatibility } from '@services/utils/techRiderCompatibility';
+import { normalizeTechRider } from '@features/venue/builder/techRiderConfig';
 import { get } from '@services/http';
 import { markApplicantsViewed } from '@services/api/gigs';
 import {
@@ -20,6 +21,8 @@ import { reportApplicationActionError } from '@features/venue/gigs/utils/applica
 import { ApplicantProfileModal, useApplicantQuery } from '@features/venue/gigs/components/ApplicantProfileModal';
 import { GuestAudioRow } from '@features/gig-discovery/guest/GuestAudioRow';
 import { isAudioAsset } from '@features/gig-discovery/guest/guestAssetFiles';
+import { Button, Card, Pill } from '@features/shared/ui/foundation';
+import { promoMissingParts } from '../../../../../gigin-api/lib/promo.js';
 import '@styles/host/night-apply.styles.css';
 
 const ACTIVE = new Set(['accepted', 'confirmed', 'paid']);
@@ -349,9 +352,73 @@ export function NightApplyReview({
     }
   };
 
+  const showOverview = section === 'overview';
+
   return (
-    <div className={`na${ordered.length >= 4 ? ' is-compact' : ''}`}>
+    <div className={`na${ordered.length >= 4 ? ' is-compact' : ''}${showOverview ? ' na-overview' : ''}`}>
       {nightCancelled && <p className="na-empty">This night has been cancelled.</p>}
+      {showOverview ? (
+        <NightOverview
+          ordered={ordered}
+          oneSet={oneSet}
+          applications={applications}
+          occupant={occupant}
+          slotLabel={slotLabel}
+          venue={venue}
+          canUpdate={canChangeLineup}
+          copied={copied}
+          onCopy={copyLink}
+          onSee={(slotId) => {
+            if (onShowApplications) onShowApplications();
+            else setTab('applications');
+            setBucket('waiting');
+            setPrefer(slotId);
+          }}
+          onShowAll={() => {
+            if (onShowApplications) onShowApplications();
+            else setTab('applications');
+            setBucket('all');
+            setPrefer('any');
+          }}
+          onAccept={accept}
+          onDecline={decline}
+          onAssign={assign}
+          sound={sound}
+          soundEdit={soundEdit}
+          setSoundEdit={setSoundEdit}
+          onSaveSound={saveSound}
+          onRemoveSound={async () => {
+            setSound(null);
+            setSoundEdit(null);
+            try {
+              await saveNightSoundTech({ rootGigId: rootId, soundTech: null });
+              refreshGigs?.();
+            } catch (err) {
+              toast.error(err?.message || 'Could not remove the sound tech.');
+            }
+          }}
+          notes={notes}
+          noteEdit={noteEdit}
+          noteValue={noteValue}
+          setNoteValue={setNoteValue}
+          setNoteEdit={setNoteEdit}
+          onSaveNotes={async () => {
+            setNoteEdit(false);
+            try { await onSaveNotes?.(noteValue); } catch (err) { toast.error(err?.message || 'Could not save the note.'); }
+          }}
+          closeProps={{
+            oneSet, allFilled, closed, openSets: ordered.length - filledCount, waiting: waiting.length,
+            accepted: accepted.length, hide: hideClose, declineWaiting, setDeclineWaiting,
+            onHide: () => setHideClose(true), onClose: closeNight,
+            onReopen: () => run(async () => {
+              setClosedOverride(false);
+              await reopenNightApplications({ rootGigId: rootId });
+              return { toast: '' };
+            }),
+            canUpdate: canChangeLineup,
+          }}
+        />
+      ) : (
       <div className="na-grid">
         <section>
           {section ? null : (
@@ -519,6 +586,7 @@ export function NightApplyReview({
           />
         </aside>
       </div>
+      )}
       {applicantId ? (
         <ApplicantProfileModal
           applicant={applications.find((item) => item.id === applicantId)}
@@ -545,6 +613,181 @@ export function NightApplyReview({
           {toastNote.undo && <button type="button" onClick={undoToast}>Undo</button>}
         </div>
       )}
+    </div>
+  );
+}
+
+function promoChip(app) {
+  const missing = promoMissingParts(app?.promo);
+  const words = missing.map((part) => part.replace(/^a /, ''));
+  if (!words.length && !String(app?.promo?.videoUrl || '').trim()) return 'Promo · video missing';
+  if (!words.length) return '';
+  return `Promo · ${words.join(', ')} missing`;
+}
+
+function actLine(app) {
+  return app?.kind || bandMemberPhrase(app?.members) || 'Act';
+}
+
+function techSummary(booked, venue) {
+  if (!booked.length) return 'No acts booked yet.';
+  const labels = {};
+  const equipment = normalizeTechRider(venue?.techRider).equipment || [];
+  equipment.forEach((item) => {
+    if (item?.key) labels[item.key] = item.label || item.key;
+  });
+  const counts = new Map();
+  booked.forEach((app) => {
+    (app.needs || []).forEach((key) => counts.set(key, (counts.get(key) || 0) + 1));
+  });
+  const parts = [...counts.entries()].map(([key, count]) => {
+    const label = labels[key] || String(key).replace(/([A-Z])/g, ' $1').toLowerCase();
+    return count > 1 ? `${count}× ${label}` : label;
+  });
+  const short = [];
+  booked.forEach((app) => {
+    const compat = computeCompatibility(buildGuestTechRider({
+      needs: app.needs || [],
+      bringOwn: app.bringOwn || [],
+      members: app.members || [],
+    }), venue?.techRider);
+    (compat?.needsDiscussion || []).forEach((item) => {
+      const label = item?.label || item;
+      if (label && !short.includes(label)) short.push(label);
+    });
+  });
+  const across = `across ${booked.length} ${booked.length === 1 ? 'act' : 'acts'}`;
+  const head = parts.length ? `${parts.join(', ')} ${across}` : `No kit requested ${across}`;
+  return short.length ? `${head} · ${short[0]} short` : head;
+}
+
+function NightOverview({
+  ordered, oneSet, applications, occupant, slotLabel, venue, canUpdate, copied, onCopy, onSee, onShowAll,
+  onAccept, onDecline, onAssign, sound, soundEdit, setSoundEdit, onSaveSound, onRemoveSound,
+  notes, noteEdit, noteValue, setNoteValue, setNoteEdit, onSaveNotes, closeProps,
+}) {
+  const bookedCount = ordered.filter((slot) => occupant(slot)).length;
+  const openSlot = ordered.find((slot) => !occupant(slot)) || null;
+  const openId = openSlot ? (openSlot.gigId || openSlot.id) : '';
+  const forSet = applications.filter((app) => {
+    if (!isWaiting(app) || !openSlot) return false;
+    const ids = app.preferredSlotGigIds || [];
+    return oneSet || !ids.length || ids.includes(openId);
+  });
+  const bookedActs = ordered.map((slot) => occupant(slot)).filter(Boolean);
+  const unassigned = applications.filter((app) => isAccepted(app) && !app.assignedSlotGigId);
+  return (
+    <div className="night-overview">
+      <Card className="night-overview__card">
+        <header>
+          <h2>Running order</h2>
+          <span>{bookedCount} of {ordered.length || 0} sets booked</span>
+        </header>
+        {ordered.map((slot) => {
+          const id = slot.gigId || slot.id;
+          const holder = occupant(slot);
+          const waitingHere = applications.filter((app) => isWaiting(app) && (oneSet || !(app.preferredSlotGigIds || []).length || (app.preferredSlotGigIds || []).includes(id)));
+          const fresh = waitingHere.filter(isNewApplicant).length;
+          const chip = holder ? promoChip(holder) : '';
+          return (
+            <div key={id} className="night-overview__set">
+              <time>
+                <b>{slotLabel(slot)}</b>
+                {formatClock(slot.startTime)}
+              </time>
+              {holder ? (
+                <>
+                  <span className="night-overview__avatar">{initials(actName(holder))}</span>
+                  <span className="night-overview__who">
+                    <strong>{actName(holder)}</strong>
+                    <small>{actLine(holder)} · confirmed</small>
+                  </span>
+                  {chip ? <Pill>{chip}</Pill> : <span />}
+                  {canUpdate && (
+                    <AssignMenu
+                      label="Change"
+                      app={holder}
+                      slot={slot}
+                      ordered={ordered}
+                      unassigned={unassigned}
+                      accepted={applications.filter(isAccepted)}
+                      onAssign={onAssign}
+                      mode="change"
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="night-overview__plus" aria-hidden="true">+</span>
+                  <span className="night-overview__who">
+                    <strong>Open</strong>
+                    {waitingHere.length > 0 && (
+                      <button type="button" onClick={() => onSee(id)}>
+                        {fresh > 0
+                      ? `${fresh} new ${fresh === 1 ? 'application' : 'applications'}`
+                      : `${waitingHere.length} ${waitingHere.length === 1 ? 'application' : 'applications'}`}
+                      </button>
+                    )}
+                  </span>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </Card>
+      <Card className="night-overview__card night-overview__tech">
+        <span className="night-overview__mic" aria-hidden="true">♩</span>
+        <span>
+          <strong>Tech for the night</strong>
+          <small>{techSummary(bookedActs, venue)}</small>
+        </span>
+        {canUpdate && (
+          <Button variant="secondary" onClick={() => setSoundEdit(soundEdit ? null : { ...(sound || { name: '', role: 'House engineer', phone: '', arrives: '' }) })}>
+            Check
+          </Button>
+        )}
+      </Card>
+      {soundEdit && (
+        <SoundTechCard sound={sound} editing={soundEdit} setEditing={setSoundEdit} onSave={onSaveSound} onRemove={onRemoveSound} canUpdate={canUpdate} />
+      )}
+      <Card className="night-overview__card">
+        <header>
+          <h2>{openSlot ? `Applications for ${slotLabel(openSlot)}` : 'Applications'}</h2>
+          <span className="night-overview__links">
+            <button type="button" onClick={onCopy}>{copied ? 'Copied' : 'Share link'}</button>
+            <button type="button" onClick={onShowAll}>See all</button>
+          </span>
+        </header>
+        {forSet.length === 0 && <p className="na-empty">Nobody is waiting for {openSlot ? slotLabel(openSlot) : 'a set'}.</p>}
+        {forSet.map((app) => (
+          <article key={app.id} className="night-overview__app">
+            <span className="night-overview__avatar">{initials(actName(app))}</span>
+            <span>
+              <strong>{actName(app)}</strong>
+              <small>{[(app.type === 'guest' || app.guest) ? 'Guest' : 'On Gigin', `applied ${when(app.createdAt || app.appliedAt) || 'recently'}`, actLine(app)].join(' · ')}</small>
+              {app.note ? <q>{app.note}</q> : null}
+            </span>
+            {canUpdate && (
+              <span className="night-overview__decide">
+                <Button variant="secondary" onClick={() => onDecline(app)}>Decline</Button>
+                <Button onClick={() => onAccept(app, openId || null)}>Accept</Button>
+              </span>
+            )}
+          </article>
+        ))}
+      </Card>
+      <div className="night-overview__more">
+        <CloseCard {...closeProps} />
+        <NotesCard
+          notes={notes}
+          editing={noteEdit}
+          value={noteValue}
+          setValue={setNoteValue}
+          setEditing={setNoteEdit}
+          onSave={onSaveNotes}
+          canUpdate={canUpdate}
+        />
+      </div>
     </div>
   );
 }
@@ -600,7 +843,7 @@ function ApplicantCard({
           {canUpdate && isWaiting(app) && (
             <div>
               <button type="button" className="is-outline" onClick={onDecline}>Decline</button>
-              <button type="button" className="is-orange" onClick={() => {
+              <button type="button" className="is-dark" onClick={() => {
                 const only = ordered[0];
                 const taken = occupant(only);
                 if (oneSet && !taken) onAccept(only.gigId || only.id);
