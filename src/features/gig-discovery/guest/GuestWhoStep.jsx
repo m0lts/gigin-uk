@@ -28,8 +28,9 @@ export const GuestWhoStep = forwardRef(function GuestWhoStep({
   const [signInSent, setSignInSent] = useState(false);
   const [asGuest, setAsGuest] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
+  const [rateMessage, setRateMessage] = useState('');
   const [resendIn, setResendIn] = useState(0);
-  const checkedEmail = useRef('');
+  const returnAnswers = useRef(new Map());
   const inviteChecked = useRef(false);
   const draftRef = useRef(draft);
   draftRef.current = draft;
@@ -45,19 +46,31 @@ export const GuestWhoStep = forwardRef(function GuestWhoStep({
     return () => clearTimeout(timer);
   }, [resendIn]);
 
-  const checkEmail = async (emailValue) => {
+  const applyReturnAnswer = (email, answer) => {
+    if (answer?.known) {
+      setEmailGate({ email, sameGig: answer.sameGig === true });
+      setRateLimited(false);
+      setRateMessage('');
+      setResendIn(60);
+      return false;
+    }
+    setEmailGate(null);
+    setRateLimited(false);
+    setRateMessage('');
+    return true;
+  };
+
+  const checkAccount = async (emailValue) => {
     const current = draftRef.current;
     if (editing || current.artistProfileId) return true;
     const email = String(emailValue ?? current.email ?? '').trim();
     if (current.emailVerified && sameEmail(current.verifiedEmail, email)) {
       setEmailGate(null);
       setRateLimited(false);
+      setRateMessage('');
       return true;
     }
     if (!email || !email.includes('@')) return true;
-    const key = email.toLowerCase();
-    if (checkedEmail.current === key && emailGate) return false;
-    checkedEmail.current = key;
     try {
       const account = await checkGuestEmailAccount(email);
       const hasAccount = Boolean(account?.hasAccount);
@@ -65,6 +78,7 @@ export const GuestWhoStep = forwardRef(function GuestWhoStep({
       if (hasAccount) {
         setEmailGate(null);
         setRateLimited(false);
+        setRateMessage('');
         setProfileHint(false);
         return true;
       }
@@ -72,19 +86,33 @@ export const GuestWhoStep = forwardRef(function GuestWhoStep({
         const hint = await prefillHint(email);
         setProfileHint(Boolean(hint?.hasProfile));
       }
-      const result = await checkReturningGuest({ email, gigId: current.gigId });
-      if (result?.known) {
-        setEmailGate({ email, sameGig: result.sameGig === true });
-        setRateLimited(false);
-        setResendIn(60);
-        return false;
-      }
-      setEmailGate(null);
-      setRateLimited(false);
       return true;
+    } catch {
+      return true;
+    }
+  };
+
+  const checkReturning = async (emailValue, { force = false } = {}) => {
+    const current = draftRef.current;
+    if (editing || current.artistProfileId || current.hasAccount) return true;
+    const email = String(emailValue ?? current.email ?? '').trim();
+    if (current.emailVerified && sameEmail(current.verifiedEmail, email)) return true;
+    if (!email || !email.includes('@')) return true;
+    const key = email.toLowerCase();
+    if (!force && returnAnswers.current.has(key)) {
+      return applyReturnAnswer(email, returnAnswers.current.get(key));
+    }
+    try {
+      const result = await checkReturningGuest({ email, gigId: current.gigId });
+      const answer = { known: result?.known === true, sameGig: result?.sameGig === true };
+      returnAnswers.current.set(key, answer);
+      return applyReturnAnswer(email, answer);
     } catch (error) {
       setEmailGate(null);
-      if (error?.status === 429) setRateLimited(true);
+      if (error?.status === 429) {
+        setRateLimited(true);
+        setRateMessage(error.message || 'Please wait a few minutes and try again.');
+      }
       return false;
     }
   };
@@ -106,8 +134,9 @@ export const GuestWhoStep = forwardRef(function GuestWhoStep({
           setPhoneMatch(false);
         }
       }
-      if (rateLimited) checkedEmail.current = '';
-      return checkEmail(current.email);
+      const accountOk = await checkAccount(current.email);
+      if (!accountOk || draftRef.current.hasAccount) return accountOk;
+      return checkReturning(current.email);
     },
   }));
 
@@ -116,7 +145,7 @@ export const GuestWhoStep = forwardRef(function GuestWhoStep({
     const email = String(draft.email || '').trim();
     if (!inviteNote || !email) return;
     inviteChecked.current = true;
-    checkEmail(email);
+    checkAccount(email);
   }, [draft.email, draft.emailVerified, draft.artistProfileId, inviteNote, editing]);
 
   const checkPhone = async (phoneValue) => {
@@ -135,14 +164,14 @@ export const GuestWhoStep = forwardRef(function GuestWhoStep({
   const clearEmail = () => {
     setEmailGate(null);
     setRateLimited(false);
-    checkedEmail.current = '';
+    setRateMessage('');
     patch({ email: '', emailVerified: false, verifiedEmail: '', returnToken: '', priorManageToken: '' });
   };
 
   const resend = async () => {
     if (resendIn > 0 || !emailGate) return;
-    checkedEmail.current = '';
-    await checkEmail(emailGate.email);
+    returnAnswers.current.delete(String(emailGate.email || '').toLowerCase());
+    await checkReturning(emailGate.email, { force: true });
   };
 
   if (emailGate) {
@@ -198,9 +227,9 @@ export const GuestWhoStep = forwardRef(function GuestWhoStep({
               setAsGuest(false);
               setEmailGate(null);
               setRateLimited(false);
-              checkedEmail.current = '';
+              setRateMessage('');
             }}
-            onBlur={(event) => checkEmail(event.target.value)}
+            onBlur={(event) => checkAccount(event.target.value)}
           />
         </label>
         <label>
@@ -215,7 +244,7 @@ export const GuestWhoStep = forwardRef(function GuestWhoStep({
         </label>
         <label><span>Instagram</span><input value={draft.instagram} placeholder="@name" onChange={(event) => patch({ instagram: event.target.value })} /></label>
       </div>
-      {rateLimited && <p className="ga-error">Please wait a few minutes and try again.</p>}
+      {rateLimited && <p className="ga-error">{rateMessage || 'Please wait a few minutes and try again.'}</p>}
       {draft.hasAccount && !asGuest && (
         <aside className="ga-account-card">
           <p className="ga-mono">YOU&apos;RE ALREADY ON GIGIN</p>

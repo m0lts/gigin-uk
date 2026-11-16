@@ -10,8 +10,14 @@ import { loadGuestPrivates, loadPrivateApplications } from "./gigPrivacy.js";
 import { loadNightSlots } from "./nightApplicationOps.js";
 
 const HOUR_MS = 60 * 60 * 1000;
-const returnIpLimit = createWindowLimiter({ max: 20, windowMs: HOUR_MS });
-const returnEmailLimit = createWindowLimiter({ max: 3, windowMs: HOUR_MS });
+const returnPairLimit = createWindowLimiter({ max: 10, windowMs: HOUR_MS });
+
+export function returnWaitMessage(retryAfterMs) {
+  const minutes = Math.max(1, Math.ceil(Number(retryAfterMs || 0) / 60000));
+  if (minutes >= 60) return "Please wait 1 hour and try again.";
+  if (minutes === 1) return "Please wait 1 minute and try again.";
+  return `Please wait ${minutes} minutes and try again.`;
+}
 const LIVE = new Set(["pending", "sent", "accepted", "confirmed", "paid"]);
 
 export function hashToken(token) {
@@ -197,15 +203,16 @@ export async function lookupGuest({ gigId, email, phone }) {
 }
 
 /**
- * @returns {{limited:true}|{known:false}|{known:true,sameGig:boolean}}
+ * @returns {{limited:true,retryAfterMs:number}|{known:false}|{known:true,sameGig:boolean}}
  */
 export async function checkReturningGuest({ email, gigId, ip, now = Date.now() }) {
   const normalised = emailNorm(email);
   const id = String(gigId || "");
   if (!normalised || !id) return { known: false };
   const ipKey = String(ip || "unknown");
-  if (!returnIpLimit.allow(ipKey, now) || !returnEmailLimit.allow(normalised, now)) {
-    return { limited: true };
+  const decision = returnPairLimit.decide(`${normalised}|${ipKey}`, now);
+  if (!decision.allowed) {
+    return { limited: true, retryAfterMs: decision.retryAfterMs };
   }
   const night = await nightContext(id);
   if (!night) return { known: false };
@@ -275,7 +282,7 @@ export function returnCheckHttp(result) {
   if (result?.limited) {
     return {
       status: 429,
-      body: { error: "Too many attempts. Please wait a few minutes and try again." },
+      body: { error: returnWaitMessage(result.retryAfterMs) },
     };
   }
   if (!result?.known) return { status: 200, body: { known: false } };

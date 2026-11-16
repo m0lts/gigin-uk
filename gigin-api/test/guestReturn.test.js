@@ -103,46 +103,44 @@ describe("returning guest", { concurrency: 1 }, () => {
     assert.equal(again, null);
   });
 
-  test("a shared network can check 20 times an hour, and the 21st is a 429 with no known field", async () => {
-    for (let index = 0; index < 20; index += 1) {
-      const result = await checkReturningGuest({
-        email: `shared-${index}@guest.test`,
-        gigId: "gig-new",
-        ip: "college-wifi",
-      });
+  test("four checks of one new email still succeed, so a second application is not blocked", async () => {
+    const email = "second-gig@guest.test";
+    const ip = "ip-second-gig";
+    for (let index = 0; index < 4; index += 1) {
+      const result = await checkReturningGuest({ email, gigId: "gig-new", ip });
       assert.deepEqual(result, { known: false });
     }
-    const blocked = await checkReturningGuest({
-      email: "shared-last@guest.test",
-      gigId: "gig-new",
-      ip: "college-wifi",
-    });
-    assert.deepEqual(blocked, { limited: true });
-    const http = returnCheckHttp(blocked);
-    assert.equal(http.status, 429);
-    assert.equal(Object.hasOwn(http.body, "known"), false);
-    assert.equal(mailsTo("shared-last@guest.test").length, 0);
+    assert.equal(mailsTo(email).length, 0);
   });
 
-  test("the same email can be checked 3 times an hour and then gets a 429", async () => {
+  test("one email on one network can be checked 10 times an hour, and the 11th says how long to wait", async () => {
+    const email = "limit@guest.test";
     const ip = "ip-email-limit";
-    for (let index = 0; index < 3; index += 1) {
-      const result = await checkReturningGuest({
-        email: "limit@guest.test",
-        gigId: "gig-new",
-        ip,
-      });
+    const start = 1_700_000_000_000;
+    for (let index = 0; index < 10; index += 1) {
+      const result = await checkReturningGuest({ email, gigId: "gig-new", ip, now: start });
       assert.equal(result.known, true);
       assert.equal(result.sameGig, false);
     }
-    const blocked = await checkReturningGuest({
-      email: "limit@guest.test",
+    const otherEmail = await checkReturningGuest({
+      email: "someone-else@guest.test",
       gigId: "gig-new",
       ip,
+      now: start,
     });
-    assert.deepEqual(blocked, { limited: true });
-    assert.equal(Object.hasOwn(returnCheckHttp(blocked).body, "known"), false);
-    assert.equal(mailsTo("limit@guest.test").length, 3);
+    assert.deepEqual(otherEmail, { known: false });
+    const blocked = await checkReturningGuest({
+      email,
+      gigId: "gig-new",
+      ip,
+      now: start + 30 * 60 * 1000,
+    });
+    assert.equal(blocked.limited, true);
+    const http = returnCheckHttp(blocked);
+    assert.equal(http.status, 429);
+    assert.equal(http.body.error, "Please wait 30 minutes and try again.");
+    assert.equal(Object.hasOwn(http.body, "known"), false);
+    assert.equal(mailsTo(email).length, 10);
   });
 
   test("the same gig sends the existing private link and does not open a second application", async () => {

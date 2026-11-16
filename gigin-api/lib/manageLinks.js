@@ -2,18 +2,22 @@ const WINDOW_MS = 60 * 60 * 1000;
 
 export function createWindowLimiter({ max, windowMs = WINDOW_MS } = {}) {
   const hits = new Map();
+  const decide = (key, now = Date.now()) => {
+    if (!key) return { allowed: false, retryAfterMs: windowMs };
+    const recent = (hits.get(key) || []).filter((at) => now - at < windowMs);
+    if (recent.length >= max) {
+      hits.set(key, recent);
+      return { allowed: false, retryAfterMs: Math.max(1000, windowMs - (now - recent[0])) };
+    }
+    recent.push(now);
+    hits.set(key, recent);
+    return { allowed: true, retryAfterMs: 0 };
+  };
   return {
     allow(key, now = Date.now()) {
-      if (!key) return false;
-      const recent = (hits.get(key) || []).filter((at) => now - at < windowMs);
-      if (recent.length >= max) {
-        hits.set(key, recent);
-        return false;
-      }
-      recent.push(now);
-      hits.set(key, recent);
-      return true;
+      return decide(key, now).allowed;
     },
+    decide,
   };
 }
 
