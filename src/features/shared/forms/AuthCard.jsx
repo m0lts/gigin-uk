@@ -5,7 +5,7 @@ export function AuthCard({ title, lede, onClose, closable = true, icon, children
       {closable ? (
         <button type="button" className="auth-card__close" aria-label="Close" onClick={onClose}>×</button>
       ) : null}
-      {icon ? <div className={`auth-card__icon${icon === 'good' ? ' is-good' : ''}${icon === 'error' ? ' is-error' : ''}`} aria-hidden="true">{icon === 'good' ? '✓' : icon === 'error' ? '⏱' : '✉'}</div> : null}
+      {icon ? <div className={`auth-card__icon${icon === 'good' ? ' is-good' : ''}${icon === 'error' ? ' is-error' : ''}`} aria-hidden="true">{icon === 'good' ? '✓' : icon === 'error' ? '⏱' : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M4 7l8 6 8-6" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>}</div> : null}
       {title ? <h1>{title}</h1> : null}
       {lede ? <p className="auth-card__lede">{lede}</p> : null}
       {children}
