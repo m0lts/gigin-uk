@@ -542,7 +542,7 @@ router.post("/deleteVenueData", requireAuth, asyncHandler(async (req, res) => {
   return res.json({ data: { success: true, venueId } });
 }));
 
-/** Venue owner or active member may manage gig templates for that venue. */
+/** Venue owner or active member may read gig templates for that venue. */
 async function assertVenueGigTemplateAccess(uid, venueId) {
   const venueRef = db.doc(`venueProfiles/${venueId}`);
   const venueSnap = await venueRef.get();
@@ -561,9 +561,24 @@ async function assertVenueGigTemplateAccess(uid, venueId) {
     status: 403,
     body: {
       error: "FORBIDDEN",
-      message: "Only the venue owner or an active member can manage templates",
+      message: "Only the venue owner or an active member can read templates",
     },
   };
+}
+
+async function assertGigTemplateWrite(uid, venueId) {
+  try {
+    await assertVenuePerm(db, uid, venueId, "gigs.update");
+    return { ok: true };
+  } catch (err) {
+    if (err?.code === "not-found") {
+      return { ok: false, status: 404, body: { error: "NOT_FOUND", message: "Venue not found" } };
+    }
+    if (err?.code === "permission-denied") {
+      return { ok: false, status: 403, body: { error: "FORBIDDEN", message: "gigs.update required" } };
+    }
+    throw err;
+  }
 }
 
 function normalizeTemplateName(s) {
@@ -611,7 +626,7 @@ router.post("/saveGigTemplate", requireAuth, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "venueId is required" });
   }
 
-  const perm = await assertVenueGigTemplateAccess(uid, venueId);
+  const perm = await assertGigTemplateWrite(uid, venueId);
   if (!perm.ok) return res.status(perm.status).json(perm.body);
 
   const templateId = payload.templateId;
@@ -694,7 +709,7 @@ router.post("/deleteGigTemplate", requireAuth, asyncHandler(async (req, res) => 
   if (!venueId) {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Invalid template" });
   }
-  const perm = await assertVenueGigTemplateAccess(uid, venueId);
+  const perm = await assertGigTemplateWrite(uid, venueId);
   if (!perm.ok) return res.status(perm.status).json(perm.body);
   await ref.delete();
   return res.json({ data: { success: true } });
@@ -720,7 +735,7 @@ router.post("/renameGigTemplate", requireAuth, asyncHandler(async (req, res) => 
   if (!venueId) {
     return res.status(400).json({ error: "INVALID_ARGUMENT", message: "Invalid template" });
   }
-  const perm = await assertVenueGigTemplateAccess(uid, venueId);
+  const perm = await assertGigTemplateWrite(uid, venueId);
   if (!perm.ok) return res.status(perm.status).json(perm.body);
 
   const newNorm = normalizeTemplateName(nameTrimmed);

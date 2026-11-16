@@ -88,9 +88,8 @@ service cloud.firestore {
         
       allow update: if request.auth != null
         && (
-          resource.data.createdBy == request.auth.uid ||
-          // member doc exists under this venue with id == user uid
-          exists(/databases/$(database)/documents/venueProfiles/$(venueId)/members/$(request.auth.uid))
+          resource.data.createdBy == request.auth.uid
+          || venueMemberHas(venueId, "venue.update")
         )
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'approvalStatus',
@@ -631,6 +630,14 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/venueProfiles/$(venueId)/members/$(request.auth.uid));
     }
 
+    function venueMemberHas(venueId, perm) {
+      let memberPath = /databases/$(database)/documents/venueProfiles/$(venueId)/members/$(request.auth.uid);
+      return isAuthed()
+        && exists(memberPath)
+        && get(memberPath).data.status == "active"
+        && get(memberPath).data.permissions[perm] == true;
+    }
+
     function isVenueActor(venueId) {
       return isVenueOwner(venueId) || isActiveVenueMember(venueId);
     }
@@ -657,18 +664,24 @@ service cloud.firestore {
         || isVenueActor(resource.data.venueId)
       );
 
-      // CREATE: only an approved venue's owner or active member; no sensitive fields allowed at create
+      // CREATE: approved venue owner, or an active member with gigs.create.
+      // A view-only member has neither, so they cannot write a gig.
       allow create: if isAuthed()
         && request.resource.data.venueId is string
-        && isVenueActor(request.resource.data.venueId)
+        && (
+          isVenueOwner(request.resource.data.venueId)
+          || venueMemberHas(request.resource.data.venueId, "gigs.create")
+        )
         && venueIdIsApproved(request.resource.data.venueId)
         && !request.resource.data.keys().hasAny(sensitiveGigFields());
 
-      // UPDATE: only an approved venue's owner or active member
-      // - may NOT change venueId
-      // - may NOT touch sensitive fields
+      // UPDATE: owner, or an active member with gigs.update.
+      // Applicants, fees and promo media stay off this path (sensitive fields, or the API).
       allow update: if isAuthed()
-        && isVenueActor(resource.data.venueId)
+        && (
+          isVenueOwner(resource.data.venueId)
+          || venueMemberHas(resource.data.venueId, "gigs.update")
+        )
         && venueIdIsApproved(resource.data.venueId)
         && !(request.resource.data
               .diff(resource.data)

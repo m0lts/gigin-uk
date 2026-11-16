@@ -28,6 +28,21 @@ service firebase.storage {
         );
     }
 
+    function canUpdateVenue(venueId) {
+      let member = /databases/(default)/documents/venueProfiles/$(venueId)/members/$(request.auth.uid);
+      return signedIn()
+        && firestore.exists(venueDoc(venueId))
+        && (
+          firestore.get(venueDoc(venueId)).data.createdBy == request.auth.uid
+          || firestore.get(venueDoc(venueId)).data.userId == request.auth.uid
+          || (
+            firestore.exists(member)
+            && firestore.get(member).data.status == 'active'
+            && firestore.get(member).data.permissions['venue.update'] == true
+          )
+        );
+    }
+
     function artistDoc(profileId) {
       return /databases/(default)/documents/artistProfiles/$(profileId);
     }
@@ -118,20 +133,22 @@ service firebase.storage {
 
     match /venues/{venueId}/videos/{allPaths=**} {
       allow get: if true;
-      allow list, write: if isVenueStaff(venueId);
+      allow list: if isVenueStaff(venueId);
+      allow write: if canUpdateVenue(venueId);
     }
 
     match /venues/{venueId}/{fileName} {
       allow get: if true;
-      allow write: if isVenueStaff(venueId);
+      allow write: if canUpdateVenue(venueId);
     }
 
-    // Terms and house rules. Staff only. Guests open the stored download URL, which carries its own token.
+    // Terms and house rules. Staff can read. Only someone who can update the venue can write.
     match /venues/{venueId}/documents {
       allow list: if isVenueStaff(venueId);
 
       match /{allPaths=**} {
-        allow get, list, write: if isVenueStaff(venueId);
+        allow get, list: if isVenueStaff(venueId);
+        allow write: if canUpdateVenue(venueId);
       }
     }
 
