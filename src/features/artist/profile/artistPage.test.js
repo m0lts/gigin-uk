@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bookingPackLines, profilePatch, publicProfile } from './artistPage.js';
+import { bookingPackLines, pressKitUnlocked, profilePatch, publicProfile, publicTracks } from './artistPage.js';
 
 test('a public page leaves the email off and a booking pack lists recent rooms', () => {
   const profile = { name: 'Maya Reid', city: 'Cambridge', bio: 'Songs', email: 'maya@example.com', genres: ['Folk'], links: { spotify: 'https://open.spotify.com/maya' } };
@@ -11,4 +11,9 @@ test('a public page leaves the email off and a booking pack lists recent rooms',
   assert.equal(lines.includes('maya@example.com'), false);
   assert.equal(lines.some((line) => line.includes('Hot Numbers')), true);
   assert.deepEqual(profilePatch({ name: 'Maya', city: 'Cambridge', bio: 'Songs', genres: 'Folk, Jazz' }).genres, ['Folk', 'Jazz']);
+  const tracks = publicTracks({ tracks: [{ title: 'Harbour Lights', audioUrl: 'https://cdn.example/harbour.mp3' }] });
+  assert.equal(tracks[0].audioUrl.includes('harbour'), true);
+  assert.equal(pressKitUnlocked({ viewerId: 'owner', ownerId: 'owner' }), true);
+  assert.equal(pressKitUnlocked({ viewerId: 'venue-user', ownerId: 'owner', bookedVenueIds: ['v1'], viewerVenueIds: ['v1'] }), true);
+  assert.equal(pressKitUnlocked({ viewerId: 'stranger', ownerId: 'owner', bookedVenueIds: ['v1'], viewerVenueIds: ['v2'] }), false);
 });

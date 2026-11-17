@@ -7,6 +7,7 @@ import { LoadingScreen } from '../../shared/ui/loading/LoadingScreen';
 import { FEATURES } from '../../../config/features';
 import { getPublicProfile } from '@services/client-side/keepProfile';
 import { ProfileUnavailable, PublicArtistProfile } from '../../keep-profile/PublicProfile';
+import { PublicArtistPage } from '../profile/PublicPage';
 
 /**
  * Read-only viewer for an artist profile, used by venues and public viewers.
@@ -123,6 +124,10 @@ export const ArtistProfileViewer = ({ user, setAuthModal, setAuthType }) => {
 
   if (!FEATURES.publicProfile && profile?.source === 'guest_keep') {
     return <ProfileUnavailable />;
+  }
+
+  if (FEATURES.artistPage && profile && profile.source !== 'guest_keep') {
+    return <PublicArtistPage profile={profile} user={user} />;
   }
 
   if (error || !profile) {

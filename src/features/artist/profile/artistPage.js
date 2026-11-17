@@ -18,6 +18,22 @@ export function profilePatch(draft) {
   };
 }
 
+export function publicTracks(profile) {
+  return (profile?.tracks || []).map((track, index) => ({
+    id: track.id || String(index),
+    title: track.title || track.name || 'Track',
+    detail: track.artist || track.credit || '',
+    audioUrl: track.audioUrl || track.url || '',
+    length: track.duration || track.length || '',
+  })).filter((track) => track.title);
+}
+
+export function pressKitUnlocked({ viewerId, ownerId, bookedVenueIds, viewerVenueIds }) {
+  if (viewerId && ownerId && viewerId === ownerId) return true;
+  const booked = new Set(bookedVenueIds || []);
+  return (viewerVenueIds || []).some((id) => id && booked.has(id));
+}
+
 export function bookingPackLines(profile, gigs) {
   const page = publicProfile(profile) || { name: '', city: '', bio: '', genres: [], link: '' };
   const lines = [
