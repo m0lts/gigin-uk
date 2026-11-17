@@ -77,6 +77,26 @@ export function promoUpdatedEmail({ actName, gigName, when, done, total, photos,
 }
 
 const PROMO_UPDATE_GAP_MS = 60 * 60 * 1000;
+const BOOKED_FOR_PROMO = new Set(["accepted", "confirmed", "paid"]);
+
+/** How many booked acts have sent promo. Sets on the night are not counted. */
+export function promoProgress({ applications, applicantId, promo }) {
+  const seen = new Set();
+  let total = 0;
+  let done = 0;
+  const currentId = applicantId == null ? "" : String(applicantId);
+  for (const act of Array.isArray(applications) ? applications : []) {
+    const id = act?.id == null ? "" : String(act.id);
+    if (id && seen.has(id)) continue;
+    if (id) seen.add(id);
+    if (!BOOKED_FOR_PROMO.has(String(act?.status || "").toLowerCase())) continue;
+    total += 1;
+    const saved = id && id === currentId ? (promo || act?.promo) : act?.promo;
+    if (saved?.submittedAt) done += 1;
+  }
+  if (!total && promo?.submittedAt) return { done: 1, total: 1 };
+  return { done, total: Math.max(total, 1) };
+}
 
 export function promoNotifyPlan({ alreadySubmitted, lastUpdatedAt, now = Date.now() }) {
   if (!alreadySubmitted) return "received";

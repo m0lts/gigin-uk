@@ -5,6 +5,7 @@ import {
   bookingEnquiryEmail,
   photosReadyEmail,
   promoNotifyPlan,
+  promoProgress,
   promoReceivedEmail,
   promoRequestEmail,
   promoUpdatedEmail,
@@ -75,4 +76,35 @@ test("a promo edit emails the venue at most once an hour", () => {
   assert.equal(promoNotifyPlan({ alreadySubmitted: true, lastUpdatedAt: "2026-11-17T08:30:00Z", now }), "skip");
   assert.equal(promoNotifyPlan({ alreadySubmitted: true, lastUpdatedAt: "2026-11-17T07:00:00Z", now }), "updated");
   assert.equal(promoUpdatedEmail({ actName: "Maya Reid", gigName: "Discovery Sessions", when: "Thu 10 Dec", done: 1, total: 2 }).subject, "Maya Reid updated their promo");
+});
+
+test("the promo email counts booked acts who have sent promo", () => {
+  const applications = [
+    { id: "maya", status: "accepted" },
+    { id: "fen", status: "confirmed", promo: { submittedAt: "2026-11-16T12:00:00Z" } },
+    { id: "maya", status: "accepted", promo: { submittedAt: "should-not-double-count" } },
+    { id: "waiting", status: "pending", promo: { submittedAt: "2026-11-16T12:00:00Z" } },
+  ];
+  assert.deepEqual(promoProgress({
+    applications,
+    applicantId: "maya",
+    promo: { submittedAt: "2026-11-17T09:00:00Z" },
+  }), { done: 2, total: 2 });
+  assert.deepEqual(promoProgress({
+    applications,
+    applicantId: "fen",
+    promo: { submittedAt: "2026-11-17T09:00:00Z" },
+  }), { done: 1, total: 2 });
+  const line = promoReceivedEmail({
+    actName: "Maya Reid",
+    gigName: "Discovery Sessions",
+    when: "Thu 10 Dec",
+    ...promoProgress({
+      applications,
+      applicantId: "fen",
+      promo: { submittedAt: "2026-11-17T09:00:00Z" },
+    }),
+  });
+  assert.equal(line.text.includes("1 of 2"), true);
+  assert.equal(line.text.includes("1 of 3"), false);
 });

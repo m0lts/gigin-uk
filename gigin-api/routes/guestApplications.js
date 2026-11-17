@@ -31,7 +31,7 @@ import { dismissKeepOffer, keepProfileForGuest, noteProfileApplication } from ".
 import { assertVenueCanOperate } from "../lib/venueApproval.js";
 import { ownerName } from "../lib/ownerName.js";
 import { formatPromoDay, lineupRows, preparePromo, promoDueKey, promoEditable, soundRequest } from "../lib/promo.js";
-import { promoNotifyPlan, promoReceivedEmail, promoUpdatedEmail } from "../lib/extraEmails.js";
+import { promoNotifyPlan, promoProgress, promoReceivedEmail, promoUpdatedEmail } from "../lib/extraEmails.js";
 import {
   acceptPromoPhotos,
   acceptPromoTrack,
@@ -998,14 +998,18 @@ async function emailVenueAboutPromo({ found, current, promo, permission, kind })
   }
   if (!String(to).includes("@")) return;
   const gig = found.gig?.data || {};
-  const slots = Array.isArray(found.night?.slots) ? found.night.slots.length : 1;
+  const progress = promoProgress({
+    applications: found.night?.applications,
+    applicantId: current.id,
+    promo,
+  });
   const build = kind === "updated" ? promoUpdatedEmail : promoReceivedEmail;
   const copy = build({
     actName: current.contactName || current.name || "An act",
     gigName: gig.gigName || gig.eventName || "the gig",
     when: gig.startTime || "the night",
-    done: 1,
-    total: Math.max(slots, 1),
+    done: progress.done,
+    total: progress.total,
     photos: Array.isArray(promo?.photos) ? promo.photos.length : 0,
     tracks: promo?.track ? 1 : 0,
     consent: Boolean(permission),
