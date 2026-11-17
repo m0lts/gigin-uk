@@ -5,7 +5,7 @@ import { loadPrivateApplications } from "./gigPrivacy.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 import { emailLinkOrigin } from "./legacyMail.js";
 import { renderArtistEmail } from "./artistEmails.js";
-import { bookingEnquiryEmail } from "./extraEmails.js";
+import { bookingEnquiryEmail, photosReadyEmail } from "./extraEmails.js";
 import { ownerName } from "./ownerName.js";
 
 export const MAIL_RECIPIENT_CAP = 5;
@@ -524,13 +524,15 @@ const handlers = {
     const gigName = plain(gig.gigName || gig.eventName || "your gig");
     const when = plain(body.when || "the night");
     const link = `${emailLinkOrigin(body.origin)}/gig/${encodeURIComponent(gig.id)}/photos`;
+    const copy = photosReadyEmail({ actName: "there", venueName, gigName, when });
     const message = letter({
-      subject: `Photos from ${gigName}`,
-      text: `${venueName} has shared photos from ${when}. Download what you like and use it for your own promo.`,
-      html: `${escapeHtml(venueName)} has shared photos from ${escapeHtml(when)}. Download what you like and use it for your own promo.`,
+      subject: copy.subject,
+      text: copy.text,
+      html: escapeHtml(copy.text),
       link,
-      linkLabel: "View and download",
+      linkLabel: copy.button,
     });
+    message.text = `${copy.text}\n${link}`;
     return queueTo(applicants.map((applicant) => applicant.email).filter(Boolean), message);
   },
   "booking-enquiry": async (uid, body) => {
