@@ -10,6 +10,8 @@ import '@assets/fonts/fonts.css'
 import '@styles/shared/buttons.styles.css'
 import { LandingPage } from '@features/landing-page/LandingPage';
 import { VenueLandingPage } from '@features/landing-page/VenueLandingPage';
+import { MainLanding } from '@features/landing-page/MainLanding';
+import { ArtistLanding } from '@features/landing-page/ArtistLanding';
 import { useEffect, useState, useRef } from 'react';
 import { MainLayout } from '@layouts/MainLayout';
 import { NoHeaderFooterLayout } from '@layouts/NoHeaderFooterLayout';
@@ -180,7 +182,8 @@ export default function App() {
         {/* MUSICIAN ROUTES */}
         <Route path='/'>
           {/* <Route index element={<MainLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} logout={logout} setNoProfileModal={setNoProfileModal} noProfileModal={noProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  ><LandingPage setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} /></MainLayout>} /> */}
-          <Route index element={FEATURES.marketingPages ? <LandingPage setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} setInitialEmail={setInitialEmail} /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
+          <Route index element={FEATURES.landing ? <MainLanding setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} /> : FEATURES.marketingPages ? <LandingPage setAuthModal={setAuthModal} authType={authType} setAuthType={setAuthType} authClosable={authClosable} setAuthClosable={setAuthClosable} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable} setInitialEmail={setInitialEmail} /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
+          <Route path='for-musicians' element={FEATURES.landing ? <ArtistLanding setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} /> : <Navigate to="/" replace />} />
           <Route path='artist-profile/:profileId?/*' element={<Navigate to={artistDestination(user, FEATURES)} replace />} />
           <Route path='dashboard/*' element={<Navigate to={artistDestination(user, FEATURES)} replace />} />
           <Route path='artist/:artistId' element={<ArtistProfileViewer user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />

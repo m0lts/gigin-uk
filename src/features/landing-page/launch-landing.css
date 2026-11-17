@@ -1,0 +1,58 @@
+.ll {
+  min-height: 100vh;
+  background: linear-gradient(160deg, #E2E8F0 0%, #ECEFF4 35%, #F6F7F9 70%, #F6F7F9 100%);
+  color: #0F1115;
+  font-family: Geist, ui-sans-serif, system-ui, sans-serif;
+}
+
+.ll h1, .ll h2, .ll h3 { font-family: var(--gn-heading-font, Newsreader, Georgia, serif); font-weight: 300; letter-spacing: -0.03em; }
+.ll a { color: inherit; }
+.ll__wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+.ll__hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; padding: 72px 0 40px; }
+.ll__hero h1 { font-size: clamp(48px, 6vw, 76px); line-height: 0.95; margin: 0 0 16px; }
+.ll__hero p { color: #4B5160; font-size: 18px; max-width: 420px; }
+.ll__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+.ll__btn { display: inline-flex; align-items: center; justify-content: center; height: 48px; padding: 0 18px; border-radius: 999px; border: 1px solid #E5E7EB; background: #fff; color: #0F1115; font: inherit; cursor: pointer; text-decoration: none; }
+.ll__btn--dark { background: #111317; color: #fff; border-color: #111317; }
+.ll__stage { background: #fff; border-radius: 28px; min-height: 320px; padding: 28px; box-shadow: 0 1px 2px rgba(20, 25, 22, 0.04); display: grid; gap: 16px; }
+.ll__gig, .ll__act { background: #fff; border: 1px solid #E5E7EB; border-radius: 18px; padding: 16px; }
+.ll__gig { justify-self: end; width: min(280px, 100%); }
+.ll__act { width: min(320px, 100%); }
+.ll__kicker { color: #5B606B; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+.ll__pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0 64px; }
+.ll__card { background: #fff; border-radius: 24px; padding: 28px; box-shadow: 0 1px 2px rgba(20, 25, 22, 0.04); }
+.ll__card--dark { background: #111317; color: #fff; }
+.ll__card ol { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+.ll__card li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; }
+.ll__card li span { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; background: #F0F2F5; }
+.ll__card--dark li span { background: #2A2D33; }
+.ll__card h2 { font-size: 36px; margin: 8px 0; }
+.ll__close { padding: 72px 0 96px; text-align: center; }
+.ll__close h2 { font-size: 56px; margin: 0 0 8px; }
+.ll__foot { display: flex; justify-content: space-between; gap: 16px; padding: 28px 0 40px; color: #5B606B; }
+.ll__word { font-weight: 600; color: #0F1115; }
+.ll__word i { color: #FF6C4B; font-style: normal; }
+
+.ll-artist { display: grid; grid-template-columns: 220px 1fr; gap: 28px; width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding-bottom: 40px; }
+.ll-ticker { position: sticky; top: 24px; align-self: start; display: grid; gap: 8px; padding-top: 88px; }
+.ll-ticker button { text-align: left; background: transparent; border: 0; color: #5B606B; font: inherit; cursor: pointer; padding: 6px 0; }
+.ll-ticker button.is-on { color: #0F1115; }
+.ll-journey { display: grid; gap: 28px; padding-top: 28px; }
+.ll-block { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; background: #fff; border-radius: 24px; padding: 28px; box-shadow: 0 1px 2px rgba(20, 25, 22, 0.04); }
+.ll-block h2 { font-size: 40px; margin: 8px 0; }
+.ll-mock { background: linear-gradient(180deg, #F0F2F5, #fff); border-radius: 28px; min-height: 220px; padding: 20px; }
+.ll-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.ll-steps article { background: #F6F7F9; border-radius: 18px; padding: 16px; }
+.ll-faq { display: grid; gap: 10px; }
+.ll-faq details { background: #fff; border-radius: 16px; padding: 14px 16px; }
+.ll-cta { background: #111317; color: #fff; border-radius: 28px; text-align: center; padding: 48px 20px; }
+.ll-cta h2 { font-size: 48px; margin: 0 0 16px; }
+.ll-pop { position: fixed; inset: 0; background: rgba(15, 17, 21, 0.45); display: grid; place-items: center; z-index: 30; padding: 24px; }
+.ll-pop__card { width: min(520px, 100%); background: #fff; border-radius: 28px; padding: 24px; }
+.ll-pop__card header { display: flex; justify-content: space-between; align-items: center; }
+
+@media (max-width: 860px) {
+  .ll__hero, .ll__pair, .ll-artist, .ll-block, .ll-steps { grid-template-columns: 1fr; }
+  .ll-ticker { position: static; padding-top: 12px; }
+  .ll__hero h1, .ll__close h2 { font-size: 42px; }
+}

@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
+import { FEATURES } from '../../../config/features';
 import { AccountChip, SignedInHomeButton } from './AccountChip';
 import '@assets/styles/shared/launch-header.css';
 
@@ -17,8 +18,8 @@ export function LaunchHeader({ setAuthModal, setAuthType, setAuthClosable }) {
     <header className="launch-header">
       <Link to="/" className="launch-header__mark" aria-label="Gigin">gigin<b>.</b></Link>
       <nav className="launch-header__nav" aria-label="Site">
-        <a href={onHome ? '#how' : '/#how'}>For venues</a>
-        <a href={onHome ? '#artists' : '/#artists'}>For musicians</a>
+        <a href={FEATURES.landing ? '/venues' : (onHome ? '#how' : '/#how')}>For venues</a>
+        {FEATURES.landing ? <Link to="/for-musicians">For musicians</Link> : <a href={onHome ? '#artists' : '/#artists'}>For musicians</a>}
         {user ? (
           <>
             <AccountChip user={user} logout={logout} />
