@@ -31,7 +31,7 @@ import { dismissKeepOffer, keepProfileForGuest, noteProfileApplication } from ".
 import { assertVenueCanOperate } from "../lib/venueApproval.js";
 import { ownerName } from "../lib/ownerName.js";
 import { formatPromoDay, lineupRows, preparePromo, promoDueKey, promoEditable, soundRequest } from "../lib/promo.js";
-import { promoReceivedEmail } from "../lib/extraEmails.js";
+import { promoNotifyPlan, promoReceivedEmail, promoUpdatedEmail } from "../lib/extraEmails.js";
 import {
   acceptPromoPhotos,
   acceptPromoTrack,
@@ -983,7 +983,7 @@ router.post("/:token/seen", asyncHandler(async (req, res) => {
   return res.json({ ok: true });
 }));
 
-async function emailVenueAboutPromo({ found, current, promo, permission }) {
+async function emailVenueAboutPromo({ found, current, promo, permission, kind }) {
   const venueId = found.gig?.data?.venueId;
   if (!venueId) return;
   const venueSnap = await db.doc(`venueProfiles/${venueId}`).get();
@@ -999,7 +999,8 @@ async function emailVenueAboutPromo({ found, current, promo, permission }) {
   if (!String(to).includes("@")) return;
   const gig = found.gig?.data || {};
   const slots = Array.isArray(found.night?.slots) ? found.night.slots.length : 1;
-  const copy = promoReceivedEmail({
+  const build = kind === "updated" ? promoUpdatedEmail : promoReceivedEmail;
+  const copy = build({
     actName: current.contactName || current.name || "An act",
     gigName: gig.gigName || gig.eventName || "the gig",
     when: gig.startTime || "the night",
@@ -1058,16 +1059,23 @@ router.post("/:token/promo", asyncHandler(async (req, res) => {
   const sound = Object.prototype.hasOwnProperty.call(req.body || {}, "soundNote")
     ? { soundNote: soundRequest(req.body.soundNote) }
     : {};
+  const plan = promoNotifyPlan({
+    alreadySubmitted: Boolean(current.promo?.submittedAt),
+    lastUpdatedAt: current.promoUpdatedNotifiedAt,
+  });
   await db.doc(`gigs/${rootId}/guestApplicants/${current.id}`).set({
     promo,
     promoPermission: prepared.permission,
     ...lineup,
     ...sound,
+    ...(plan === "updated" ? { promoUpdatedNotifiedAt: new Date().toISOString() } : {}),
   }, { merge: true });
-  try {
-    await emailVenueAboutPromo({ found, current, promo, permission: prepared.permission });
-  } catch (error) {
-    console.error("promo received email failed", error);
+  if (plan !== "skip") {
+    try {
+      await emailVenueAboutPromo({ found, current, promo, permission: prepared.permission, kind: plan });
+    } catch (error) {
+      console.error("promo received email failed", error);
+    }
   }
   const fresh = await findByToken(req.body?.gigId || req.query.gigId, req.params.token);
   return res.json(await presentApplication(fresh?.applicant || { ...current, promo, promoPermission: prepared.permission }, found.gig.data, fresh?.night || found.night, req));

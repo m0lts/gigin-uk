@@ -4,8 +4,10 @@ import {
   acceptedPromoEmail,
   bookingEnquiryEmail,
   photosReadyEmail,
+  promoNotifyPlan,
   promoReceivedEmail,
   promoRequestEmail,
+  promoUpdatedEmail,
 } from "../lib/extraEmails.js";
 
 test("the five extra emails name the night and the next step", () => {
@@ -65,4 +67,12 @@ test("the five extra emails name the night and the next step", () => {
   assert.equal(received.subject, "Maya Reid sent their promo");
   assert.equal(received.text.includes("1 of 2"), true);
   assert.equal(received.text.includes("Consent: Given"), true);
+});
+
+test("a promo edit emails the venue at most once an hour", () => {
+  const now = Date.parse("2026-11-17T09:00:00Z");
+  assert.equal(promoNotifyPlan({ alreadySubmitted: false, now }), "received");
+  assert.equal(promoNotifyPlan({ alreadySubmitted: true, lastUpdatedAt: "2026-11-17T08:30:00Z", now }), "skip");
+  assert.equal(promoNotifyPlan({ alreadySubmitted: true, lastUpdatedAt: "2026-11-17T07:00:00Z", now }), "updated");
+  assert.equal(promoUpdatedEmail({ actName: "Maya Reid", gigName: "Discovery Sessions", when: "Thu 10 Dec", done: 1, total: 2 }).subject, "Maya Reid updated their promo");
 });

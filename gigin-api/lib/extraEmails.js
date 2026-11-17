@@ -67,3 +67,20 @@ export function promoReceivedEmail({ actName, gigName, when, done, total, photos
     button: "Open the gig",
   };
 }
+
+export function promoUpdatedEmail({ actName, gigName, when, done, total, photos, tracks, consent }) {
+  const received = promoReceivedEmail({ actName, gigName, when, done, total, photos, tracks, consent });
+  return {
+    ...received,
+    subject: `${actName} updated their promo`,
+  };
+}
+
+const PROMO_UPDATE_GAP_MS = 60 * 60 * 1000;
+
+export function promoNotifyPlan({ alreadySubmitted, lastUpdatedAt, now = Date.now() }) {
+  if (!alreadySubmitted) return "received";
+  const last = Date.parse(lastUpdatedAt || "");
+  if (!Number.isFinite(last) || now - last >= PROMO_UPDATE_GAP_MS) return "updated";
+  return "skip";
+}
