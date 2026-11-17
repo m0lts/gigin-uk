@@ -5,6 +5,7 @@ import { loadPrivateApplications } from "./gigPrivacy.js";
 import { assertVenuePerm } from "../utils/permissions.js";
 import { emailLinkOrigin } from "./legacyMail.js";
 import { renderArtistEmail } from "./artistEmails.js";
+import { bookingEnquiryEmail } from "./extraEmails.js";
 import { ownerName } from "./ownerName.js";
 
 export const MAIL_RECIPIENT_CAP = 5;
@@ -531,6 +532,38 @@ const handlers = {
       linkLabel: "View and download",
     });
     return queueTo(applicants.map((applicant) => applicant.email).filter(Boolean), message);
+  },
+  "booking-enquiry": async (uid, body) => {
+    const profileId = requireId(body.profileId, "profileId");
+    const snap = await db.doc(`artistProfiles/${profileId}`).get();
+    if (!snap.exists) throw fail(404, "Artist not found");
+    const profile = snap.data() || {};
+    const to = normalizeEmail(profile.email || profile.contactEmail);
+    if (!to) throw fail(400, "This artist has no email on their page.");
+    const copy = bookingEnquiryEmail({
+      venueName: plain(body.venueName || "A venue", 80),
+      bookerName: plain(body.bookerName || "", 80),
+      when: plain(body.when || "Not given", 40),
+      fee: plain(body.fee || "", 40),
+      message: plain(body.message || "", 500),
+      onGigin: true,
+    });
+    await db.collection(`artistProfiles/${profileId}/enquiries`).add({
+      fromUid: uid,
+      venueName: plain(body.venueName || "", 80),
+      bookerName: plain(body.bookerName || "", 80),
+      when: plain(body.when || "", 40),
+      fee: plain(body.fee || "", 40),
+      message: plain(body.message || "", 500),
+      createdAt: new Date().toISOString(),
+    });
+    return queueTo([to], letter({
+      subject: copy.subject,
+      text: copy.text,
+      html: escapeHtml(copy.text).replaceAll("\n", "<br>"),
+      link: `${emailLinkOrigin(body.origin)}/home`,
+      linkLabel: copy.button,
+    }));
   },
 };
 
