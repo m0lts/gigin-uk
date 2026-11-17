@@ -23,6 +23,8 @@ import { VenueDashboard } from '@features/venue/dashboard/Dashboard';
 import { GigPage } from '@features/gig-discovery/GigPage';
 import { ArtistPhotosPage } from '@features/venue/photos/ArtistPhotosPage';
 import { ClipPage, PrivateOfferPage } from '@features/artist/night/NightScreens';
+import { ArtistJoin } from '@features/artist/home/JoinWizard';
+import { ArtistDashboard, ArtistSection, ArtistShell } from '@features/artist/home/ArtistShell';
 import { GigMediaSharePage } from '@features/gig-discovery/GigMediaSharePage';
 import { AuthActionPage, EmailLinkPage, ResetPasswordPage } from '@features/auth/AuthPages';
 import { ManageGuestApplication } from '@features/gig-discovery/guest/ManageGuestApplication';
@@ -203,7 +205,20 @@ export default function App() {
         <Route path='/join-artist' element={<Navigate to={artistDestination(user, FEATURES)} replace />} />
         <Route path='/terms-and-conditions' element={<TermsAndConditions />} />
         <Route path='/privacy-policy' element={<PrivacyPolicy />} />
-        <Route path='/home' element={FEATURES.keepProfile ? <ArtistHome user={user} logout={logout} /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
+        <Route path='/home' element={FEATURES.artistHome ? <ArtistShell /> : FEATURES.keepProfile ? <ArtistHome user={user} logout={logout} /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />}>
+          {FEATURES.artistHome ? (
+            <>
+              <Route index element={<ArtistDashboard />} />
+              <Route path='gigs' element={<ArtistSection title="Gigs" />} />
+              <Route path='invoices' element={<ArtistSection title="Invoices" />} />
+              <Route path='profile' element={<ArtistSection title="Profile" />} />
+              <Route path='pitches' element={<ArtistSection title="Pitches" />} />
+              <Route path='contacts' element={<ArtistSection title="Contacts" />} />
+              <Route path='map' element={<ArtistSection title="Map" />} />
+            </>
+          ) : null}
+        </Route>
+        <Route path='/artists/join' element={FEATURES.artistHome ? <ArtistJoin user={user} /> : <Navigate to="/home" replace />} />
         <Route path='/profile/keep' element={<KeepChoicesPage />} />
         <Route path='/profile/confirm/:token' element={<ConfirmProfilePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         <Route path='/profile/edit' element={<ProfileEditorPage />} />

@@ -1,3 +1,16 @@
+.p-artist { min-height: 100vh; background: linear-gradient(160deg, #E2E8F0 0%, #ECEFF4 35%, #F6F7F9 70%, #F6F7F9 100%); }
+.p-artist__top, .p-artist__top nav, .p-artist__body, .p-artist aside { display: flex; }
+.p-artist__top { justify-content: space-between; align-items: center; padding: 16px 24px; }
+.p-artist__top nav { gap: 4px; background: #fff; border-radius: 999px; padding: 4px; }
+.p-artist__top a, .p-artist aside a { text-decoration: none; color: #0F1115; }
+.p-artist__top a { padding: 8px 14px; border-radius: 999px; }
+.p-artist__top a.active { background: #111317; color: #fff; }
+.p-artist__body { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; padding: 0 16px 32px; }
+.p-artist aside { flex-direction: column; gap: 4px; }
+.p-artist aside a { padding: 10px 12px; border-radius: 12px; }
+.p-artist aside a.active { background: #fff; }
+.p-word { font-weight: 600; color: #0F1115; text-decoration: none; }
+.p-word span { color: #FF6C4B; }
 .p-desk { color: #0F1115; font-family: Geist, Inter, sans-serif; max-width: 980px; }
 .p-desk h1 { font-family: Newsreader, Georgia, serif; font-weight: 300; font-size: 48px; margin: 0 0 16px; }
 .p-desk h2 { font-family: Newsreader, Georgia, serif; font-weight: 300; font-size: 26px; margin: 0 0 8px; }
