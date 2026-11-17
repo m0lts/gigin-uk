@@ -32,6 +32,7 @@ import { VenueHome } from '../home/VenueHome';
 import { VenueHomeLaunch } from '../home/VenueHomeLaunch';
 import { LegworkGuide } from '../home/LegworkGuide';
 import { EditGigPage, VenueAccountPage, VenueSettingsPage } from '../desk/VenueDeskPages';
+import { VenuePageEditor } from '../page/PageEditor';
 import { ContactsBoard } from '../desk/ContactsBoard';
 import { GigPhotosPage } from '../photos/GigPhotosPage';
 import { ShareLinkProvider } from '../home/shareLinkContext';
@@ -240,6 +241,7 @@ export const VenueDashboard = ({ user }) => {
                         <Route path='finder-listing/:venueId' element={FEATURES.venueFinder ? <FinderListingRoute /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='artists' element={FEATURES.venueDesk ? <ContactsBoard user={user} /> : <ArtistCRM user={user} venues={venueProfiles} />} />
                         <Route path='settings' element={FEATURES.venueDesk ? <VenueSettingsPage user={user} venues={venueProfiles} /> : <Navigate to="/venues/dashboard" replace />} />
+                        <Route path='page' element={FEATURES.venuePage ? <VenuePageEditor venues={venueProfiles} /> : <Navigate to="/venues/dashboard" replace />} />
                         <Route path='account' element={FEATURES.venueDesk ? <VenueAccountPage user={user} /> : <Navigate to="/account" replace />} />
                         <Route path='gigs/:gigId/edit' element={FEATURES.venueDesk ? <EditGigPage gigs={gigs} venues={venueProfiles} refreshGigs={refreshGigs} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='gigs/:gigId/photos' element={FEATURES.gigPhotos ? <GigPhotosPage gigs={gigs} venues={venueProfiles} refreshGigs={refreshGigs} /> : <Navigate to="/venues/dashboard/gigs" replace />} />

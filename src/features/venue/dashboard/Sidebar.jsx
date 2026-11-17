@@ -140,7 +140,7 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
       iconActive: <CoinsIconSolid />,
     }] : []),
     {
-      path: venuePagePath,
+      path: FEATURES.venuePage ? '/venues/dashboard/page' : venuePagePath,
       label: 'Venue page',
       icon: <HouseIconLight />,
       iconActive: <HouseIconSolid />,

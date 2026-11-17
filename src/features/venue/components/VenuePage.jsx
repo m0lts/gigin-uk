@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { AmpIcon, BassIcon, LinkIcon, MonitorIcon, NewTabIcon, PianoIcon, PlugIcon, RequestIcon, SpeakerIcon, VerifiedIcon, TechRiderIcon, SaveIcon, SavedIcon, ShareIcon, EditIcon, MoreInformationIcon, InvoiceIcon, PlayIcon, FilmIcon, CloseIcon } from '../../shared/ui/extras/Icons';
 import { TechRiderEquipmentCard } from '../../shared/ui/tech-rider/TechRiderEquipmentCard';
 import { getTechRiderForDisplay } from '../builder/techRiderConfig';
+import { PublicVenueView } from '../page/PublicVenueView';
 import { VenueGigsList } from './VenueGigsList';
 import { MapSection } from './MapSection';
 import { ensureProtocol } from '../../../services/utils/misc';
@@ -832,6 +833,16 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
                 <h1>This venue page is not public yet</h1>
                 <p>It goes live once the claim is approved.</p>
             </div>
+        );
+    }
+
+    if (FEATURES.venuePage && venueData) {
+        return (
+            <PublicVenueView
+                venue={{ ...venueData, id: venueData.id || venueId }}
+                gigs={venueGigs}
+                onLogin={() => { setAuthType?.('login'); setAuthModal?.(true); }}
+            />
         );
     }
 
