@@ -24,6 +24,8 @@ import { toast } from 'sonner';
 import { getGigsByIds, getGigById } from '@services/client-side/gigs';
 import { TechRiderEquipmentCard } from '@features/shared/ui/tech-rider/TechRiderEquipmentCard';
 import { GigIcon } from '../../shared/ui/extras/Icons';
+import { FEATURES } from '../../../config/features';
+import { TonightHandbook } from '../night/NightScreens';
 
 
 export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) => {
@@ -503,6 +505,7 @@ export const GigHandbook = ({ setShowGigHandbook, gigForHandbook, musicianId }) 
 
     return (
         <div className='modal gig-handbook' onClick={handleModalClick}>
+            {FEATURES.actNight && !showConfirmation ? <TonightHandbook gig={gigForHandbook} venue={venueProfile} /> : null}
             {showConfirmation ? (
                 <div className='modal-content confirmation-modal' onClick={(e) => e.stopPropagation()}>
                     {loading ? (

@@ -23,4 +23,5 @@ export const FEATURES = {
   venueHome: readFlag(import.meta.env.VITE_FEATURE_VENUE_HOME),
   venueDesk: readFlag(import.meta.env.VITE_FEATURE_VENUE_DESK),
   gigPhotos: readFlag(import.meta.env.VITE_FEATURE_GIG_PHOTOS),
+  actNight: readFlag(import.meta.env.VITE_FEATURE_ACT_NIGHT),
 };
