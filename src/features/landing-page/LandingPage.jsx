@@ -169,7 +169,7 @@ export const LandingPage = ({ setAuthModal, setAuthType, setAuthClosable }) => {
     setAuthModal?.(true);
   };
 
-  const showProof = FEATURES.landingProof && PROOF.names.length > 0;
+  const showProof = FEATURES.landingProof && !FEATURES.landing && PROOF.names.length > 0;
   const showProfile = FEATURES.keepProfile && FEATURES.publicProfile;
   const showFinder = FEATURES.venueFinder;
 
@@ -441,7 +441,7 @@ function ProfileCard({ pressKit, onLogin }) {
   return (
     <article className="lp-artist-card">
       <h3>{pressKit ? 'Keep your profile, tech rider and press kit in one shareable link' : 'Keep your profile and tech rider in one shareable link'}</h3>
-      <p>After you apply, you can keep what you sent as a free Gigin profile, with one link to send to any venue. Choose Keep my profile on the confirmation screen. You only set a password if you want one.</p>
+      <p>{FEATURES.landing ? 'After you apply, you can keep what you sent as a Gigin profile, with one link to send to any venue. Choose Keep my profile on the confirmation screen. You only set a password if you want one.' : 'After you apply, you can keep what you sent as a free Gigin profile, with one link to send to any venue. Choose Keep my profile on the confirmation screen. You only set a password if you want one.'}</p>
       <div className="lp-profile" aria-hidden="true">
         <span>FT</span>
         <div>

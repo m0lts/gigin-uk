@@ -16,6 +16,8 @@ import Crm from '@assets/images/landing_page/venue/crm.png';
 import FindArtists from '@assets/images/landing_page/venue/find_artists.png';
 import ArtistProfile from '@assets/images/landing_page/venue/artist_profile.png';
 import ArtistTr from '@assets/images/landing_page/venue/artist_tr.png';
+import HeroE from '@assets/images/landing_page/venue/hero-e.png';
+import { VENUE_HEADLINE, landingSections } from './landingCopy';
 
 
 export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal, setInitialEmail }) => {
@@ -40,6 +42,11 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
         }
     }, [hasArtistProfile, hasVenueProfile, navigate, user]);
 
+    const refresh = FEATURES.landing;
+    const sections = landingSections(FEATURES);
+    const show = (key) => !refresh || sections[key];
+    const hero = refresh ? HeroE : Top1;
+
     return (
         <div className="landing-page venue">
             <LaunchHeader setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />
@@ -49,23 +56,23 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
                         <div className="hero-right-mobile">
                             <div className="hero-image-stack">
                                 <div className="hero-image-placeholder stack-item stack-item-1">
-                                    <img src={Top1} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
+                                    <img src={hero} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
                                 </div>
-                                <div className="hero-image-placeholder stack-item stack-item-2">
+                                {!refresh ? <div className="hero-image-placeholder stack-item stack-item-2">
                                     <img src={Top2} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
-                                </div>
-                                <div className="hero-image-placeholder stack-item stack-item-3">
+                                </div> : null}
+                                {!refresh ? <div className="hero-image-placeholder stack-item stack-item-3">
                                     <img src={Top3} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
-                                </div>
+                                </div> : null}
                             </div>
                         </div>
                     )}
                     <div className="hero-left">
-                        <h1>Run your live music with clarity and control.</h1>
+                        <h1>{refresh ? VENUE_HEADLINE : 'Run your live music with clarity and control.'}</h1>
                         <h4>Save time and stress by giving your live music bookings a dedicated home.</h4>
                         <div className="hero-cta">
                             <button className="btn artist-profile" onClick={() => navigate('/venues/add-venue')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                Get Started for Free <RightArrowIcon />
+                                {refresh ? 'Get started' : 'Get Started for Free'} <RightArrowIcon />
                             </button>
                             <span className="small-text">(Set-up time: 5 Minutes)</span>
                         </div>
@@ -74,29 +81,29 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
                         <div className="hero-right">
                             <div className="hero-image-stack">
                                 <div className="hero-image-placeholder stack-item stack-item-1">
-                                    <img src={Top1} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
+                                    <img src={hero} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
                                 </div>
-                                <div className="hero-image-placeholder stack-item stack-item-2">
+                                {!refresh ? <div className="hero-image-placeholder stack-item stack-item-2">
                                     <img src={Top2} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
-                                </div>
-                                <div className="hero-image-placeholder stack-item stack-item-3">
+                                </div> : null}
+                                {!refresh ? <div className="hero-image-placeholder stack-item stack-item-3">
                                     <img src={Top3} alt="Venue management" style={{ width: '100%', height: 'auto', borderRadius: '1rem' }} />
-                                </div>
+                                </div> : null}
                             </div>
                         </div>
                     )}
                 </section>
 
-                <section className="venue-profile-section">
+                {show('profile') ? <section className="venue-profile-section">
                     <h2>Your Venue Profile.</h2>
                     <h4>One place for artists to find out what they need.</h4>
                     <img src={Top1} alt="Venue profile" />
                     <button className="btn artist-profile" onClick={() => navigate('/venues/add-venue')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         Make My Profile <RightArrowIcon />
                     </button>
-                </section>
+                </section> : null}
 
-                <section className="product-demonstration-section">
+                {show('dashboard') ? <section className="product-demonstration-section">
                     <h2>Get gigs out of your inbox.</h2>
                     <h4>Clarity for you and your team on your Dashboard.</h4>
                     <div className="product-demonstration-images">
@@ -106,24 +113,24 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
                     <button className="btn artist-profile" onClick={() => navigate('/venues/add-venue')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         Get Started <RightArrowIcon />
                     </button>
-                </section>
+                </section> : null}
 
-                <section className="product-demonstration-section">
+                {show('network') ? <section className="product-demonstration-section">
                     <h2>Keep your network in one place</h2>
                     <h4>Add artists, put their contact info, and send gig invites with one click.</h4>
                     <div className="product-demonstration-images">
                         <img src={Crm} alt="Demo 1" />
                     </div>
-                </section>
+                </section> : null}
 
-                <section className="product-demonstration-section">
+                {show('findArtists') ? <section className="product-demonstration-section">
                     <h2>... Or Find Artists already on Gigin</h2>
                     <div className="product-demonstration-images">
                     <img src={FindArtists} alt="Demo 2" />
                     </div>
-                </section>
+                </section> : null}
 
-                <section className="image-text-section">
+                {show('artistPages') ? <section className="image-text-section">
                     <div className="image-text-item">
                         <div className="image-text-image">
                             <img src={ArtistProfile} alt="Feature" />
@@ -140,16 +147,16 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
                             <h4>and Tech Riders, to ensure nothing is missed on the night.</h4>
                         </div>
                     </div>
-                </section>
+                </section> : null}
 
-                <section className="venue-pricing-section">
+                {show('prices') ? <section className="venue-pricing-section">
                     <h2>Our Early-Access Offer</h2>
                     <h4>Get started now for free.</h4>
                     <button className="btn artist-profile" onClick={() => navigate('/venues/add-venue')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         Get Started <RightArrowIcon />
                     </button>
                     <span className="small-text">(Set-up time: 5 Minutes)</span>
-                </section>
+                </section> : null}
             </div>
             <Footer />
         </div>
