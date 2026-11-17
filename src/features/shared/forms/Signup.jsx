@@ -145,6 +145,11 @@ export const SignupForm = ({ credentials, setCredentials, error, setError, clear
           type="button"
           className="auth-card__choice"
           onClick={() => {
+            if (FEATURES.venueQuiz) {
+              setAuthModal(false);
+              navigate('/quiz');
+              return;
+            }
             setCredentials((current) => ({ ...current, signupAs: 'venue' }));
             setRole('venue');
           }}

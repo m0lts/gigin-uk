@@ -18,6 +18,7 @@ import ArtistProfile from '@assets/images/landing_page/venue/artist_profile.png'
 import ArtistTr from '@assets/images/landing_page/venue/artist_tr.png';
 import HeroE from '@assets/images/landing_page/venue/hero-e.png';
 import { VENUE_HEADLINE, landingSections } from './landingCopy';
+import { QuizEntry } from '../venue/quiz/QuizPage';
 
 
 export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClosable, setAuthClosable, noProfileModal, setNoProfileModal, setInitialEmail }) => {
@@ -93,6 +94,7 @@ export const VenueLandingPage = ({ setAuthModal, authType, setAuthType, authClos
                         </div>
                     )}
                 </section>
+                {FEATURES.venueQuiz ? <QuizEntry /> : null}
 
                 {show('profile') ? <section className="venue-profile-section">
                     <h2>Your Venue Profile.</h2>
