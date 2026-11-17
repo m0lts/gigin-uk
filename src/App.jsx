@@ -29,6 +29,7 @@ import { ArtistGigsPage } from '@features/artist/gigs/ArtistGigsPage';
 import { ArtistEnquiryPage, ArtistProfileEditor } from '@features/artist/profile/ArtistProfilePages';
 import { InvoicesPage } from '@features/artist/invoices/InvoicesPage';
 import { ArtistContactsPage, PitchesPage } from '@features/artist/pitches/PitchesPage';
+import { VenueMapPage } from '@features/artist/map/VenueMapPage';
 import { GigMediaSharePage } from '@features/gig-discovery/GigMediaSharePage';
 import { AuthActionPage, EmailLinkPage, ResetPasswordPage } from '@features/auth/AuthPages';
 import { ManageGuestApplication } from '@features/gig-discovery/guest/ManageGuestApplication';
@@ -219,7 +220,7 @@ export default function App() {
               <Route path='profile' element={FEATURES.artistPage ? <ArtistProfileEditor /> : <ArtistSection title="Profile" />} />
               <Route path='pitches' element={FEATURES.artistPitches ? <PitchesPage /> : <ArtistSection title="Pitches" />} />
               <Route path='contacts' element={FEATURES.artistPitches ? <ArtistContactsPage /> : <ArtistSection title="Contacts" />} />
-              <Route path='map' element={<ArtistSection title="Map" />} />
+              <Route path='map' element={FEATURES.venueMap ? <VenueMapPage /> : <ArtistSection title="Map" />} />
             </>
           ) : null}
         </Route>
