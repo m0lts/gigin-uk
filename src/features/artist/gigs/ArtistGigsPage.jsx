@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { FEATURES } from '../../../config/features';
 import { dayKey, diaryNote, monthGrid, splitGigs, toggleDayOff } from './artistGigs';
 import { useArtistHome } from '../home/ArtistShell';
 import '../../venue/desk/venue-desk.css';
@@ -50,6 +52,7 @@ export function ArtistGigsPage() {
                 <strong>{gig.gigName || gig.name || 'Gig'}</strong>
                 <span>{gig.venueName || ''}</span>
               </button>
+              {FEATURES.venueJoin ? <Link to={`/venues/join?from=${encodeURIComponent(gig.gigName || gig.name || '')}&venue=${encodeURIComponent(gig.venueName || '')}`}>This is my venue</Link> : null}
               {openId === id ? (
                 <label>Diary
                   <textarea value={diaryNote(notes, id)} onChange={(event) => saveNote(id, event.target.value)} />
