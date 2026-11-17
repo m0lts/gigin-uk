@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { FEATURES } from '../../../config/features';
 import { artistDestination, hasArtistProfile } from '../../../config/artistDestination';
 import { countNewApplications } from '../home/nights';
+import { LegworkSidebarCard } from '../home/LegworkGuide';
 import { CloseIcon as HomeCloseIcon, HomeIcon } from '../home/icons';
 import '../home/sidebar-badges.css';
 
@@ -212,6 +213,13 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
       </ul>
 
       <div className="sidebar__spacer" aria-hidden="true" />
+
+      {FEATURES.venueHome && !collapsed ? (
+        <LegworkSidebarCard
+          venueId={displayedVenue?.venueId}
+          onOpen={() => navigateTo('/venues/dashboard/guide')}
+        />
+      ) : null}
 
       <a className="sidebar__help" href="mailto:toby@giginmusic.com?subject=Help%20and%20feedback">
         <span className="sidebar__help-mark" aria-hidden="true">?</span>

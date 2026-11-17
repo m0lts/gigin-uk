@@ -29,6 +29,8 @@ import Portal from '../../shared/components/Portal';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { VenueHome } from '../home/VenueHome';
+import { VenueHomeLaunch } from '../home/VenueHomeLaunch';
+import { LegworkGuide } from '../home/LegworkGuide';
 import { ShareLinkProvider } from '../home/shareLinkContext';
 import { VenueMobileChrome } from '../home/VenueMobileChrome';
 import { readLastNewGigRoute } from './new-gig/useNewGigDraft';
@@ -224,7 +226,10 @@ export const VenueDashboard = ({ user }) => {
               )}
                 <div className="output">
                     <Routes>
-                        <Route index element={<VenueHome user={user} gigs={gigs} venues={venueProfiles} onNewGig={openNewGig} />} />
+                        <Route index element={FEATURES.venueHome
+                          ? <VenueHomeLaunch user={user} gigs={gigs} venues={venueProfiles} onNewGig={openNewGig} />
+                          : <VenueHome user={user} gigs={gigs} venues={venueProfiles} onNewGig={openNewGig} />} />
+                        <Route path='guide' element={FEATURES.venueHome ? <LegworkGuide venues={venueProfiles} /> : <Navigate to="/venues/dashboard" replace />} />
                         <Route path='gigs' element={<Gigs gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsInitialDateIso={setAddGigsInitialDateIso} setAddGigsMode={setAddGigsMode} setNewGigRoute={setNewGigRoute} setNewGigEntry={setNewGigEntry} setAddGigsBookNewTemplate={setAddGigsBookNewTemplate} requests={requests} setRequests={setRequests} user={user} refreshGigs={refreshGigs} templates={templates} refreshTemplates={refreshTemplates} />} />
                         <Route path='gigs/gig-applications' element={<VenueGigPageShell setShowAddGigsModal={setShowAddGigsModal} setAddGigsEditData={setAddGigsEditData} setAddGigsMode={setAddGigsMode} gigs={gigs} venueHireOpportunities={venueHireOpportunities} venues={venueProfiles} user={user} refreshStripe={refreshStripe} customerDetails={customerDetails} refreshGigs={refreshGigs} />} />
                         <Route path='messages' element={FEATURES.chat ? <MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} requests={requests} setRequests={setRequests} setShowAddGigsModal={setShowAddGigsModal} setAddGigsMode={setAddGigsMode} setBuildingForMusician={setBuildingForMusician} setBuildingForMusicianData={setBuildingForMusicianData} setRequestId={setRequestId} setPreferredDate={setPreferredDate} refreshGigs={refreshGigs} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
