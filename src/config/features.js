@@ -32,4 +32,5 @@ export const FEATURES = {
   venueMap: readFlag(import.meta.env.VITE_FEATURE_VENUE_MAP),
   venueJoin: readFlag(import.meta.env.VITE_FEATURE_VENUE_JOIN),
   venuePage: readFlag(import.meta.env.VITE_FEATURE_VENUE_PAGE),
+  venueQuiz: readFlag(import.meta.env.VITE_FEATURE_VENUE_QUIZ),
 };

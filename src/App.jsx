@@ -32,6 +32,7 @@ import { ArtistContactsPage, PitchesPage } from '@features/artist/pitches/Pitche
 import { VenueMapPage } from '@features/artist/map/VenueMapPage';
 import { VenueJoin } from '@features/venue/join/ClaimVenue';
 import { VenuePoster } from '@features/venue/page/VenuePoster';
+import { VenueQuiz } from '@features/venue/quiz/QuizPage';
 import { GigMediaSharePage } from '@features/gig-discovery/GigMediaSharePage';
 import { AuthActionPage, EmailLinkPage, ResetPasswordPage } from '@features/auth/AuthPages';
 import { ManageGuestApplication } from '@features/gig-discovery/guest/ManageGuestApplication';
@@ -229,6 +230,7 @@ export default function App() {
           ) : null}
         </Route>
         <Route path='/artists/join' element={FEATURES.artistHome ? <ArtistJoin user={user} /> : <Navigate to="/home" replace />} />
+        <Route path='/quiz' element={FEATURES.venueQuiz ? <VenueQuiz /> : <Navigate to="/" replace />} />
         <Route path='/profile/keep' element={<KeepChoicesPage />} />
         <Route path='/profile/confirm/:token' element={<ConfirmProfilePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         <Route path='/profile/edit' element={<ProfileEditorPage />} />
