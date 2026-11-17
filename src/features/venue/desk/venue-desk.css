@@ -11,6 +11,10 @@
 .p-artist aside a.active { background: #fff; }
 .p-word { font-weight: 600; color: #0F1115; text-decoration: none; }
 .p-word span { color: #FF6C4B; }
+.p-month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.p-month button { height: 36px; border: 0; border-radius: 8px; background: #fff; cursor: pointer; }
+.p-month button.is-off { background: #F8EBD2; color: #7A4B0B; }
+.p-month button.is-out { color: #5B606B; }
 .p-desk { color: #0F1115; font-family: Geist, Inter, sans-serif; max-width: 980px; }
 .p-desk h1 { font-family: Newsreader, Georgia, serif; font-weight: 300; font-size: 48px; margin: 0 0 16px; }
 .p-desk h2 { font-family: Newsreader, Georgia, serif; font-weight: 300; font-size: 26px; margin: 0 0 8px; }

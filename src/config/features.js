@@ -25,4 +25,5 @@ export const FEATURES = {
   gigPhotos: readFlag(import.meta.env.VITE_FEATURE_GIG_PHOTOS),
   actNight: readFlag(import.meta.env.VITE_FEATURE_ACT_NIGHT),
   artistHome: readFlag(import.meta.env.VITE_FEATURE_ARTIST_HOME),
+  artistGigs: readFlag(import.meta.env.VITE_FEATURE_ARTIST_GIGS),
 };
