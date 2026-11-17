@@ -1,0 +1,6 @@
+.amap { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 16px; min-height: 640px; }
+.amap__canvas { height: 640px; border-radius: 24px; overflow: hidden; background: #e7ebf0; }
+.amap__side { display: grid; align-content: start; gap: 10px; }
+.amap__filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.amap__card { background: #fff; border-radius: 20px; padding: 16px; }
+@media (max-width: 800px) { .amap { grid-template-columns: 1fr; } .amap__canvas { height: 320px; } }
