@@ -21,4 +21,5 @@ export const FEATURES = {
   // Venue self-signup. Off unless the build sets this to true. A new venue stays pending until the founder approves it.
   venueSignup: readFlag(import.meta.env.VITE_FEATURE_VENUE_SIGNUP),
   venueHome: readFlag(import.meta.env.VITE_FEATURE_VENUE_HOME),
+  venueDesk: readFlag(import.meta.env.VITE_FEATURE_VENUE_DESK),
 };

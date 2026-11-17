@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { FEATURES } from '../../../config/features';
 import { greetingFor, dateParts, longDate, selectUpcomingNights, groupUpcomingNights } from './nights';
 import { copyText } from './publicLinks';
 import { homeNeeds, legworkBanner, legworkProgress, nightHomeChips, nightMeta, venuePublicUrl } from './legwork';
@@ -110,6 +111,7 @@ export function VenueHomeLaunch({ user, gigs, venues, onNewGig }) {
                       ))}
                     </span>
                   </button>
+                  {FEATURES.venueDesk ? <Link className="p-text" to={`/venues/dashboard/gigs/${night.gigId}/edit${venueQuery}`}>Edit</Link> : null}
                 </li>
               );
             })}

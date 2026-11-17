@@ -31,6 +31,8 @@ import { useBreakpoint } from '../../../hooks/useBreakpoint';
 import { VenueHome } from '../home/VenueHome';
 import { VenueHomeLaunch } from '../home/VenueHomeLaunch';
 import { LegworkGuide } from '../home/LegworkGuide';
+import { EditGigPage, VenueAccountPage, VenueSettingsPage } from '../desk/VenueDeskPages';
+import { ContactsBoard } from '../desk/ContactsBoard';
 import { ShareLinkProvider } from '../home/shareLinkContext';
 import { VenueMobileChrome } from '../home/VenueMobileChrome';
 import { readLastNewGigRoute } from './new-gig/useNewGigDraft';
@@ -235,7 +237,10 @@ export const VenueDashboard = ({ user }) => {
                         <Route path='messages' element={FEATURES.chat ? <MessagePage user={user} conversations={conversations} setConversations={setConversations} venueGigs={gigs} venueProfiles={venueProfiles} customerDetails={customerDetails} refreshStripe={refreshStripe} requests={requests} setRequests={setRequests} setShowAddGigsModal={setShowAddGigsModal} setAddGigsMode={setAddGigsMode} setBuildingForMusician={setBuildingForMusician} setBuildingForMusicianData={setBuildingForMusicianData} setRequestId={setRequestId} setPreferredDate={setPreferredDate} refreshGigs={refreshGigs} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='my-venues' element={<Venues venues={venueProfiles} user={user} setVenues={setVenueProfiles} />} />
                         <Route path='finder-listing/:venueId' element={FEATURES.venueFinder ? <FinderListingRoute /> : <Navigate to="/venues/dashboard/gigs" replace />} />
-                        <Route path='artists' element={<ArtistCRM user={user} venues={venueProfiles} />} />
+                        <Route path='artists' element={FEATURES.venueDesk ? <ContactsBoard user={user} /> : <ArtistCRM user={user} venues={venueProfiles} />} />
+                        <Route path='settings' element={FEATURES.venueDesk ? <VenueSettingsPage user={user} venues={venueProfiles} /> : <Navigate to="/venues/dashboard" replace />} />
+                        <Route path='account' element={FEATURES.venueDesk ? <VenueAccountPage user={user} /> : <Navigate to="/account" replace />} />
+                        <Route path='gigs/:gigId/edit' element={FEATURES.venueDesk ? <EditGigPage gigs={gigs} venues={venueProfiles} refreshGigs={refreshGigs} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='artists/find' element={FEATURES.discovery ? <FindArtists user={user} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='artists/find/nearby-lineups' element={FEATURES.discovery ? <NearbyLineups /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='finances' element={FEATURES.finances ? <Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} /> : <Navigate to="/venues/dashboard/gigs" replace />} />

@@ -1,0 +1,28 @@
+.p-desk { color: #0F1115; font-family: Geist, Inter, sans-serif; max-width: 980px; }
+.p-desk h1 { font-family: Newsreader, Georgia, serif; font-weight: 300; font-size: 48px; margin: 0 0 16px; }
+.p-desk h2 { font-family: Newsreader, Georgia, serif; font-weight: 300; font-size: 26px; margin: 0 0 8px; }
+.p-desk label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #4B5160; margin: 10px 0; }
+.p-desk input, .p-desk textarea {
+  height: 52px; border-radius: 14px; border: 1px solid #E5E7EB; padding: 0 14px; font: 400 16px/1.4 Geist, sans-serif; color: #0F1115;
+}
+.p-desk textarea { height: 96px; padding: 12px 14px; }
+.p-photo-row, .p-inline, .p-savebar, .p-tabs { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.p-photo, .p-photo-row img { width: 96px; height: 72px; border-radius: 16px; object-fit: cover; background: #F0F2F5; display: grid; place-items: center; color: #5B606B; }
+.p-avatar { width: 36px; height: 36px; border-radius: 999px; background: #F0F2F5; display: inline-grid; place-items: center; font-size: 12px; font-weight: 600; }
+.p-desk li { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid #E5E7EB; }
+.p-switch { flex-direction: row; justify-content: space-between; align-items: center; }
+.p-switch input { width: 44px; height: 26px; }
+.p-warn { background: #F8EBD2; color: #7A4B0B; border-radius: 14px; padding: 12px 14px; }
+.p-contacts__grid { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; }
+.p-tabs button, .p-contacts button.is-on { border-radius: 999px; }
+.p-tabs button { border: 1px solid #E5E7EB; background: #fff; padding: 8px 12px; cursor: pointer; }
+.p-tabs button.is-on, .p-contacts li button.is-on { background: #111317; color: #fff; }
+.p-contacts li { border: 0; }
+.p-contacts li button { display: flex; gap: 10px; width: 100%; border: 0; background: none; text-align: left; cursor: pointer; padding: 8px; border-radius: 14px; }
+.p-kit__photos { display: flex; gap: 8px; }
+.p-kit__photos img { width: 120px; height: 90px; object-fit: cover; border-radius: 12px; background: #F0F2F5; }
+.is-wide { grid-column: 1 / -1; }
+@media (max-width: 800px) {
+  .p-desk h1 { font-size: 32px; }
+  .p-contacts__grid { grid-template-columns: 1fr; }
+}

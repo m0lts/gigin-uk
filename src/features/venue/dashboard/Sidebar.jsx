@@ -121,6 +121,12 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
       iconActive: <MessageIconSolid />,
       notification: newMessages,
     }] : []),
+    ...(FEATURES.venueDesk ? [{
+      path: '/venues/dashboard/settings',
+      label: 'Settings',
+      icon: <SettingsIcon />,
+      iconActive: <SettingsIcon />,
+    }] : []),
     {
       path: '/venues/dashboard/artists',
       label: 'Contacts',
@@ -279,9 +285,9 @@ export const Sidebar = ({ user, newMessages, forceExpanded = false, onClose }) =
               type="button"
               className="sidebar__popover-item"
               role="menuitem"
-              onClick={() => navigate('/account')}
+              onClick={() => navigate(FEATURES.venueDesk ? '/venues/dashboard/account' : '/account')}
             >
-              Settings
+              {FEATURES.venueDesk ? 'Account' : 'Settings'}
               <SettingsIcon />
             </button>
             <button
