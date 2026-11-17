@@ -33,6 +33,7 @@ import { VenueHomeLaunch } from '../home/VenueHomeLaunch';
 import { LegworkGuide } from '../home/LegworkGuide';
 import { EditGigPage, VenueAccountPage, VenueSettingsPage } from '../desk/VenueDeskPages';
 import { ContactsBoard } from '../desk/ContactsBoard';
+import { GigPhotosPage } from '../photos/GigPhotosPage';
 import { ShareLinkProvider } from '../home/shareLinkContext';
 import { VenueMobileChrome } from '../home/VenueMobileChrome';
 import { readLastNewGigRoute } from './new-gig/useNewGigDraft';
@@ -241,6 +242,7 @@ export const VenueDashboard = ({ user }) => {
                         <Route path='settings' element={FEATURES.venueDesk ? <VenueSettingsPage user={user} venues={venueProfiles} /> : <Navigate to="/venues/dashboard" replace />} />
                         <Route path='account' element={FEATURES.venueDesk ? <VenueAccountPage user={user} /> : <Navigate to="/account" replace />} />
                         <Route path='gigs/:gigId/edit' element={FEATURES.venueDesk ? <EditGigPage gigs={gigs} venues={venueProfiles} refreshGigs={refreshGigs} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
+                        <Route path='gigs/:gigId/photos' element={FEATURES.gigPhotos ? <GigPhotosPage gigs={gigs} venues={venueProfiles} refreshGigs={refreshGigs} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='artists/find' element={FEATURES.discovery ? <FindArtists user={user} /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='artists/find/nearby-lineups' element={FEATURES.discovery ? <NearbyLineups /> : <Navigate to="/venues/dashboard/gigs" replace />} />
                         <Route path='finances' element={FEATURES.finances ? <Finances savedCards={savedCards} receipts={receipts} customerDetails={customerDetails} setStripe={setStripe} venues={venueProfiles} /> : <Navigate to="/venues/dashboard/gigs" replace />} />

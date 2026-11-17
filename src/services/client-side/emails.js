@@ -39,6 +39,7 @@ export const sendGigAcceptedEmail = ({ gigId, applicantId } = {}) => send('gig-a
 export const sendGigDeclinedEmail = ({ gigId, applicantId } = {}) => send('gig-declined', { gigId, applicantId });
 export const sendCounterOfferEmail = ({ gigId, applicantId } = {}) => send('counter-offer', { gigId, applicantId });
 export const sendInvitationAcceptedEmailToVenue = ({ gigId } = {}) => send('invitation-accepted', { gigId });
+export const sendGigPhotosEmail = ({ gigId, when } = {}) => send('photos-ready', { gigId, when });
 
 const removed = () => Promise.resolve({ sent: false });
 export const sendDisputeNoticeEmail = removed;

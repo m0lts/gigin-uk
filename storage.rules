@@ -142,6 +142,11 @@ service firebase.storage {
       allow write: if canUpdateVenue(venueId);
     }
 
+    match /venues/{venueId}/gig-photos/{fileName} {
+      allow get: if true;
+      allow write: if canUpdateVenue(venueId);
+    }
+
     // Terms and house rules. Staff can read. Only someone who can update the venue can write.
     match /venues/{venueId}/documents {
       allow list: if isVenueStaff(venueId);

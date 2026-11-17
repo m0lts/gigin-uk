@@ -21,6 +21,7 @@ import { AccountLoadError, LoadingScreen } from '@features/shared/ui/loading/Loa
 import { TextLogo } from '@features/shared/ui/logos/Logos';
 import { VenueDashboard } from '@features/venue/dashboard/Dashboard';
 import { GigPage } from '@features/gig-discovery/GigPage';
+import { ArtistPhotosPage } from '@features/venue/photos/ArtistPhotosPage';
 import { GigMediaSharePage } from '@features/gig-discovery/GigMediaSharePage';
 import { AuthActionPage, EmailLinkPage, ResetPasswordPage } from '@features/auth/AuthPages';
 import { ManageGuestApplication } from '@features/gig-discovery/guest/ManageGuestApplication';
@@ -190,6 +191,7 @@ export default function App() {
         <Route path='/auth/reset' element={<ResetPasswordPage />} />
         <Route path='/auth/email-link' element={<EmailLinkPage />} />
         <Route path='/gig/:gigId/application/:token' element={<ManageGuestApplication />} />
+        <Route path='/gig/:gigId/photos' element={FEATURES.gigPhotos ? <ArtistPhotosPage /> : <Navigate to="/" replace />} />
         <Route path='/gig/:gigId' element={<GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setInitialEmail={setInitialEmail} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  />} />
         <Route path='/hire/:hireId' element={FEATURES.venueHire ? <GigPage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} noProfileModal={noProfileModal} setNoProfileModal={setNoProfileModal} setNoProfileModalClosable={setNoProfileModalClosable}  /> : <FeatureRedirect user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable} />} />
         <Route path='/account' element={<MainLayout user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} setAuthClosable={setAuthClosable}><Account /></MainLayout>} />

@@ -514,7 +514,27 @@ const handlers = {
     ({ who, place, when }) => `${who} has accepted the invitation to play at ${place}${when ? ` on ${when}` : ""}.`,
     { subject: "Your Invitation Was Accepted!" },
   )),
+  "photos-ready": async (uid, body) => {
+    const gig = await loadGig(requireId(body.gigId, "gigId"));
+    if (!(await callerIsVenue(uid, gig.venueId, "gigs.update"))) throw fail(403, "You do not have permission to email these acts.");
+    const applicants = (await gigApplicants(gig)).filter((applicant) => BOOKED_MAIL.has(String(applicant?.status || "").toLowerCase()));
+    const venue = await loadVenue(gig.venueId);
+    const venueName = plain(venue?.name || "The venue");
+    const gigName = plain(gig.gigName || gig.eventName || "your gig");
+    const when = plain(body.when || "the night");
+    const link = `${emailLinkOrigin(body.origin)}/gig/${encodeURIComponent(gig.id)}/photos`;
+    const message = letter({
+      subject: `Photos from ${gigName}`,
+      text: `${venueName} has shared photos from ${when}. Download what you like and use it for your own promo.`,
+      html: `${escapeHtml(venueName)} has shared photos from ${escapeHtml(when)}. Download what you like and use it for your own promo.`,
+      link,
+      linkLabel: "View and download",
+    });
+    return queueTo(applicants.map((applicant) => applicant.email).filter(Boolean), message);
+  },
 };
+
+const BOOKED_MAIL = new Set(["accepted", "confirmed", "paid", "booked"]);
 
 export const REACHABLE_MAIL_KINDS = Object.keys(handlers);
 

@@ -112,6 +112,7 @@ export function VenueHomeLaunch({ user, gigs, venues, onNewGig }) {
                     </span>
                   </button>
                   {FEATURES.venueDesk ? <Link className="p-text" to={`/venues/dashboard/gigs/${night.gigId}/edit${venueQuery}`}>Edit</Link> : null}
+                  {FEATURES.gigPhotos ? <Link className="p-text" to={`/venues/dashboard/gigs/${night.gigId}/photos${venueQuery}`}>Photos</Link> : null}
                 </li>
               );
             })}
