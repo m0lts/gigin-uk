@@ -19,6 +19,7 @@ export function profileFromDraft(draft) {
     city: String(draft?.city || '').trim(),
     genres: String(draft?.genres || '').split(',').map((item) => item.trim()).filter(Boolean),
     bio: String(draft?.bio || '').trim(),
+    photoUrl: String(draft?.photoUrl || '').trim(),
     links: { spotify: String(draft?.link || '').trim() },
   };
 }

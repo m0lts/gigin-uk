@@ -10,6 +10,7 @@ test('artist sign-up walks five steps and keeps the public profile fields', () =
   const profile = profileFromDraft({ name: 'Maya Reid', city: 'Cambridge', genres: 'Folk, Jazz', bio: 'Songs', link: 'https://open.spotify.com/x' });
   assert.deepEqual(profile.genres, ['Folk', 'Jazz']);
   assert.equal(profile.links.spotify.includes('spotify'), true);
+  assert.equal(profileFromDraft({ name: 'Maya', photoUrl: 'https://cdn.example/maya.jpg' }).photoUrl.includes('maya'), true);
 });
 
 test('the home line counts days until the next gig', () => {
