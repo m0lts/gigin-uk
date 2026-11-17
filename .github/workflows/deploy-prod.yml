@@ -44,6 +44,7 @@ jobs:
       VITE_FEATURE_ARTIST_HOME: 'false'
       VITE_FEATURE_ARTIST_GIGS: 'false'
       VITE_FEATURE_ARTIST_PAGE: 'false'
+      VITE_FEATURE_ARTIST_INVOICES: 'false'
       VITE_LAUNCH_VENUE_IDS: ${{ vars.VITE_LAUNCH_VENUE_IDS }}
     steps:
       - uses: actions/checkout@v4

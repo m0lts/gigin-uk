@@ -27,4 +27,5 @@ export const FEATURES = {
   artistHome: readFlag(import.meta.env.VITE_FEATURE_ARTIST_HOME),
   artistGigs: readFlag(import.meta.env.VITE_FEATURE_ARTIST_GIGS),
   artistPage: readFlag(import.meta.env.VITE_FEATURE_ARTIST_PAGE),
+  artistInvoices: readFlag(import.meta.env.VITE_FEATURE_ARTIST_INVOICES),
 };

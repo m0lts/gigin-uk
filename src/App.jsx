@@ -27,6 +27,7 @@ import { ArtistJoin } from '@features/artist/home/JoinWizard';
 import { ArtistDashboard, ArtistSection, ArtistShell } from '@features/artist/home/ArtistShell';
 import { ArtistGigsPage } from '@features/artist/gigs/ArtistGigsPage';
 import { ArtistEnquiryPage, ArtistProfileEditor } from '@features/artist/profile/ArtistProfilePages';
+import { InvoicesPage } from '@features/artist/invoices/InvoicesPage';
 import { GigMediaSharePage } from '@features/gig-discovery/GigMediaSharePage';
 import { AuthActionPage, EmailLinkPage, ResetPasswordPage } from '@features/auth/AuthPages';
 import { ManageGuestApplication } from '@features/gig-discovery/guest/ManageGuestApplication';
@@ -213,7 +214,7 @@ export default function App() {
             <>
               <Route index element={<ArtistDashboard />} />
               <Route path='gigs' element={FEATURES.artistGigs ? <ArtistGigsPage /> : <ArtistSection title="Gigs" />} />
-              <Route path='invoices' element={<ArtistSection title="Invoices" />} />
+              <Route path='invoices' element={FEATURES.artistInvoices ? <InvoicesPage /> : <ArtistSection title="Invoices" />} />
               <Route path='profile' element={FEATURES.artistPage ? <ArtistProfileEditor /> : <ArtistSection title="Profile" />} />
               <Route path='pitches' element={<ArtistSection title="Pitches" />} />
               <Route path='contacts' element={<ArtistSection title="Contacts" />} />
