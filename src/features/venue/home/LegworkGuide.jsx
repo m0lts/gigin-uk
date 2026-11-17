@@ -9,7 +9,7 @@ import {
   venuePublicUrl,
   websiteEmbed,
 } from './legwork';
-import { readLegwork, writeLegwork } from './legworkStorage';
+import { useVenueLegwork } from './useVenueLegwork';
 import './legwork.css';
 
 function useVenue(venues) {
@@ -24,7 +24,7 @@ export function LegworkGuide({ venues }) {
   const url = venuePublicUrl(venue);
   const bare = displayUrl(url);
   const name = venue?.name || 'your venue';
-  const [manual, setManual] = useState(() => readLegwork(venue?.venueId));
+  const [manual, setManual] = useVenueLegwork(venue?.venueId);
   const progress = legworkProgress(manual);
   const [copied, setCopied] = useState('');
 
@@ -32,8 +32,7 @@ export function LegworkGuide({ venues }) {
     const ok = await copyText(value);
     if (!ok) return;
     setCopied(id);
-    const next = writeLegwork(venue?.venueId, { [id]: true });
-    setManual(next);
+    setManual({ ...manual, [id]: true });
     window.setTimeout(() => setCopied(''), 1400);
   };
 
@@ -50,8 +49,7 @@ export function LegworkGuide({ venues }) {
       <script>onload=()=>print()<\/script>
     </body>`);
     popup.document.close();
-    const next = writeLegwork(venue?.venueId, { qr: true });
-    setManual(next);
+    setManual({ ...manual, qr: true });
   };
 
   return (
@@ -123,7 +121,8 @@ export function LegworkGuide({ venues }) {
 }
 
 export function LegworkSidebarCard({ venueId, onOpen }) {
-  const progress = legworkProgress(readLegwork(venueId));
+  const [manual] = useVenueLegwork(venueId);
+  const progress = legworkProgress(manual);
   const width = `${Math.round((progress.done / progress.total) * 100)}%`;
   return (
     <button type="button" className="p-side-card" onClick={onOpen}>

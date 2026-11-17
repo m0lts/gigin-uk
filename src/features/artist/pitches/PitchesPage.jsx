@@ -1,23 +1,37 @@
 import { useState } from 'react';
+import { useAuth } from '@hooks/useAuth';
+import { useOwnedDesk } from '../../shared/useOwnedDesk';
 import { cyclePitchStatus, pitchMailto } from './pitches';
 import { useArtistHome } from '../home/ArtistShell';
 import '../../venue/desk/venue-desk.css';
 
 const KEY = 'gigin.pitches';
+const CONTACTS_KEY = 'gigin.artistContacts';
 
-function read() {
-  try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
+function read(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
+}
+
+function write(key, next) {
+  try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* keep the Firestore copy */ }
 }
 
 export function PitchesPage() {
   const data = useArtistHome();
-  const [pitches, setPitches] = useState(read);
+  const { user } = useAuth();
+  const [pitches, setPitches] = useOwnedDesk({
+    scope: 'user',
+    id: user?.uid,
+    kind: 'pitches',
+    empty: [],
+    readLocal: () => read(KEY),
+    writeLocal: (next) => write(KEY, next),
+  });
   const [draft, setDraft] = useState({ venueName: '', email: '', note: '' });
   const set = (key) => (event) => setDraft((prev) => ({ ...prev, [key]: event.target.value }));
   const profile = data?.profile;
   const save = (list) => {
     setPitches(list);
-    localStorage.setItem(KEY, JSON.stringify(list));
   };
   const open = () => {
     const pitch = { id: `${Date.now()}`, venueName: draft.venueName, email: draft.email, status: 'sent', note: draft.note };
@@ -53,15 +67,20 @@ export function PitchesPage() {
 }
 
 export function ArtistContactsPage() {
-  const [contacts, setContacts] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('gigin.artistContacts') || '[]'); } catch { return []; }
+  const { user } = useAuth();
+  const [contacts, setContacts] = useOwnedDesk({
+    scope: 'user',
+    id: user?.uid,
+    kind: 'artistContacts',
+    empty: [],
+    readLocal: () => read(CONTACTS_KEY),
+    writeLocal: (next) => write(CONTACTS_KEY, next),
   });
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const add = () => {
     const next = [{ name, email }, ...contacts];
     setContacts(next);
-    localStorage.setItem('gigin.artistContacts', JSON.stringify(next));
     setName('');
     setEmail('');
   };

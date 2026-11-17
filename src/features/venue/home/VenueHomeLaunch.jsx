@@ -4,7 +4,7 @@ import { FEATURES } from '../../../config/features';
 import { greetingFor, dateParts, longDate, selectUpcomingNights, groupUpcomingNights } from './nights';
 import { copyText } from './publicLinks';
 import { homeNeeds, legworkBanner, legworkProgress, nightHomeChips, nightMeta, venuePublicUrl } from './legwork';
-import { readLegwork } from './legworkStorage';
+import { useVenueLegwork } from './useVenueLegwork';
 import './legwork.css';
 
 function pluralSets(count) {
@@ -26,7 +26,8 @@ export function VenueHomeLaunch({ user, gigs, venues, onNewGig }) {
   const nights = useMemo(() => groupUpcomingNights(scoped), [scoped]);
   const upcoming = useMemo(() => selectUpcomingNights(nights).nights.slice(0, 4), [nights]);
   const needs = useMemo(() => homeNeeds(nights.filter((night) => night.date)), [nights]);
-  const progress = legworkProgress(readLegwork(displayedVenue?.venueId));
+  const [manual] = useVenueLegwork(displayedVenue?.venueId);
+  const progress = legworkProgress(manual);
   const banner = legworkBanner(progress);
   const { phrase } = greetingFor(user?.name);
   const pageUrl = venuePublicUrl(displayedVenue);

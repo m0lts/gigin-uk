@@ -55,6 +55,17 @@ service cloud.firestore {
           && request.auth.uid == userId
           && canWriteOwnContacts(userId);
       }
+
+      match /privateDesk/{docId} {
+        allow read: if request.auth != null
+          && request.auth.uid == userId
+          && docId in ['daysOff', 'gigDiary', 'invoices', 'pitches', 'artistContacts'];
+        allow create, update: if request.auth != null
+          && request.auth.uid == userId
+          && docId in ['daysOff', 'gigDiary', 'invoices', 'pitches', 'artistContacts']
+          && request.resource.data.keys().hasOnly(['value', 'updatedAt']);
+        allow delete: if false;
+      }
       
     }
 
@@ -114,6 +125,17 @@ service cloud.firestore {
 
       match /private/{docId} {
         allow read, write: if false;
+      }
+
+      match /privateDesk/{docId} {
+        allow read: if request.auth != null
+          && isVenueOwnerTop(request.auth.uid, venueId)
+          && docId == 'legwork';
+        allow create, update: if request.auth != null
+          && isVenueOwnerTop(request.auth.uid, venueId)
+          && docId == 'legwork'
+          && request.resource.data.keys().hasOnly(['value', 'updatedAt']);
+        allow delete: if false;
       }
 
       match /artistCRM/{entryId} {

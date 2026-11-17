@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useAuth } from '@hooks/useAuth';
+import { useOwnedDesk } from '../../shared/useOwnedDesk';
 import { invoiceDraft, invoiceMailto, invoiceText, nextInvoiceNumber } from './invoices';
 import { useArtistHome } from '../home/ArtistShell';
 import '../../venue/desk/venue-desk.css';
@@ -9,16 +11,27 @@ function read() {
   try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
 }
 
+function write(next) {
+  try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* keep the Firestore copy */ }
+}
+
 export function InvoicesPage() {
   const data = useArtistHome();
-  const [invoices, setInvoices] = useState(read);
+  const { user } = useAuth();
+  const [invoices, setInvoices] = useOwnedDesk({
+    scope: 'user',
+    id: user?.uid,
+    kind: 'invoices',
+    empty: [],
+    readLocal: read,
+    writeLocal: write,
+  });
   const [draft, setDraft] = useState({ venueName: '', venueEmail: '', gigName: '', amount: '' });
   const set = (key) => (event) => setDraft((prev) => ({ ...prev, [key]: event.target.value }));
   const save = () => {
     const invoice = invoiceDraft(draft, nextInvoiceNumber(invoices));
     const next = [invoice, ...invoices];
     setInvoices(next);
-    localStorage.setItem(KEY, JSON.stringify(next));
     window.location.href = invoiceMailto(invoice, data?.profile?.name);
   };
   return (

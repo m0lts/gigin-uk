@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FEATURES } from '../../../config/features';
+import { useAuth } from '@hooks/useAuth';
+import { useOwnedDesk } from '../../shared/useOwnedDesk';
 import { dayKey, diaryNote, monthGrid, splitGigs, toggleDayOff } from './artistGigs';
 import { useArtistHome } from '../home/ArtistShell';
 import '../../venue/desk/venue-desk.css';
@@ -12,12 +14,31 @@ function read(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || '') ?? fallback; } catch { return fallback; }
 }
 
+function write(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* keep the Firestore copy */ }
+}
+
 export function ArtistGigsPage() {
   const data = useArtistHome();
+  const { user } = useAuth();
   const [tab, setTab] = useState('upcoming');
   const [cursor, setCursor] = useState(() => new Date());
-  const [daysOff, setDaysOff] = useState(() => read(OFF_KEY, []));
-  const [notes, setNotes] = useState(() => read(NOTES_KEY, {}));
+  const [daysOff, setDaysOff] = useOwnedDesk({
+    scope: 'user',
+    id: user?.uid,
+    kind: 'daysOff',
+    empty: [],
+    readLocal: () => read(OFF_KEY, []),
+    writeLocal: (next) => write(OFF_KEY, next),
+  });
+  const [notes, setNotes] = useOwnedDesk({
+    scope: 'user',
+    id: user?.uid,
+    kind: 'gigDiary',
+    empty: {},
+    readLocal: () => read(NOTES_KEY, {}),
+    writeLocal: (next) => write(NOTES_KEY, next),
+  });
   const [openId, setOpenId] = useState('');
   const split = splitGigs(data?.gigs || []);
   const rows = tab === 'past' ? split.past : tab === 'applied' ? split.applied : split.upcoming;
@@ -26,13 +47,11 @@ export function ArtistGigsPage() {
   const toggle = (date) => {
     const next = toggleDayOff(daysOff, dayKey(date));
     setDaysOff(next);
-    localStorage.setItem(OFF_KEY, JSON.stringify(next));
   };
 
   const saveNote = (gigId, value) => {
     const next = { ...notes, [gigId]: value };
     setNotes(next);
-    localStorage.setItem(NOTES_KEY, JSON.stringify(next));
   };
 
   return (
