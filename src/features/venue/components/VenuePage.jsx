@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { FEATURES } from '../../../config/features';
+import { venueNeedsApproval } from '../../../config/venueAccess';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header as MusicianHeader } from '@features/artist/components/Header';
 import { Header as VenueHeader } from '@features/venue/components/Header';
@@ -824,6 +825,15 @@ export const VenuePage = ({ user, setAuthModal, setAuthType }) => {
 
     // Get the primary photo URL
     const primaryPhotoUrl = venueData?.photos?.[0];
+
+    if (FEATURES.venuePage && venueNeedsApproval(venueData)) {
+        return (
+            <div className='venue-page' style={{ padding: 32 }}>
+                <h1>This venue page is not public yet</h1>
+                <p>It goes live once the claim is approved.</p>
+            </div>
+        );
+    }
 
     return (
         <div className='venue-page'>

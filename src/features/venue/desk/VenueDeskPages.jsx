@@ -7,6 +7,7 @@ import { auth, firestore } from '@lib/firebase';
 import { useAuth } from '@hooks/useAuth';
 import { hasVenuePerm } from '../../../services/utils/permissions';
 import { updateGigDocument } from '@services/api/gigs';
+import { FEATURES } from '../../../config/features';
 import { GiveStaffAccess } from '../dashboard/GiveStaffAccess';
 import { groupUpcomingNights } from '../home/nights';
 import {
@@ -75,6 +76,7 @@ export function VenueSettingsPage({ user, venues }) {
         <div className="p-photo-row">
           {photo ? <img src={typeof photo === 'string' ? photo : ''} alt="" /> : <span className="p-photo">Photo</span>}
           <Link className="p-btn" to="/venues/dashboard/my-venues">Change photo</Link>
+          {FEATURES.venuePage && venue?.venueId ? <Link className="p-btn" to={`/venues/${venue.venueId}/poster`}>QR poster</Link> : null}
         </div>
         <label>Venue name<input value={draft.name} onChange={set('name')} /></label>
         <label>Capacity<input value={draft.capacity} onChange={set('capacity')} /></label>

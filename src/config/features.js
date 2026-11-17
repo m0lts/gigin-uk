@@ -31,4 +31,5 @@ export const FEATURES = {
   artistPitches: readFlag(import.meta.env.VITE_FEATURE_ARTIST_PITCHES),
   venueMap: readFlag(import.meta.env.VITE_FEATURE_VENUE_MAP),
   venueJoin: readFlag(import.meta.env.VITE_FEATURE_VENUE_JOIN),
+  venuePage: readFlag(import.meta.env.VITE_FEATURE_VENUE_PAGE),
 };

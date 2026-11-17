@@ -31,6 +31,7 @@ import { InvoicesPage } from '@features/artist/invoices/InvoicesPage';
 import { ArtistContactsPage, PitchesPage } from '@features/artist/pitches/PitchesPage';
 import { VenueMapPage } from '@features/artist/map/VenueMapPage';
 import { VenueJoin } from '@features/venue/join/ClaimVenue';
+import { VenuePoster } from '@features/venue/page/VenuePoster';
 import { GigMediaSharePage } from '@features/gig-discovery/GigMediaSharePage';
 import { AuthActionPage, EmailLinkPage, ResetPasswordPage } from '@features/auth/AuthPages';
 import { ManageGuestApplication } from '@features/gig-discovery/guest/ManageGuestApplication';
@@ -191,6 +192,7 @@ export default function App() {
           <Route path='add-venue/*' element={<NoHeaderFooterLayout><VenueBuilder user={user} setAuthModal={setAuthModal} authModal={authModal} authClosable={authClosable} setAuthClosable={setAuthClosable} setAuthType={setAuthType} /></NoHeaderFooterLayout>} />
           <Route path='join' element={FEATURES.venueJoin ? <VenueJoin /> : <Navigate to="/venues/add-venue" replace />} />
           <Route path='dashboard/*' element={<VenueDashboardProvider user={user}><VenueDashboardLayout setAuthModal={setAuthModal} setAuthType={setAuthType} user={user} authClosable={authClosable} setAuthClosable={setAuthClosable} ><VenueDashboard user={user} /></VenueDashboardLayout></VenueDashboardProvider>} />
+          <Route path='/venues/:venueId/poster' element={FEATURES.venuePage ? <VenuePoster /> : <Navigate to="/venues" replace />} />
           <Route path='/venues/:venueId' element={FEATURES.venueFinder ? <ArtistVenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} /> : <VenuePage user={user} setAuthModal={setAuthModal} setAuthType={setAuthType} />} />
         </Route>
 

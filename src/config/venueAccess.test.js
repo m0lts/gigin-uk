@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canCreateVenue, canJoinInvitedVenue, pathWhenSignedInWithoutVenue, signedInWithoutVenue } from './venueAccess.js';
+import { canCreateVenue, canJoinInvitedVenue, pathWhenSignedInWithoutVenue, signedInWithoutVenue, venueNeedsApproval } from './venueAccess.js';
 
 const ciBuild = {};
 
@@ -30,4 +30,11 @@ test('a signed-in user with no venue profile is not sent to the site root', () =
 
 test('the venue signup flag turns self-serve venue creation on', () => {
   assert.equal(canCreateVenue({ venueSignup: true }, { exists: false }), true);
+});
+
+test('a venue still waiting for approval has no public page', () => {
+  assert.equal(venueNeedsApproval({ approvalStatus: 'pending' }), true);
+  assert.equal(venueNeedsApproval({ approvalStatus: 'rejected' }), true);
+  assert.equal(venueNeedsApproval({ approvalStatus: 'approved' }), false);
+  assert.equal(venueNeedsApproval({}), false);
 });
